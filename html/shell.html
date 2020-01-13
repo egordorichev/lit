@@ -1,0 +1,29 @@
+<html lang="en">
+<body>
+<p id="output"></p>
+<script>
+	var Module = {
+		print: (function () {
+			var element = document.getElementById('output');
+
+			return function (text) {
+				element.innerHTML += text + "<br>";
+			};
+		})(),
+
+		printErr: function (text) {
+			if (arguments.length > 1) {
+				text = Array.prototype.slice.call(arguments).join(' ');
+			}
+
+			console.log(text);
+		},
+
+		canvas: (function () {
+			return document.getElementById('canvas');
+		})()
+	};
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>
