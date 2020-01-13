@@ -4,12 +4,42 @@
 
 #include <stdio.h>
 
-void lit_init_vm(LitVm* vm) {
+void reset_stack(LitVm* vm) {
+	vm->stack_top = vm->stack;
+}
 
+void lit_init_vm(LitVm* vm) {
+	reset_stack(vm);
 }
 
 void lit_free_vm(LitVm* vm) {
+	lit_init_vm(vm);
+}
 
+void lit_push(LitVm* vm, LitValue value) {
+	*vm->stack_top = value;
+	vm->stack_top++;
+}
+
+LitValue lit_pop(LitVm* vm) {
+	vm->stack_top--;
+	return *vm->stack_top;
+}
+
+static void trace_stack(LitVm* vm) {
+	if (vm->stack_top == vm->stack) {
+		return;
+	}
+
+	printf("          ");
+
+	for (LitValue* slot = vm->stack; slot < vm->stack_top; slot++) {
+		printf("[ ");
+		lit_print_value(*slot);
+		printf(" ]");
+	}
+
+	printf("\n");
 }
 
 LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
@@ -39,21 +69,28 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 #endif
 
 	while (true) {
+#ifdef LIT_TRACE_STACK
+		trace_stack(vm);
+#endif
+
 #ifdef LIT_TRACE_EXECUTION
 		instruction = *ip++;
-		lit_disassemble_instruction(vm->chunk, (uint) (ip - current_chunk->code));
+		lit_disassemble_instruction(vm->chunk, (uint) (ip - current_chunk->code - 1));
 		goto *dispatch_table[instruction];
 #else
 		goto *dispatch_table[*ip++];
 #endif
 
 		CASE_CODE(CONSTANT) {
-			lit_print_value(READ_CONSTANT());
-			printf("\n");
+			lit_push(vm, READ_CONSTANT());
 			continue;
 		};
 
 		CASE_CODE(RETURN) {
+			printf("=> ");
+			lit_print_value(lit_pop(vm));
+			printf("\n");
+
 			return INTERPRET_OK;
 		};
 

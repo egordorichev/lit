@@ -5,7 +5,12 @@
 #include <lit/state/lit_state.h>
 #include <lit/lit_predefines.h>
 
+#include <lit/lit.h>
+
 typedef struct sLitVm {
+	LitValue stack[LIT_STACK_MAX];
+	LitValue* stack_top;
+
 	LitChunk* chunk;
 	uint8_t* ip;
 } sLitVm;
@@ -18,6 +23,10 @@ typedef enum {
 
 void lit_init_vm(LitVm* vm);
 void lit_free_vm(LitVm* vm);
+
+void lit_push(LitVm* vm, LitValue value);
+LitValue lit_pop(LitVm* vm);
+
 LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk);
 
 #endif
