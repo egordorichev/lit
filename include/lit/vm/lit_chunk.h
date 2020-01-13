@@ -5,6 +5,8 @@
 #include <lit/state/lit_state.h>
 #include <lit/vm/lit_value.h>
 
+#include <stdio.h>
+
 typedef enum {
 #define OPCODE(name) OP_##name,
 #include <lit/vm/lit_opcodes.h>
@@ -29,5 +31,8 @@ void lit_write_chunk(LitState* state, LitChunk* chunk, uint8_t byte, uint16_t li
 uint lit_chunk_add_constant(LitState* state, LitChunk* chunk, LitValue constant);
 uint lit_chunk_get_line(LitChunk* chunk, uint offset);
 void lit_shrink_chunk(LitState* state, LitChunk* chunk);
+
+void lit_save_chunk(LitChunk* chunk, FILE* file);
+LitChunk* lit_load_chunk(LitState* state, FILE* file);
 
 #endif
