@@ -39,6 +39,11 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 	switch (instruction) {
 		case OP_RETURN: return print_simple_op("OP_RETURN", offset);
 		case OP_CONSTANT: return print_constant_op("OP_CONSTANT", chunk, offset);
+		case OP_NEGATE: return print_simple_op("OP_NEGATE", offset);
+		case OP_ADD: return print_simple_op("OP_ADD", offset);
+		case OP_SUBTRACT: return print_simple_op("OP_SUBTRACT", offset);
+		case OP_MULTIPLY: return print_simple_op("OP_MULTIPLY", offset);
+		case OP_DIVIDE: return print_simple_op("OP_DIVIDE", offset);
 
 		default: {
 			printf("Unknown opcode %d\n", instruction);

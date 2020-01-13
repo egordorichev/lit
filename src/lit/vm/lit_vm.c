@@ -31,7 +31,7 @@ static void trace_stack(LitVm* vm) {
 		return;
 	}
 
-	printf("          ");
+	printf("        | ");
 
 	for (LitValue* slot = vm->stack; slot < vm->stack_top; slot++) {
 		printf("[ ");
@@ -64,6 +64,13 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 #define CASE_CODE(name) OP_##name:
 #define READ_CONSTANT() (current_chunk->constants.values[READ_BYTE()])
 
+#define BINARY_OP(op) \
+    do { \
+      double b = lit_pop(vm); \
+      double a = lit_pop(vm); \
+      lit_push(vm, a op b); \
+    } while (false);
+
 #ifdef LIT_TRACE_EXECUTION
 	uint8_t instruction;
 #endif
@@ -81,11 +88,6 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 		goto *dispatch_table[*ip++];
 #endif
 
-		CASE_CODE(CONSTANT) {
-			lit_push(vm, READ_CONSTANT());
-			continue;
-		};
-
 		CASE_CODE(RETURN) {
 			printf("=> ");
 			lit_print_value(lit_pop(vm));
@@ -94,10 +96,41 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 			return INTERPRET_OK;
 		};
 
+		CASE_CODE(CONSTANT) {
+			lit_push(vm, READ_CONSTANT());
+			continue;
+		};
+
+		CASE_CODE(NEGATE) {
+			lit_push(vm, -lit_pop(vm));
+			continue;
+		}
+
+		CASE_CODE(ADD) {
+			BINARY_OP(+)
+			continue;
+		}
+
+		CASE_CODE(SUBTRACT) {
+			BINARY_OP(-)
+			continue;
+		}
+
+		CASE_CODE(MULTIPLY) {
+			BINARY_OP(*)
+			continue;
+		}
+
+		CASE_CODE(DIVIDE) {
+			BINARY_OP(/)
+			continue;
+		}
+
 		printf("Unknown op code!");
 		break;
 	}
 
+#undef BINARY_OP
 #undef READ_CONSTANT
 #undef CASE_CODE
 #undef WRITE_IP
