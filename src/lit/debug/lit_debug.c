@@ -9,9 +9,17 @@ void lit_disassemble_chunk(LitChunk* chunk, const char* name) {
 	}
 }
 
-static int print_simple_op(const char* name, int offset) {
+static uint print_simple_op(const char* name, uint offset) {
 	printf("%s\n", name);
 	return offset + 1;
+}
+
+static uint print_constant_op(const char* name, LitChunk* chunk, uint offset) {
+	uint8_t constant = chunk->code[offset + 1];
+
+	printf("%-16s %4d '", name, constant);
+	lit_print_value(chunk->constants.values[constant]);
+	printf("'\n");
 }
 
 uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
@@ -20,6 +28,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 
 	switch (instruction) {
 		case OP_RETURN: return print_simple_op("OP_RETURN", offset);
+		case OP_CONSTANT: return print_constant_op("OP_CONSTANT", chunk, offset);
 
 		default: {
 			printf("Unknown opcode %d\n", instruction);
