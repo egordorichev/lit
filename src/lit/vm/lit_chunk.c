@@ -91,7 +91,7 @@ void lit_shrink_chunk(LitState* state, LitChunk* chunk) {
 	if (chunk->line_capacity > chunk->line_count) {
 		uint old_capacity = chunk->line_capacity;
 
-		chunk->line_capacity = chunk->line_count;
+		chunk->line_capacity = chunk->line_count + 2;
 		chunk->lines = LIT_GROW_ARRAY(state, chunk->lines, uint16_t, old_capacity, chunk->line_capacity);
 	}
 }
@@ -144,9 +144,10 @@ void lit_save_chunk(LitChunk* chunk, FILE* file) {
 		write_uint8_t(file, chunk->code[i]);
 	}
 
-	write_uint32_t(file, chunk->line_count);
+	uint c = chunk->line_count * 2 + 2;
+	write_uint32_t(file, c);
 
-	for (uint i = 0; i < chunk->line_count; i++) {
+	for (uint i = 0; i < c; i++) {
 		write_uint16_t(file, chunk->lines[i]);
 	}
 
