@@ -7,6 +7,6 @@
 #define LIT_VERSION_MINOR 0.1
 #define LIT_VERSION_STRING "0.0.0.1"
 
-void lit_eval(char* string);
+#define LIT_TRACE_EXECUTION
 
 #endif
