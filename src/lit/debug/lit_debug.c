@@ -20,10 +20,20 @@ static uint print_constant_op(const char* name, LitChunk* chunk, uint offset) {
 	printf("%-16s %4d '", name, constant);
 	lit_print_value(chunk->constants.values[constant]);
 	printf("'\n");
+
+	return offset + 2;
 }
 
 uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 	printf("%04d ", offset);
+	uint line = lit_chunk_get_line(chunk, offset);
+
+	if (offset > 0 && line == lit_chunk_get_line(chunk, offset - 1)) {
+		printf("   | ");
+	} else {
+		printf("%4d ", line);
+	}
+
 	uint8_t instruction = chunk->code[offset];
 
 	switch (instruction) {
