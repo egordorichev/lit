@@ -28,5 +28,6 @@ void lit_push(LitVm* vm, LitValue value);
 LitValue lit_pop(LitVm* vm);
 
 LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk);
+LitInterpretResult lit_interpret(LitState* state, char* code);
 
 #endif

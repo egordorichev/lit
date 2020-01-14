@@ -2,7 +2,9 @@
 #include <lit/vm/lit_chunk.h>
 #include <lit/debug/lit_debug.h>
 #include <lit/vm/lit_vm.h>
+#include <lit/scanner/lit_scanner.h>
 
+#include <stdlib.h>
 #include <stdio.h>
 
 static void save_chunk(LitState* state) {
@@ -35,13 +37,57 @@ static void load_chunk(LitState* state) {
 	lit_free_chunk(state, chunk);
 }
 
+static void load_and_run_chunk(LitState* state) {
+	FILE* file = fopen("chunk.lbc", "r");
+	LitChunk* chunk = lit_load_chunk(state, file);
+	fclose(file);
+
+	lit_interpret_chunk(state, chunk);
+	lit_free_chunk(state, chunk);
+}
+
+static char* read_file(const char* path) {
+	FILE* file = fopen(path, "rb");
+
+	fseek(file, 0L, SEEK_END);
+	size_t fileSize = ftell(file);
+	rewind(file);
+
+	char* buffer = (char*) malloc(fileSize + 1);
+	size_t bytes_read = fread(buffer, sizeof(char), fileSize, file);
+	buffer[bytes_read] = '\0';
+
+	fclose(file);
+	return buffer;
+}
+
 int main(int argc, char* argv[]) {
+	char* source = read_file("test.lit");
 	LitState* state = lit_new_state();
 
-	save_chunk(state);
-	load_chunk(state);
+	lit_setup_scanner(&state->scanner, source);
+
+	uint line = -1;
+
+	for (;;) {
+		LitToken token = lit_scan_token(&state->scanner);
+
+		if (token.line != line) {
+			printf("%4d ", token.line);
+			line = token.line;
+		} else {
+			printf("   | ");
+		}
+
+		printf("%2d '%.*s'\n", token.type, token.length, token.start);
+
+		if (token.type == TOKEN_EOF || token.type == TOKEN_ERROR) {
+			break;
+		}
+	}
 
 	lit_free_state(state);
+	free(source);
 
 	return 0;
 }

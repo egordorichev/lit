@@ -3,11 +3,13 @@
 
 #include <lit/lit_common.h>
 #include <lit/lit_predefines.h>
+#include <lit/scanner/lit_scanner.h>
 
 typedef struct {
 	uint bytes_allocated;
 
 	struct sLitVm* vm;
+	LitScanner scanner;
 } LitState;
 
 LitState* lit_new_state();
