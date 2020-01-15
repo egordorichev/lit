@@ -1,7 +1,5 @@
-#include <lit/lit.h>
 #include <lit/vm/lit_chunk.h>
 #include <lit/debug/lit_debug.h>
-#include <lit/vm/lit_vm.h>
 #include <lit/scanner/lit_scanner.h>
 
 #include <stdlib.h>
@@ -63,30 +61,11 @@ static char* read_file(const char* path) {
 
 int main(int argc, char* argv[]) {
 	char* source = read_file("test.lit");
+
 	LitState* state = lit_new_state();
-
-	lit_setup_scanner(&state->scanner, source);
-
-	uint line = -1;
-
-	for (;;) {
-		LitToken token = lit_scan_token(&state->scanner);
-
-		if (token.line != line) {
-			printf("%4d ", token.line);
-			line = token.line;
-		} else {
-			printf("   | ");
-		}
-
-		printf("%2d '%.*s'\n", token.type, token.length, token.start);
-
-		if (token.type == TOKEN_EOF || token.type == TOKEN_ERROR) {
-			break;
-		}
-	}
-
+	lit_interpret(state, source);
 	lit_free_state(state);
+
 	free(source);
 
 	return 0;

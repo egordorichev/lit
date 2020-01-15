@@ -19,3 +19,15 @@ void lit_free_state(LitState* state) {
 	free(state->vm);
 	free(state);
 }
+
+LitInterpretResult lit_interpret(LitState* state, char* code) {
+	LitChunk chunk;
+	lit_init_chunk(&chunk);
+
+	lit_setup_scanner(&state->scanner, code);
+
+	LitInterpretResult result = lit_interpret_chunk(state, &chunk);
+	lit_free_chunk(state, &chunk);
+
+	return result;
+}

@@ -15,12 +15,6 @@ typedef struct sLitVm {
 	uint8_t* ip;
 } sLitVm;
 
-typedef enum {
-	INTERPRET_OK,
-	INTERPRET_COMPILE_ERROR,
-	INTERPRET_RUNTIME_ERROR
-} LitInterpretResult;
-
 void lit_init_vm(LitVm* vm);
 void lit_free_vm(LitVm* vm);
 
@@ -28,6 +22,5 @@ void lit_push(LitVm* vm, LitValue value);
 LitValue lit_pop(LitVm* vm);
 
 LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk);
-LitInterpretResult lit_interpret(LitState* state, char* code);
 
 #endif

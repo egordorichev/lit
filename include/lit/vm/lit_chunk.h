@@ -22,7 +22,7 @@ typedef struct {
 	uint line_capacity;
 	uint16_t* lines;
 
-	LitValueArray constants;
+	LitValues constants;
 } LitChunk;
 
 void lit_init_chunk(LitChunk* chunk);

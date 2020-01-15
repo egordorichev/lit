@@ -10,14 +10,14 @@ void lit_init_chunk(LitChunk* chunk) {
 	chunk->line_capacity = 0;
 	chunk->lines = NULL;
 
-	lit_init_value_array(&chunk->constants);
+	lit_init_values(&chunk->constants);
 }
 
 void lit_free_chunk(LitState* state, LitChunk* chunk) {
 	LIT_FREE_ARRAY(state, uint8_t, chunk->code, chunk->capacity);
 	LIT_FREE_ARRAY(state, uint16_t , chunk->lines, chunk->line_capacity);
 
-	lit_free_value_array(state, &chunk->constants);
+	lit_free_values(state, &chunk->constants);
 	lit_init_chunk(chunk);
 }
 
@@ -52,7 +52,7 @@ void lit_write_chunk(LitState* state, LitChunk* chunk, uint8_t byte, uint16_t li
 }
 
 uint lit_chunk_add_constant(LitState* state, LitChunk* chunk, LitValue constant) {
-	lit_write_value_array(state, &chunk->constants, constant);
+	lit_values_write(state, &chunk->constants, constant);
 	return chunk->constants.count - 1;
 }
 

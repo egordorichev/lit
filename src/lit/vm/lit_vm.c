@@ -139,8 +139,3 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 
 	return INTERPRET_RUNTIME_ERROR;
 }
-
-LitInterpretResult lit_interpret(LitState* state, char* code) {
-
-	return INTERPRET_OK;
-}
