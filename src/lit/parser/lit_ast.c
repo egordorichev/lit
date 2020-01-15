@@ -8,12 +8,28 @@ DEFINE_ARRAY(LitStatements, LitStatement*, stataments)
 
 void lit_free_expression(LitState* state, LitExpression* expression) {
 	switch (expression->type) {
-		case LITERAL: {
+		case LITERAL_EXPRESSION: {
 			FREE_EXPRESSION(LitLiteralExpression)
 			break;
 		}
-	}
 
+		case BINARY_EXPRESSION: {
+			LitBinaryExpression* expr = (LitBinaryExpression*) expression;
+
+			lit_free_expression(state, expr->left);
+			lit_free_expression(state, expr->right);
+
+			FREE_EXPRESSION(LitBinaryExpression)
+			break;
+		}
+
+		case UNARY_EXPRESSION: {
+			lit_free_expression(state, ((LitUnaryExpression*) expression)->right);
+			FREE_EXPRESSION(LitUnaryExpression)
+
+			break;
+		}
+	}
 }
 
 #define ALLOCATE_EXPRESSION(state, type, object_type) \
@@ -29,8 +45,27 @@ static LitExpression* allocate_expression(LitState* state, uint64_t line, size_t
 }
 
 LitLiteralExpression *lit_create_literal_expression(LitState* state, uint line, LitValue value) {
-	LitLiteralExpression* expression = ALLOCATE_EXPRESSION(state, LitLiteralExpression, LITERAL);
+	LitLiteralExpression* expression = ALLOCATE_EXPRESSION(state, LitLiteralExpression, LITERAL_EXPRESSION);
 	expression->value = value;
+	return expression;
+}
+
+LitBinaryExpression *lit_create_binary_expression(LitState* state, uint line, LitExpression* left, LitExpression* right, LitTokenType operator) {
+	LitBinaryExpression* expression = ALLOCATE_EXPRESSION(state, LitBinaryExpression, BINARY_EXPRESSION);
+
+	expression->left = left;
+	expression->right = right;
+	expression->operator = operator;
+
+	return expression;
+}
+
+LitUnaryExpression *lit_create_unary_expression(LitState* state, uint line, LitExpression* right, LitTokenType operator) {
+	LitUnaryExpression* expression = ALLOCATE_EXPRESSION(state, LitUnaryExpression, UNARY_EXPRESSION);
+
+	expression->right = right;
+	expression->operator = operator;
+
 	return expression;
 }
 
@@ -38,7 +73,7 @@ LitLiteralExpression *lit_create_literal_expression(LitState* state, uint line, 
 
 void lit_free_statement(LitState* state, LitStatement* statement) {
 	switch (statement->type) {
-		case EXPRESSION: {
+		case EXPRESSION_STATEMENT: {
 			lit_free_expression(state, ((LitExpressionStatement*) statement)->expression);
 			FREE_STATEMENT(LitExpressionStatement)
 			break;
@@ -59,7 +94,7 @@ static LitStatement* allocate_statement(LitState* state, uint64_t line, size_t s
 }
 
 LitExpressionStatement *lit_create_expression_statement(LitState* state, uint line, LitExpression* expression) {
-	LitExpressionStatement* statement = ALLOCATE_STATEMENT(state, LitExpressionStatement, EXPRESSION);
+	LitExpressionStatement* statement = ALLOCATE_STATEMENT(state, LitExpressionStatement, EXPRESSION_STATEMENT);
 	statement->expression = expression;
 	return statement;
 }
