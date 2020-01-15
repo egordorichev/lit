@@ -13,6 +13,9 @@ typedef struct {
 	uint line;
 } LitExpression;
 
+DECLARE_ARRAY(LitExpressions, LitExpression, expressions)
+void lit_free_expression(LitState* state, LitExpression* expression);
+
 typedef struct {
 	LitExpression expression;
 	LitValue value;
@@ -28,5 +31,15 @@ typedef struct {
 	LitStatementType type;
 	uint line;
 } LitStatement;
+
+DECLARE_ARRAY(LitStatements, LitStatement, stataments)
+void lit_free_statement(LitState* state, LitStatement* statement);
+
+typedef struct {
+	LitStatement statement;
+	LitExpression* expression;
+} LitExpressionStatement;
+
+LitExpressionStatement *lit_create_expression_statement(LitState* state, uint line, LitExpression* expression);
 
 #endif
