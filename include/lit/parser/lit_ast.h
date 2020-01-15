@@ -8,12 +8,12 @@ typedef enum {
 	LITERAL
 } LitExpressionType;
 
-typedef struct {
+typedef struct LitExpression {
 	LitExpressionType type;
 	uint line;
 } LitExpression;
 
-DECLARE_ARRAY(LitExpressions, LitExpression, expressions)
+DECLARE_ARRAY(LitExpressions, LitExpression*, expressions)
 void lit_free_expression(LitState* state, LitExpression* expression);
 
 typedef struct {
@@ -27,12 +27,12 @@ typedef enum {
 	EXPRESSION
 } LitStatementType;
 
-typedef struct {
+typedef struct LitStatement {
 	LitStatementType type;
 	uint line;
 } LitStatement;
 
-DECLARE_ARRAY(LitStatements, LitStatement, stataments)
+DECLARE_ARRAY(LitStatements, LitStatement*, stataments)
 void lit_free_statement(LitState* state, LitStatement* statement);
 
 typedef struct {

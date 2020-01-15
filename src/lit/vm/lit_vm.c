@@ -59,10 +59,12 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 	};
 
 #define READ_BYTE() (*ip++)
+#define READ_SHORT() (ip += 2, (uint16_t) ((ip[-2] << 8) | ip[-1]))
 #define READ_IP() ip = vm->ip; current_chunk = vm->chunk;
 #define WRITE_IP() vm->ip = ip; vm->chunk = current_chunk;
 #define CASE_CODE(name) OP_##name:
 #define READ_CONSTANT() (current_chunk->constants.values[READ_BYTE()])
+#define READ_CONSTANT_LONG() (current_chunk->constants.values[READ_SHORT()])
 
 #define BINARY_OP(op) \
     do { \
@@ -88,16 +90,22 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 		goto *dispatch_table[*ip++];
 #endif
 
-		CASE_CODE(RETURN) {
-			printf("=> ");
-			lit_print_value(lit_pop(vm));
-			printf("\n");
+		CASE_CODE(POP) {
+			lit_pop(vm);
+			continue;
+		};
 
+		CASE_CODE(RETURN) {
 			return INTERPRET_OK;
 		};
 
 		CASE_CODE(CONSTANT) {
 			lit_push(vm, READ_CONSTANT());
+			continue;
+		};
+
+		CASE_CODE(CONSTANT_LONG) {
+			lit_push(vm, READ_CONSTANT_LONG());
 			continue;
 		};
 
@@ -131,10 +139,12 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 	}
 
 #undef BINARY_OP
+#undef READ_CONSTANT_LONG
 #undef READ_CONSTANT
 #undef CASE_CODE
 #undef WRITE_IP
 #undef READ_IP
+#undef READ_SHORT
 #undef READ_BYTE
 
 	return INTERPRET_RUNTIME_ERROR;

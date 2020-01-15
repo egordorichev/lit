@@ -1,5 +1,6 @@
 #include <lit/mem/lit_mem.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size) {
 	state->bytes_allocated += new_size - old_size;

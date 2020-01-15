@@ -6,10 +6,11 @@
 #include <lit/vm/lit_chunk.h>
 #include <lit/parser/lit_ast.h>
 
-typedef struct {
+typedef struct sLitEmitter {
 	LitState* state;
+	LitChunk* chunk;
 	bool had_error;
-} LitEmitter;
+} sLitEmitter;
 
 void lit_init_emitter(LitState* state, LitEmitter* emitter);
 void lit_free_emitter(LitEmitter* emitter);

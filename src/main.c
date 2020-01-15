@@ -63,8 +63,13 @@ int main(int argc, char* argv[]) {
 	char* source = read_file("test.lit");
 
 	LitState* state = lit_new_state();
+
 	lit_interpret(state, source);
-	lit_free_state(state);
+	uint amount = lit_free_state(state);
+
+	if (amount != 0) {
+		printf("Error: memory leak of %u bytes!\n", amount);
+	}
 
 	free(source);
 

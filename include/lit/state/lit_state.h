@@ -3,13 +3,14 @@
 
 #include <lit/lit_common.h>
 #include <lit/lit_predefines.h>
-#include <lit/scanner/lit_scanner.h>
 
 typedef struct sLitState {
 	uint bytes_allocated;
 
+	struct LitScanner* scanner;
+	struct LitParser* parser;
+	struct sLitEmitter* emitter;
 	struct sLitVm* vm;
-	LitScanner scanner;
 } sLitState;
 
 typedef enum {
@@ -19,7 +20,7 @@ typedef enum {
 } LitInterpretResult;
 
 LitState* lit_new_state();
-void lit_free_state(LitState* state);
+uint lit_free_state(LitState* state);
 LitInterpretResult lit_interpret(LitState* state, char* code);
 
 #endif

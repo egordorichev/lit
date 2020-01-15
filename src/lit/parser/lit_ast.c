@@ -1,14 +1,19 @@
 #include <lit/parser/lit_ast.h>
 #include <lit/mem/lit_mem.h>
 
-DEFINE_ARRAY(LitExpressions, LitExpression, expressions)
-DEFINE_ARRAY(LitStatements, LitStatement, stataments)
+DEFINE_ARRAY(LitExpressions, LitExpression*, expressions)
+DEFINE_ARRAY(LitStatements, LitStatement*, stataments)
+
+#define FREE_EXPRESSION(type) lit_reallocate(state, expression, sizeof(type), 0);
 
 void lit_free_expression(LitState* state, LitExpression* expression) {
 	switch (expression->type) {
-		// Has nothing to free
-		case LITERAL: break;
+		case LITERAL: {
+			FREE_EXPRESSION(LitLiteralExpression)
+			break;
+		}
 	}
+
 }
 
 #define ALLOCATE_EXPRESSION(state, type, object_type) \
@@ -29,10 +34,13 @@ LitLiteralExpression *lit_create_literal_expression(LitState* state, uint line, 
 	return expression;
 }
 
+#define FREE_STATEMENT(type) lit_reallocate(state, statement, sizeof(type), 0);
+
 void lit_free_statement(LitState* state, LitStatement* statement) {
 	switch (statement->type) {
 		case EXPRESSION: {
 			lit_free_expression(state, ((LitExpressionStatement*) statement)->expression);
+			FREE_STATEMENT(LitExpressionStatement)
 			break;
 		}
 	}
