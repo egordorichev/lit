@@ -23,7 +23,7 @@ static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b)
 
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	switch (expression->type) {
-		case LITERAL: {
+		case LITERAL_EXPRESSION: {
 			uint constant = lit_chunk_add_constant(emitter->state, emitter->chunk, ((LitLiteralExpression*) expression)->value);
 
 			if (constant < UINT8_MAX) {
@@ -32,26 +32,37 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				emit_byte(emitter, expression->line, OP_CONSTANT_LONG);
 				emit_bytes(emitter, expression->line, (uint8_t) ((constant >> 8) & 0xff), (uint8_t) (constant & 0xff));
 			} else {
-				// TODO: ERROR
+				lit_error(emitter->state, COMPILE_ERROR, 0, "Too many constants in one chunk");
 			}
 
 			break;
 		}
 
-		default: break;
+		case GROUPING_EXPRESSION: {
+			emit_expression(emitter, ((LitGroupingExpression*) expression)->child);
+			break;
+		}
+
+		default: {
+			lit_error(emitter->state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
+			break;
+		}
 	}
 }
 
 static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	switch (statement->type) {
-		case EXPRESSION: {
+		case EXPRESSION_STATEMENT: {
 			emit_expression(emitter, ((LitExpressionStatement*) statement)->expression);
 			emit_byte(emitter, statement->line, OP_POP);
 
 			break;
 		}
 
-		default: break;
+		default: {
+			lit_error(emitter->state, COMPILE_ERROR, 0, "Unknown statement type %d", (int) statement->type);
+			break;
+		}
 	}
 }
 

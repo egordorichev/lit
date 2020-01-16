@@ -8,9 +8,22 @@
 
 #include <stdlib.h>
 
+static void default_error(LitState* state, LitErrorType type, uint line, const char* message, va_list args) {
+	fprintf(stderr, "[line %d]: ", line);
+	vfprintf(stderr, message, args);
+	fprintf(stderr, "\n");
+}
+
+static void default_printf(const char* message, va_list args) {
+	vprintf(message, args);
+}
+
 LitState* lit_new_state() {
 	LitState* state = (LitState*) malloc(sizeof(LitState));
+
 	state->bytes_allocated = 0;
+	state->errorFn = default_error;
+	state->printFn = default_printf;
 
 	state->scanner = (LitScanner*) malloc(sizeof(LitScanner));
 
@@ -57,9 +70,7 @@ LitInterpretResult lit_interpret(LitState* state, char* code) {
 	LitStatements statements;
 	lit_init_stataments(&statements);
 
-	lit_setup_scanner(state->scanner, code);
-
-	if (lit_parse(state->parser, &statements)) {
+	if (lit_parse(state->parser, code, &statements)) {
 		free_statements(state, &statements);
 		return INTERPRET_COMPILE_ERROR;
 	}
@@ -74,4 +85,18 @@ LitInterpretResult lit_interpret(LitState* state, char* code) {
 	lit_reallocate(state, chunk, sizeof(LitChunk), 0);
 
 	return result;
+}
+
+void lit_error(LitState* state, LitErrorType type, uint line, const char* message, ...) {
+	va_list args;
+	va_start(args, message);
+	state->errorFn(state, type, line, message, args);
+	va_end(args);
+}
+
+void lit_printf(LitState* state, const char* message, ...) {
+	va_list args;
+	va_start(args, message);
+	state->printFn(message, args);
+	va_end(args);
 }

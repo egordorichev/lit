@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <lit/vm/lit_vm.h>
 
 static void save_chunk(LitState* state) {
 	LitChunk chunk;

@@ -29,6 +29,18 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 
 			break;
 		}
+
+		case GROUPING_EXPRESSION: {
+			lit_free_expression(state, ((LitGroupingExpression*) expression)->child);
+			FREE_EXPRESSION(LitGroupingExpression)
+
+			break;
+		}
+
+		default: {
+			lit_error(state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
+			break;
+		}
 	}
 }
 
@@ -69,6 +81,12 @@ LitUnaryExpression *lit_create_unary_expression(LitState* state, uint line, LitE
 	return expression;
 }
 
+LitGroupingExpression *lit_create_grouping_expression(LitState* state, uint line, LitExpression* child) {
+	LitGroupingExpression* expression = ALLOCATE_EXPRESSION(state, LitGroupingExpression, GROUPING_EXPRESSION);
+	expression->child = child;
+	return expression;
+}
+
 #define FREE_STATEMENT(type) lit_reallocate(state, statement, sizeof(type), 0);
 
 void lit_free_statement(LitState* state, LitStatement* statement) {
@@ -76,6 +94,11 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 		case EXPRESSION_STATEMENT: {
 			lit_free_expression(state, ((LitExpressionStatement*) statement)->expression);
 			FREE_STATEMENT(LitExpressionStatement)
+			break;
+		}
+
+		default: {
+			lit_error(state, COMPILE_ERROR, 0, "Unknown statement type %d", (int) statement->type);
 			break;
 		}
 	}

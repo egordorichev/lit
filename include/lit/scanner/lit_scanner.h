@@ -2,14 +2,14 @@
 #define LIT_SCANNER_H
 
 #include <lit/lit_common.h>
-#include <lit/scanner/lit_token.h>
 #include <lit/lit_predefines.h>
+#include <lit/state/lit_state.h>
+#include <lit/scanner/lit_token.h>
 
 typedef struct sLitScanner {
+	uint line;
 	const char* start;
 	const char* current;
-
-	uint line;
 } sLitScanner;
 
 void lit_setup_scanner(LitScanner* scanner, const char* source);

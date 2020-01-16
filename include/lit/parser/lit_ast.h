@@ -58,6 +58,13 @@ typedef struct {
 
 LitUnaryExpression *lit_create_unary_expression(LitState* state, uint line, LitExpression* right, LitTokenType operator);
 
+typedef struct {
+	LitExpression expression;
+	LitExpression* child;
+} LitGroupingExpression;
+
+LitGroupingExpression *lit_create_grouping_expression(LitState* state, uint line, LitExpression* child);
+
 /*
  * Statements
  */

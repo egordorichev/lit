@@ -8,11 +8,15 @@
 typedef struct sLitParser {
 	LitState* state;
 	bool had_error;
+	bool panic_mode;
+
+	LitToken previous;
+	LitToken current;
 } sLitParser;
 
 void lit_init_parser(LitState* state, LitParser* parser);
 void lit_free_parser(LitParser* parser);
 
-bool lit_parse(LitParser* parser, LitStatements* statements);
+bool lit_parse(LitParser* parser, const char* source, LitStatements* statements);
 
 #endif
