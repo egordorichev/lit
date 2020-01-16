@@ -32,7 +32,26 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				emit_byte(emitter, expression->line, OP_CONSTANT_LONG);
 				emit_bytes(emitter, expression->line, (uint8_t) ((constant >> 8) & 0xff), (uint8_t) (constant & 0xff));
 			} else {
-				lit_error(emitter->state, COMPILE_ERROR, 0, "Too many constants in one chunk");
+				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Too many constants in one chunk");
+			}
+
+			break;
+		}
+
+		case UNARY_EXPRESSION: {
+			LitUnaryExpression* expr = (LitUnaryExpression*) expression;
+			emit_expression(emitter, expr->right);
+
+			switch (expr->operator) {
+				case TOKEN_MINUS: {
+					emit_byte(emitter, expression->line, OP_NEGATE);
+					break;
+				}
+
+				default: {
+					lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown unary operator");
+					break;
+				}
 			}
 
 			break;
@@ -44,7 +63,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		}
 
 		default: {
-			lit_error(emitter->state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
+			lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown expression type %d", (int) expression->type);
 			break;
 		}
 	}
@@ -60,7 +79,7 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 		}
 
 		default: {
-			lit_error(emitter->state, COMPILE_ERROR, 0, "Unknown statement type %d", (int) statement->type);
+			lit_error(emitter->state, COMPILE_ERROR, statement->line, "Unknown statement type %d", (int) statement->type);
 			break;
 		}
 	}

@@ -82,6 +82,14 @@ static LitExpression* parse_grouping(LitParser* parser) {
 	return (LitExpression*) lit_create_grouping_expression(parser->state, parser->previous.line, expression);
 }
 
+static LitExpression* parse_unary(LitParser* parser) {
+	LitTokenType operator = parser->previous.type;
+	uint line = parser->previous.line;
+	LitExpression* expression = parse_expression(parser);
+
+	return (LitExpression*) lit_create_unary_expression(parser->state, line, expression, operator);
+}
+
 static LitExpression* parse_expression(LitParser* parser) {
 	if (match(parser, TOKEN_NUMBER)) {
 		return parse_number(parser);
@@ -89,6 +97,10 @@ static LitExpression* parse_expression(LitParser* parser) {
 
 	if (match(parser, TOKEN_LEFT_PAREN)) {
 		return parse_grouping(parser);
+	}
+
+	if (match(parser, TOKEN_MINUS)) {
+		return parse_unary(parser);
 	}
 
 	error_at_current(parser, "Unexpected token");
