@@ -42,6 +42,20 @@ static void trace_stack(LitVm* vm) {
 	printf("\n");
 }
 
+static void runtime_error(LitVm* vm, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	vfprintf(stderr, format, args);
+	va_end(args);
+	fputs("\n", stderr);
+
+	size_t instruction = vm->ip - vm->chunk->code;
+	int line = vm->chunk->lines[instruction];
+	fprintf(stderr, "[line %d] in script\n", line);
+
+	reset_stack(vm);
+}
+
 LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 	register LitVm *vm = state->vm;
 
@@ -65,12 +79,17 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 #define CASE_CODE(name) OP_##name:
 #define READ_CONSTANT() (current_chunk->constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() (current_chunk->constants.values[READ_SHORT()])
+#define PEEK(distance) vm->stack_top[-1 - distance]
 
 #define BINARY_OP(op) \
     do { \
-      double b = lit_pop(vm); \
-      double a = lit_pop(vm); \
-      lit_push(vm, a op b); \
+			if (!IS_NUMBER(PEEK(0)) || !IS_NUMBER(PEEK(1))) { \
+				runtime_error(vm, "Operands must be numbers"); \
+				return INTERPRET_RUNTIME_ERROR; \
+			} \
+      double b = AS_NUMBER(lit_pop(vm)); \
+      double a = AS_NUMBER(lit_pop(vm)); \
+      lit_push(vm, NUMBER_VAL(a op b)); \
     } while (false);
 
 #ifdef LIT_TRACE_EXECUTION
@@ -109,8 +128,28 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 			continue;
 		};
 
+		CASE_CODE(TRUE) {
+			lit_push(vm, TRUE_VAL);
+			continue;
+		};
+
+		CASE_CODE(FALSE) {
+			lit_push(vm, FALSE_VAL);
+			continue;
+		};
+
+		CASE_CODE(NULL) {
+			lit_push(vm, NULL_VAL);
+			continue;
+		};
+
 		CASE_CODE(NEGATE) {
-			lit_push(vm, -lit_pop(vm));
+			if (!IS_NUMBER(PEEK(0))) {
+				runtime_error(vm, "Operand must be a number");
+				return INTERPRET_RUNTIME_ERROR;
+			}
+
+			lit_push(vm, NUMBER_VAL(-AS_NUMBER(lit_pop(vm))));
 			continue;
 		}
 
@@ -138,6 +177,7 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 		break;
 	}
 
+#undef PEEK
 #undef BINARY_OP
 #undef READ_CONSTANT_LONG
 #undef READ_CONSTANT

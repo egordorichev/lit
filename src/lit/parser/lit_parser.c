@@ -104,7 +104,7 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
 }
 
 static LitExpression* parse_number(LitParser* parser) {
-	return (LitExpression*) lit_create_literal_expression(parser->state, parser->previous.line, strtod(parser->previous.start, NULL));
+	return (LitExpression*) lit_create_literal_expression(parser->state, parser->previous.line, NUMBER_VAL(strtod(parser->previous.start, NULL)));
 }
 
 static LitExpression* parse_grouping(LitParser* parser) {
@@ -130,6 +130,26 @@ static LitExpression* parse_binary(LitParser* parser, LitExpression* prev) {
 	LitExpression* expression = parse_precedence(parser, (LitPrecedence) (rule->precedence + 1));
 
 	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, expression, operator);
+}
+
+static LitExpression* parse_literal(LitParser* parser) {
+	uint line = parser->previous.line;
+
+	switch (parser->previous.type) {
+		case TOKEN_TRUE: {
+			return (LitExpression*) lit_create_literal_expression(parser->state, line, TRUE_VAL);
+		}
+
+		case TOKEN_FALSE: {
+			return (LitExpression*) lit_create_literal_expression(parser->state, line, FALSE_VAL);
+		}
+
+		case TOKEN_NULL: {
+			return (LitExpression*) lit_create_literal_expression(parser->state, line, NULL_VAL);
+		}
+
+		default: UNREACHABLE
+	}
 }
 
 static LitExpression* parse_expression(LitParser* parser) {
@@ -188,4 +208,8 @@ static void setup_rules() {
 	rules[TOKEN_STAR] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_SLASH] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_NUMBER] = (LitParseRule) { parse_number, NULL, PREC_NONE };
+
+	rules[TOKEN_TRUE] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
+	rules[TOKEN_FALSE] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
+	rules[TOKEN_NULL] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
 }

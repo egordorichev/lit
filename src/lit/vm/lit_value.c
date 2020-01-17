@@ -5,6 +5,18 @@
 
 DEFINE_ARRAY(LitValues, LitValue, values)
 
+static void print_object(LitValue value) {
+
+}
+
 void lit_print_value(LitValue value) {
-	printf("%lf", value);
+	if (IS_BOOL(value)) {
+		printf(AS_BOOL(value) ? "true" : "false");
+	} else if (IS_NULL(value)) {
+		printf("null");
+	} else if (IS_NUMBER(value)) {
+		printf("%g", AS_NUMBER(value));
+	} else if (IS_OBJ(value)) {
+		print_object(value);
+	}
 }

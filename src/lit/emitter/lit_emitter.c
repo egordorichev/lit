@@ -24,15 +24,25 @@ static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b)
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
-			uint constant = lit_chunk_add_constant(emitter->state, emitter->chunk, ((LitLiteralExpression*) expression)->value);
+			LitValue value = ((LitLiteralExpression*) expression)->value;
 
-			if (constant < UINT8_MAX) {
-				emit_bytes(emitter, expression->line, OP_CONSTANT, constant);
-			} else if (constant < UINT16_MAX) {
-				emit_byte(emitter, expression->line, OP_CONSTANT_LONG);
-				emit_bytes(emitter, expression->line, (uint8_t) ((constant >> 8) & 0xff), (uint8_t) (constant & 0xff));
+			if (IS_NUMBER(value)) {
+				uint constant = lit_chunk_add_constant(emitter->state, emitter->chunk, value);
+
+				if (constant < UINT8_MAX) {
+					emit_bytes(emitter, expression->line, OP_CONSTANT, constant);
+				} else if (constant < UINT16_MAX) {
+					emit_byte(emitter, expression->line, OP_CONSTANT_LONG);
+					emit_bytes(emitter, expression->line, (uint8_t) ((constant >> 8) & 0xff), (uint8_t) (constant & 0xff));
+				} else {
+					lit_error(emitter->state, COMPILE_ERROR, expression->line, "Too many constants in one chunk");
+				}
+			} else if (IS_BOOL(value)) {
+				emit_byte(emitter, expression->line, AS_BOOL(value) ? OP_TRUE : OP_FALSE);
+			} else if (IS_NULL(value)) {
+				emit_byte(emitter, expression->line, OP_NULL);
 			} else {
-				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Too many constants in one chunk");
+				UNREACHABLE
 			}
 
 			break;
