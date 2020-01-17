@@ -6,12 +6,24 @@
 
 static LitExpression* parse_expression(LitParser* parser);
 static LitStatement* parse_statement(LitParser* parser);
+static LitParseRule rules[TOKEN_EOF + 1];
+static bool did_setup_rules;
+static void setup_rules();
+
+static LitParseRule* get_rule(LitTokenType type) {
+	return &rules[type];
+}
 
 static inline bool is_at_end(LitParser* parser) {
 	return parser->current.type == TOKEN_EOF;
 }
 
 void lit_init_parser(LitState* state, LitParser* parser) {
+	if (!did_setup_rules) {
+		did_setup_rules = true;
+		setup_rules();
+	}
+
 	parser->state = state;
 	parser->had_error = false;
 	parser->panic_mode = false;
@@ -71,6 +83,26 @@ static void consume(LitParser* parser, LitTokenType type, const char* message) {
 	error_at_current(parser, message);
 }
 
+static LitExpression* parse_precedence(LitParser* parser, LitPrecedence precedence) {
+	advance(parser);
+	LitPrefixParseFn prefix_rule = get_rule(parser->previous.type)->prefix;
+
+	if (prefix_rule == NULL) {
+		error(parser, "Expected expression");
+		return NULL;
+	}
+
+	LitExpression* expr = prefix_rule(parser);
+
+	while (precedence <= get_rule(parser->current.type)->precedence) {
+		advance(parser);
+		LitInfixParseFn infix_rule = get_rule(parser->previous.type)->infix;
+		expr = infix_rule(parser, expr);
+	}
+
+	return expr;
+}
+
 static LitExpression* parse_number(LitParser* parser) {
 	return (LitExpression*) lit_create_literal_expression(parser->state, parser->previous.line, strtod(parser->previous.start, NULL));
 }
@@ -85,12 +117,25 @@ static LitExpression* parse_grouping(LitParser* parser) {
 static LitExpression* parse_unary(LitParser* parser) {
 	LitTokenType operator = parser->previous.type;
 	uint line = parser->previous.line;
-	LitExpression* expression = parse_expression(parser);
+	LitExpression* expression = parse_precedence(parser, PREC_UNARY);
 
 	return (LitExpression*) lit_create_unary_expression(parser->state, line, expression, operator);
 }
 
+static LitExpression* parse_binary(LitParser* parser, LitExpression* prev) {
+	LitTokenType operator = parser->previous.type;
+	uint line = parser->previous.line;
+
+	LitParseRule* rule = get_rule(operator);
+	LitExpression* expression = parse_precedence(parser, (LitPrecedence) (rule->precedence + 1));
+
+	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, expression, operator);
+}
+
 static LitExpression* parse_expression(LitParser* parser) {
+	return parse_precedence(parser, PREC_ASSIGNMENT);
+
+	/*
 	if (match(parser, TOKEN_NUMBER)) {
 		return parse_number(parser);
 	}
@@ -104,7 +149,7 @@ static LitExpression* parse_expression(LitParser* parser) {
 	}
 
 	error_at_current(parser, "Unexpected token");
-	return NULL;
+	return NULL;*/
 }
 
 static LitStatement* parse_statement(LitParser* parser) {
@@ -134,4 +179,13 @@ bool lit_parse(LitParser* parser, const char* source, LitStatements* statements)
 	}
 
 	return parser->had_error;
+}
+
+static void setup_rules() {
+	rules[TOKEN_LEFT_PAREN] = (LitParseRule) { parse_grouping, NULL, PREC_NONE };
+	rules[TOKEN_PLUS] = (LitParseRule) { NULL, parse_binary, PREC_TERM };
+	rules[TOKEN_MINUS] = (LitParseRule) { parse_unary, parse_binary, PREC_TERM };
+	rules[TOKEN_STAR] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
+	rules[TOKEN_SLASH] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
+	rules[TOKEN_NUMBER] = (LitParseRule) { parse_number, NULL, PREC_NONE };
 }

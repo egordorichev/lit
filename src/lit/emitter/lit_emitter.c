@@ -38,6 +38,41 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
+		case BINARY_EXPRESSION: {
+			LitBinaryExpression* expr = (LitBinaryExpression*) expression;
+
+			emit_expression(emitter, expr->left);
+			emit_expression(emitter, expr->right);
+
+			switch (expr->operator) {
+				case TOKEN_PLUS: {
+					emit_byte(emitter, expression->line, OP_ADD);
+					break;
+				}
+				case TOKEN_MINUS: {
+					emit_byte(emitter, expression->line, OP_SUBTRACT);
+					break;
+				}
+
+				case TOKEN_STAR: {
+					emit_byte(emitter, expression->line, OP_MULTIPLY);
+					break;
+				}
+
+				case TOKEN_SLASH: {
+					emit_byte(emitter, expression->line, OP_DIVIDE);
+					break;
+				}
+
+				default: {
+					lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown binary operator");
+					break;
+				}
+			}
+
+			break;
+		}
+
 		case UNARY_EXPRESSION: {
 			LitUnaryExpression* expr = (LitUnaryExpression*) expression;
 			emit_expression(emitter, expr->right);
