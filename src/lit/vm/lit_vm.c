@@ -131,17 +131,17 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 		CASE_CODE(TRUE) {
 			lit_push(vm, TRUE_VAL);
 			continue;
-		};
+		}
 
 		CASE_CODE(FALSE) {
 			lit_push(vm, FALSE_VAL);
 			continue;
-		};
+		}
 
 		CASE_CODE(NULL) {
 			lit_push(vm, NULL_VAL);
 			continue;
-		};
+		}
 
 		CASE_CODE(NEGATE) {
 			if (!IS_NUMBER(PEEK(0))) {
@@ -150,6 +150,16 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 			}
 
 			lit_push(vm, NUMBER_VAL(-AS_NUMBER(lit_pop(vm))));
+			continue;
+		}
+
+		CASE_CODE(NOT) {
+			if (!IS_BOOL(PEEK(0))) {
+				runtime_error(vm, "Operand must be a boolean");
+				return INTERPRET_RUNTIME_ERROR;
+			}
+
+			lit_push(vm, BOOL_VAL(!AS_BOOL(lit_pop(vm))));
 			continue;
 		}
 

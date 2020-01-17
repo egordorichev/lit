@@ -45,6 +45,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_FALSE: return print_simple_op("OP_FALSE", offset);
 		case OP_NULL: return print_simple_op("OP_NULL", offset);
 		case OP_NEGATE: return print_simple_op("OP_NEGATE", offset);
+		case OP_NOT: return print_simple_op("OP_NOT", offset);
 		case OP_ADD: return print_simple_op("OP_ADD", offset);
 		case OP_SUBTRACT: return print_simple_op("OP_SUBTRACT", offset);
 		case OP_MULTIPLY: return print_simple_op("OP_MULTIPLY", offset);

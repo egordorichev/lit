@@ -93,9 +93,13 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					break;
 				}
 
-				default: {
-					lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown unary operator");
+				case TOKEN_BANG: {
+					emit_byte(emitter, expression->line, OP_NOT);
 					break;
+				}
+
+				default: {
+					UNREACHABLE
 				}
 			}
 

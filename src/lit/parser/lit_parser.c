@@ -205,6 +205,8 @@ static void setup_rules() {
 	rules[TOKEN_LEFT_PAREN] = (LitParseRule) { parse_grouping, NULL, PREC_NONE };
 	rules[TOKEN_PLUS] = (LitParseRule) { NULL, parse_binary, PREC_TERM };
 	rules[TOKEN_MINUS] = (LitParseRule) { parse_unary, parse_binary, PREC_TERM };
+	rules[TOKEN_BANG] = (LitParseRule) { parse_unary, NULL, PREC_TERM };
+
 	rules[TOKEN_STAR] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_SLASH] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_NUMBER] = (LitParseRule) { parse_number, NULL, PREC_NONE };
