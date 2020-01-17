@@ -56,6 +56,10 @@ static void runtime_error(LitVm* vm, const char* format, ...) {
 	reset_stack(vm);
 }
 
+static inline bool is_falsey(LitValue value) {
+	return IS_NULL(value) || (IS_BOOL(value) && !AS_BOOL(value));
+}
+
 LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 	register LitVm *vm = state->vm;
 
@@ -81,7 +85,7 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 #define READ_CONSTANT_LONG() (current_chunk->constants.values[READ_SHORT()])
 #define PEEK(distance) vm->stack_top[-1 - distance]
 
-#define BINARY_OP(op) \
+#define BINARY_OP(type, op) \
     do { \
 			if (!IS_NUMBER(PEEK(0)) || !IS_NUMBER(PEEK(1))) { \
 				runtime_error(vm, "Operands must be numbers"); \
@@ -89,7 +93,7 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 			} \
       double b = AS_NUMBER(lit_pop(vm)); \
       double a = AS_NUMBER(lit_pop(vm)); \
-      lit_push(vm, NUMBER_VAL(a op b)); \
+      lit_push(vm, type(a op b)); \
     } while (false);
 
 #ifdef LIT_TRACE_EXECUTION
@@ -159,27 +163,63 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 				return INTERPRET_RUNTIME_ERROR;
 			}
 
-			lit_push(vm, BOOL_VAL(!AS_BOOL(lit_pop(vm))));
+			lit_push(vm, BOOL_VAL(is_falsey(lit_pop(vm))));
 			continue;
 		}
 
 		CASE_CODE(ADD) {
-			BINARY_OP(+)
+			BINARY_OP(NUMBER_VAL, +)
 			continue;
 		}
 
 		CASE_CODE(SUBTRACT) {
-			BINARY_OP(-)
+			BINARY_OP(NUMBER_VAL, -)
 			continue;
 		}
 
 		CASE_CODE(MULTIPLY) {
-			BINARY_OP(*)
+			BINARY_OP(NUMBER_VAL, *)
 			continue;
 		}
 
 		CASE_CODE(DIVIDE) {
-			BINARY_OP(/)
+			BINARY_OP(NUMBER_VAL, /)
+			continue;
+		}
+
+		CASE_CODE(EQUAL) {
+			LitValue a = lit_pop(vm);
+			LitValue b = lit_pop(vm);
+
+			lit_push(vm, BOOL_VAL(a == b));
+			continue;
+		}
+
+		CASE_CODE(NOT_EQUAL) {
+			LitValue a = lit_pop(vm);
+			LitValue b = lit_pop(vm);
+
+			lit_push(vm, BOOL_VAL(a != b));
+			continue;
+		}
+
+		CASE_CODE(GREATER) {
+			BINARY_OP(BOOL_VAL, >)
+			continue;
+		}
+
+		CASE_CODE(GREATER_EQUAL) {
+			BINARY_OP(BOOL_VAL, >=)
+			continue;
+		}
+
+		CASE_CODE(LESS) {
+			BINARY_OP(BOOL_VAL, <)
+			continue;
+		}
+
+		CASE_CODE(LESS_EQUAL) {
+			BINARY_OP(BOOL_VAL, <=)
 			continue;
 		}
 

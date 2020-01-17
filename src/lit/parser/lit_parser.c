@@ -154,22 +154,6 @@ static LitExpression* parse_literal(LitParser* parser) {
 
 static LitExpression* parse_expression(LitParser* parser) {
 	return parse_precedence(parser, PREC_ASSIGNMENT);
-
-	/*
-	if (match(parser, TOKEN_NUMBER)) {
-		return parse_number(parser);
-	}
-
-	if (match(parser, TOKEN_LEFT_PAREN)) {
-		return parse_grouping(parser);
-	}
-
-	if (match(parser, TOKEN_MINUS)) {
-		return parse_unary(parser);
-	}
-
-	error_at_current(parser, "Unexpected token");
-	return NULL;*/
 }
 
 static LitStatement* parse_statement(LitParser* parser) {
@@ -206,12 +190,18 @@ static void setup_rules() {
 	rules[TOKEN_PLUS] = (LitParseRule) { NULL, parse_binary, PREC_TERM };
 	rules[TOKEN_MINUS] = (LitParseRule) { parse_unary, parse_binary, PREC_TERM };
 	rules[TOKEN_BANG] = (LitParseRule) { parse_unary, NULL, PREC_TERM };
-
 	rules[TOKEN_STAR] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_SLASH] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_NUMBER] = (LitParseRule) { parse_number, NULL, PREC_NONE };
-
 	rules[TOKEN_TRUE] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
 	rules[TOKEN_FALSE] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
 	rules[TOKEN_NULL] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
+
+	rules[TOKEN_BANG_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_EQUALITY };
+	rules[TOKEN_EQUAL_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_EQUALITY };
+
+	rules[TOKEN_GREATER] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
+	rules[TOKEN_GREATER_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
+	rules[TOKEN_LESS] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
+	rules[TOKEN_LESS_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 }

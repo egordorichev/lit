@@ -74,9 +74,38 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					break;
 				}
 
-				default: {
-					lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown binary operator");
+				case TOKEN_EQUAL_EQUAL: {
+					emit_byte(emitter, expression->line, OP_EQUAL);
 					break;
+				}
+
+				case TOKEN_BANG_EQUAL: {
+					emit_byte(emitter, expression->line, OP_NOT_EQUAL);
+					break;
+				}
+
+				case TOKEN_GREATER: {
+					emit_byte(emitter, expression->line, OP_GREATER);
+					break;
+				}
+
+				case TOKEN_GREATER_EQUAL: {
+					emit_byte(emitter, expression->line, OP_GREATER_EQUAL);
+					break;
+				}
+
+				case TOKEN_LESS: {
+					emit_byte(emitter, expression->line, OP_LESS);
+					break;
+				}
+
+				case TOKEN_LESS_EQUAL: {
+					emit_byte(emitter, expression->line, OP_LESS_EQUAL);
+					break;
+				}
+
+				default: {
+					UNREACHABLE
 				}
 			}
 
