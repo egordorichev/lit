@@ -10,6 +10,10 @@
 
 #define LIT_FREE_ARRAY(state, type, pointer, old_count) lit_reallocate(state, pointer, sizeof(type) * (old_count), 0)
 
+#define LIT_ALLOCATE(state, type, count) (type*) lit_reallocate(state, NULL, 0, sizeof(type) * (count))
+#define LIT_FREE(state, type, pointer) lit_reallocate(state, pointer, sizeof(type), 0)
+
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size);
+void lit_free_objects(LitState* state, LitObject* objects);
 
 #endif

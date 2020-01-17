@@ -1,5 +1,6 @@
 #include <lit/parser/lit_parser.h>
 #include <lit/scanner/lit_scanner.h>
+#include <lit/vm/lit_object.h>
 #include <lit/lit_predefines.h>
 
 #include <stdlib.h>
@@ -148,6 +149,10 @@ static LitExpression* parse_literal(LitParser* parser) {
 			return (LitExpression*) lit_create_literal_expression(parser->state, line, NULL_VAL);
 		}
 
+		case TOKEN_STRING: {
+			return (LitExpression*) lit_create_literal_expression(parser->state, line, OBJECT_VAL(lit_copy_string(parser->state, parser->previous.start + 1, parser->previous.length - 2)));
+		}
+
 		default: UNREACHABLE
 	}
 }
@@ -196,12 +201,11 @@ static void setup_rules() {
 	rules[TOKEN_TRUE] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
 	rules[TOKEN_FALSE] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
 	rules[TOKEN_NULL] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
-
 	rules[TOKEN_BANG_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_EQUALITY };
 	rules[TOKEN_EQUAL_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_EQUALITY };
-
 	rules[TOKEN_GREATER] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_GREATER_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_LESS] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_LESS_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
+	rules[TOKEN_STRING] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
 }

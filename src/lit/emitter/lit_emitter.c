@@ -1,6 +1,7 @@
 #include <lit/emitter/lit_emitter.h>
 #include <lit/mem/lit_mem.h>
 #include <lit/debug/lit_debug.h>
+#include <lit/vm/lit_object.h>
 
 
 void lit_init_emitter(LitState* state, LitEmitter* emitter) {
@@ -26,7 +27,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		case LITERAL_EXPRESSION: {
 			LitValue value = ((LitLiteralExpression*) expression)->value;
 
-			if (IS_NUMBER(value)) {
+			if (IS_NUMBER(value) || IS_STRING(value)) {
 				uint constant = lit_chunk_add_constant(emitter->state, emitter->chunk, value);
 
 				if (constant < UINT8_MAX) {

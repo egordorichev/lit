@@ -1,6 +1,7 @@
 #include <lit/mem/lit_mem.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <lit/vm/lit_object.h>
 
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size) {
 	state->bytes_allocated += new_size - old_size;
@@ -11,4 +12,31 @@ void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new
 	}
 
 	return realloc(pointer, new_size);
+}
+
+static void free_object(LitState* state, LitObject* object) {
+	switch (object->type) {
+		case OBJECT_STRING: {
+			LitString* string = (LitString*) object;
+
+			LIT_FREE_ARRAY(state, char, string->chars, string->length + 1);
+			LIT_FREE(state, LitString, object);
+
+			break;
+		}
+
+		default: {
+			UNREACHABLE
+		}
+	}
+}
+
+void lit_free_objects(LitState* state, LitObject* objects) {
+	LitObject* object = objects;
+
+	while (object != NULL) {
+		LitObject* next = object->next;
+		free_object(state, object);
+		object = next;
+	}
 }

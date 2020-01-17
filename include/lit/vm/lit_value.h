@@ -17,11 +17,11 @@ typedef uint64_t LitValue;
 #define IS_BOOL(v) (((v) & FALSE_VAL) == FALSE_VAL)
 #define IS_NULL(v) ((v) == NULL_VAL)
 #define IS_NUMBER(v) (((v) & QNAN) != QNAN)
-#define IS_OBJ(v) (((v) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
+#define IS_OBJECT(v) (((v) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
 
 #define AS_BOOL(v) ((v) == TRUE_VAL)
 #define AS_NUMBER(v) lit_value_to_number(v)
-#define AS_OBJ(v) ((LitObject*) (uintptr_t) ((v) & ~(SIGN_BIT | QNAN)))
+#define AS_OBJECT(v) ((LitObject*) (uintptr_t) ((v) & ~(SIGN_BIT | QNAN)))
 
 #define BOOL_VAL(boolean) ((boolean) ? TRUE_VAL : FALSE_VAL)
 #define FALSE_VAL ((LitValue) (uint64_t) (QNAN | TAG_FALSE))
@@ -29,7 +29,7 @@ typedef uint64_t LitValue;
 #define NULL_VAL ((LitValue) (uint64_t) (QNAN | TAG_NULL))
 #define NUMBER_VAL(num) lit_number_to_value(num)
 
-#define OBJ_VAL(obj) (LitValue) (SIGN_BIT | QNAN | (uint64_t) (uintptr_t) (obj))
+#define OBJECT_VAL(obj) (LitValue) (SIGN_BIT | QNAN | (uint64_t) (uintptr_t) (obj))
 
 typedef union {
 	uint64_t bits64;

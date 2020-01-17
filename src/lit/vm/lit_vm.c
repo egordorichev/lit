@@ -3,17 +3,22 @@
 #include <lit/lit.h>
 
 #include <stdio.h>
+#include <lit/mem/lit_mem.h>
 
 void reset_stack(LitVm* vm) {
 	vm->stack_top = vm->stack;
 }
 
-void lit_init_vm(LitVm* vm) {
+void lit_init_vm(LitState* state, LitVm* vm) {
 	reset_stack(vm);
+
+	vm->state = state;
+	vm->objects = NULL;
 }
 
 void lit_free_vm(LitVm* vm) {
-	lit_init_vm(vm);
+	lit_free_objects(vm->state, vm->objects);
+	lit_init_vm(vm->state, vm);
 }
 
 void lit_push(LitVm* vm, LitValue value) {
