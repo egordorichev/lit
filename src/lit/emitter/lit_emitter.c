@@ -157,6 +157,13 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			break;
 		}
 
+		case PRINT_STATEMENT: {
+			emit_expression(emitter, ((LitPrintStatement*) statement)->expression);
+			emit_byte(emitter, statement->line, OP_PRINT);
+
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, statement->line, "Unknown statement type %d", (int) statement->type);
 			break;

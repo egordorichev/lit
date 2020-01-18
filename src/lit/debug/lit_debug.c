@@ -56,6 +56,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_GREATER_EQUAL: return print_simple_op("OP_GREATER_EQUAL", offset);
 		case OP_LESS: return print_simple_op("OP_LESS", offset);
 		case OP_LESS_EQUAL: return print_simple_op("OP_LESS_EQUAL", offset);
+		case OP_PRINT: return print_simple_op("OP_PRINT", offset);
 
 		default: {
 			printf("Unknown opcode %d\n", instruction);

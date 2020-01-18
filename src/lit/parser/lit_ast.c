@@ -97,6 +97,12 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 			break;
 		}
 
+		case PRINT_STATEMENT: {
+			lit_free_expression(state, ((LitPrintStatement*) statement)->expression);
+			FREE_STATEMENT(LitPrintStatement)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown statement type %d", (int) statement->type);
 			break;
@@ -118,6 +124,12 @@ static LitStatement* allocate_statement(LitState* state, uint64_t line, size_t s
 
 LitExpressionStatement *lit_create_expression_statement(LitState* state, uint line, LitExpression* expression) {
 	LitExpressionStatement* statement = ALLOCATE_STATEMENT(state, LitExpressionStatement, EXPRESSION_STATEMENT);
+	statement->expression = expression;
+	return statement;
+}
+
+LitPrintStatement *lit_create_print_statement(LitState* state, uint line, LitExpression* expression) {
+	LitPrintStatement* statement = ALLOCATE_STATEMENT(state, LitPrintStatement, PRINT_STATEMENT);
 	statement->expression = expression;
 	return statement;
 }

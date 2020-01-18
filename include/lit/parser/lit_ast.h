@@ -76,7 +76,8 @@ typedef enum {
 	WHILE_STATEMENT,
 	FOR_STATEMENT,
 	CLASS_STATEMENT,
-	VAR_STATEMENT
+	VAR_STATEMENT,
+	PRINT_STATEMENT
 } LitStatementType;
 
 typedef struct LitStatement {
@@ -93,5 +94,12 @@ typedef struct {
 } LitExpressionStatement;
 
 LitExpressionStatement *lit_create_expression_statement(LitState* state, uint line, LitExpression* expression);
+
+typedef struct {
+	LitStatement statement;
+	LitExpression* expression;
+} LitPrintStatement;
+
+LitPrintStatement *lit_create_print_statement(LitState* state, uint line, LitExpression* expression);
 
 #endif

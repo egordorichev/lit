@@ -161,9 +161,22 @@ static LitExpression* parse_expression(LitParser* parser) {
 	return parse_precedence(parser, PREC_ASSIGNMENT);
 }
 
+static LitStatement* parse_print(LitParser* parser) {
+	LitExpression* expression = parse_expression(parser);
+	return (LitStatement*) lit_create_print_statement(parser->state, parser->previous.line, expression);
+}
+
 static LitStatement* parse_statement(LitParser* parser) {
+	if (match(parser, TOKEN_PRINT)) {
+		return parse_print(parser);
+	}
+
 	LitExpression* expression = parse_expression(parser);
 	return expression == NULL ? NULL : (LitStatement*) lit_create_expression_statement(parser->state, parser->previous.line, expression);
+}
+
+static LitStatement* parse_declaration(LitParser* parser) {
+	return parse_statement(parser);
 }
 
 bool lit_parse(LitParser* parser, const char* source, LitStatements* statements) {
@@ -177,7 +190,7 @@ bool lit_parse(LitParser* parser, const char* source, LitStatements* statements)
 		error_at_current(parser, "Expected statement but got nothing");
 	} else {
 		do {
-			LitStatement* statement = parse_statement(parser);
+			LitStatement* statement = parse_declaration(parser);
 
 			if (statement != NULL) {
 				lit_stataments_write(parser->state, statements, statement);

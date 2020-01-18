@@ -232,6 +232,12 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 			continue;
 		}
 
+		CASE_CODE(PRINT) {
+			lit_print_value(lit_pop(vm));
+			printf("\n");
+			continue;
+		}
+
 		printf("Unknown op code!");
 		break;
 	}
