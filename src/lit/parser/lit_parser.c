@@ -65,6 +65,9 @@ static void advance(LitParser* parser) {
 	}
 }
 
+static bool check(LitParser* parser, LitTokenType type) {
+	return parser->current.type == type;
+}
 
 static bool match(LitParser* parser, LitTokenType type) {
 	if (parser->current.type == type) {
@@ -175,8 +178,63 @@ static LitStatement* parse_statement(LitParser* parser) {
 	return expression == NULL ? NULL : (LitStatement*) lit_create_expression_statement(parser->state, parser->previous.line, expression);
 }
 
+
+static bool match_new_line(LitParser* parser) {
+	if (!match(parser, TOKEN_NEW_LINE)) {
+		return false;
+	}
+
+	while (match(parser, TOKEN_NEW_LINE)) {
+
+	}
+
+	return true;
+}
+
+static void ignore_new_lines(LitParser* parser) {
+	match_new_line(parser);
+}
+
+static void consume_new_line(LitParser* parser, const char* error) {
+	consume(parser, TOKEN_NEW_LINE, error);
+	ignore_new_lines(parser);
+}
+
+static void sync(LitParser* parser) {
+	parser->panic_mode = false;
+
+	while (parser->current.type != TOKEN_EOF) {
+		if (parser->previous.type == TOKEN_NEW_LINE) {
+			return;
+		}
+
+		switch (parser->current.type) {
+			case TOKEN_CLASS:
+			case TOKEN_FUNCTION:
+			case TOKEN_VAR:
+			case TOKEN_FOR:
+			case TOKEN_IF:
+			case TOKEN_WHILE:
+			case TOKEN_PRINT:
+			case TOKEN_RETURN: {
+				return;
+			}
+
+			default: {
+				advance(parser);
+			}
+		}
+	}
+}
+
 static LitStatement* parse_declaration(LitParser* parser) {
-	return parse_statement(parser);
+	LitStatement* statement = parse_statement(parser);
+
+	if (parser->panic_mode) {
+		sync(parser);
+	}
+
+	return statement;
 }
 
 bool lit_parse(LitParser* parser, const char* source, LitStatements* statements) {
@@ -185,6 +243,8 @@ bool lit_parse(LitParser* parser, const char* source, LitStatements* statements)
 
 	lit_setup_scanner(parser->state->scanner, source);
 	advance(parser);
+
+	ignore_new_lines(parser);
 
 	if (is_at_end(parser)) {
 		error_at_current(parser, "Expected statement but got nothing");
@@ -195,9 +255,12 @@ bool lit_parse(LitParser* parser, const char* source, LitStatements* statements)
 			if (statement != NULL) {
 				lit_stataments_write(parser->state, statements, statement);
 			}
-		} while (!is_at_end(parser));
 
-		consume(parser, TOKEN_EOF, "Expected end of expression");
+			if (!match_new_line(parser)) {
+				consume(parser, TOKEN_EOF, "Expected end of file");
+				break;
+			}
+		} while (!is_at_end(parser));
 	}
 
 	return parser->had_error;

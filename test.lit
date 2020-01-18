@@ -1,1 +1,4 @@
 print "test"
+print 32 * 8
+
+print "hi"
