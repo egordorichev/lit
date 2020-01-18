@@ -9,7 +9,10 @@
 #include <stdlib.h>
 
 static void default_error(LitState* state, LitErrorType type, uint line, const char* message, va_list args) {
-	fprintf(stderr, "[line %d]: ", line);
+	if (line > 0) {
+		fprintf(stderr, "[line %d]: ", line);
+	}
+
 	vfprintf(stderr, message, args);
 	fprintf(stderr, "\n");
 }

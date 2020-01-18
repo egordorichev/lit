@@ -31,6 +31,7 @@ typedef struct sLitString {
 	LitObject object;
 
 	uint length;
+	uint32_t hash;
 	char* chars;
 } sLitString;
 

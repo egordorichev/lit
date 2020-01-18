@@ -4,6 +4,7 @@
 #include <lit/vm/lit_chunk.h>
 #include <lit/state/lit_state.h>
 #include <lit/lit_predefines.h>
+#include <lit/util/lit_table.h>
 
 #include <lit/lit.h>
 
@@ -17,6 +18,7 @@ typedef struct sLitVm {
 	uint8_t* ip;
 
 	LitObject* objects;
+	LitTable strings;
 } sLitVm;
 
 void lit_init_vm(LitState* state, LitVm* vm);

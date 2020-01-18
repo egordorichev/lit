@@ -14,10 +14,14 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 
 	vm->state = state;
 	vm->objects = NULL;
+
+	lit_init_table(&vm->strings);
 }
 
 void lit_free_vm(LitVm* vm) {
+	lit_free_table(vm->state, &vm->strings);
 	lit_free_objects(vm->state, vm->objects);
+
 	lit_init_vm(vm->state, vm);
 }
 
