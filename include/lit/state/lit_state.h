@@ -15,7 +15,7 @@ typedef void (*LitErrorFn)(LitState* state, LitErrorType type, uint line, const 
 typedef void (*LitPrintFn)(const char* message, va_list args);
 
 typedef struct sLitState {
-	uint bytes_allocated;
+	int64_t bytes_allocated;
 
 	LitErrorFn errorFn;
 	LitPrintFn printFn;
@@ -33,7 +33,7 @@ typedef enum {
 } LitInterpretResult;
 
 LitState* lit_new_state();
-uint lit_free_state(LitState* state);
+int64_t lit_free_state(LitState* state);
 LitInterpretResult lit_interpret(LitState* state, char* code);
 
 void lit_error(LitState* state, LitErrorType type, uint line, const char* message, ...);

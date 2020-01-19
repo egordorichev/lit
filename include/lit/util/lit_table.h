@@ -12,8 +12,8 @@ typedef struct {
 } LitTableEntry;
 
 typedef struct {
-	uint count;
-	uint capacity;
+	int count;
+	int capacity;
 
 	LitTableEntry* entries;
 } LitTable;

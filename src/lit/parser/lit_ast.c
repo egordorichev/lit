@@ -37,6 +37,11 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
+		case VAR_EXPRESSION: {
+			FREE_EXPRESSION(LitVarExpression)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -87,6 +92,12 @@ LitGroupingExpression *lit_create_grouping_expression(LitState* state, uint line
 	return expression;
 }
 
+LitVarExpression *lit_create_var_expression(LitState* state, uint line, LitString* name) {
+	LitVarExpression* expression = ALLOCATE_EXPRESSION(state, LitVarExpression, VAR_EXPRESSION);
+	expression->name = name;
+	return expression;
+}
+
 #define FREE_STATEMENT(type) lit_reallocate(state, statement, sizeof(type), 0);
 
 void lit_free_statement(LitState* state, LitStatement* statement) {
@@ -100,6 +111,12 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 		case PRINT_STATEMENT: {
 			lit_free_expression(state, ((LitPrintStatement*) statement)->expression);
 			FREE_STATEMENT(LitPrintStatement)
+			break;
+		}
+
+		case VAR_STATEMENT: {
+			lit_free_expression(state, ((LitVarStatement*) statement)->init);
+			FREE_STATEMENT(LitVarStatement)
 			break;
 		}
 
@@ -132,4 +149,14 @@ LitPrintStatement *lit_create_print_statement(LitState* state, uint line, LitExp
 	LitPrintStatement* statement = ALLOCATE_STATEMENT(state, LitPrintStatement, PRINT_STATEMENT);
 	statement->expression = expression;
 	return statement;
+}
+
+LitVarStatement *lit_create_var_statement(LitState* state, uint line, LitString* name, LitExpression* init) {
+	LitVarStatement* statement = ALLOCATE_STATEMENT(state, LitVarStatement, VAR_STATEMENT);
+
+	statement->name = name;
+	statement->init = init;
+
+	return statement;
+
 }

@@ -11,12 +11,15 @@ void lit_init_table(LitTable* table) {
 }
 
 void lit_free_table(LitState* state, LitTable* table) {
-	LIT_FREE_ARRAY(state, LitTableEntry, table->entries, table->capacity);
+	if (table->capacity > 0) {
+		LIT_FREE_ARRAY(state, LitTableEntry, table->entries, table->capacity);
+	}
+
 	lit_init_table(table);
 }
 
-static LitTableEntry* find_entry(LitTableEntry* entries, uint capacity, LitString* key) {
-	uint32_t index = key->hash % capacity;
+static LitTableEntry* find_entry(LitTableEntry* entries, int capacity, LitString* key) {
+	int32_t index = key->hash % capacity;
 	LitTableEntry* tombstone = NULL;
 
 	while (true) {
@@ -36,17 +39,17 @@ static LitTableEntry* find_entry(LitTableEntry* entries, uint capacity, LitStrin
 	}
 }
 
-static void adjust_capacity(LitState* state, LitTable* table, uint capacity) {
+static void adjust_capacity(LitState* state, LitTable* table, int capacity) {
 	LitTableEntry* entries = LIT_ALLOCATE(state, LitTableEntry, capacity);
 
-	for (uint i = 0; i < capacity; i++) {
+	for (int i = 0; i < capacity; i++) {
 		entries[i].key = NULL;
 		entries[i].value = NULL_VAL;
 	}
 
 	table->count = 0;
 
-	for (uint i = 0; i < table->capacity; i++) {
+	for (int i = 0; i < table->capacity; i++) {
 		LitTableEntry* entry = &table->entries[i];
 
 		if (entry->key == NULL) {
@@ -61,15 +64,17 @@ static void adjust_capacity(LitState* state, LitTable* table, uint capacity) {
 		table->count++;
 	}
 
-	LIT_FREE_ARRAY(state, LitTableEntry, table->entries, table->capacity);
+	if (table->capacity > 0) {
+		LIT_FREE_ARRAY(state, LitTableEntry, table->entries, table->capacity);
+	}
 
-	table->entries = entries;
 	table->capacity = capacity;
+	table->entries = entries;
 }
 
 bool lit_table_set(LitState* state, LitTable* table, LitString* key, LitValue value) {
 	if (table->count + 1 > table->capacity * TABLE_MAX_LOAD) {
-		uint capacity = LIT_GROW_CAPACITY(table->capacity);
+		int capacity = LIT_GROW_CAPACITY(table->capacity);
 		adjust_capacity(state, table, capacity);
 	}
 
@@ -123,7 +128,7 @@ LitString* lit_table_find_string(LitTable* table, const char* chars, uint length
 		return NULL;
 	}
 
-	uint32_t index = hash % table->capacity;
+	int32_t index = hash % table->capacity;
 
 	while (true) {
 		LitTableEntry* entry = &table->entries[index];
@@ -144,7 +149,7 @@ LitString* lit_table_find_string(LitTable* table, const char* chars, uint length
 }
 
 void lit_table_add_all(LitState* state, LitTable* from, LitTable* to) {
-	for (uint i = 0; i < from->capacity; i++) {
+	for (int i = 0; i < from->capacity; i++) {
 		LitTableEntry* entry = &from->entries[i];
 
 		if (entry->key != NULL) {

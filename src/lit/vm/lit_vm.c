@@ -1,4 +1,5 @@
 #include <lit/vm/lit_vm.h>
+#include <lit/vm/lit_object.h>
 #include <lit/debug/lit_debug.h>
 #include <lit/lit.h>
 
@@ -16,10 +17,12 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 	vm->objects = NULL;
 
 	lit_init_table(&vm->strings);
+	lit_init_table(&vm->globals);
 }
 
 void lit_free_vm(LitVm* vm) {
 	lit_free_table(vm->state, &vm->strings);
+	lit_free_table(vm->state, &vm->globals);
 	lit_free_objects(vm->state, vm->objects);
 
 	lit_init_vm(vm->state, vm);
@@ -92,6 +95,7 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 #define CASE_CODE(name) OP_##name:
 #define READ_CONSTANT() (current_chunk->constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() (current_chunk->constants.values[READ_SHORT()])
+#define READ_STRING() AS_STRING(READ_CONSTANT())
 #define PEEK(distance) vm->stack_top[-1 - distance]
 
 #define BINARY_OP(type, op) \
@@ -238,6 +242,27 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 			continue;
 		}
 
+		CASE_CODE(DEFINE_GLOBAL) {
+			LitString* name = READ_STRING();
+			lit_table_set(state, &vm->globals, name, PEEK(0));
+			lit_pop(vm);
+
+			continue;
+		}
+
+		CASE_CODE(GET_GLOBAL) {
+			LitString* name = READ_STRING();
+			LitValue value;
+
+			if (!lit_table_get(&vm->globals, name, &value)) {
+				lit_push(vm, NULL_VAL);
+			} else {
+				lit_push(vm, value);
+			}
+
+			continue;
+		}
+
 		printf("Unknown op code!");
 		break;
 	}
@@ -249,6 +274,7 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 #undef CASE_CODE
 #undef WRITE_IP
 #undef READ_IP
+#undef READ_STRING
 #undef READ_SHORT
 #undef READ_BYTE
 

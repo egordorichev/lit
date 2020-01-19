@@ -87,6 +87,27 @@ static void consume(LitParser* parser, LitTokenType type, const char* message) {
 	error_at_current(parser, message);
 }
 
+static bool match_new_line(LitParser* parser) {
+	if (!match(parser, TOKEN_NEW_LINE)) {
+		return false;
+	}
+
+	while (match(parser, TOKEN_NEW_LINE)) {
+
+	}
+
+	return true;
+}
+
+static void ignore_new_lines(LitParser* parser) {
+	match_new_line(parser);
+}
+
+static void consume_new_line(LitParser* parser, const char* error) {
+	consume(parser, TOKEN_NEW_LINE, error);
+	ignore_new_lines(parser);
+}
+
 static LitExpression* parse_precedence(LitParser* parser, LitPrecedence precedence) {
 	advance(parser);
 	LitPrefixParseFn prefix_rule = get_rule(parser->previous.type)->prefix;
@@ -160,13 +181,32 @@ static LitExpression* parse_literal(LitParser* parser) {
 	}
 }
 
+static LitExpression* parse_variable(LitParser* parser) {
+	return (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length));
+}
+
 static LitExpression* parse_expression(LitParser* parser) {
+	ignore_new_lines(parser);
 	return parse_precedence(parser, PREC_ASSIGNMENT);
 }
 
 static LitStatement* parse_print(LitParser* parser) {
 	LitExpression* expression = parse_expression(parser);
 	return (LitStatement*) lit_create_print_statement(parser->state, parser->previous.line, expression);
+}
+
+static LitStatement* parse_var_declaration(LitParser* parser) {
+	uint line = parser->previous.line;
+	consume(parser, TOKEN_IDENTIFIER, "Expected variable name");
+	LitString* name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
+
+	LitExpression* init = NULL;
+
+	if (match(parser, TOKEN_EQUAL)) {
+		init = parse_expression(parser);
+	}
+
+	return (LitStatement*) lit_create_var_statement(parser->state, line, name, init);
 }
 
 static LitStatement* parse_statement(LitParser* parser) {
@@ -176,28 +216,6 @@ static LitStatement* parse_statement(LitParser* parser) {
 
 	LitExpression* expression = parse_expression(parser);
 	return expression == NULL ? NULL : (LitStatement*) lit_create_expression_statement(parser->state, parser->previous.line, expression);
-}
-
-
-static bool match_new_line(LitParser* parser) {
-	if (!match(parser, TOKEN_NEW_LINE)) {
-		return false;
-	}
-
-	while (match(parser, TOKEN_NEW_LINE)) {
-
-	}
-
-	return true;
-}
-
-static void ignore_new_lines(LitParser* parser) {
-	match_new_line(parser);
-}
-
-static void consume_new_line(LitParser* parser, const char* error) {
-	consume(parser, TOKEN_NEW_LINE, error);
-	ignore_new_lines(parser);
 }
 
 static void sync(LitParser* parser) {
@@ -228,6 +246,10 @@ static void sync(LitParser* parser) {
 }
 
 static LitStatement* parse_declaration(LitParser* parser) {
+	if (match(parser, TOKEN_VAR)) {
+		return parse_var_declaration(parser);
+	}
+
 	LitStatement* statement = parse_statement(parser);
 
 	if (parser->panic_mode) {
@@ -284,4 +306,5 @@ static void setup_rules() {
 	rules[TOKEN_LESS] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_LESS_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_STRING] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
+	rules[TOKEN_IDENTIFIER] = (LitParseRule) { parse_variable, NULL, PREC_NONE };
 }

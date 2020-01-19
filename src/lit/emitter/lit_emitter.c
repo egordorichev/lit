@@ -22,6 +22,16 @@ static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b)
 	lit_write_chunk(emitter->state, emitter->chunk, b, line);
 }
 
+static uint8_t add_constant(LitEmitter* emitter, LitValue value, uint line) {
+	uint constant = lit_chunk_add_constant(emitter->state, emitter->chunk, value);
+
+	if (constant >= UINT8_MAX) {
+		lit_error(emitter->state, COMPILE_ERROR, line, "Too many constants in one chunk");
+	}
+
+	return constant;
+}
+
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
@@ -141,6 +151,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
+		case VAR_EXPRESSION: {
+			emit_bytes(emitter, expression->line, OP_GET_GLOBAL, add_constant(emitter, OBJECT_VAL(((LitVarExpression*) expression)->name), expression->line));
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -161,6 +176,20 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_expression(emitter, ((LitPrintStatement*) statement)->expression);
 			emit_byte(emitter, statement->line, OP_PRINT);
 
+			break;
+		}
+
+		case VAR_STATEMENT: {
+			LitVarStatement* stmt = (LitVarStatement*) statement;
+			uint line = statement->line;
+
+			if (stmt->init == NULL) {
+				emit_byte(emitter, line, OP_NULL);
+			} else {
+				emit_expression(emitter, stmt->init);
+			}
+
+			emit_bytes(emitter, line, OP_DEFINE_GLOBAL, add_constant(emitter, OBJECT_VAL(stmt->name), line));
 			break;
 		}
 

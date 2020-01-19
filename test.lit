@@ -1,4 +1,2 @@
-print "test"
-print 32 * 8
-
-print "hi"
+var a = "test"
+var b = "test2"

@@ -43,7 +43,7 @@ LitState* lit_new_state() {
 	return state;
 }
 
-uint lit_free_state(LitState* state) {
+int64_t lit_free_state(LitState* state) {
 	free(state->scanner);
 
 	lit_free_parser(state->parser);
@@ -55,7 +55,7 @@ uint lit_free_state(LitState* state) {
 	lit_free_vm(state->vm);
 	free(state->vm);
 
-	uint amount = state->bytes_allocated;
+	int64_t amount = state->bytes_allocated;
 	free(state);
 
 	return amount;

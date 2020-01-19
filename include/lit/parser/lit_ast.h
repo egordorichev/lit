@@ -60,6 +60,13 @@ LitUnaryExpression *lit_create_unary_expression(LitState* state, uint line, LitE
 
 typedef struct {
 	LitExpression expression;
+	LitString* name;
+} LitVarExpression;
+
+LitVarExpression *lit_create_var_expression(LitState* state, uint line, LitString* name);
+
+typedef struct {
+	LitExpression expression;
 	LitExpression* child;
 } LitGroupingExpression;
 
@@ -101,5 +108,13 @@ typedef struct {
 } LitPrintStatement;
 
 LitPrintStatement *lit_create_print_statement(LitState* state, uint line, LitExpression* expression);
+
+typedef struct {
+	LitStatement statement;
+	LitString* name;
+	LitExpression* init;
+} LitVarStatement;
+
+LitVarStatement *lit_create_var_statement(LitState* state, uint line, LitString* name, LitExpression* init);
 
 #endif

@@ -4,7 +4,7 @@
 #include <lit/vm/lit_object.h>
 
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size) {
-	state->bytes_allocated += new_size - old_size;
+	state->bytes_allocated += (int64_t) new_size - (int64_t) old_size;
 
 	if (new_size == 0) {
 		free(pointer);

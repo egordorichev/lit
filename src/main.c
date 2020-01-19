@@ -66,10 +66,10 @@ int main(int argc, char* argv[]) {
 	LitState* state = lit_new_state();
 
 	lit_interpret(state, source);
-	uint amount = lit_free_state(state);
+	int64_t amount = lit_free_state(state);
 
 	if (amount != 0) {
-		printf("Error: memory leak of %u bytes!\n", amount);
+		printf("Error: memory leak of %ld bytes!\n", amount);
 	}
 
 	free(source);

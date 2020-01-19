@@ -19,6 +19,7 @@ typedef struct sLitVm {
 
 	LitObject* objects;
 	LitTable strings;
+	LitTable globals;
 } sLitVm;
 
 void lit_init_vm(LitState* state, LitVm* vm);
