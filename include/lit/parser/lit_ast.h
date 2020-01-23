@@ -21,7 +21,7 @@ typedef enum {
 	GET_EXPRESSION,
 	SET_EXPRESSION,
 	THIS_EXPRESSION,
-	SUPER_EXPRESSION
+	SUPER_EXPRESSION,
 } LitExpressionType;
 
 typedef struct LitExpression {
@@ -45,6 +45,8 @@ typedef struct {
 	LitExpression* left;
 	LitExpression* right;
 	LitTokenType operator;
+
+	bool ignore_left;
 } LitBinaryExpression;
 
 LitBinaryExpression *lit_create_binary_expression(LitState* state, uint line, LitExpression* left, LitExpression* right, LitTokenType operator);

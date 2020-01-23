@@ -162,6 +162,28 @@ static LitExpression* parse_binary(LitParser* parser, LitExpression* prev, bool 
 	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, expression, operator);
 }
 
+static LitTokenType convert_compound_operator(LitTokenType operator) {
+	switch (operator) {
+		case TOKEN_PLUS_EQUAL: return TOKEN_PLUS;
+		default: {
+			UNREACHABLE
+		}
+	}
+}
+
+static LitExpression* parse_compound(LitParser* parser, LitExpression* prev, bool can_assign) {
+	LitTokenType operator = parser->previous.type;
+	uint line = parser->previous.line;
+
+	LitParseRule* rule = get_rule(operator);
+	LitExpression* expression = parse_precedence(parser, (LitPrecedence) (rule->precedence + 1));
+
+	LitBinaryExpression* binary = lit_create_binary_expression(parser->state, line, prev, expression, convert_compound_operator(operator));
+	binary->ignore_left = true; // To make sure we don't free it twice
+
+	return (LitExpression*) lit_create_assign_expression(parser->state, line, prev, (LitExpression*) binary);
+}
+
 static LitExpression* parse_literal(LitParser* parser, bool can_assign) {
 	uint line = parser->previous.line;
 
@@ -318,4 +340,6 @@ static void setup_rules() {
 	rules[TOKEN_LESS_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_STRING] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
 	rules[TOKEN_IDENTIFIER] = (LitParseRule) { parse_variable, NULL, PREC_NONE };
+
+	rules[TOKEN_PLUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_TERM };
 }

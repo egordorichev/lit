@@ -16,7 +16,10 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 		case BINARY_EXPRESSION: {
 			LitBinaryExpression* expr = (LitBinaryExpression*) expression;
 
-			lit_free_expression(state, expr->left);
+			if (!expr->ignore_left) {
+				lit_free_expression(state, expr->left);
+			}
+
 			lit_free_expression(state, expr->right);
 
 			FREE_EXPRESSION(LitBinaryExpression)
@@ -83,6 +86,7 @@ LitBinaryExpression *lit_create_binary_expression(LitState* state, uint line, Li
 	expression->left = left;
 	expression->right = right;
 	expression->operator = operator;
+	expression->ignore_left = false;
 
 	return expression;
 }
