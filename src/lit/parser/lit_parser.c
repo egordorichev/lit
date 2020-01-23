@@ -169,6 +169,9 @@ static LitTokenType convert_compound_operator(LitTokenType operator) {
 		case TOKEN_STAR_EQUAL: return TOKEN_STAR;
 		case TOKEN_SLASH_EQUAL: return TOKEN_SLASH;
 
+		case TOKEN_PLUS_PLUS: return TOKEN_PLUS;
+		case TOKEN_MINUS_MINUS: return TOKEN_MINUS;
+
 		default: {
 			UNREACHABLE
 		}
@@ -180,7 +183,13 @@ static LitExpression* parse_compound(LitParser* parser, LitExpression* prev, boo
 	uint line = parser->previous.line;
 
 	LitParseRule* rule = get_rule(operator);
-	LitExpression* expression = parse_precedence(parser, (LitPrecedence) (rule->precedence + 1));
+	LitExpression* expression;
+
+	if (operator == TOKEN_PLUS_PLUS || operator == TOKEN_MINUS_MINUS) {
+		expression = (LitExpression*) lit_create_literal_expression(parser->state, line, NUMBER_VAL(1));
+	} else {
+		expression = parse_precedence(parser, (LitPrecedence) (rule->precedence + 1));
+	}
 
 	LitBinaryExpression* binary = lit_create_binary_expression(parser->state, line, prev, expression, convert_compound_operator(operator));
 	binary->ignore_left = true; // To make sure we don't free it twice
@@ -344,8 +353,10 @@ static void setup_rules() {
 	rules[TOKEN_LESS_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_STRING] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
 	rules[TOKEN_IDENTIFIER] = (LitParseRule) { parse_variable, NULL, PREC_NONE };
-	rules[TOKEN_PLUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_TERM };
-	rules[TOKEN_MINUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_TERM };
-	rules[TOKEN_STAR_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_TERM };
-	rules[TOKEN_SLASH_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_TERM };
+	rules[TOKEN_PLUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
+	rules[TOKEN_MINUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
+	rules[TOKEN_STAR_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
+	rules[TOKEN_SLASH_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
+	rules[TOKEN_PLUS_PLUS] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
+	rules[TOKEN_MINUS_MINUS] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 }

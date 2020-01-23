@@ -245,8 +245,8 @@ LitToken lit_scan_token(LitScanner* scanner) {
 		case ',': return make_token(scanner, TOKEN_COMMA);
 		case '.': return make_token(scanner, TOKEN_DOT);
 
-		case '+': return match_token(scanner, '=', TOKEN_PLUS_EQUAL, TOKEN_PLUS);
-		case '-': return match_token(scanner, '=', TOKEN_MINUS_EQUAL, TOKEN_MINUS);
+		case '+': return match_tokens(scanner, '=', '+', TOKEN_PLUS_EQUAL, TOKEN_PLUS_PLUS, TOKEN_PLUS);
+		case '-': return match_tokens(scanner, '=', '-', TOKEN_MINUS_EQUAL, TOKEN_MINUS_MINUS, TOKEN_MINUS);
 		case '*': return match_token(scanner, '=', TOKEN_STAR_EQUAL, TOKEN_STAR);
 		case '/': return match_token(scanner, '=', TOKEN_SLASH_EQUAL, TOKEN_SLASH);
 		case '!': return match_token(scanner, '=', TOKEN_BANG_EQUAL, TOKEN_BANG);
