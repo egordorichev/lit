@@ -1,18 +1,7 @@
 var a = "test"
-var b = "test2"
-var a = "test"
-var b = "test2"
+a = 32
+var b = 19
 print a
 print b
-var a = "test"
-var b = "test2"
-var a = "test"
-var b = "test2"
-print a
-print b
-var a = "test"
-var b = "test2"
-var a = "test"
-var b = "test2"
-print a
+b = a
 print b

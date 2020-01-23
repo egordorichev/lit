@@ -13,10 +13,10 @@ typedef enum {
 	LITERAL_EXPRESSION,
 	BINARY_EXPRESSION,
 	UNARY_EXPRESSION,
-	CALL_EXPRESSION,
 	GROUPING_EXPRESSION,
 	VAR_EXPRESSION,
 	ASSIGN_EXPRESSION,
+	CALL_EXPRESSION,
 	LOGICAL_EXPRESSION,
 	GET_EXPRESSION,
 	SET_EXPRESSION,
@@ -71,6 +71,15 @@ typedef struct {
 } LitGroupingExpression;
 
 LitGroupingExpression *lit_create_grouping_expression(LitState* state, uint line, LitExpression* child);
+
+typedef struct {
+	LitExpression expression;
+
+	LitExpression* to;
+	LitExpression* value;
+} LitAssignExpression;
+
+LitAssignExpression *lit_create_assign_expression(LitState* state, uint line, LitExpression* to, LitExpression* value);
 
 /*
  * Statements

@@ -117,29 +117,34 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
 		return NULL;
 	}
 
-	LitExpression* expr = prefix_rule(parser);
+	bool can_assign = precedence <= PREC_ASSIGNMENT;
+	LitExpression* expr = prefix_rule(parser, can_assign);
 
 	while (precedence <= get_rule(parser->current.type)->precedence) {
 		advance(parser);
 		LitInfixParseFn infix_rule = get_rule(parser->previous.type)->infix;
-		expr = infix_rule(parser, expr);
+		expr = infix_rule(parser, expr, can_assign);
+	}
+
+	if (can_assign && match(parser, TOKEN_EQUAL)) {
+		error(parser, "Invalid assigment target");
 	}
 
 	return expr;
 }
 
-static LitExpression* parse_number(LitParser* parser) {
+static LitExpression* parse_number(LitParser* parser, bool can_assign) {
 	return (LitExpression*) lit_create_literal_expression(parser->state, parser->previous.line, NUMBER_VAL(strtod(parser->previous.start, NULL)));
 }
 
-static LitExpression* parse_grouping(LitParser* parser) {
+static LitExpression* parse_grouping(LitParser* parser, bool can_assign) {
 	LitExpression* expression = parse_expression(parser);
 	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after expression");
 
 	return (LitExpression*) lit_create_grouping_expression(parser->state, parser->previous.line, expression);
 }
 
-static LitExpression* parse_unary(LitParser* parser) {
+static LitExpression* parse_unary(LitParser* parser, bool can_assign) {
 	LitTokenType operator = parser->previous.type;
 	uint line = parser->previous.line;
 	LitExpression* expression = parse_precedence(parser, PREC_UNARY);
@@ -147,7 +152,7 @@ static LitExpression* parse_unary(LitParser* parser) {
 	return (LitExpression*) lit_create_unary_expression(parser->state, line, expression, operator);
 }
 
-static LitExpression* parse_binary(LitParser* parser, LitExpression* prev) {
+static LitExpression* parse_binary(LitParser* parser, LitExpression* prev, bool can_assign) {
 	LitTokenType operator = parser->previous.type;
 	uint line = parser->previous.line;
 
@@ -157,7 +162,7 @@ static LitExpression* parse_binary(LitParser* parser, LitExpression* prev) {
 	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, expression, operator);
 }
 
-static LitExpression* parse_literal(LitParser* parser) {
+static LitExpression* parse_literal(LitParser* parser, bool can_assign) {
 	uint line = parser->previous.line;
 
 	switch (parser->previous.type) {
@@ -181,8 +186,14 @@ static LitExpression* parse_literal(LitParser* parser) {
 	}
 }
 
-static LitExpression* parse_variable(LitParser* parser) {
-	return (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length));
+static LitExpression* parse_variable(LitParser* parser, bool can_assign) {
+	LitExpression* expression = (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length));
+
+	if (can_assign && match(parser, TOKEN_EQUAL)) {
+		return (LitExpression*) lit_create_assign_expression(parser->state, parser->previous.line, expression, parse_expression(parser));
+	}
+
+	return expression;
 }
 
 static LitExpression* parse_expression(LitParser* parser) {

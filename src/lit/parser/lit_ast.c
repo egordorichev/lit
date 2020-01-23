@@ -42,6 +42,16 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
+		case ASSIGN_EXPRESSION: {
+			LitAssignExpression* expr = (LitAssignExpression*) expression;
+
+			lit_free_expression(state, expr->to);
+			lit_free_expression(state, expr->value);
+
+			FREE_EXPRESSION(LitAssignExpression)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -95,6 +105,15 @@ LitGroupingExpression *lit_create_grouping_expression(LitState* state, uint line
 LitVarExpression *lit_create_var_expression(LitState* state, uint line, LitString* name) {
 	LitVarExpression* expression = ALLOCATE_EXPRESSION(state, LitVarExpression, VAR_EXPRESSION);
 	expression->name = name;
+	return expression;
+}
+
+LitAssignExpression *lit_create_assign_expression(LitState* state, uint line, LitExpression* to, LitExpression* value) {
+	LitAssignExpression* expression = ALLOCATE_EXPRESSION(state, LitAssignExpression, ASSIGN_EXPRESSION);
+
+	expression->to = to;
+	expression->value = value;
+
 	return expression;
 }
 

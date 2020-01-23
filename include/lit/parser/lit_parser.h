@@ -19,8 +19,8 @@ typedef enum {
 	PREC_PRIMARY
 } LitPrecedence;
 
-typedef LitExpression* (*LitPrefixParseFn)(LitParser*);
-typedef LitExpression* (*LitInfixParseFn)(LitParser*, LitExpression*);
+typedef LitExpression* (*LitPrefixParseFn)(LitParser*, bool);
+typedef LitExpression* (*LitInfixParseFn)(LitParser*, LitExpression*, bool);
 
 typedef struct {
 	LitPrefixParseFn prefix;

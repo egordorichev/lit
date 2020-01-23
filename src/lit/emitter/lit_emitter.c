@@ -156,6 +156,20 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
+		case ASSIGN_EXPRESSION: {
+			LitAssignExpression* expr = (LitAssignExpression*) expression;
+			emit_expression(emitter, expr->value);
+
+			if (expr->to->type != VAR_EXPRESSION) {
+				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Invalid assigment target %d", (int) expr->to->type);
+				break;
+			}
+
+			emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, OBJECT_VAL(((LitVarExpression*) expr->to)->name), expression->line));
+
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown expression type %d", (int) expression->type);
 			break;
