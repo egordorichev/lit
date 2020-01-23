@@ -242,10 +242,9 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 			continue;
 		}
 
-		CASE_CODE(DEFINE_GLOBAL) {
+		CASE_CODE(SET_GLOBAL) {
 			LitString* name = READ_STRING();
 			lit_table_set(state, &vm->globals, name, PEEK(0));
-			lit_pop(vm);
 
 			continue;
 		}

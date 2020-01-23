@@ -189,7 +189,8 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_expression(emitter, stmt->init);
 			}
 
-			emit_bytes(emitter, line, OP_DEFINE_GLOBAL, add_constant(emitter, OBJECT_VAL(stmt->name), line));
+			emit_bytes(emitter, line, OP_SET_GLOBAL, add_constant(emitter, OBJECT_VAL(stmt->name), line));
+			emit_byte(emitter, statement->line, OP_POP);
 			break;
 		}
 
