@@ -4,3 +4,15 @@ var a = "test"
 var b = "test2"
 print a
 print b
+var a = "test"
+var b = "test2"
+var a = "test"
+var b = "test2"
+print a
+print b
+var a = "test"
+var b = "test2"
+var a = "test"
+var b = "test2"
+print a
+print b
