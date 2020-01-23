@@ -165,6 +165,10 @@ static LitExpression* parse_binary(LitParser* parser, LitExpression* prev, bool 
 static LitTokenType convert_compound_operator(LitTokenType operator) {
 	switch (operator) {
 		case TOKEN_PLUS_EQUAL: return TOKEN_PLUS;
+		case TOKEN_MINUS_EQUAL: return TOKEN_MINUS;
+		case TOKEN_STAR_EQUAL: return TOKEN_STAR;
+		case TOKEN_SLASH_EQUAL: return TOKEN_SLASH;
+
 		default: {
 			UNREACHABLE
 		}
@@ -340,6 +344,8 @@ static void setup_rules() {
 	rules[TOKEN_LESS_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_STRING] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
 	rules[TOKEN_IDENTIFIER] = (LitParseRule) { parse_variable, NULL, PREC_NONE };
-
 	rules[TOKEN_PLUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_TERM };
+	rules[TOKEN_MINUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_TERM };
+	rules[TOKEN_STAR_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_TERM };
+	rules[TOKEN_SLASH_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_TERM };
 }
