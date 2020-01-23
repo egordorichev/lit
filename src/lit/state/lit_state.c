@@ -36,7 +36,7 @@ LitState* lit_new_state() {
 	state->emitter = (LitEmitter*) malloc(sizeof(LitEmitter));
 	lit_init_emitter(state, state->emitter);
 
-	state->vm = (LitVm*) malloc(sizeof(LitState));
+	state->vm = (LitVm*) malloc(sizeof(LitVm));
 
 	lit_init_vm(state, state->vm);
 
