@@ -1,4 +1,5 @@
 {
  var a = 10
+ var d = 32
  print(a)
 }

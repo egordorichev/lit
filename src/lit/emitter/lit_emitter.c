@@ -13,7 +13,6 @@ void lit_free_emitter(LitEmitter* emitter) {
 
 }
 
-
 static void init_compiler(LitEmitter* emitter, LitCompiler* compiler) {
 	compiler->local_count = 0;
 	compiler->scope_depth = 0;
@@ -25,10 +24,6 @@ static void begin_scope(LitEmitter* emitter) {
 	emitter->compiler->scope_depth++;
 }
 
-static void end_scope(LitEmitter* emitter) {
-	emitter->compiler->scope_depth--;
-}
-
 static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte) {
 	lit_write_chunk(emitter->state, emitter->chunk, byte, line);
 }
@@ -36,6 +31,28 @@ static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte) {
 static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b) {
 	lit_write_chunk(emitter->state, emitter->chunk, a, line);
 	lit_write_chunk(emitter->state, emitter->chunk, b, line);
+}
+
+static void end_scope(LitEmitter* emitter, uint16_t line) {
+	emitter->compiler->scope_depth--;
+
+	LitCompiler* compiler = emitter->compiler;
+	uint count = 0;
+
+	while (compiler->local_count > 0 && compiler->locals[compiler->local_count - 1].depth > compiler->scope_depth) {
+		compiler->local_count--;
+		count++;
+	}
+
+	if (count == 1) {
+		emit_byte(emitter, line, OP_POP);
+	} else if (count > 0) {
+		if (count > UINT8_MAX) {
+			lit_error(emitter->state, COMPILE_ERROR, line, "Too many locals popped for one scope");
+		}
+
+		emit_bytes(emitter, line, OP_POP_MULTIPLE, (uint8_t) count);
+	}
 }
 
 static uint8_t add_constant(LitEmitter* emitter, LitValue value, uint line) {
@@ -275,11 +292,16 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitStatements statements = ((LitBlockStatement*) statement)->statements;
 			begin_scope(emitter);
 
+			uint line = statement->line;
+
 			for (uint i = 0; i < statements.count; i++) {
-				emit_statement(emitter, statements.values[i]);
+				LitStatement* stmt = statements.values[i];
+				emit_statement(emitter, stmt);
+
+				line = stmt->line;
 			}
 
-			end_scope(emitter);
+			end_scope(emitter, line);
 			break;
 		}
 

@@ -131,6 +131,13 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 			continue;
 		};
 
+		CASE_CODE(POP_MULTIPLE) {
+			uint8_t index = READ_BYTE();
+			vm->stack_top -= index;
+
+			continue;
+		};
+
 		CASE_CODE(RETURN) {
 			return INTERPRET_OK;
 		};
