@@ -88,7 +88,7 @@ static int add_local(LitEmitter* emitter, const char* name, uint length, uint li
 
 	local->name = name;
 	local->length = length;
-	local->depth = compiler->scope_depth;
+	local->depth = UINT16_MAX;
 
 	return compiler->local_count - 1;
 }
@@ -102,11 +102,15 @@ static int declare_variable(LitEmitter* emitter, const char* name, uint length, 
 	return add_local(emitter, name, length, line);
 }
 
-static int resolve_local(LitEmitter* emitter, const char* name, uint length) {
+static int resolve_local(LitEmitter* emitter, const char* name, uint length, uint line) {
 	for (int i = emitter->compiler->local_count - 1; i >= 0; i--) {
 		LitLocal* local = &emitter->compiler->locals[i];
 
 		if (local->length == length && memcmp(local->name, name, length) == 0) {
+			if (local->depth == UINT16_MAX) {
+				lit_error(emitter->state, COMPILE_ERROR, line, "Can't use local '%.*s' in its own initializer", length, name);
+			}
+
 			return i;
 		}
 	}
@@ -240,7 +244,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case LOCAL_VAR_EXPRESSION: {
 			LitLocalVarExpression* expr = (LitLocalVarExpression*) expression;
-			int index = resolve_local(emitter, expr->name, expr->length);
+			int index = resolve_local(emitter, expr->name, expr->length, expression->line);
 
 			if (index == -1) {
 				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Undefined variable '%.*s'", (int) expr->length, expr->name);
@@ -259,7 +263,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, OBJECT_VAL(((LitVarExpression*) expr->to)->name), expression->line));
 			} else if (expr->to->type == LOCAL_VAR_EXPRESSION) {
 				LitLocalVarExpression* e = (LitLocalVarExpression*) expr->to;
-				int index = resolve_local(emitter, e->name, e->length);
+				int index = resolve_local(emitter, e->name, e->length, expr->to->line);
 
 				if (index == -1) {
 					lit_error(emitter->state, COMPILE_ERROR, expression->line, "Undefined variable '%.*s'", (int) e->length, e->name);
@@ -326,7 +330,9 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_expression(emitter, stmt->init);
 			}
 
+			emitter->compiler->locals[index].depth = emitter->compiler->scope_depth;
 			emit_bytes(emitter, line, OP_SET_LOCAL, (uint8_t) index);
+
 			break;
 		}
 

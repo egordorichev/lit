@@ -82,7 +82,7 @@ static bool skip_whitespace(LitScanner* scanner) {
 			case '\r':
 			case '\t': {
 				advance(scanner);
-				return false;
+				break;
 			}
 
 			case '\n': {
@@ -101,7 +101,7 @@ static bool skip_whitespace(LitScanner* scanner) {
 					return skip_whitespace(scanner);
 				}
 
-				return false;
+				break;
 			}
 
 			default: return false;

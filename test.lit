@@ -1,7 +1,8 @@
 {
- var a = 10
- var d = 32
- var c = 219
- print(a)
- print(c)
+ var a = 32
+
+ {
+  var a = 32
+  var b = a
+ }
 }
