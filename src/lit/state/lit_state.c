@@ -27,6 +27,7 @@ LitState* lit_new_state() {
 	state->bytes_allocated = 0;
 	state->errorFn = default_error;
 	state->printFn = default_printf;
+	state->had_error = false;
 
 	state->scanner = (LitScanner*) malloc(sizeof(LitScanner));
 
@@ -70,6 +71,8 @@ static void free_statements(LitState* state, LitStatements* statements) {
 }
 
 LitInterpretResult lit_interpret(LitState* state, char* code) {
+	state->had_error = false;
+
 	LitStatements statements;
 	lit_init_stataments(&statements);
 
@@ -81,7 +84,14 @@ LitInterpretResult lit_interpret(LitState* state, char* code) {
 	LitChunk* chunk = lit_emit(state->emitter, &statements);
 	free_statements(state, &statements);
 
-	LitInterpretResult result = lit_interpret_chunk(state, chunk);
+	LitInterpretResult result;
+
+	if (state->had_error) {
+		result = INTERPRET_COMPILE_ERROR;
+	} else {
+		result = lit_interpret_chunk(state, chunk);
+	}
+
 	lit_free_chunk(state, chunk);
 
 	// TMP line, because chunk is allocated by hand for now, we need to free it:
@@ -95,6 +105,8 @@ void lit_error(LitState* state, LitErrorType type, uint line, const char* messag
 	va_start(args, message);
 	state->errorFn(state, type, line, message, args);
 	va_end(args);
+
+	state->had_error = true;
 }
 
 void lit_printf(LitState* state, const char* message, ...) {

@@ -15,6 +15,7 @@ typedef enum {
 	UNARY_EXPRESSION,
 	GROUPING_EXPRESSION,
 	VAR_EXPRESSION,
+	LOCAL_VAR_EXPRESSION,
 	ASSIGN_EXPRESSION,
 	CALL_EXPRESSION,
 	LOGICAL_EXPRESSION,
@@ -69,6 +70,14 @@ LitVarExpression *lit_create_var_expression(LitState* state, uint line, LitStrin
 
 typedef struct {
 	LitExpression expression;
+	const char* name;
+	uint length;
+} LitLocalVarExpression;
+
+LitLocalVarExpression *lit_create_local_var_expression(LitState* state, uint line, LitToken name);
+
+typedef struct {
+	LitExpression expression;
 	LitExpression* child;
 } LitGroupingExpression;
 
@@ -115,6 +124,13 @@ LitExpressionStatement *lit_create_expression_statement(LitState* state, uint li
 
 typedef struct {
 	LitStatement statement;
+	LitStatements statements;
+} LitBlockStatement;
+
+LitBlockStatement *lit_create_block_statement(LitState* state, uint line);
+
+typedef struct {
+	LitStatement statement;
 	LitExpression* expression;
 } LitPrintStatement;
 
@@ -122,10 +138,11 @@ LitPrintStatement *lit_create_print_statement(LitState* state, uint line, LitExp
 
 typedef struct {
 	LitStatement statement;
-	LitString* name;
+	const char* name;
+	uint length;
 	LitExpression* init;
 } LitVarStatement;
 
-LitVarStatement *lit_create_var_statement(LitState* state, uint line, LitString* name, LitExpression* init);
+LitVarStatement *lit_create_var_statement(LitState* state, uint line, const char* name, uint length, LitExpression* init);
 
 #endif

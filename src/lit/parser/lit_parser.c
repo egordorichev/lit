@@ -5,8 +5,25 @@
 
 #include <stdlib.h>
 
+static void init_compiler(LitParser* parser, LitCompiler* compiler) {
+	compiler->local_count = 0;
+	compiler->scope_depth = 0;
+
+	parser->compiler = compiler;
+}
+
+static void begin_scope(LitParser* parser) {
+	parser->compiler->scope_depth++;
+}
+
+static void end_scope(LitParser* parser) {
+	parser->compiler->scope_depth--;
+}
+
 static LitExpression* parse_expression(LitParser* parser);
 static LitStatement* parse_statement(LitParser* parser);
+static LitStatement* parse_declaration(LitParser* parser);
+
 static LitParseRule rules[TOKEN_EOF + 1];
 static bool did_setup_rules;
 static void setup_rules();
@@ -106,6 +123,19 @@ static void ignore_new_lines(LitParser* parser) {
 static void consume_new_line(LitParser* parser, const char* error) {
 	consume(parser, TOKEN_NEW_LINE, error);
 	ignore_new_lines(parser);
+}
+
+static LitStatement* parse_block(LitParser* parser) {
+	LitBlockStatement* statement = lit_create_block_statement(parser->state, parser->previous.line);
+	ignore_new_lines(parser);
+
+	while (!check(parser, TOKEN_RIGHT_BRACE) && !check(parser, TOKEN_EOF)) {
+		lit_stataments_write(parser->state, &statement->statements, parse_statement(parser));
+		ignore_new_lines(parser);
+	}
+
+	consume(parser, TOKEN_RIGHT_BRACE, "'}' expected");
+	return (LitStatement*) statement;
 }
 
 static LitExpression* parse_precedence(LitParser* parser, LitPrecedence precedence) {
@@ -221,8 +251,14 @@ static LitExpression* parse_literal(LitParser* parser, bool can_assign) {
 	}
 }
 
-static LitExpression* parse_variable(LitParser* parser, bool can_assign) {
-	LitExpression* expression = (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length));
+static LitExpression* parse_variable_expression(LitParser* parser, bool can_assign) {
+	LitExpression* expression;
+
+	if (parser->compiler->scope_depth > 0) {
+		expression = (LitExpression*) lit_create_local_var_expression(parser->state, parser->previous.line, parser->previous);
+	} else {
+		expression = (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length));
+	}
 
 	if (can_assign && match(parser, TOKEN_EQUAL)) {
 		return (LitExpression*) lit_create_assign_expression(parser->state, parser->previous.line, expression, parse_expression(parser));
@@ -244,7 +280,9 @@ static LitStatement* parse_print(LitParser* parser) {
 static LitStatement* parse_var_declaration(LitParser* parser) {
 	uint line = parser->previous.line;
 	consume(parser, TOKEN_IDENTIFIER, "Expected variable name");
-	LitString* name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
+
+	const char* name = parser->previous.start;
+	uint length = parser->previous.length;
 
 	LitExpression* init = NULL;
 
@@ -252,12 +290,20 @@ static LitStatement* parse_var_declaration(LitParser* parser) {
 		init = parse_expression(parser);
 	}
 
-	return (LitStatement*) lit_create_var_statement(parser->state, line, name, init);
+	return (LitStatement*) lit_create_var_statement(parser->state, line, name, length, init);
 }
 
 static LitStatement* parse_statement(LitParser* parser) {
-	if (match(parser, TOKEN_PRINT)) {
+	if (match(parser, TOKEN_VAR)) {
+		return parse_var_declaration(parser);
+	} else if (match(parser, TOKEN_PRINT)) {
 		return parse_print(parser);
+	} else if (match(parser, TOKEN_LEFT_BRACE)) {
+		begin_scope(parser);
+		LitStatement* statement = (LitStatement*) parse_block(parser);
+		end_scope(parser);
+
+		return statement;
 	}
 
 	LitExpression* expression = parse_expression(parser);
@@ -292,10 +338,6 @@ static void sync(LitParser* parser) {
 }
 
 static LitStatement* parse_declaration(LitParser* parser) {
-	if (match(parser, TOKEN_VAR)) {
-		return parse_var_declaration(parser);
-	}
-
 	LitStatement* statement = parse_statement(parser);
 
 	if (parser->panic_mode) {
@@ -310,8 +352,11 @@ bool lit_parse(LitParser* parser, const char* source, LitStatements* statements)
 	parser->panic_mode = false;
 
 	lit_setup_scanner(parser->state->scanner, source);
-	advance(parser);
 
+	LitCompiler compiler;
+	init_compiler(parser, &compiler);
+
+	advance(parser);
 	ignore_new_lines(parser);
 
 	if (is_at_end(parser)) {
@@ -352,7 +397,7 @@ static void setup_rules() {
 	rules[TOKEN_LESS] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_LESS_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_STRING] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
-	rules[TOKEN_IDENTIFIER] = (LitParseRule) { parse_variable, NULL, PREC_NONE };
+	rules[TOKEN_IDENTIFIER] = (LitParseRule) { parse_variable_expression, NULL, PREC_NONE };
 	rules[TOKEN_PLUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_MINUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_STAR_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };

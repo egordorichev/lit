@@ -3,14 +3,30 @@
 #include <lit/debug/lit_debug.h>
 #include <lit/vm/lit_object.h>
 
+#include <string.h>
 
 void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->state = state;
-	emitter->had_error = false;
 }
 
 void lit_free_emitter(LitEmitter* emitter) {
 
+}
+
+
+static void init_compiler(LitEmitter* emitter, LitCompiler* compiler) {
+	compiler->local_count = 0;
+	compiler->scope_depth = 0;
+
+	emitter->compiler = compiler;
+}
+
+static void begin_scope(LitEmitter* emitter) {
+	emitter->compiler->scope_depth++;
+}
+
+static void end_scope(LitEmitter* emitter) {
+	emitter->compiler->scope_depth--;
 }
 
 static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte) {
@@ -30,6 +46,53 @@ static uint8_t add_constant(LitEmitter* emitter, LitValue value, uint line) {
 	}
 
 	return constant;
+}
+
+static void add_local(LitEmitter* emitter, const char* name, uint length, uint line) {
+	LitCompiler* compiler = emitter->compiler;
+
+	if (compiler->local_count == UINT8_MAX + 1) {
+		lit_error(emitter->state, COMPILE_ERROR, line, "Too many local variables in function");
+	}
+
+	for (int i = compiler->local_count - 1; i >= 0; i--) {
+		LitLocal* local = &compiler->locals[i];
+
+		if (local->depth != UINT16_MAX && local->depth < compiler->scope_depth) {
+			break;
+		}
+
+		if (name == local->name && length == local->length) {
+			lit_error(emitter->state, COMPILE_ERROR, line, "Variable '%.*s' was already declared in this scope", length, name);
+		}
+	}
+
+	LitLocal* local = &compiler->locals[compiler->local_count++];
+
+	local->name = name;
+	local->length = length;
+	local->depth = compiler->scope_depth;
+}
+
+static void declare_variable(LitEmitter* emitter, const char* name, uint length, uint line) {
+	if (emitter->compiler->scope_depth == 0) {
+		// No need to declare a global
+		return;
+	}
+
+	add_local(emitter, name, length, line);
+}
+
+static int resolve_local(LitEmitter* emitter, const char* name, uint length) {
+	for (int i = emitter->compiler->local_count - 1; i >= 0; i--) {
+		LitLocal* local = &emitter->compiler->locals[i];
+
+		if (local->length == length && memcmp(local->name, name, length) == 0) {
+			return i;
+		}
+	}
+
+	return -1;
 }
 
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
@@ -156,16 +219,38 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
+		case LOCAL_VAR_EXPRESSION: {
+			LitLocalVarExpression* expr = (LitLocalVarExpression*) expression;
+			int index = resolve_local(emitter, expr->name, expr->length);
+
+			if (index == -1) {
+				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Undefined variable '%.*s'", (int) expr->length, expr->name);
+				break;
+			}
+
+			emit_bytes(emitter, expression->line, OP_GET_LOCAL, (uint8_t) index);
+			break;
+		}
+
 		case ASSIGN_EXPRESSION: {
 			LitAssignExpression* expr = (LitAssignExpression*) expression;
 			emit_expression(emitter, expr->value);
 
-			if (expr->to->type != VAR_EXPRESSION) {
-				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Invalid assigment target %d", (int) expr->to->type);
-				break;
-			}
+			if (expr->to->type == VAR_EXPRESSION) {
+				emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, OBJECT_VAL(((LitVarExpression*) expr->to)->name), expression->line));
+			} else if (expr->to->type == LOCAL_VAR_EXPRESSION) {
+				LitLocalVarExpression* e = (LitLocalVarExpression*) expr->to;
+				int index = resolve_local(emitter, e->name, e->length);
 
-			emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, OBJECT_VAL(((LitVarExpression*) expr->to)->name), expression->line));
+				if (index == -1) {
+					lit_error(emitter->state, COMPILE_ERROR, expression->line, "Undefined variable '%.*s'", (int) e->length, e->name);
+					break;
+				} else {
+					emit_bytes(emitter, expression->line, OP_SET_LOCAL, (uint8_t) index);
+				}
+			} else {
+				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Invalid assigment target %d", (int) expr->to->type);
+			}
 
 			break;
 		}
@@ -186,6 +271,18 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			break;
 		}
 
+		case BLOCK_STATEMENT: {
+			LitStatements statements = ((LitBlockStatement*) statement)->statements;
+			begin_scope(emitter);
+
+			for (uint i = 0; i < statements.count; i++) {
+				emit_statement(emitter, statements.values[i]);
+			}
+
+			end_scope(emitter);
+			break;
+		}
+
 		case PRINT_STATEMENT: {
 			emit_expression(emitter, ((LitPrintStatement*) statement)->expression);
 			emit_byte(emitter, statement->line, OP_PRINT);
@@ -197,13 +294,15 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitVarStatement* stmt = (LitVarStatement*) statement;
 			uint line = statement->line;
 
+			declare_variable(emitter, stmt->name, stmt->length, statement->line);
+
 			if (stmt->init == NULL) {
 				emit_byte(emitter, line, OP_NULL);
 			} else {
 				emit_expression(emitter, stmt->init);
 			}
 
-			emit_bytes(emitter, line, OP_SET_GLOBAL, add_constant(emitter, OBJECT_VAL(stmt->name), line));
+			// emit_bytes(emitter, line, OP_SET_GLOBAL, add_constant(emitter, OBJECT_VAL(stmt->name), line));
 			emit_byte(emitter, statement->line, OP_POP);
 			break;
 		}
@@ -216,11 +315,12 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 }
 
 LitChunk* lit_emit(LitEmitter* emitter, LitStatements* statements) {
-	emitter->had_error = false;
-
 	LitChunk* chunk = (LitChunk*) lit_reallocate(emitter->state, NULL, 0, sizeof(LitChunk));
 	lit_init_chunk(chunk);
 	emitter->chunk = chunk;
+
+	LitCompiler compiler;
+	init_compiler(emitter, &compiler);
 
 	for (uint i = 0; i < statements->count; i++) {
 		emit_statement(emitter, statements->values[i]);

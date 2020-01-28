@@ -24,6 +24,8 @@ typedef struct sLitState {
 	struct sLitParser* parser;
 	struct sLitEmitter* emitter;
 	struct sLitVm* vm;
+
+	bool had_error;
 } sLitState;
 
 typedef enum {

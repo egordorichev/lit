@@ -7,6 +7,10 @@ DEFINE_ARRAY(LitStatements, LitStatement*, stataments)
 #define FREE_EXPRESSION(type) lit_reallocate(state, expression, sizeof(type), 0);
 
 void lit_free_expression(LitState* state, LitExpression* expression) {
+	if (expression == NULL) {
+		return;
+	}
+
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
 			FREE_EXPRESSION(LitLiteralExpression)
@@ -42,6 +46,11 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 
 		case VAR_EXPRESSION: {
 			FREE_EXPRESSION(LitVarExpression)
+			break;
+		}
+
+		case LOCAL_VAR_EXPRESSION: {
+			FREE_EXPRESSION(LitLocalVarExpression)
 			break;
 		}
 
@@ -112,6 +121,15 @@ LitVarExpression *lit_create_var_expression(LitState* state, uint line, LitStrin
 	return expression;
 }
 
+LitLocalVarExpression *lit_create_local_var_expression(LitState* state, uint line, LitToken name) {
+	LitLocalVarExpression* expression = ALLOCATE_EXPRESSION(state, LitLocalVarExpression, LOCAL_VAR_EXPRESSION);
+
+	expression->name = name.start;
+	expression->length = name.length;
+
+	return expression;
+}
+
 LitAssignExpression *lit_create_assign_expression(LitState* state, uint line, LitExpression* to, LitExpression* value) {
 	LitAssignExpression* expression = ALLOCATE_EXPRESSION(state, LitAssignExpression, ASSIGN_EXPRESSION);
 
@@ -124,10 +142,27 @@ LitAssignExpression *lit_create_assign_expression(LitState* state, uint line, Li
 #define FREE_STATEMENT(type) lit_reallocate(state, statement, sizeof(type), 0);
 
 void lit_free_statement(LitState* state, LitStatement* statement) {
+	if (statement == NULL) {
+		return;
+	}
+
 	switch (statement->type) {
 		case EXPRESSION_STATEMENT: {
 			lit_free_expression(state, ((LitExpressionStatement*) statement)->expression);
 			FREE_STATEMENT(LitExpressionStatement)
+			break;
+		}
+
+		case BLOCK_STATEMENT: {
+			LitStatements statements = ((LitBlockStatement*) statement)->statements;
+
+			for (uint i = 0; i < statements.count; i++) {
+				lit_free_statement(state, statements.values[i]);
+			}
+
+			lit_free_stataments(state, &statements);
+			FREE_STATEMENT(LitBlockStatement)
+
 			break;
 		}
 
@@ -168,16 +203,23 @@ LitExpressionStatement *lit_create_expression_statement(LitState* state, uint li
 	return statement;
 }
 
+LitBlockStatement *lit_create_block_statement(LitState* state, uint line) {
+	LitBlockStatement* statement = ALLOCATE_STATEMENT(state, LitBlockStatement, BLOCK_STATEMENT);
+	lit_init_stataments(&statement->statements);
+	return statement;
+}
+
 LitPrintStatement *lit_create_print_statement(LitState* state, uint line, LitExpression* expression) {
 	LitPrintStatement* statement = ALLOCATE_STATEMENT(state, LitPrintStatement, PRINT_STATEMENT);
 	statement->expression = expression;
 	return statement;
 }
 
-LitVarStatement *lit_create_var_statement(LitState* state, uint line, LitString* name, LitExpression* init) {
+LitVarStatement *lit_create_var_statement(LitState* state, uint line, const char* name, uint length, LitExpression* init) {
 	LitVarStatement* statement = ALLOCATE_STATEMENT(state, LitVarStatement, VAR_STATEMENT);
 
 	statement->name = name;
+	statement->length = length;
 	statement->init = init;
 
 	return statement;

@@ -4,6 +4,8 @@
 #include <lit/lit_common.h>
 #include <lit/lit_predefines.h>
 #include <lit/parser/lit_ast.h>
+#include <lit/emitter/lit_emitter.h>
+#include <lit/lit.h>
 
 typedef enum {
 	PREC_NONE,
@@ -36,6 +38,8 @@ typedef struct sLitParser {
 
 	LitToken previous;
 	LitToken current;
+
+	LitCompiler* compiler;
 } sLitParser;
 
 void lit_init_parser(LitState* state, LitParser* parser);

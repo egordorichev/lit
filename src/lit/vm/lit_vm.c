@@ -262,6 +262,20 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 			continue;
 		}
 
+		CASE_CODE(SET_LOCAL) {
+			uint8_t index = READ_BYTE();
+			vm->stack[index] = PEEK(0);
+
+			continue;
+		}
+
+		CASE_CODE(GET_LOCAL) {
+			uint8_t index = READ_BYTE();
+			lit_push(vm, vm->stack[index]);
+
+			continue;
+		}
+
 		printf("Unknown op code!");
 		break;
 	}

@@ -24,6 +24,13 @@ static uint print_constant_op(const char* name, LitChunk* chunk, uint offset, bo
 	return offset + (big ? 3 : 2);
 }
 
+static uint print_byte_op(const char* name, LitChunk* chunk, uint offset) {
+	uint8_t slot = chunk->code[offset + 1];
+	printf("%-16s %4d\n", name, slot);
+
+	return offset + 2;
+}
+
 uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 	printf("%04d ", offset);
 	uint line = lit_chunk_get_line(chunk, offset);
@@ -59,6 +66,8 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_PRINT: return print_simple_op("OP_PRINT", offset);
 		case OP_SET_GLOBAL: return print_constant_op("OP_SET_GLOBAL", chunk, offset, false);
 		case OP_GET_GLOBAL: return print_constant_op("OP_GET_GLOBAL", chunk, offset, false);
+		case OP_SET_LOCAL: return print_byte_op("OP_SET_LOCAL", chunk, offset);
+		case OP_GET_LOCAL: return print_byte_op("OP_GET_LOCAL", chunk, offset);
 
 		default: {
 			printf("Unknown opcode %d\n", instruction);
