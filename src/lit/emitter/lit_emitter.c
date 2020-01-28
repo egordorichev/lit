@@ -65,7 +65,7 @@ static uint8_t add_constant(LitEmitter* emitter, LitValue value, uint line) {
 	return constant;
 }
 
-static void add_local(LitEmitter* emitter, const char* name, uint length, uint line) {
+static int add_local(LitEmitter* emitter, const char* name, uint length, uint line) {
 	LitCompiler* compiler = emitter->compiler;
 
 	if (compiler->local_count == UINT8_MAX + 1) {
@@ -89,15 +89,17 @@ static void add_local(LitEmitter* emitter, const char* name, uint length, uint l
 	local->name = name;
 	local->length = length;
 	local->depth = compiler->scope_depth;
+
+	return compiler->local_count - 1;
 }
 
-static void declare_variable(LitEmitter* emitter, const char* name, uint length, uint line) {
+static int declare_variable(LitEmitter* emitter, const char* name, uint length, uint line) {
 	if (emitter->compiler->scope_depth == 0) {
 		// No need to declare a global
-		return;
+		return -1;
 	}
 
-	add_local(emitter, name, length, line);
+	return add_local(emitter, name, length, line);
 }
 
 static int resolve_local(LitEmitter* emitter, const char* name, uint length) {
@@ -314,9 +316,9 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case VAR_STATEMENT: {
 			LitVarStatement* stmt = (LitVarStatement*) statement;
-			uint line = statement->line;
 
-			declare_variable(emitter, stmt->name, stmt->length, statement->line);
+			uint line = statement->line;
+			int index = declare_variable(emitter, stmt->name, stmt->length, statement->line);
 
 			if (stmt->init == NULL) {
 				emit_byte(emitter, line, OP_NULL);
@@ -324,8 +326,7 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_expression(emitter, stmt->init);
 			}
 
-			// emit_bytes(emitter, line, OP_SET_GLOBAL, add_constant(emitter, OBJECT_VAL(stmt->name), line));
-			emit_byte(emitter, statement->line, OP_POP);
+			emit_bytes(emitter, line, OP_SET_LOCAL, (uint8_t) index);
 			break;
 		}
 

@@ -1,5 +1,7 @@
 {
  var a = 10
  var d = 32
+ var c = 219
  print(a)
+ print(c)
 }
