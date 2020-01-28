@@ -52,6 +52,12 @@ void lit_write_chunk(LitState* state, LitChunk* chunk, uint8_t byte, uint16_t li
 }
 
 uint lit_chunk_add_constant(LitState* state, LitChunk* chunk, LitValue constant) {
+	for (uint i = 0; i < chunk->constants.count; i++) {
+		if (chunk->constants.values[i] == constant) {
+			return i;
+		}
+	}
+
 	lit_values_write(state, &chunk->constants, constant);
 	return chunk->constants.count - 1;
 }
