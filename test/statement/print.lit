@@ -3,5 +3,3 @@ print(32.4) // Expected: 32.4
 print(true) // Expected: true
 print(false) // Expected: false
 print(null) // Expected: null
-
-print(10) // Expected: false
