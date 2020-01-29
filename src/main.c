@@ -48,6 +48,10 @@ static void load_and_run_chunk(LitState* state) {
 static char* read_file(const char* path) {
 	FILE* file = fopen(path, "rb");
 
+	if (file == NULL) {
+		return NULL;
+	}
+
 	fseek(file, 0L, SEEK_END);
 	size_t fileSize = ftell(file);
 	rewind(file);
@@ -61,7 +65,17 @@ static char* read_file(const char* path) {
 }
 
 int main(int argc, char* argv[]) {
-	char* source = read_file("test.lit");
+	if (argc != 2) {
+		printf("%s [file]\n", argv[0]);
+		return 0;
+	}
+
+	char* source = read_file(argv[1]);
+
+	if (source == NULL) {
+		printf("Failed top open file '%s'\n", argv[1]);
+		return 1;
+	}
 
 	LitState* state = lit_new_state();
 
