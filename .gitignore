@@ -1,0 +1,10 @@
+CMakeFiles*
+CMakeCache*
+cmake-build*
+cmake_install*
+*.cbp
+*.o
+*.a
+dist/*
+.idea/*
+Makefile

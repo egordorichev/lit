@@ -1,0 +1,9 @@
+print(-10) // Expected: -10
+print(-(-20)) // Expected: 20
+
+print(!true) // Expected: false
+print(!false) // Expected: true
+print(!null) // Expected: true
+print(!!null) // Expected: false
+print(!0) // Expected: true
+print(!1) // Expected: false

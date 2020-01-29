@@ -101,7 +101,7 @@ static bool skip_whitespace(LitScanner* scanner) {
 					return skip_whitespace(scanner);
 				}
 
-				break;
+				return false;
 			}
 
 			default: return false;
