@@ -1,0 +1,3 @@
+{
+  print(10) // Expected: 10
+}
