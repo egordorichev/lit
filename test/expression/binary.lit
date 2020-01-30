@@ -14,3 +14,7 @@ print(true && true) // Expected: true
 print(false && true) // Expected: false
 print(true && false) // Expected: false
 print(false && false) // Expected: false
+
+print(null ?? true) // Expected: true
+print(10 ?? true) // Expected: 10
+print(null ?? null) // Expected: null
