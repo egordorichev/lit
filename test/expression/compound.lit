@@ -1,0 +1,9 @@
+var a = 32
+
+print((a += 2)) // Expected: 34
+print((a -= 2)) // Expected: 32
+print((a *= 2)) // Expected: 64
+print((a /= 4)) // Expected: 16
+
+print((a++)) // Expected: 17
+print((a--)) // Expected: 16
