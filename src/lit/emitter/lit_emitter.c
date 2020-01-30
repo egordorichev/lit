@@ -26,6 +26,7 @@ static void begin_scope(LitEmitter* emitter) {
 
 static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte) {
 	lit_write_chunk(emitter->state, emitter->chunk, byte, line);
+	emitter->last_line = line;
 }
 
 static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b) {
@@ -307,16 +308,12 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitStatements statements = ((LitBlockStatement*) statement)->statements;
 			begin_scope(emitter);
 
-			uint line = statement->line;
-
 			for (uint i = 0; i < statements.count; i++) {
 				LitStatement* stmt = statements.values[i];
 				emit_statement(emitter, stmt);
-
-				line = stmt->line;
 			}
 
-			end_scope(emitter, line);
+			end_scope(emitter, emitter->last_line);
 			break;
 		}
 
@@ -355,7 +352,7 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_statement(emitter, stmt->if_branch);
 
 			bool single_branch = stmt->else_branch == NULL && stmt->elseif_conditions == NULL;
-			uint64_t end_jump = single_branch ? else_jump : emit_jump(emitter, OP_JUMP, statement->line);
+			uint64_t end_jump = single_branch ? else_jump : emit_jump(emitter, OP_JUMP, emitter->last_line);
 
 			if (!single_branch) {
 				uint64_t end_jumps[stmt->elseif_branches == NULL ? 0 : stmt->elseif_branches->count];
@@ -367,12 +364,11 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 						patch_jump(emitter, else_jump, e->line);
 						emit_byte(emitter, e->line, OP_POP); // Pop the old condition
 						emit_expression(emitter, e);
-						else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, e->line);
+						else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
 						emit_byte(emitter, e->line, OP_POP); // Pop the condition
 						emit_statement(emitter, stmt->elseif_branches->values[i]);
 
-						// fixme: wrong line
-						end_jumps[i] = emit_jump(emitter, OP_JUMP, statement->line);
+						end_jumps[i] = emit_jump(emitter, OP_JUMP, emitter->last_line);
 					}
 				}
 
@@ -389,8 +385,7 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				}
 			}
 
-			// fixme: line here is old, same as in the block comment
-			patch_jump(emitter, end_jump, statement->line);
+			patch_jump(emitter, end_jump, emitter->last_line);
 
 			break;
 		}
@@ -418,6 +413,6 @@ LitChunk* lit_emit(LitEmitter* emitter, LitStatements* statements) {
 	}
 
 	end_scope(emitter, line);
-	emit_byte(emitter, 1, OP_RETURN);
+	emit_byte(emitter, emitter->last_line, OP_RETURN);
 	return chunk;
 }

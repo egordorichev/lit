@@ -1,0 +1,83 @@
+if (false) {
+    print("bad")
+}
+
+if (true) {
+    print("good") // Expected: good
+}
+
+if (true) {
+    print("good") // Expected: good
+} else {
+    print("bad")
+}
+
+if (false) {
+    print("bad")
+} else {
+    print("good") // Expected: good
+}
+
+if (false) {
+    print("bad")
+} else if (false) {
+    print("bad")
+} else {
+    print("good") // Expected: good
+}
+
+if (false) {
+    print("bad")
+} else if (true) {
+    print("good") // Expected: good
+} else {
+    print("bad")
+}
+
+if (true) {
+    print("good") // Expected: good
+} else if (true) {
+    print("bad")
+} else {
+    print("bad")
+}
+
+if (false) {
+    print("bad")
+} else if (false) {
+    print("bad")
+} else if (false) {
+    print("bad")
+} else {
+    print("good") // Expected: good
+}
+
+if (false) {
+    print("bad")
+} else if (false) {
+    print("bad")
+} else if (true) {
+    print("good") // Expected: good
+} else {
+    print("bad")
+}
+
+if (true) {
+    print("good") // Expected: good
+} else if (true) {
+    print("bad")
+} else if (false) {
+    print("bad")
+} else {
+    print("bad")
+}
+
+if (false) {
+    print("bad")
+} else if (true) {
+    print("good") // Expected: good
+} else if (false) {
+    print("bad")
+} else {
+    print("bad")
+}

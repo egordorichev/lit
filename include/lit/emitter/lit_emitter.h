@@ -22,6 +22,7 @@ typedef struct sLitEmitter {
 	LitState* state;
 	LitChunk* chunk;
 	LitCompiler* compiler;
+	uint last_line;
 } sLitEmitter;
 
 void lit_init_emitter(LitState* state, LitEmitter* emitter);
