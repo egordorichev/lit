@@ -82,6 +82,11 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 	vm->chunk = chunk;
 	vm->ip = chunk->code;
 
+#ifdef LIT_TRACE_CHUNK
+	lit_disassemble_chunk(chunk, "test chunk");
+	printf("============\n");
+#endif
+
 	register uint8_t* ip = vm->ip;
 	register LitChunk* current_chunk = chunk;
 
@@ -133,28 +138,28 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 		CASE_CODE(POP) {
 			lit_pop(vm);
 			continue;
-		};
+		}
 
 		CASE_CODE(POP_MULTIPLE) {
 			uint8_t index = READ_BYTE();
 			vm->stack_top -= index;
 
 			continue;
-		};
+		}
 
 		CASE_CODE(RETURN) {
 			return INTERPRET_OK;
-		};
+		}
 
 		CASE_CODE(CONSTANT) {
 			lit_push(vm, READ_CONSTANT());
 			continue;
-		};
+		}
 
 		CASE_CODE(CONSTANT_LONG) {
 			lit_push(vm, READ_CONSTANT_LONG());
 			continue;
-		};
+		}
 
 		CASE_CODE(TRUE) {
 			lit_push(vm, TRUE_VAL);
@@ -279,6 +284,26 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 			uint8_t index = READ_BYTE();
 			lit_push(vm, vm->stack[index]);
 
+			continue;
+		}
+
+		CASE_CODE(JUMP_IF_FALSE) {
+			uint16_t offset = READ_SHORT();
+
+			if (is_falsey(PEEK(0))) {
+				ip += offset;
+			}
+
+			continue;
+		}
+
+		CASE_CODE(JUMP) {
+			ip += READ_SHORT();
+			continue;
+		}
+
+		CASE_CODE(JUMP_BACK) {
+			ip -= READ_SHORT();
 			continue;
 		}
 

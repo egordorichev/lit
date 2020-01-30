@@ -9,8 +9,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/dist")
 OPTION(DEFINE_TEST "Build code for testing (disables debug output)" OFF)
 
 IF(DEFINE_TEST)
-    MESSAGE("Adding Test flag...")
-    ADD_DEFINITIONS(-DTEST)
+ MESSAGE("Adding Test flag...")
+ ADD_DEFINITIONS(-DTEST)
 ENDIF(DEFINE_TEST)
 
 add_library(lit STATIC src/lit/lit.c src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/vm/lit_chunk.c
@@ -20,5 +20,4 @@ add_library(lit STATIC src/lit/lit.c src/lit/mem/lit_mem.c src/lit/state/lit_sta
         )
 
 add_executable(litc src/main.c)
-
 target_link_libraries(litc lit)

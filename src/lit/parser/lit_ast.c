@@ -178,6 +178,21 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 			break;
 		}
 
+		case IF_STATEMENT: {
+			LitIfStatement* stmt = (LitIfStatement*) statement;
+
+			lit_free_expression(state, stmt->condition);
+			lit_free_statement(state, stmt->if_branch);
+
+			lit_free_allocated_expressions(state, stmt->elseif_conditions);
+			lit_free_allocated_statements(state, stmt->elseif_branches);
+
+			lit_free_statement(state, stmt->else_branch);
+
+			FREE_STATEMENT(LitIfStatement)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown statement type %d", (int) statement->type);
 			break;
@@ -223,5 +238,54 @@ LitVarStatement *lit_create_var_statement(LitState* state, uint line, const char
 	statement->init = init;
 
 	return statement;
+}
 
+LitIfStatement *lit_create_if_statement(LitState* state, uint line, LitExpression* condition, LitStatement* if_branch, LitStatement* else_branch, LitExpressions* elseif_conditions, LitStatements* elseif_branches) {
+	LitIfStatement* statement = ALLOCATE_STATEMENT(state, LitIfStatement, IF_STATEMENT);
+
+	statement->condition = condition;
+	statement->if_branch = if_branch;
+	statement->else_branch = else_branch;
+	statement->elseif_conditions = elseif_conditions;
+	statement->elseif_branches = elseif_branches;
+
+	return statement;
+}
+
+LitExpressions* lit_allocate_expressions(LitState* state) {
+	LitExpressions* expressions = (LitExpressions*) lit_reallocate(state, NULL, 0, sizeof(LitExpressions));
+	lit_init_expressions(expressions);
+	return expressions;
+}
+
+void lit_free_allocated_expressions(LitState* state, LitExpressions* expressions) {
+	if (expressions == NULL) {
+		return;
+	}
+
+	for (uint i = 0; i < expressions->count; i++) {
+		lit_free_expression(state, expressions->values[i]);
+	}
+
+	lit_free_expressions(state, expressions);
+	lit_reallocate(state, expressions, sizeof(LitExpressions), 0);
+}
+
+LitStatements* lit_allocate_statements(LitState* state) {
+	LitStatements* statements = (LitStatements*) lit_reallocate(state, NULL, 0, sizeof(LitStatements));
+	lit_init_stataments(statements);
+	return statements;
+}
+
+void lit_free_allocated_statements(LitState* state, LitStatements* statements) {
+	if (statements == NULL) {
+		return;
+	}
+
+	for (uint i = 0; i < statements->count; i++) {
+		lit_free_statement(state, statements->values[i]);
+	}
+
+	lit_free_stataments(state, statements);
+	lit_reallocate(state, statements, sizeof(LitStatements), 0);
 }

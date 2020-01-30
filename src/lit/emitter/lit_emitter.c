@@ -109,6 +109,24 @@ static int resolve_local(LitEmitter* emitter, const char* name, uint length, uin
 	return -1;
 }
 
+static uint emit_jump(LitEmitter* emitter, LitOpCode code, uint line) {
+	emit_byte(emitter, line, code);
+	emit_bytes(emitter, line, 0xff, 0xff);
+
+	return emitter->chunk->count - 2;
+}
+
+static void patch_jump(LitEmitter* emitter, uint offset, uint line) {
+	uint jump = emitter->chunk->count - offset - 2;
+
+	if (jump > UINT16_MAX) {
+		lit_error(emitter->state, COMPILE_ERROR, line, "Too much code to jump over");
+	}
+
+	emitter->chunk->code[offset] = (jump >> 8) & 0xff;
+	emitter->chunk->code[offset + 1] = jump & 0xff;
+}
+
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
@@ -323,6 +341,56 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			emitter->compiler->locals[index].depth = emitter->compiler->scope_depth;
 			emit_bytes(emitter, line, OP_SET_LOCAL, (uint8_t) index);
+
+			break;
+		}
+
+		case IF_STATEMENT: {
+			LitIfStatement* stmt = (LitIfStatement*) statement;
+
+			emit_expression(emitter, stmt->condition);
+
+			uint64_t else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
+			emit_byte(emitter, statement->line, OP_POP); // Pop the condition
+			emit_statement(emitter, stmt->if_branch);
+
+			bool single_branch = stmt->else_branch == NULL && stmt->elseif_conditions == NULL;
+			uint64_t end_jump = single_branch ? else_jump : emit_jump(emitter, OP_JUMP, statement->line);
+
+			if (!single_branch) {
+				uint64_t end_jumps[stmt->elseif_branches == NULL ? 0 : stmt->elseif_branches->count];
+
+				if (stmt->elseif_branches != NULL) {
+					for (uint i = 0; i < stmt->elseif_branches->count; i++) {
+						LitExpression *e = stmt->elseif_conditions->values[i];
+
+						patch_jump(emitter, else_jump, e->line);
+						emit_byte(emitter, e->line, OP_POP); // Pop the old condition
+						emit_expression(emitter, e);
+						else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, e->line);
+						emit_byte(emitter, e->line, OP_POP); // Pop the condition
+						emit_statement(emitter, stmt->elseif_branches->values[i]);
+
+						// fixme: wrong line
+						end_jumps[i] = emit_jump(emitter, OP_JUMP, statement->line);
+					}
+				}
+
+				if (stmt->else_branch != NULL) {
+					patch_jump(emitter, else_jump, stmt->else_branch->line);
+					emit_byte(emitter, stmt->else_branch->line, OP_POP); // Pop the old condition
+					emit_statement(emitter, stmt->else_branch);
+				}
+
+				if (stmt->elseif_branches != NULL) {
+					for (int i = 0; i < stmt->elseif_branches->count; i++) {
+						patch_jump(emitter, end_jumps[i], stmt->elseif_branches->values[i]->line);
+					}
+				}
+			}
+
+			// fixme: line here is old, same as in the block comment
+			patch_jump(emitter, end_jump, statement->line);
 
 			break;
 		}

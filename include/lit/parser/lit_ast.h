@@ -145,4 +145,23 @@ typedef struct {
 
 LitVarStatement *lit_create_var_statement(LitState* state, uint line, const char* name, uint length, LitExpression* init);
 
+typedef struct {
+	LitStatement statement;
+
+	LitExpression* condition;
+	LitStatement* if_branch;
+	LitStatement* else_branch;
+
+	LitExpressions* elseif_conditions;
+	LitStatements* elseif_branches;
+} LitIfStatement;
+
+LitIfStatement *lit_create_if_statement(LitState* state, uint line, LitExpression* condition, LitStatement* if_branch, LitStatement* else_branch, LitExpressions* elseif_conditions, LitStatements* elseif_branches);
+
+LitExpressions* lit_allocate_expressions(LitState* state);
+void lit_free_allocated_expressions(LitState* state, LitExpressions* expressions);
+
+LitStatements* lit_allocate_statements(LitState* state);
+void lit_free_allocated_statements(LitState* state, LitStatements* statements);
+
 #endif

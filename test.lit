@@ -1,7 +1,9 @@
-var a = 32
-var c = 58
-
-print(a) // Expected: 32
-print(a / 2) // Expected: 16
-print(a += 2) // Expected: 34
-print(a) // Expected: 34
+if (false) {
+    print("True")
+} else if (0) {
+    print("True 2")
+} else if (null) {
+    print("Truee!")
+} else {
+    print("False")
+}

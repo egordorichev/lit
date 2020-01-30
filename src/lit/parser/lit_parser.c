@@ -287,9 +287,51 @@ static LitStatement* parse_var_declaration(LitParser* parser) {
 	return (LitStatement*) lit_create_var_statement(parser->state, line, name, length, init);
 }
 
+static LitStatement* parse_if(LitParser* parser) {
+	uint line = parser->previous.line;
+	consume(parser, TOKEN_LEFT_PAREN, "Expected '('");
+	LitExpression* condition = parse_expression(parser);
+	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')'");
+
+	LitStatement* if_branch = parse_statement(parser);
+
+	LitExpressions* elseif_conditions = NULL;
+	LitStatements* elseif_branches = NULL;
+	LitStatement* else_branch = NULL;
+
+	while (match(parser, TOKEN_ELSE)) {
+		// else if
+		if (match(parser, TOKEN_IF)) {
+			if (elseif_conditions == NULL) {
+				elseif_conditions = lit_allocate_expressions(parser->state);
+				elseif_branches = lit_allocate_statements(parser->state);
+			}
+
+			consume(parser, TOKEN_LEFT_PAREN, "Expected '('");
+			lit_expressions_write(parser->state, elseif_conditions, parse_expression(parser));
+			consume(parser, TOKEN_RIGHT_PAREN, "Expected ')'");
+
+			lit_stataments_write(parser->state, elseif_branches, parse_statement(parser));
+
+			continue;
+		}
+
+		// else
+		if (else_branch != NULL) {
+			error_at_current(parser, "If statement can only have one else branch");
+		}
+
+		else_branch = parse_statement(parser);
+	}
+
+	return (LitStatement*) lit_create_if_statement(parser->state, line, condition, if_branch, else_branch, elseif_conditions, elseif_branches);
+}
+
 static LitStatement* parse_statement(LitParser* parser) {
 	if (match(parser, TOKEN_VAR)) {
 		return parse_var_declaration(parser);
+	} else if (match(parser, TOKEN_IF)) {
+		return parse_if(parser);
 	} else if (match(parser, TOKEN_PRINT)) {
 		return parse_print(parser);
 	} else if (match(parser, TOKEN_LEFT_BRACE)) {
