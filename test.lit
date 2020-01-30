@@ -1,9 +1,1 @@
-if (false) {
-    print("True")
-} else if (0) {
-    print("True 2")
-} else if (null) {
-    print("Truee!")
-} else {
-    print("False")
-}
+print(true || false)

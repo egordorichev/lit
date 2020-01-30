@@ -97,6 +97,10 @@ LitInterpretResult lit_interpret(LitState* state, char* code) {
 	// TMP line, because chunk is allocated by hand for now, we need to free it:
 	lit_reallocate(state, chunk, sizeof(LitChunk), 0);
 
+	if (state->vm->stack_top != state->vm->stack) {
+		lit_error(state, RUNTIME_ERROR, 0, "Stack had left over trash in it");
+	}
+
 	return result;
 }
 

@@ -159,6 +159,28 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitBinaryExpression* expr = (LitBinaryExpression*) expression;
 
 			emit_expression(emitter, expr->left);
+
+			if (expr->operator == TOKEN_AMPERSAND_AMPERSAND) {
+				uint jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
+
+				emit_byte(emitter, emitter->last_line, OP_POP);
+				emit_expression(emitter, expr->right);
+
+				patch_jump(emitter, jump, emitter->last_line);
+				break;
+			} else if (expr->operator == TOKEN_BAR_BAR) {
+				uint else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
+				uint end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
+
+				patch_jump(emitter, else_jump, emitter->last_line);
+				emit_byte(emitter, emitter->last_line, OP_POP);
+
+				emit_expression(emitter, expr->right);
+				patch_jump(emitter, end_jump, emitter->last_line);
+
+				break;
+			}
+
 			emit_expression(emitter, expr->right);
 
 			switch (expr->operator) {
