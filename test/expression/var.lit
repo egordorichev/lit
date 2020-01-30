@@ -1,5 +1,4 @@
 var a = 32
-var c = 58
 
 print(a) // Expected: 32
 print(a / 2) // Expected: 16

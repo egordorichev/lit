@@ -252,13 +252,7 @@ static LitExpression* parse_literal(LitParser* parser, bool can_assign) {
 }
 
 static LitExpression* parse_variable_expression(LitParser* parser, bool can_assign) {
-	LitExpression* expression;
-
-	if (parser->compiler->scope_depth > 0) {
-		expression = (LitExpression*) lit_create_local_var_expression(parser->state, parser->previous.line, parser->previous);
-	} else {
-		expression = (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length));
-	}
+	LitExpression* expression = (LitExpression*) lit_create_local_var_expression(parser->state, parser->previous.line, parser->previous);
 
 	if (can_assign && match(parser, TOKEN_EQUAL)) {
 		return (LitExpression*) lit_create_assign_expression(parser->state, parser->previous.line, expression, parse_expression(parser));

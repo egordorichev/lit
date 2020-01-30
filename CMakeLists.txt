@@ -6,6 +6,13 @@ include_directories(include)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/dist")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/dist")
 
+OPTION(DEFINE_TEST "Build code for testing (disables debug output)" OFF)
+
+IF(DEFINE_TEST)
+    MESSAGE("Adding Test flag...")
+    ADD_DEFINITIONS(-DTEST)
+ENDIF(DEFINE_TEST)
+
 add_library(lit STATIC src/lit/lit.c src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/vm/lit_chunk.c
         src/lit/debug/lit_debug.c src/lit/vm/lit_value.c src/lit/vm/lit_vm.c src/lit/scanner/lit_scanner.c
         src/lit/parser/lit_parser.c src/lit/parser/lit_ast.c src/lit/emitter/lit_emitter.c src/lit/vm/lit_object.c

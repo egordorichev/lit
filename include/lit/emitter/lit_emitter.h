@@ -9,13 +9,13 @@
 typedef struct {
 	const char* name;
 	uint length;
-	uint16_t depth;
+	int depth;
 } LitLocal;
 
 typedef struct {
 	LitLocal locals[UINT8_MAX + 1];
-	uint16_t local_count;
-	uint16_t scope_depth;
+	int local_count;
+	int scope_depth;
 } LitCompiler;
 
 typedef struct sLitEmitter {

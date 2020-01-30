@@ -93,15 +93,6 @@ static int add_local(LitEmitter* emitter, const char* name, uint length, uint li
 	return compiler->local_count - 1;
 }
 
-static int declare_variable(LitEmitter* emitter, const char* name, uint length, uint line) {
-	if (emitter->compiler->scope_depth == 0) {
-		// No need to declare a global
-		return -1;
-	}
-
-	return add_local(emitter, name, length, line);
-}
-
 static int resolve_local(LitEmitter* emitter, const char* name, uint length, uint line) {
 	for (int i = emitter->compiler->local_count - 1; i >= 0; i--) {
 		LitLocal* local = &emitter->compiler->locals[i];
@@ -322,7 +313,7 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitVarStatement* stmt = (LitVarStatement*) statement;
 
 			uint line = statement->line;
-			int index = declare_variable(emitter, stmt->name, stmt->length, statement->line);
+			int index = add_local(emitter, stmt->name, stmt->length, statement->line);
 
 			if (stmt->init == NULL) {
 				emit_byte(emitter, line, OP_NULL);
@@ -350,11 +341,15 @@ LitChunk* lit_emit(LitEmitter* emitter, LitStatements* statements) {
 
 	LitCompiler compiler;
 	init_compiler(emitter, &compiler);
+	uint line = 1;
 
 	for (uint i = 0; i < statements->count; i++) {
-		emit_statement(emitter, statements->values[i]);
+		LitStatement* stmt = statements->values[i];
+		emit_statement(emitter, stmt);
+		line = stmt->line;
 	}
 
+	end_scope(emitter, line);
 	emit_byte(emitter, 1, OP_RETURN);
 	return chunk;
 }
