@@ -206,6 +206,13 @@ static LitExpression* parse_or(LitParser* parser, LitExpression* prev, bool can_
 	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, PREC_OR), operator);
 }
 
+static LitExpression* parse_null_filter(LitParser* parser, LitExpression* prev, bool can_assign) {
+	LitTokenType operator = parser->previous.type;
+	uint line = parser->previous.line;
+
+	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, PREC_NULL), operator);
+}
+
 static LitTokenType convert_compound_operator(LitTokenType operator) {
 	switch (operator) {
 		case TOKEN_PLUS_EQUAL: return TOKEN_PLUS;
@@ -456,4 +463,6 @@ static void setup_rules() {
 	rules[TOKEN_MINUS_MINUS] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_AMPERSAND_AMPERSAND] = (LitParseRule) { NULL, parse_and, PREC_AND };
 	rules[TOKEN_BAR_BAR] = (LitParseRule) { NULL, parse_or, PREC_AND };
+	rules[TOKEN_QUESTION_QUESTION] = (LitParseRule) { NULL, parse_null_filter, PREC_NULL };
+
 }

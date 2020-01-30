@@ -77,8 +77,9 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_SET_LOCAL: return print_byte_op("OP_SET_LOCAL", chunk, offset);
 		case OP_GET_LOCAL: return print_byte_op("OP_GET_LOCAL", chunk, offset);
 
-		case OP_JUMP: return print_jump_op("OP_JUMP", 1, chunk, offset);
 		case OP_JUMP_IF_FALSE: return print_jump_op("OP_JUMP_IF_FALSE", 1, chunk, offset);
+		case OP_JUMP_IF_NULL: return print_jump_op("OP_JUMP_IF_NULL", 1, chunk, offset);
+		case OP_JUMP: return print_jump_op("OP_JUMP", 1, chunk, offset);
 
 		default: {
 			printf("Unknown opcode %d\n", instruction);

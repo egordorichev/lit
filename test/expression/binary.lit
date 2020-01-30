@@ -4,3 +4,13 @@ print(2 * 3) // Expected: 6
 print(9 / 3) // Expected: 3
 
 print(2 + 2 * 2) // Expected: 6
+
+print(true || true) // Expected: true
+print(false || true) // Expected: true
+print(true || false) // Expected: true
+print(false || false) // Expected: false
+
+print(true && true) // Expected: true
+print(false && true) // Expected: false
+print(true && false) // Expected: false
+print(false && false) // Expected: false

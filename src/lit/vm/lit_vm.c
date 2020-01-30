@@ -297,6 +297,16 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 			continue;
 		}
 
+		CASE_CODE(JUMP_IF_NULL) {
+			uint16_t offset = READ_SHORT();
+
+			if (IS_NULL(PEEK(0))) {
+				ip += offset;
+			}
+
+			continue;
+		}
+
 		CASE_CODE(JUMP) {
 			ip += READ_SHORT();
 			continue;

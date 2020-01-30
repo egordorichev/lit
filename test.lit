@@ -1,1 +1,1 @@
-print(true || false)
+print(null ?? true)

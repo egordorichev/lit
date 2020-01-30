@@ -168,8 +168,8 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 				patch_jump(emitter, jump, emitter->last_line);
 				break;
-			} else if (expr->operator == TOKEN_BAR_BAR) {
-				uint else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
+			} else if (expr->operator == TOKEN_BAR_BAR || expr->operator == TOKEN_QUESTION_QUESTION) {
+				uint else_jump = emit_jump(emitter, expr->operator == TOKEN_BAR_BAR ? OP_JUMP_IF_FALSE : OP_JUMP_IF_NULL, emitter->last_line);
 				uint end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
 
 				patch_jump(emitter, else_jump, emitter->last_line);
