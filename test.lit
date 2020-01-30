@@ -1,3 +1,7 @@
-if !(false) {
-    print("true")
+if (true) {
+    print("woops")
+} else if (false) {
+    print("umm")
+} else {
+    print("hi")
 }

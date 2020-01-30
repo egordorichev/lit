@@ -86,6 +86,12 @@ if !(false) {
     print("good") // Expected: good
 }
 
+if (false) {
+    print("bad")
+} else if !(false) {
+    print("good") // Expected: good
+}
+
 if !(true && true) {
     print("oops")
 }

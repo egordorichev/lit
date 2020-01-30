@@ -34,6 +34,7 @@ void lit_push(LitVm* vm, LitValue value) {
 }
 
 LitValue lit_pop(LitVm* vm) {
+	assert(vm->stack_top > vm->stack);
 	vm->stack_top--;
 	return *vm->stack_top;
 }

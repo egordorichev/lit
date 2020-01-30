@@ -374,40 +374,41 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_statement(emitter, stmt->if_branch);
 
 			bool single_branch = stmt->else_branch == NULL && stmt->elseif_conditions == NULL;
-			uint64_t end_jump = single_branch ? else_jump : emit_jump(emitter, OP_JUMP, emitter->last_line);
+			uint64_t end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
 
-			if (!single_branch) {
-				uint64_t end_jumps[stmt->elseif_branches == NULL ? 0 : stmt->elseif_branches->count];
+			uint64_t end_jumps[stmt->elseif_branches == NULL ? 0 : stmt->elseif_branches->count];
 
-				if (stmt->elseif_branches != NULL) {
-					for (uint i = 0; i < stmt->elseif_branches->count; i++) {
-						LitExpression *e = stmt->elseif_conditions->values[i];
+			if (stmt->elseif_branches != NULL) {
+				for (uint i = 0; i < stmt->elseif_branches->count; i++) {
+					LitExpression *e = stmt->elseif_conditions->values[i];
 
-						patch_jump(emitter, else_jump, e->line);
-						emit_byte(emitter, e->line, OP_POP); // Pop the old condition
-						emit_expression(emitter, e);
-						else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
-						emit_byte(emitter, e->line, OP_POP); // Pop the condition
-						emit_statement(emitter, stmt->elseif_branches->values[i]);
+					patch_jump(emitter, else_jump, e->line);
+					emit_byte(emitter, e->line, OP_POP); // Pop the old condition
+					emit_expression(emitter, e);
+					else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
+					emit_byte(emitter, e->line, OP_POP); // Pop the condition
+					emit_statement(emitter, stmt->elseif_branches->values[i]);
 
-						end_jumps[i] = emit_jump(emitter, OP_JUMP, emitter->last_line);
-					}
-				}
-
-				if (stmt->else_branch != NULL) {
-					patch_jump(emitter, else_jump, stmt->else_branch->line);
-					emit_byte(emitter, stmt->else_branch->line, OP_POP); // Pop the old condition
-					emit_statement(emitter, stmt->else_branch);
-				}
-
-				if (stmt->elseif_branches != NULL) {
-					for (int i = 0; i < stmt->elseif_branches->count; i++) {
-						patch_jump(emitter, end_jumps[i], stmt->elseif_branches->values[i]->line);
-					}
+					end_jumps[i] = emit_jump(emitter, OP_JUMP, emitter->last_line);
 				}
 			}
 
+			if (stmt->else_branch != NULL) {
+				patch_jump(emitter, else_jump, stmt->else_branch->line);
+				emit_byte(emitter, stmt->else_branch->line, OP_POP); // Pop the old condition
+				emit_statement(emitter, stmt->else_branch);
+			} else {
+				patch_jump(emitter, else_jump, emitter->last_line);
+				emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+			}
+
 			patch_jump(emitter, end_jump, emitter->last_line);
+
+			if (stmt->elseif_branches != NULL) {
+				for (int i = 0; i < stmt->elseif_branches->count; i++) {
+					patch_jump(emitter, end_jumps[i], stmt->elseif_branches->values[i]->line);
+				}
+			}
 
 			break;
 		}

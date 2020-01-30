@@ -317,7 +317,7 @@ static LitStatement* parse_if(LitParser* parser) {
 	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')'");
 
 	if (invert) {
-		condition = lit_create_unary_expression(parser->state, condition->line, condition, TOKEN_BANG);
+		condition = (LitExpression*) lit_create_unary_expression(parser->state, condition->line, condition, TOKEN_BANG);
 	}
 
 	LitStatement* if_branch = parse_statement(parser);
@@ -334,9 +334,16 @@ static LitStatement* parse_if(LitParser* parser) {
 				elseif_branches = lit_allocate_statements(parser->state);
 			}
 
+			invert = match(parser, TOKEN_BANG);
 			consume(parser, TOKEN_LEFT_PAREN, "Expected '('");
-			lit_expressions_write(parser->state, elseif_conditions, parse_expression(parser));
+			LitExpression* e = parse_expression(parser);
 			consume(parser, TOKEN_RIGHT_PAREN, "Expected ')'");
+
+			if (invert) {
+				e = (LitExpression*) lit_create_unary_expression(parser->state, condition->line, e, TOKEN_BANG);
+			}
+
+			lit_expressions_write(parser->state, elseif_conditions, e);
 
 			lit_stataments_write(parser->state, elseif_branches, parse_statement(parser));
 
