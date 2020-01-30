@@ -1,1 +1,3 @@
-print(null ?? true)
+if !(false) {
+    print("true")
+}

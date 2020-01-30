@@ -310,9 +310,15 @@ static LitStatement* parse_var_declaration(LitParser* parser) {
 
 static LitStatement* parse_if(LitParser* parser) {
 	uint line = parser->previous.line;
+	bool invert = match(parser, TOKEN_BANG);
+
 	consume(parser, TOKEN_LEFT_PAREN, "Expected '('");
 	LitExpression* condition = parse_expression(parser);
 	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')'");
+
+	if (invert) {
+		condition = lit_create_unary_expression(parser->state, condition->line, condition, TOKEN_BANG);
+	}
 
 	LitStatement* if_branch = parse_statement(parser);
 

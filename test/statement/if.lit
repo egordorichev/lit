@@ -81,3 +81,11 @@ if (false) {
 } else {
     print("bad")
 }
+
+if !(false) {
+    print("good") // Expected: good
+}
+
+if !(true && true) {
+    print("oops")
+}
