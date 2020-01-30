@@ -361,11 +361,25 @@ static LitStatement* parse_if(LitParser* parser) {
 	return (LitStatement*) lit_create_if_statement(parser->state, line, condition, if_branch, else_branch, elseif_conditions, elseif_branches);
 }
 
+static LitStatement* parse_while(LitParser* parser) {
+	uint line = parser->previous.line;
+
+	consume(parser, TOKEN_LEFT_PAREN, "Expected '('");
+	LitExpression* condition = parse_expression(parser);
+	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')'");
+
+	LitStatement* body = parse_statement(parser);
+
+	return (LitStatement*) lit_create_while_statement(parser->state, line, condition, body);
+}
+
 static LitStatement* parse_statement(LitParser* parser) {
 	if (match(parser, TOKEN_VAR)) {
 		return parse_var_declaration(parser);
 	} else if (match(parser, TOKEN_IF)) {
 		return parse_if(parser);
+	} else if (match(parser, TOKEN_WHILE)) {
+		return parse_while(parser);
 	} else if (match(parser, TOKEN_PRINT)) {
 		return parse_print(parser);
 	} else if (match(parser, TOKEN_LEFT_BRACE)) {

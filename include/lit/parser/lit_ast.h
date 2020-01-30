@@ -158,6 +158,15 @@ typedef struct {
 
 LitIfStatement *lit_create_if_statement(LitState* state, uint line, LitExpression* condition, LitStatement* if_branch, LitStatement* else_branch, LitExpressions* elseif_conditions, LitStatements* elseif_branches);
 
+typedef struct {
+	LitStatement statement;
+
+	LitExpression* condition;
+	LitStatement* body;
+} LitWhileStatement;
+
+LitWhileStatement *lit_create_while_statement(LitState* state, uint line, LitExpression* condition, LitStatement* body);
+
 LitExpressions* lit_allocate_expressions(LitState* state);
 void lit_free_allocated_expressions(LitState* state, LitExpressions* expressions);
 

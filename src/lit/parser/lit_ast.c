@@ -193,6 +193,16 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 			break;
 		}
 
+		case WHILE_STATEMENT: {
+			LitWhileStatement* stmt = (LitWhileStatement*) statement;
+
+			lit_free_expression(state, stmt->condition);
+			lit_free_statement(state, stmt->body);
+
+			FREE_STATEMENT(LitWhileStatement)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown statement type %d", (int) statement->type);
 			break;
@@ -248,6 +258,15 @@ LitIfStatement *lit_create_if_statement(LitState* state, uint line, LitExpressio
 	statement->else_branch = else_branch;
 	statement->elseif_conditions = elseif_conditions;
 	statement->elseif_branches = elseif_branches;
+
+	return statement;
+}
+
+LitWhileStatement *lit_create_while_statement(LitState* state, uint line, LitExpression* condition, LitStatement* body) {
+	LitWhileStatement* statement = ALLOCATE_STATEMENT(state, LitWhileStatement, WHILE_STATEMENT);
+
+	statement->condition = condition;
+	statement->body = body;
 
 	return statement;
 }

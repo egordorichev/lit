@@ -128,6 +128,17 @@ static void patch_jump(LitEmitter* emitter, uint offset, uint line) {
 	emitter->chunk->code[offset + 1] = jump & 0xff;
 }
 
+static void emit_loop(LitEmitter* emitter, uint start, uint line) {
+	emit_byte(emitter, line, OP_JUMP_BACK);
+	uint offset = emitter->chunk->count - start + 2;
+
+	if (offset > UINT16_MAX) {
+		lit_error(emitter->state, COMPILE_ERROR, line, "Loop body is too large");
+	}
+
+	emit_bytes(emitter, line, (offset >> 8) & 0xff, offset & 0xff);
+}
+
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
@@ -373,9 +384,7 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_byte(emitter, statement->line, OP_POP); // Pop the condition
 			emit_statement(emitter, stmt->if_branch);
 
-			bool single_branch = stmt->else_branch == NULL && stmt->elseif_conditions == NULL;
 			uint64_t end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
-
 			uint64_t end_jumps[stmt->elseif_branches == NULL ? 0 : stmt->elseif_branches->count];
 
 			if (stmt->elseif_branches != NULL) {
@@ -413,6 +422,23 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			break;
 		}
 
+		case WHILE_STATEMENT: {
+			LitWhileStatement* stmt = (LitWhileStatement*) statement;
+
+			uint start = emitter->chunk->count;
+			emit_expression(emitter, stmt->condition);
+
+			uint64_t exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
+			emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+			emit_statement(emitter, stmt->body);
+
+			emit_loop(emitter, start, emitter->last_line);
+			patch_jump(emitter, exit_jump, emitter->last_line);
+			emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, statement->line, "Unknown statement type %d", (int) statement->type);
 			break;
@@ -437,5 +463,6 @@ LitChunk* lit_emit(LitEmitter* emitter, LitStatements* statements) {
 
 	end_scope(emitter, line);
 	emit_byte(emitter, emitter->last_line, OP_RETURN);
+
 	return chunk;
 }

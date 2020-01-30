@@ -1,7 +1,6 @@
-if (true) {
-    print("woops")
-} else if (false) {
-    print("umm")
-} else {
-    print("hi")
+var a = 3
+
+while (a > 0) {
+    print(a)
+    a--
 }
