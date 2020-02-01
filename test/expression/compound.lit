@@ -7,3 +7,5 @@ print((a /= 4)) // Expected: 16
 
 print((a++)) // Expected: 17
 print((a--)) // Expected: 16
+
+print((a %= 3)) // Expected: 1

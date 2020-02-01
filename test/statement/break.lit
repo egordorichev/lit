@@ -1,9 +1,13 @@
+var count = 0
+
 for (var j = 0; j < 2; j++) {
 	for (var i = 0; i < 10; i++) {
-		if (i > 5) {
+		if (i > 4) {
 			break
 		}
 
-		print(i)
+		count++
 	}
 }
+
+print(count) // Expected: 10
