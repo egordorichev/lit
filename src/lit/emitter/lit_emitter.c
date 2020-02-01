@@ -7,10 +7,13 @@
 
 void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->state = state;
+	emitter->loop_start = 0;
+
+	lit_init_uints(&emitter->breaks);
 }
 
 void lit_free_emitter(LitEmitter* emitter) {
-
+	lit_free_uints(emitter->state, &emitter->breaks);
 }
 
 static void init_compiler(LitEmitter* emitter, LitCompiler* compiler) {
@@ -137,6 +140,14 @@ static void emit_loop(LitEmitter* emitter, uint start, uint line) {
 	}
 
 	emit_bytes(emitter, line, (offset >> 8) & 0xff, offset & 0xff);
+}
+
+static void patch_breaks(LitEmitter* emitter, uint line) {
+	for (uint i = 0; i < emitter->breaks.count; i++) {
+		patch_jump(emitter, emitter->breaks.values[i], line);
+	}
+
+	lit_free_uints(emitter->state, &emitter->breaks);
 }
 
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
@@ -426,6 +437,8 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitWhileStatement* stmt = (LitWhileStatement*) statement;
 
 			uint start = emitter->chunk->count;
+			emitter->loop_start = start;
+
 			emit_expression(emitter, stmt->condition);
 
 			uint64_t exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
@@ -435,7 +448,65 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_loop(emitter, start, emitter->last_line);
 			patch_jump(emitter, exit_jump, emitter->last_line);
 			emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+			patch_breaks(emitter, emitter->last_line);
 
+			break;
+		}
+
+		case FOR_STATEMENT: {
+			LitForStatement* stmt = (LitForStatement*) statement;
+
+			begin_scope(emitter);
+
+			if (stmt->var != NULL) {
+				emit_statement(emitter, stmt->var);
+			} else if (stmt->init != NULL) {
+				emit_expression(emitter, stmt->init);
+			}
+
+			uint start = emitter->chunk->count;
+			uint exit_jump;
+
+			if (stmt->condition != NULL) {
+				emit_expression(emitter, stmt->condition);
+				exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
+				emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+			}
+
+			if (stmt->increment != NULL) {
+				uint body_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
+				uint increment_start = emitter->chunk->count;
+
+				emit_expression(emitter, stmt->increment);
+				emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+
+				emit_loop(emitter, start, emitter->last_line);
+				start = increment_start;
+				patch_jump(emitter, body_jump, emitter->last_line);
+			}
+
+			emitter->loop_start = start;
+			emit_statement(emitter, stmt->body);
+			emit_loop(emitter, start, emitter->last_line);
+
+			if (stmt->condition != NULL) {
+				patch_jump(emitter, exit_jump, emitter->last_line);
+				emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+			}
+
+			patch_breaks(emitter, emitter->last_line);
+			end_scope(emitter, emitter->last_line);
+
+			break;
+		}
+
+		case CONTINUE_STATEMENT: {
+			emit_loop(emitter, emitter->loop_start, statement->line);
+			break;
+		}
+
+		case BREAK_STATEMENT: {
+			lit_uints_write(emitter->state, &emitter->breaks, emit_jump(emitter, OP_JUMP, statement->line));
 			break;
 		}
 

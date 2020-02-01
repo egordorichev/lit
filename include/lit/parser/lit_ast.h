@@ -104,7 +104,9 @@ typedef enum {
 	FOR_STATEMENT,
 	CLASS_STATEMENT,
 	VAR_STATEMENT,
-	PRINT_STATEMENT
+	PRINT_STATEMENT,
+	CONTINUE_STATEMENT,
+	BREAK_STATEMENT
 } LitStatementType;
 
 typedef struct LitStatement {
@@ -166,6 +168,31 @@ typedef struct {
 } LitWhileStatement;
 
 LitWhileStatement *lit_create_while_statement(LitState* state, uint line, LitExpression* condition, LitStatement* body);
+
+typedef struct {
+	LitStatement statement;
+
+	LitExpression* init;
+	LitStatement* var;
+
+	LitExpression* condition;
+	LitExpression* increment;
+	LitStatement* body;
+} LitForStatement;
+
+LitForStatement *lit_create_for_statement(LitState* state, uint line, LitExpression* init, LitStatement* var, LitExpression* condition, LitExpression* increment, LitStatement* body);
+
+typedef struct {
+	LitStatement statement;
+} LitContinueStatement;
+
+LitContinueStatement *lit_create_continue_statement(LitState* state, uint line);
+
+typedef struct {
+	LitStatement statement;
+} LitBreakStatement;
+
+LitBreakStatement *lit_create_break_statement(LitState* state, uint line);
 
 LitExpressions* lit_allocate_expressions(LitState* state);
 void lit_free_allocated_expressions(LitState* state, LitExpressions* expressions);

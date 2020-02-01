@@ -5,6 +5,7 @@
 #include <lit/lit_predefines.h>
 #include <lit/vm/lit_chunk.h>
 #include <lit/parser/lit_ast.h>
+#include <lit/util/lit_array.h>
 
 typedef struct {
 	const char* name;
@@ -22,7 +23,11 @@ typedef struct sLitEmitter {
 	LitState* state;
 	LitChunk* chunk;
 	LitCompiler* compiler;
+
 	uint last_line;
+	uint loop_start;
+
+	LitUInts breaks;
 } sLitEmitter;
 
 void lit_init_emitter(LitState* state, LitEmitter* emitter);

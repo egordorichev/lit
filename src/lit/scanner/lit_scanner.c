@@ -163,7 +163,19 @@ static LitTokenType check_keyword(LitScanner* scanner, int start, int length, co
 
 static LitTokenType parse_identifier_type(LitScanner* scanner) {
 	switch (scanner->start[0]) {
-		case 'c': return check_keyword(scanner, 1, 4, "lass", TOKEN_CLASS);
+		case 'b': return check_keyword(scanner, 1, 4, "reak", TOKEN_BREAK);
+
+		case 'c': {
+			if (scanner->current - scanner->start > 1) {
+				switch (scanner->start[1]) {
+					case 'l': return check_keyword(scanner, 2, 3, "ass", TOKEN_CLASS);
+					case 'o': return check_keyword(scanner, 2, 6, "ntinue", TOKEN_CONTINUE);
+				}
+			}
+
+			break;
+		}
+
 		case 'e': return check_keyword(scanner, 1, 3, "lse", TOKEN_ELSE);
 		case 'p': return check_keyword(scanner, 1, 4, "rint", TOKEN_PRINT);
 

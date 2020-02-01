@@ -203,6 +203,30 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 			break;
 		}
 
+		case FOR_STATEMENT: {
+			LitForStatement* stmt = (LitForStatement*) statement;
+
+			lit_free_expression(state, stmt->increment);
+			lit_free_expression(state, stmt->condition);
+			lit_free_expression(state, stmt->init);
+
+			lit_free_statement(state, stmt->var);
+			lit_free_statement(state, stmt->body);
+
+			FREE_STATEMENT(LitForStatement)
+			break;
+		}
+
+		case CONTINUE_STATEMENT: {
+			FREE_STATEMENT(LitContinueStatement)
+			break;
+		}
+
+		case BREAK_STATEMENT: {
+			FREE_STATEMENT(LitBreakStatement)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown statement type %d", (int) statement->type);
 			break;
@@ -269,6 +293,26 @@ LitWhileStatement *lit_create_while_statement(LitState* state, uint line, LitExp
 	statement->body = body;
 
 	return statement;
+}
+
+LitForStatement *lit_create_for_statement(LitState* state, uint line, LitExpression* init, LitStatement* var, LitExpression* condition, LitExpression* increment, LitStatement* body) {
+	LitForStatement* statement = ALLOCATE_STATEMENT(state, LitForStatement, FOR_STATEMENT);
+
+	statement->init = init;
+	statement->var = var;
+	statement->condition = condition;
+	statement->increment = increment;
+	statement->body = body;
+
+	return statement;
+}
+
+LitContinueStatement *lit_create_continue_statement(LitState* state, uint line) {
+	return ALLOCATE_STATEMENT(state, LitContinueStatement, CONTINUE_STATEMENT);
+}
+
+LitBreakStatement *lit_create_break_statement(LitState* state, uint line) {
+	return ALLOCATE_STATEMENT(state, LitBreakStatement, BREAK_STATEMENT);
 }
 
 LitExpressions* lit_allocate_expressions(LitState* state) {

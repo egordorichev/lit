@@ -361,6 +361,35 @@ static LitStatement* parse_if(LitParser* parser) {
 	return (LitStatement*) lit_create_if_statement(parser->state, line, condition, if_branch, else_branch, elseif_conditions, elseif_branches);
 }
 
+static LitStatement* parse_for(LitParser* parser) {
+	uint line = parser->previous.line;
+
+	consume(parser, TOKEN_LEFT_PAREN, "Expected '('");
+
+	LitStatement* var = NULL;
+	LitExpression* init = NULL;
+
+	if (!check(parser, TOKEN_SEMICOLON)) {
+		if (match(parser, TOKEN_VAR)) {
+			var = parse_var_declaration(parser);
+		} else {
+			init = parse_expression(parser);
+		}
+	}
+
+	consume(parser, TOKEN_SEMICOLON, "Expected ';'");
+	LitExpression* condition = check(parser, TOKEN_SEMICOLON) ? NULL : parse_expression(parser);
+
+	consume(parser, TOKEN_SEMICOLON, "Expected ';'");
+	LitExpression* increment = check(parser, TOKEN_RIGHT_PAREN) ? NULL : parse_expression(parser);
+
+	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')'");
+
+	LitStatement* body = parse_statement(parser);
+
+	return (LitStatement*) lit_create_for_statement(parser->state, line, init, var, condition, increment, body);
+}
+
 static LitStatement* parse_while(LitParser* parser) {
 	uint line = parser->previous.line;
 
@@ -378,8 +407,14 @@ static LitStatement* parse_statement(LitParser* parser) {
 		return parse_var_declaration(parser);
 	} else if (match(parser, TOKEN_IF)) {
 		return parse_if(parser);
+	} else if (match(parser, TOKEN_FOR)) {
+		return parse_for(parser);
 	} else if (match(parser, TOKEN_WHILE)) {
 		return parse_while(parser);
+	} else if (match(parser, TOKEN_CONTINUE)) {
+		return (LitStatement*) lit_create_continue_statement(parser->state, parser->previous.line);
+	} else if (match(parser, TOKEN_BREAK)) {
+		return (LitStatement*) lit_create_break_statement(parser->state, parser->previous.line);
 	} else if (match(parser, TOKEN_PRINT)) {
 		return parse_print(parser);
 	} else if (match(parser, TOKEN_LEFT_BRACE)) {

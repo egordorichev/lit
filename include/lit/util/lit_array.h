@@ -37,4 +37,6 @@
 		array->count++; \
 	}
 
+DECLARE_ARRAY(LitUInts, uint, uints)
+
 #endif
