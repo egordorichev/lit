@@ -2,9 +2,10 @@
 #include <lit/vm/lit_object.h>
 #include <lit/debug/lit_debug.h>
 #include <lit/lit.h>
+#include <lit/mem/lit_mem.h>
 
 #include <stdio.h>
-#include <lit/mem/lit_mem.h>
+#include <math.h>
 
 void reset_stack(LitVm* vm) {
 	vm->stack_top = vm->stack;
@@ -210,6 +211,20 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 		CASE_CODE(DIVIDE) {
 			BINARY_OP(NUMBER_VAL, /)
 			continue;
+		}
+
+		CASE_CODE(MOD) {
+			if (!IS_NUMBER(PEEK(0)) || !IS_NUMBER(PEEK(1))) {
+				runtime_error(vm, "Operands must be numbers");
+				return INTERPRET_RUNTIME_ERROR;
+			}
+
+      double b = AS_NUMBER(lit_pop(vm));
+      double a = AS_NUMBER(lit_pop(vm));
+
+      lit_push(vm, NUMBER_VAL(fmod(a, b)));
+
+      continue;
 		}
 
 		CASE_CODE(EQUAL) {

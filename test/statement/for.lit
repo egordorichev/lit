@@ -1,0 +1,15 @@
+var i = 0
+
+for (;;) {
+	i++
+
+	if (i > 4) {
+		break
+	}
+}
+
+print(i) // Expected: 5
+
+for (var j = 0; j < 1; j++) {
+	print(j) // Expected: 0
+}

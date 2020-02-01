@@ -219,6 +219,7 @@ static LitTokenType convert_compound_operator(LitTokenType operator) {
 		case TOKEN_MINUS_EQUAL: return TOKEN_MINUS;
 		case TOKEN_STAR_EQUAL: return TOKEN_STAR;
 		case TOKEN_SLASH_EQUAL: return TOKEN_SLASH;
+		case TOKEN_PERCENT_EQUAL: return TOKEN_PERCENT;
 
 		case TOKEN_PLUS_PLUS: return TOKEN_PLUS;
 		case TOKEN_MINUS_MINUS: return TOKEN_MINUS;
@@ -505,6 +506,7 @@ static void setup_rules() {
 	rules[TOKEN_BANG] = (LitParseRule) { parse_unary, NULL, PREC_TERM };
 	rules[TOKEN_STAR] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_SLASH] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
+	rules[TOKEN_PERCENT] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_NUMBER] = (LitParseRule) { parse_number, NULL, PREC_NONE };
 	rules[TOKEN_TRUE] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
 	rules[TOKEN_FALSE] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
@@ -521,6 +523,7 @@ static void setup_rules() {
 	rules[TOKEN_MINUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_STAR_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_SLASH_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
+	rules[TOKEN_PERCENT_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_PLUS_PLUS] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_MINUS_MINUS] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_AMPERSAND_AMPERSAND] = (LitParseRule) { NULL, parse_and, PREC_AND };

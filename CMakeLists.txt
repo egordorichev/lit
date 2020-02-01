@@ -21,3 +21,4 @@ add_library(lit STATIC src/lit/lit.c src/lit/mem/lit_mem.c src/lit/state/lit_sta
 
 add_executable(litc src/main.c)
 target_link_libraries(litc lit)
+target_link_libraries(litc m) # Lib math
