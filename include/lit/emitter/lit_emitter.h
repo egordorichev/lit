@@ -22,6 +22,8 @@ typedef struct {
 	LitFunction* function;
 	LitFunctionType type;
 	struct LitCompiler* enclosing;
+
+	bool skip_return;
 } LitCompiler;
 
 typedef struct sLitEmitter {

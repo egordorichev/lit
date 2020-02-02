@@ -34,6 +34,7 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 	compiler->local_count = 0;
 	compiler->scope_depth = 0;
 	compiler->enclosing = emitter->compiler;
+	compiler->skip_return = false;
 	compiler->function = lit_create_function(emitter->state);
 
 	const char* name = emitter->state->scanner->file_name;
@@ -56,7 +57,10 @@ static void emit_return(LitEmitter* emitter, uint line) {
 }
 
 static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
-	emit_return(emitter, emitter->last_line);
+	if (!emitter->compiler->skip_return) {
+		emit_return(emitter, emitter->last_line);
+		emitter->compiler->skip_return = true;
+	}
 
 	LitFunction* function = emitter->compiler->function;
 
@@ -409,7 +413,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	}
 }
 
-static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
+static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	switch (statement->type) {
 		case EXPRESSION_STATEMENT: {
 			emit_expression(emitter, ((LitExpressionStatement*) statement)->expression);
@@ -424,7 +428,10 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			for (uint i = 0; i < statements.count; i++) {
 				LitStatement* stmt = statements.values[i];
-				emit_statement(emitter, stmt);
+
+				if (emit_statement(emitter, stmt)) {
+					break;
+				}
 			}
 
 			end_scope(emitter, emitter->last_line);
@@ -604,11 +611,32 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			break;
 		}
 
+		case RETURN_STATEMENT: {
+			LitExpression* expression = ((LitReturnStatement*) statement)->expression;
+
+			if (emitter->compiler->type == FUNCTION_SCRIPT) {
+				lit_error(emitter->state, COMPILE_ERROR, statement->line, "Can't return from top-level code");
+			}
+
+			if (expression == NULL) {
+				emit_byte(emitter, emitter->last_line, OP_NULL);
+			} else {
+				emit_expression(emitter, expression);
+			}
+
+			emit_byte(emitter, emitter->last_line, OP_RETURN);
+			emitter->compiler->skip_return = true;
+
+			return true;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, statement->line, "Unknown statement type %d", (int) statement->type);
 			break;
 		}
 	}
+
+	return false;
 }
 
 LitFunction* lit_emit(LitEmitter* emitter, LitStatements* statements) {
@@ -616,14 +644,15 @@ LitFunction* lit_emit(LitEmitter* emitter, LitStatements* statements) {
 	init_compiler(emitter, &compiler, FUNCTION_SCRIPT);
 
 	emitter->chunk = &compiler.function->chunk;
-	uint line = 1;
 
 	for (uint i = 0; i < statements->count; i++) {
 		LitStatement* stmt = statements->values[i];
-		emit_statement(emitter, stmt);
-		line = stmt->line;
+
+		if (emit_statement(emitter, stmt)) {
+			break;
+		}
 	}
 
-	end_scope(emitter, line);
+	end_scope(emitter, emitter->last_line);
 	return end_compiler(emitter, NULL);
 }

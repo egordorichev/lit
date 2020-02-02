@@ -469,6 +469,17 @@ static LitStatement* parse_function(LitParser* parser) {
 	return (LitStatement*) function;
 }
 
+static LitStatement* parse_return(LitParser* parser) {
+	uint line = parser->previous.line;
+	LitExpression* expression = NULL;
+
+	if (!check(parser, TOKEN_NEW_LINE) && !check(parser, TOKEN_RIGHT_BRACE)) {
+		expression = parse_expression(parser);
+	}
+
+	return (LitStatement*) lit_create_return_statement(parser->state, line, expression);
+}
+
 static LitStatement* parse_statement(LitParser* parser) {
 	if (match(parser, TOKEN_VAR)) {
 		return parse_var_declaration(parser);
@@ -486,6 +497,8 @@ static LitStatement* parse_statement(LitParser* parser) {
 		return parse_print(parser);
 	} else if (match(parser, TOKEN_FUNCTION)) {
 		return parse_function(parser);
+	} else if (match(parser, TOKEN_RETURN)) {
+		return parse_return(parser);
 	} else if (match(parser, TOKEN_LEFT_BRACE)) {
 		return parse_block(parser);
 	}

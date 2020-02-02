@@ -222,6 +222,10 @@ LitInterpretResult lit_interpret_frame(LitState* state) {
 			lit_push(vm, result);
 			READ_FRAME()
 
+			#ifdef LIT_TRACE_EXECUTION
+					printf("== %s ==\n", frame->function->name->chars);
+			#endif
+
 			continue;
 		}
 

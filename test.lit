@@ -1,5 +1,6 @@
 function hi(a) {
 	print(a)
+	return 10
 }
 
-hi("test", 0, 10)
+print(hi("test"))
