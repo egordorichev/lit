@@ -26,6 +26,15 @@ static LitValue time_native(LitVm* vm, uint arg_count, LitValue* args) {
 	return NUMBER_VAL((double) clock() / CLOCKS_PER_SEC);
 }
 
+static LitValue print_native(LitVm* vm, uint arg_count, LitValue* args) {
+	for (uint i = 0; i < arg_count; i++) {
+		lit_print_value(args[i]);
+		printf("\n");
+	}
+
+	return NULL_VAL;
+}
+
 void lit_init_vm(LitState* state, LitVm* vm) {
 	reset_stack(vm);
 
@@ -39,6 +48,7 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 
 void lit_define_std(LitVm* vm) {
 	define_native(vm, "time", time_native);
+	define_native(vm, "print", print_native);
 }
 
 void lit_free_vm(LitVm* vm) {
@@ -369,12 +379,6 @@ LitInterpretResult lit_interpret_frame(LitState* state) {
 
 		CASE_CODE(LESS_EQUAL) {
 			BINARY_OP(BOOL_VAL, <=)
-			continue;
-		}
-
-		CASE_CODE(PRINT) {
-			lit_print_value(lit_pop(vm));
-			printf("\n");
 			continue;
 		}
 

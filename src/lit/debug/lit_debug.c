@@ -72,7 +72,6 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_GREATER_EQUAL: return print_simple_op("OP_GREATER_EQUAL", offset);
 		case OP_LESS: return print_simple_op("OP_LESS", offset);
 		case OP_LESS_EQUAL: return print_simple_op("OP_LESS_EQUAL", offset);
-		case OP_PRINT: return print_simple_op("OP_PRINT", offset);
 		case OP_SET_GLOBAL: return print_constant_op("OP_SET_GLOBAL", chunk, offset, false);
 		case OP_GET_GLOBAL: return print_constant_op("OP_GET_GLOBAL", chunk, offset, false);
 		case OP_SET_LOCAL: return print_byte_op("OP_SET_LOCAL", chunk, offset);

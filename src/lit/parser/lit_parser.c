@@ -316,11 +316,6 @@ static LitExpression* parse_expression(LitParser* parser) {
 	return parse_precedence(parser, PREC_ASSIGNMENT);
 }
 
-static LitStatement* parse_print(LitParser* parser) {
-	LitExpression* expression = parse_expression(parser);
-	return (LitStatement*) lit_create_print_statement(parser->state, parser->previous.line, expression);
-}
-
 static LitStatement* parse_var_declaration(LitParser* parser) {
 	uint line = parser->previous.line;
 	consume(parser, TOKEN_IDENTIFIER, "Expected variable name");
@@ -493,8 +488,6 @@ static LitStatement* parse_statement(LitParser* parser) {
 		return (LitStatement*) lit_create_continue_statement(parser->state, parser->previous.line);
 	} else if (match(parser, TOKEN_BREAK)) {
 		return (LitStatement*) lit_create_break_statement(parser->state, parser->previous.line);
-	} else if (match(parser, TOKEN_PRINT)) {
-		return parse_print(parser);
 	} else if (match(parser, TOKEN_FUNCTION)) {
 		return parse_function(parser);
 	} else if (match(parser, TOKEN_RETURN)) {
@@ -522,7 +515,6 @@ static void sync(LitParser* parser) {
 			case TOKEN_FOR:
 			case TOKEN_IF:
 			case TOKEN_WHILE:
-			case TOKEN_PRINT:
 			case TOKEN_RETURN: {
 				return;
 			}

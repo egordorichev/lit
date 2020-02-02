@@ -190,12 +190,6 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 			break;
 		}
 
-		case PRINT_STATEMENT: {
-			lit_free_expression(state, ((LitPrintStatement*) statement)->expression);
-			FREE_STATEMENT(LitPrintStatement)
-			break;
-		}
-
 		case VAR_STATEMENT: {
 			lit_free_expression(state, ((LitVarStatement*) statement)->init);
 			FREE_STATEMENT(LitVarStatement)
@@ -295,12 +289,6 @@ LitExpressionStatement *lit_create_expression_statement(LitState* state, uint li
 LitBlockStatement *lit_create_block_statement(LitState* state, uint line) {
 	LitBlockStatement* statement = ALLOCATE_STATEMENT(state, LitBlockStatement, BLOCK_STATEMENT);
 	lit_init_stataments(&statement->statements);
-	return statement;
-}
-
-LitPrintStatement *lit_create_print_statement(LitState* state, uint line, LitExpression* expression) {
-	LitPrintStatement* statement = ALLOCATE_STATEMENT(state, LitPrintStatement, PRINT_STATEMENT);
-	statement->expression = expression;
 	return statement;
 }
 

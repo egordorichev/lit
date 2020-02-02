@@ -178,7 +178,6 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 		}
 
 		case 'e': return check_keyword(scanner, 1, 3, "lse", TOKEN_ELSE);
-		case 'p': return check_keyword(scanner, 1, 4, "rint", TOKEN_PRINT);
 
 		case 'f': {
 			if (scanner->current - scanner->start > 1) {

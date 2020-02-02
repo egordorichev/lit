@@ -113,7 +113,6 @@ typedef enum {
 	FOR_STATEMENT,
 	CLASS_STATEMENT,
 	VAR_STATEMENT,
-	PRINT_STATEMENT,
 	CONTINUE_STATEMENT,
 	BREAK_STATEMENT,
 	FUNCTION_STATEMENT,
@@ -141,13 +140,6 @@ typedef struct {
 } LitBlockStatement;
 
 LitBlockStatement *lit_create_block_statement(LitState* state, uint line);
-
-typedef struct {
-	LitStatement statement;
-	LitExpression* expression;
-} LitPrintStatement;
-
-LitPrintStatement *lit_create_print_statement(LitState* state, uint line, LitExpression* expression);
 
 typedef struct {
 	LitStatement statement;

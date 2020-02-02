@@ -444,13 +444,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			break;
 		}
 
-		case PRINT_STATEMENT: {
-			emit_expression(emitter, ((LitPrintStatement*) statement)->expression);
-			emit_byte(emitter, statement->line, OP_PRINT);
-
-			break;
-		}
-
 		case VAR_STATEMENT: {
 			LitVarStatement* stmt = (LitVarStatement*) statement;
 
