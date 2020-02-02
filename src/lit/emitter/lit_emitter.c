@@ -392,6 +392,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitCallExpression* expr = (LitCallExpression*) expression;
 
 			emit_expression(emitter, expr->callee);
+
+			for (uint i = 0; i < expr->args.count; i++) {
+				emit_expression(emitter, expr->args.values[i]);
+			}
+
 			emit_bytes(emitter, expression->line, OP_CALL, (uint8_t) expr->args.count);
 
 			break;
@@ -585,12 +590,13 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			for (uint i = 0; i < stmt->parameters.count; i++) {
 				LitParameter parameter = stmt->parameters.values[i];
-				add_local(emitter, parameter.name, parameter.length, statement->line);
+				mark_initialized(emitter, add_local(emitter, parameter.name, parameter.length, statement->line));
 			}
 
 			emit_statement(emitter, stmt->body);
 
 			LitFunction* function = end_compiler(emitter, lit_copy_string(emitter->state, stmt->name, stmt->length));
+			function->arg_count = stmt->parameters.count;
 
 			emit_constant(emitter, emitter->last_line, OBJECT_VAL(function));
 			emit_byte(emitter, emitter->last_line, OP_POP);

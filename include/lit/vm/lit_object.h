@@ -36,6 +36,7 @@ typedef struct {
 
 	LitChunk chunk;
 	LitString* name;
+	uint arg_count;
 } LitFunction;
 
 typedef enum {

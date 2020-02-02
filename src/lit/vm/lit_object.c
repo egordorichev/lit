@@ -6,9 +6,10 @@
 
 LitFunction* lit_create_function(LitState* state) {
 	LitFunction* function = ALLOCATE_OBJECT(state, LitFunction, OBJECT_FUNCTION);
-
 	lit_init_chunk(&function->chunk);
+
 	function->name = NULL;
+	function->arg_count = 0;
 
 	return function;
 }

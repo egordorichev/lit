@@ -67,8 +67,12 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 
 		case CALL_EXPRESSION: {
 			LitCallExpression* expr = (LitCallExpression*) expression;
-
 			lit_free_expression(state, expr->callee);
+
+			for (uint i = 0; i < expr->args.count; i++) {
+				lit_free_expression(state, expr->args.values[i]);
+			}
+
 			lit_free_expressions(state, &expr->args);
 
 			FREE_EXPRESSION(LitCallExpression)

@@ -1,5 +1,5 @@
-function hi() {
-	print("bye, world")
+function hi(a) {
+	print(a)
 }
 
-hi()
+hi("test", 0, 10)

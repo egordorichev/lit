@@ -94,6 +94,18 @@ static bool call(LitVm* vm, LitFunction* function, uint8_t arg_count) {
 
 	frame->slots = vm->stack_top - arg_count - 1;
 
+	uint function_arg_count = function->arg_count;
+
+	if (arg_count < function_arg_count) {
+		for (uint i = 0; i < function_arg_count - arg_count; i++) {
+			lit_push(vm, NULL_VAL);
+		}
+	} else if (arg_count > function_arg_count) {
+		for (uint i = 0; i < arg_count - function_arg_count; i++) {
+			lit_pop(vm);
+		}
+	}
+
 	return true;
 }
 
