@@ -9,6 +9,8 @@ DEFINE_ARRAY(LitValues, LitValue, values)
 static void print_object(LitValue value) {
 	if (IS_STRING(value)) {
 		printf("%s", AS_CSTRING(value));
+	} else if (IS_FUNCTION(value)) {
+		printf("function %s", AS_FUNCTION(value)->name->chars);
 	} else {
 		UNREACHABLE
 	}

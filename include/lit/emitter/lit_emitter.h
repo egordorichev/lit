@@ -6,6 +6,7 @@
 #include <lit/vm/lit_chunk.h>
 #include <lit/parser/lit_ast.h>
 #include <lit/util/lit_array.h>
+#include <lit/vm/lit_object.h>
 
 typedef struct {
 	const char* name;
@@ -17,6 +18,10 @@ typedef struct {
 	LitLocal locals[UINT8_MAX + 1];
 	int local_count;
 	int scope_depth;
+
+	LitFunction* function;
+	LitFunctionType type;
+	struct LitCompiler* enclosing;
 } LitCompiler;
 
 typedef struct sLitEmitter {
@@ -33,6 +38,6 @@ typedef struct sLitEmitter {
 void lit_init_emitter(LitState* state, LitEmitter* emitter);
 void lit_free_emitter(LitEmitter* emitter);
 
-LitChunk* lit_emit(LitEmitter* emitter, LitStatements* statements);
+LitFunction* lit_emit(LitEmitter* emitter, LitStatements* statements);
 
 #endif

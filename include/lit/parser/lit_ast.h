@@ -92,6 +92,15 @@ typedef struct {
 
 LitAssignExpression *lit_create_assign_expression(LitState* state, uint line, LitExpression* to, LitExpression* value);
 
+typedef struct {
+	LitExpression expression;
+
+	LitExpression* callee;
+	LitExpressions args;
+} LitCallExpression;
+
+LitCallExpression *lit_create_call_expression(LitState* state, uint line, LitExpression* callee);
+
 /*
  * Statements
  */
@@ -106,7 +115,8 @@ typedef enum {
 	VAR_STATEMENT,
 	PRINT_STATEMENT,
 	CONTINUE_STATEMENT,
-	BREAK_STATEMENT
+	BREAK_STATEMENT,
+	FUNCTION_STATEMENT
 } LitStatementType;
 
 typedef struct LitStatement {
@@ -193,6 +203,25 @@ typedef struct {
 } LitBreakStatement;
 
 LitBreakStatement *lit_create_break_statement(LitState* state, uint line);
+
+typedef struct {
+	const char* name;
+	uint length;
+} LitParameter;
+
+DECLARE_ARRAY(LitParameters, LitParameter, parameters);
+
+typedef struct {
+	LitStatement statement;
+
+	const char* name;
+	uint length;
+
+	LitParameters parameters;
+	LitStatement* body;
+} LitFunctionStatement;
+
+LitFunctionStatement *lit_create_function_statement(LitState* state, uint line, const char* name, uint length);
 
 LitExpressions* lit_allocate_expressions(LitState* state);
 void lit_free_allocated_expressions(LitState* state, LitExpressions* expressions);

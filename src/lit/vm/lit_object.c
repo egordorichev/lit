@@ -4,6 +4,15 @@
 
 #include <memory.h>
 
+LitFunction* lit_create_function(LitState* state) {
+	LitFunction* function = ALLOCATE_OBJECT(state, LitFunction, OBJECT_FUNCTION);
+
+	lit_init_chunk(&function->chunk);
+	function->name = NULL;
+
+	return function;
+}
+
 static LitString* allocate_string(LitState* state, char* chars, int length, uint32_t hash) {
 	LitString* string = ALLOCATE_OBJECT(state, LitString, OBJECT_STRING);
 
@@ -42,7 +51,6 @@ LitString* lit_copy_string(LitState* state, const char* chars, uint length) {
 
 	return allocate_string(state, heap_chars, length, hash);
 }
-
 
 LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type) {
 	LitObject* object = (LitObject*) lit_reallocate(state, NULL, 0, size);

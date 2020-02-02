@@ -3,10 +3,11 @@
 #include <string.h>
 #include <stdio.h>
 
-void lit_setup_scanner(LitScanner* scanner, const char* source) {
+void lit_setup_scanner(LitScanner* scanner, const char* file_name, const char* source) {
 	scanner->line = 1;
 	scanner->start = source;
 	scanner->current = source;
+	scanner->file_name = file_name;
 }
 
 static bool is_at_end(LitScanner* scanner) {

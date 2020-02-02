@@ -10,9 +10,10 @@ typedef struct sLitScanner {
 	uint line;
 	const char* start;
 	const char* current;
+	const char* file_name;
 } sLitScanner;
 
-void lit_setup_scanner(LitScanner* scanner, const char* source);
+void lit_setup_scanner(LitScanner* scanner, const char* file_name, const char* source);
 LitToken lit_scan_token(LitScanner* scanner);
 
 #endif

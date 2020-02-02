@@ -70,18 +70,18 @@ static void free_statements(LitState* state, LitStatements* statements) {
 	lit_free_stataments(state, statements);
 }
 
-LitInterpretResult lit_interpret(LitState* state, char* code) {
+LitInterpretResult lit_interpret(LitState* state, const char* file_name, const char* code) {
 	state->had_error = false;
 
 	LitStatements statements;
 	lit_init_stataments(&statements);
 
-	if (lit_parse(state->parser, code, &statements)) {
+	if (lit_parse(state->parser, file_name, code, &statements)) {
 		free_statements(state, &statements);
 		return INTERPRET_COMPILE_ERROR;
 	}
 
-	LitChunk* chunk = lit_emit(state->emitter, &statements);
+	LitFunction* function = lit_emit(state->emitter, &statements);
 	free_statements(state, &statements);
 
 	LitInterpretResult result;
@@ -89,13 +89,8 @@ LitInterpretResult lit_interpret(LitState* state, char* code) {
 	if (state->had_error) {
 		result = INTERPRET_COMPILE_ERROR;
 	} else {
-		result = lit_interpret_chunk(state, chunk);
+		result = lit_interpret_function(state, function);
 	}
-
-	lit_free_chunk(state, chunk);
-
-	// TMP line, because chunk is allocated by hand for now, we need to free it:
-	lit_reallocate(state, chunk, sizeof(LitChunk), 0);
 
 	if (state->vm->stack_top != state->vm->stack) {
 		lit_error(state, RUNTIME_ERROR, 0, "Stack had left over trash in it");

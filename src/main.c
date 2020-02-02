@@ -41,7 +41,7 @@ static void load_and_run_chunk(LitState* state) {
 	LitChunk* chunk = lit_load_chunk(state, file);
 	fclose(file);
 
-	lit_interpret_chunk(state, chunk);
+	// lit_interpret_chunk(state, chunk);
 	lit_free_chunk(state, chunk);
 }
 
@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
 
 	LitState* state = lit_new_state();
 
-	lit_interpret(state, source);
+	lit_interpret(state, argv[1], source);
 	int64_t amount = lit_free_state(state);
 
 	if (amount != 0) {

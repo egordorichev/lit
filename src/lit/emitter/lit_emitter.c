@@ -2,6 +2,9 @@
 #include <lit/mem/lit_mem.h>
 #include <lit/debug/lit_debug.h>
 #include <lit/vm/lit_object.h>
+#include <lit/scanner/lit_scanner.h>
+#include <lit/lit.h>
+#include <lit/debug/lit_debug.h>
 
 #include <string.h>
 
@@ -16,17 +19,6 @@ void lit_free_emitter(LitEmitter* emitter) {
 	lit_free_uints(emitter->state, &emitter->breaks);
 }
 
-static void init_compiler(LitEmitter* emitter, LitCompiler* compiler) {
-	compiler->local_count = 0;
-	compiler->scope_depth = 0;
-
-	emitter->compiler = compiler;
-}
-
-static void begin_scope(LitEmitter* emitter) {
-	emitter->compiler->scope_depth++;
-}
-
 static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte) {
 	lit_write_chunk(emitter->state, emitter->chunk, byte, line);
 	emitter->last_line = line;
@@ -35,6 +27,55 @@ static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte) {
 static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b) {
 	lit_write_chunk(emitter->state, emitter->chunk, a, line);
 	lit_write_chunk(emitter->state, emitter->chunk, b, line);
+}
+
+static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctionType type) {
+	compiler->type = type;
+	compiler->local_count = 0;
+	compiler->scope_depth = 0;
+	compiler->enclosing = emitter->compiler;
+	compiler->function = lit_create_function(emitter->state);
+
+	const char* name = emitter->state->scanner->file_name;
+
+	if (emitter->compiler == NULL) {
+		compiler->function->name = lit_copy_string(emitter->state, name, strlen(name));
+	}
+
+	emitter->compiler = compiler;
+	emitter->chunk = &compiler->function->chunk;
+
+	LitLocal* local = &compiler->locals[compiler->local_count++];
+	local->depth = 0;
+	local->name = "";
+	local->length = 0;
+}
+
+static void emit_return(LitEmitter* emitter, uint line) {
+	emit_bytes(emitter, line, OP_NULL, OP_RETURN);
+}
+
+static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
+	emit_return(emitter, emitter->last_line);
+
+	LitFunction* function = emitter->compiler->function;
+
+	emitter->compiler = emitter->compiler->enclosing;
+	emitter->chunk = emitter->compiler == NULL ? NULL : &emitter->compiler->function->chunk;
+
+	if (name != NULL) {
+		function->name = name;
+	}
+
+#ifdef LIT_TRACE_CHUNK
+	lit_disassemble_chunk(&function->chunk, function->name->chars);
+#endif
+
+	return function;
+}
+
+static void begin_scope(LitEmitter* emitter) {
+	emitter->compiler->scope_depth++;
 }
 
 static void end_scope(LitEmitter* emitter, uint16_t line) {
@@ -59,10 +100,25 @@ static void end_scope(LitEmitter* emitter, uint16_t line) {
 	}
 }
 
-static uint8_t add_constant(LitEmitter* emitter, LitValue value, uint line) {
+static uint8_t add_constant(LitEmitter* emitter, uint line, LitValue value) {
 	uint constant = lit_chunk_add_constant(emitter->state, emitter->chunk, value);
 
 	if (constant >= UINT8_MAX) {
+		lit_error(emitter->state, COMPILE_ERROR, line, "Too many constants in one chunk");
+	}
+
+	return constant;
+}
+
+static uint emit_constant(LitEmitter* emitter, uint line, LitValue value) {
+	uint constant = lit_chunk_add_constant(emitter->state, emitter->chunk, value);
+
+	if (constant < UINT8_MAX) {
+		emit_bytes(emitter, line, OP_CONSTANT, constant);
+	} else if (constant < UINT16_MAX) {
+		emit_byte(emitter, line, OP_CONSTANT_LONG);
+		emit_bytes(emitter, line, (uint8_t) ((constant >> 8) & 0xff), (uint8_t) (constant & 0xff));
+	} else {
 		lit_error(emitter->state, COMPILE_ERROR, line, "Too many constants in one chunk");
 	}
 
@@ -113,6 +169,10 @@ static int resolve_local(LitEmitter* emitter, const char* name, uint length, uin
 	return -1;
 }
 
+static void mark_initialized(LitEmitter* emitter, uint index) {
+	emitter->compiler->locals[index].depth = emitter->compiler->scope_depth;
+}
+
 static uint emit_jump(LitEmitter* emitter, LitOpCode code, uint line) {
 	emit_byte(emitter, line, code);
 	emit_bytes(emitter, line, 0xff, 0xff);
@@ -156,16 +216,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitValue value = ((LitLiteralExpression*) expression)->value;
 
 			if (IS_NUMBER(value) || IS_STRING(value)) {
-				uint constant = lit_chunk_add_constant(emitter->state, emitter->chunk, value);
-
-				if (constant < UINT8_MAX) {
-					emit_bytes(emitter, expression->line, OP_CONSTANT, constant);
-				} else if (constant < UINT16_MAX) {
-					emit_byte(emitter, expression->line, OP_CONSTANT_LONG);
-					emit_bytes(emitter, expression->line, (uint8_t) ((constant >> 8) & 0xff), (uint8_t) (constant & 0xff));
-				} else {
-					lit_error(emitter->state, COMPILE_ERROR, expression->line, "Too many constants in one chunk");
-				}
+				emit_constant(emitter, expression->line, value);
 			} else if (IS_BOOL(value)) {
 				emit_byte(emitter, expression->line, AS_BOOL(value) ? OP_TRUE : OP_FALSE);
 			} else if (IS_NULL(value)) {
@@ -297,7 +348,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		}
 
 		case VAR_EXPRESSION: {
-			emit_bytes(emitter, expression->line, OP_GET_GLOBAL, add_constant(emitter, OBJECT_VAL(((LitVarExpression*) expression)->name), expression->line));
+			emit_bytes(emitter, expression->line, OP_GET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VAL(((LitVarExpression*) expression)->name)));
 			break;
 		}
 
@@ -319,7 +370,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			emit_expression(emitter, expr->value);
 
 			if (expr->to->type == VAR_EXPRESSION) {
-				emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, OBJECT_VAL(((LitVarExpression*) expr->to)->name), expression->line));
+				emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VAL(((LitVarExpression*) expr->to)->name)));
 			} else if (expr->to->type == LOCAL_VAR_EXPRESSION) {
 				LitLocalVarExpression* e = (LitLocalVarExpression*) expr->to;
 				int index = resolve_local(emitter, e->name, e->length, expr->to->line);
@@ -333,6 +384,15 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			} else {
 				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Invalid assigment target %d", (int) expr->to->type);
 			}
+
+			break;
+		}
+
+		case CALL_EXPRESSION: {
+			LitCallExpression* expr = (LitCallExpression*) expression;
+
+			emit_expression(emitter, expr->callee);
+			emit_bytes(emitter, expression->line, OP_CALL, (uint8_t) expr->args.count);
 
 			break;
 		}
@@ -385,7 +445,7 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_expression(emitter, stmt->init);
 			}
 
-			emitter->compiler->locals[index].depth = emitter->compiler->scope_depth;
+			mark_initialized(emitter, index);
 			emit_bytes(emitter, line, OP_SET_LOCAL, (uint8_t) index);
 
 			break;
@@ -460,7 +520,6 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case FOR_STATEMENT: {
 			LitForStatement* stmt = (LitForStatement*) statement;
-
 			begin_scope(emitter);
 
 			if (stmt->var != NULL) {
@@ -515,6 +574,30 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			break;
 		}
 
+		case FUNCTION_STATEMENT: {
+			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
+			mark_initialized(emitter, add_local(emitter, stmt->name, stmt->length, statement->line));
+
+			begin_scope(emitter);
+
+			LitCompiler compiler;
+			init_compiler(emitter, &compiler, FUNCTION_REGULAR);
+
+			for (uint i = 0; i < stmt->parameters.count; i++) {
+				LitParameter parameter = stmt->parameters.values[i];
+				add_local(emitter, parameter.name, parameter.length, statement->line);
+			}
+
+			emit_statement(emitter, stmt->body);
+
+			LitFunction* function = end_compiler(emitter, lit_copy_string(emitter->state, stmt->name, stmt->length));
+
+			emit_constant(emitter, emitter->last_line, OBJECT_VAL(function));
+			emit_byte(emitter, emitter->last_line, OP_POP);
+
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, statement->line, "Unknown statement type %d", (int) statement->type);
 			break;
@@ -522,13 +605,11 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	}
 }
 
-LitChunk* lit_emit(LitEmitter* emitter, LitStatements* statements) {
-	LitChunk* chunk = (LitChunk*) lit_reallocate(emitter->state, NULL, 0, sizeof(LitChunk));
-	lit_init_chunk(chunk);
-	emitter->chunk = chunk;
-
+LitFunction* lit_emit(LitEmitter* emitter, LitStatements* statements) {
 	LitCompiler compiler;
-	init_compiler(emitter, &compiler);
+	init_compiler(emitter, &compiler, FUNCTION_SCRIPT);
+
+	emitter->chunk = &compiler.function->chunk;
 	uint line = 1;
 
 	for (uint i = 0; i < statements->count; i++) {
@@ -538,7 +619,5 @@ LitChunk* lit_emit(LitEmitter* emitter, LitStatements* statements) {
 	}
 
 	end_scope(emitter, line);
-	emit_byte(emitter, emitter->last_line, OP_RETURN);
-
-	return chunk;
+	return end_compiler(emitter, NULL);
 }

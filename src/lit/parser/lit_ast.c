@@ -3,6 +3,7 @@
 
 DEFINE_ARRAY(LitExpressions, LitExpression*, expressions)
 DEFINE_ARRAY(LitStatements, LitStatement*, stataments)
+DEFINE_ARRAY(LitParameters, LitParameter, parameters);
 
 #define FREE_EXPRESSION(type) lit_reallocate(state, expression, sizeof(type), 0);
 
@@ -55,12 +56,22 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 		}
 
 		case ASSIGN_EXPRESSION: {
-			LitAssignExpression* expr = (LitAssignExpression*) expression;
+			LitAssignExpression *expr = (LitAssignExpression *) expression;
 
 			lit_free_expression(state, expr->to);
 			lit_free_expression(state, expr->value);
 
 			FREE_EXPRESSION(LitAssignExpression)
+			break;
+		}
+
+		case CALL_EXPRESSION: {
+			LitCallExpression* expr = (LitCallExpression*) expression;
+
+			lit_free_expression(state, expr->callee);
+			lit_free_expressions(state, &expr->args);
+
+			FREE_EXPRESSION(LitCallExpression)
 			break;
 		}
 
@@ -135,6 +146,15 @@ LitAssignExpression *lit_create_assign_expression(LitState* state, uint line, Li
 
 	expression->to = to;
 	expression->value = value;
+
+	return expression;
+}
+
+LitCallExpression *lit_create_call_expression(LitState* state, uint line, LitExpression* callee) {
+	LitCallExpression* expression = ALLOCATE_EXPRESSION(state, LitCallExpression, CALL_EXPRESSION);
+
+	expression->callee = callee;
+	lit_init_expressions(&expression->args);
 
 	return expression;
 }
@@ -227,6 +247,16 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 			break;
 		}
 
+		case FUNCTION_STATEMENT: {
+			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
+
+			lit_free_statement(state, stmt->body);
+			lit_free_parameters(state, &stmt->parameters);
+
+			FREE_STATEMENT(LitFunctionStatement)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown statement type %d", (int) statement->type);
 			break;
@@ -313,6 +343,18 @@ LitContinueStatement *lit_create_continue_statement(LitState* state, uint line) 
 
 LitBreakStatement *lit_create_break_statement(LitState* state, uint line) {
 	return ALLOCATE_STATEMENT(state, LitBreakStatement, BREAK_STATEMENT);
+}
+
+LitFunctionStatement *lit_create_function_statement(LitState* state, uint line, const char* name, uint length) {
+	LitFunctionStatement* function = ALLOCATE_STATEMENT(state, LitFunctionStatement, FUNCTION_STATEMENT);
+
+	function->name = name;
+	function->length = length;
+	function->body = NULL;
+
+	lit_init_parameters(&function->parameters);
+
+	return function;
 }
 
 LitExpressions* lit_allocate_expressions(LitState* state) {

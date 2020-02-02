@@ -36,7 +36,7 @@ typedef enum {
 
 LitState* lit_new_state();
 int64_t lit_free_state(LitState* state);
-LitInterpretResult lit_interpret(LitState* state, char* code);
+LitInterpretResult lit_interpret(LitState* state, const char* file_name, const char* code);
 
 void lit_error(LitState* state, LitErrorType type, uint line, const char* message, ...);
 void lit_printf(LitState* state, const char* message, ...);

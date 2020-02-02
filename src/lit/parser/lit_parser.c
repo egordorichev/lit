@@ -8,8 +8,14 @@
 static void init_compiler(LitParser* parser, LitCompiler* compiler) {
 	compiler->local_count = 0;
 	compiler->scope_depth = 0;
+	compiler->function = NULL;
+	compiler->enclosing = parser->compiler;
 
 	parser->compiler = compiler;
+}
+
+static void end_compiler(LitParser* parser, LitCompiler* compiler) {
+	parser->compiler = compiler->enclosing;
 }
 
 static void begin_scope(LitParser* parser) {
@@ -126,6 +132,7 @@ static void consume_new_line(LitParser* parser, const char* error) {
 }
 
 static LitStatement* parse_block(LitParser* parser) {
+	begin_scope(parser);
 	LitBlockStatement* statement = lit_create_block_statement(parser->state, parser->previous.line);
 	ignore_new_lines(parser);
 
@@ -135,6 +142,8 @@ static LitStatement* parse_block(LitParser* parser) {
 	}
 
 	consume(parser, TOKEN_RIGHT_BRACE, "'}' expected");
+	end_scope(parser);
+
 	return (LitStatement*) statement;
 }
 
@@ -172,6 +181,25 @@ static LitExpression* parse_grouping(LitParser* parser, bool can_assign) {
 	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after expression");
 
 	return (LitExpression*) lit_create_grouping_expression(parser->state, parser->previous.line, expression);
+}
+
+static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool can_assign) {
+	LitCallExpression* expression = lit_create_call_expression(parser->state, parser->previous.line, prev);
+
+	while (!check(parser, TOKEN_RIGHT_PAREN)) {
+		lit_expressions_write(parser->state, &expression->args, parse_expression(parser));
+
+		if (!match(parser, TOKEN_COMMA)) {
+			break;
+		}
+	}
+
+	if (expression->args.count > 255) {
+		error(parser, "Function can't be invoked with more than 255 arguments");
+	}
+
+	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after arguments");
+	return (LitExpression*) expression;
 }
 
 static LitExpression* parse_unary(LitParser* parser, bool can_assign) {
@@ -403,6 +431,44 @@ static LitStatement* parse_while(LitParser* parser) {
 	return (LitStatement*) lit_create_while_statement(parser->state, line, condition, body);
 }
 
+static LitStatement* parse_function(LitParser* parser) {
+	uint line = parser->previous.line;
+	consume(parser, TOKEN_IDENTIFIER, "Expected function name");
+
+	LitFunctionStatement* function = lit_create_function_statement(parser->state, line, parser->previous.start, parser->previous.length);
+
+	LitCompiler compiler;
+	init_compiler(parser, &compiler);
+	begin_scope(parser);
+
+	consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after function name");
+
+	while (!check(parser, TOKEN_RIGHT_PAREN)) {
+		consume(parser, TOKEN_IDENTIFIER, "Expected argument name");
+
+		lit_parameters_write(parser->state, &function->parameters, (LitParameter) {
+			parser->previous.start, parser->previous.length
+		});
+
+		if (!match(parser, TOKEN_COMMA)) {
+			break;
+		}
+	}
+
+	if (function->parameters.count > 255) {
+		error(parser, "Function can't have more than 255 arguments");
+	}
+
+	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after function arguments");
+
+	function->body = parse_statement(parser);
+
+	end_scope(parser);
+	end_compiler(parser, &compiler);
+
+	return (LitStatement*) function;
+}
+
 static LitStatement* parse_statement(LitParser* parser) {
 	if (match(parser, TOKEN_VAR)) {
 		return parse_var_declaration(parser);
@@ -418,12 +484,10 @@ static LitStatement* parse_statement(LitParser* parser) {
 		return (LitStatement*) lit_create_break_statement(parser->state, parser->previous.line);
 	} else if (match(parser, TOKEN_PRINT)) {
 		return parse_print(parser);
+	} else if (match(parser, TOKEN_FUNCTION)) {
+		return parse_function(parser);
 	} else if (match(parser, TOKEN_LEFT_BRACE)) {
-		begin_scope(parser);
-		LitStatement* statement = (LitStatement*) parse_block(parser);
-		end_scope(parser);
-
-		return statement;
+		return parse_block(parser);
 	}
 
 	LitExpression* expression = parse_expression(parser);
@@ -467,11 +531,11 @@ static LitStatement* parse_declaration(LitParser* parser) {
 	return statement;
 }
 
-bool lit_parse(LitParser* parser, const char* source, LitStatements* statements) {
+bool lit_parse(LitParser* parser, const char* file_name, const char* source, LitStatements* statements) {
 	parser->had_error = false;
 	parser->panic_mode = false;
 
-	lit_setup_scanner(parser->state->scanner, source);
+	lit_setup_scanner(parser->state->scanner, file_name, source);
 
 	LitCompiler compiler;
 	init_compiler(parser, &compiler);
@@ -500,7 +564,7 @@ bool lit_parse(LitParser* parser, const char* source, LitStatements* statements)
 }
 
 static void setup_rules() {
-	rules[TOKEN_LEFT_PAREN] = (LitParseRule) { parse_grouping, NULL, PREC_NONE };
+	rules[TOKEN_LEFT_PAREN] = (LitParseRule) { parse_grouping, parse_call, PREC_CALL };
 	rules[TOKEN_PLUS] = (LitParseRule) { NULL, parse_binary, PREC_TERM };
 	rules[TOKEN_MINUS] = (LitParseRule) { parse_unary, parse_binary, PREC_TERM };
 	rules[TOKEN_BANG] = (LitParseRule) { parse_unary, NULL, PREC_TERM };
@@ -529,5 +593,4 @@ static void setup_rules() {
 	rules[TOKEN_AMPERSAND_AMPERSAND] = (LitParseRule) { NULL, parse_and, PREC_AND };
 	rules[TOKEN_BAR_BAR] = (LitParseRule) { NULL, parse_or, PREC_AND };
 	rules[TOKEN_QUESTION_QUESTION] = (LitParseRule) { NULL, parse_null_filter, PREC_NULL };
-
 }

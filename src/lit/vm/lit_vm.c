@@ -1,7 +1,6 @@
 #include <lit/vm/lit_vm.h>
 #include <lit/vm/lit_object.h>
 #include <lit/debug/lit_debug.h>
-#include <lit/lit.h>
 #include <lit/mem/lit_mem.h>
 
 #include <stdio.h>
@@ -16,6 +15,7 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 
 	vm->state = state;
 	vm->objects = NULL;
+	vm->frame_count = 0;
 
 	lit_init_table(&vm->strings);
 	lit_init_table(&vm->globals);
@@ -63,9 +63,12 @@ static void runtime_error(LitVm* vm, const char* format, ...) {
 	va_end(args);
 	fputs("\n", stderr);
 
-	size_t instruction = vm->ip - vm->chunk->code;
-	int line = vm->chunk->lines[instruction];
-	fprintf(stderr, "[line %d] in script\n", line);
+	for (int i = vm->frame_count - 1; i >= 0; i--) {
+		LitCallFrame* frame = &vm->frames[i];
+		LitFunction* function = frame->function;
+
+		fprintf(stderr, "[line %d] in %s()\n", lit_chunk_get_line(&function->chunk, frame->ip - function->chunk.code - 1), function->name->chars);
+	}
 
 	reset_stack(vm);
 }
@@ -78,19 +81,57 @@ static inline bool is_falsey(LitValue value) {
 	return IS_NULL(value) || (IS_BOOL(value) && !AS_BOOL(value));
 }
 
-LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
+static bool call(LitVm* vm, LitFunction* function, uint8_t arg_count) {
+	if (vm->frame_count == LIT_CALL_FRAMES_MAX) {
+		runtime_error(vm, "Stack overflow");
+		return false;
+	}
+
+	LitCallFrame* frame = &vm->frames[vm->frame_count++];
+
+	frame->function = function;
+	frame->ip = function->chunk.code;
+
+	frame->slots = vm->stack_top - arg_count - 1;
+
+	return true;
+}
+
+static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
+	if (IS_OBJECT(callee)) {
+		switch (OBJECT_TYPE(callee)) {
+			case OBJECT_FUNCTION: {
+				return call(vm, AS_FUNCTION(callee), arg_count);
+			}
+
+			default: break;
+		}
+	}
+
+	runtime_error(vm, "Can only call functions and classes.");
+	return false;
+}
+
+LitInterpretResult lit_interpret_function(LitState* state, LitFunction* function) {
 	register LitVm *vm = state->vm;
 
-	vm->chunk = chunk;
-	vm->ip = chunk->code;
+	lit_push(vm, OBJECT_VAL(function));
 
-#ifdef LIT_TRACE_CHUNK
-	lit_disassemble_chunk(chunk, "test chunk");
-	printf("============\n");
-#endif
+	LitCallFrame* frame = &vm->frames[vm->frame_count++];
 
-	register uint8_t* ip = vm->ip;
-	register LitChunk* current_chunk = chunk;
+	frame->function = function;
+	frame->ip = function->chunk.code;
+	frame->slots = vm->stack;
+
+	return lit_interpret_frame(state);
+}
+
+LitInterpretResult lit_interpret_frame(LitState* state) {
+	register LitVm *vm = state->vm;
+	register LitCallFrame* frame = &vm->frames[vm->frame_count - 1];
+	register LitChunk* current_chunk = &frame->function->chunk;
+	register uint8_t* ip = frame->ip = current_chunk->code;
+	register LitValue* slots = frame->slots;
 
 	// Has to be inside of the function in order for goto to work
 	static void* dispatch_table[] = {
@@ -101,13 +142,17 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 
 #define READ_BYTE() (*ip++)
 #define READ_SHORT() (ip += 2, (uint16_t) ((ip[-2] << 8) | ip[-1]))
-#define READ_IP() ip = vm->ip; current_chunk = vm->chunk;
-#define WRITE_IP() vm->ip = ip; vm->chunk = current_chunk;
 #define CASE_CODE(name) OP_##name:
 #define READ_CONSTANT() (current_chunk->constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() (current_chunk->constants.values[READ_SHORT()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define PEEK(distance) vm->stack_top[-1 - distance]
+#define READ_FRAME() frame = &vm->frames[vm->frame_count - 1]; \
+	current_chunk = &frame->function->chunk; \
+	ip = frame->ip; \
+	slots = frame->slots;
+
+#define WRITE_FRAME() frame->ip = ip;
 
 #define BINARY_OP(type, op) \
     do { \
@@ -121,6 +166,7 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
     } while (false);
 
 #ifdef LIT_TRACE_EXECUTION
+	printf("== %s ==\n", frame->function->name->chars);
 	uint8_t instruction;
 #endif
 
@@ -131,7 +177,7 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 
 #ifdef LIT_TRACE_EXECUTION
 		instruction = *ip++;
-		lit_disassemble_instruction(vm->chunk, (uint) (ip - current_chunk->code - 1));
+		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1));
 		goto *dispatch_table[instruction];
 #else
 		goto *dispatch_table[*ip++];
@@ -150,7 +196,21 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 		}
 
 		CASE_CODE(RETURN) {
-			return INTERPRET_OK;
+			LitValue result = lit_pop(vm);
+
+			WRITE_FRAME()
+			vm->frame_count--;
+
+			if (vm->frame_count == 0) {
+				lit_pop(vm);
+				return INTERPRET_OK;
+			}
+
+			vm->stack_top = frame->slots;
+			lit_push(vm, result);
+			READ_FRAME()
+
+			continue;
 		}
 
 		CASE_CODE(CONSTANT) {
@@ -291,14 +351,13 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 
 		CASE_CODE(SET_LOCAL) {
 			uint8_t index = READ_BYTE();
-			vm->stack[index] = PEEK(0);
+			slots[index] = PEEK(0);
 
 			continue;
 		}
 
 		CASE_CODE(GET_LOCAL) {
-			uint8_t index = READ_BYTE();
-			lit_push(vm, vm->stack[index]);
+			lit_push(vm, slots[READ_BYTE()]);
 
 			continue;
 		}
@@ -333,17 +392,34 @@ LitInterpretResult lit_interpret_chunk(LitState* state, LitChunk* chunk) {
 			continue;
 		}
 
+		CASE_CODE(CALL) {
+			uint8_t arg_count = READ_BYTE();
+			WRITE_FRAME()
+
+			if (!call_value(vm, PEEK(arg_count), arg_count)) {
+				return INTERPRET_RUNTIME_ERROR;
+			}
+
+			READ_FRAME()
+
+			#ifdef LIT_TRACE_EXECUTION
+				printf("== %s ==\n", frame->function->name->chars);
+			#endif
+
+			continue;
+		}
+
 		printf("Unknown op code!");
 		break;
 	}
 
+#undef WRITE_FRAME
+#undef READ_FRAME
 #undef PEEK
 #undef BINARY_OP
 #undef READ_CONSTANT_LONG
 #undef READ_CONSTANT
 #undef CASE_CODE
-#undef WRITE_IP
-#undef READ_IP
 #undef READ_STRING
 #undef READ_SHORT
 #undef READ_BYTE

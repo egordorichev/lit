@@ -32,6 +32,14 @@ static void free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_FUNCTION: {
+			LitFunction* function = (LitFunction*) object;
+			lit_free_chunk(state, &function->chunk);
+
+			LIT_FREE(state, LitFunction, object);
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}
