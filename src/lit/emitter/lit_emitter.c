@@ -47,7 +47,7 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 	emitter->chunk = &compiler->function->chunk;
 
 	LitLocal* local = &compiler->locals[compiler->local_count++];
-	local->depth = 0;
+	local->depth = -1;
 	local->name = "";
 	local->length = 0;
 }
@@ -157,9 +157,9 @@ static int add_local(LitEmitter* emitter, const char* name, uint length, uint li
 	return compiler->local_count - 1;
 }
 
-static int resolve_local(LitEmitter* emitter, const char* name, uint length, uint line) {
-	for (int i = emitter->compiler->local_count - 1; i >= 0; i--) {
-		LitLocal* local = &emitter->compiler->locals[i];
+static int resolve_local(LitEmitter* emitter, LitCompiler* compiler, const char* name, uint length, uint line) {
+	for (int i = compiler->local_count - 1; i >= 0; i--) {
+		LitLocal* local = &compiler->locals[i];
 
 		if (local->length == length && memcmp(local->name, name, length) == 0) {
 			if (local->depth == UINT16_MAX) {
@@ -168,6 +168,10 @@ static int resolve_local(LitEmitter* emitter, const char* name, uint length, uin
 
 			return i;
 		}
+	}
+
+	if (compiler->enclosing != NULL) {
+		return resolve_local(emitter, compiler->enclosing, name, length, line);
 	}
 
 	return -1;
@@ -358,10 +362,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case LOCAL_VAR_EXPRESSION: {
 			LitLocalVarExpression* expr = (LitLocalVarExpression*) expression;
-			int index = resolve_local(emitter, expr->name, expr->length, expression->line);
+			int index = resolve_local(emitter, emitter->compiler, expr->name, expr->length, expression->line);
 
 			if (index == -1) {
-				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Undefined variable '%.*s'", (int) expr->length, expr->name);
+				emit_bytes(emitter, expression->line, OP_GET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VAL(lit_copy_string(emitter->state, expr->name, expr->length))));
+				// lit_error(emitter->state, COMPILE_ERROR, expression->line, "Undefined variable '%.*s'", (int) expr->length, expr->name);
 				break;
 			}
 
@@ -377,10 +382,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VAL(((LitVarExpression*) expr->to)->name)));
 			} else if (expr->to->type == LOCAL_VAR_EXPRESSION) {
 				LitLocalVarExpression* e = (LitLocalVarExpression*) expr->to;
-				int index = resolve_local(emitter, e->name, e->length, expr->to->line);
+				int index = resolve_local(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 
 				if (index == -1) {
-					lit_error(emitter->state, COMPILE_ERROR, expression->line, "Undefined variable '%.*s'", (int) e->length, e->name);
+					emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VAL(lit_copy_string(emitter->state, e->name, e->length))));
+					// lit_error(emitter->state, COMPILE_ERROR, expression->line, "Undefined variable '%.*s'", (int) e->length, e->name);
 					break;
 				} else {
 					emit_bytes(emitter, expression->line, OP_SET_LOCAL, (uint8_t) index);
@@ -588,9 +594,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case FUNCTION_STATEMENT: {
 			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
-			mark_initialized(emitter, add_local(emitter, stmt->name, stmt->length, statement->line));
-
 			begin_scope(emitter);
+
+			LitString* name = lit_copy_string(emitter->state, stmt->name, stmt->length);
+			// mark_initialized(emitter, add_local(emitter, stmt->name, stmt->length, statement->line));
 
 			LitCompiler compiler;
 			init_compiler(emitter, &compiler, FUNCTION_REGULAR);
@@ -602,11 +609,14 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			emit_statement(emitter, stmt->body);
 
-			LitFunction* function = end_compiler(emitter, lit_copy_string(emitter->state, stmt->name, stmt->length));
+			LitFunction* function = end_compiler(emitter, name);
 			function->arg_count = stmt->parameters.count;
 
 			emit_constant(emitter, emitter->last_line, OBJECT_VAL(function));
+			emit_bytes(emitter, emitter->last_line, OP_SET_GLOBAL, add_constant(emitter, statement->line, OBJECT_VAL(name)));
 			emit_byte(emitter, emitter->last_line, OP_POP);
+
+			end_scope(emitter, emitter->last_line);
 
 			break;
 		}

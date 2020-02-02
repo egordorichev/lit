@@ -19,6 +19,7 @@ add_library(lit STATIC src/lit/lit.c src/lit/mem/lit_mem.c src/lit/state/lit_sta
         src/lit/util/lit_table.c src/lit/util/lit_array.c
         )
 
+set(CMAKE_C_FLAGS "-O3")
 add_executable(litc src/main.c)
 target_link_libraries(litc lit)
 target_link_libraries(litc m) # Lib math

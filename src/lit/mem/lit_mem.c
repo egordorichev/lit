@@ -40,6 +40,11 @@ static void free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_NATIVE: {
+			LIT_FREE(state, LitNative, object);
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}

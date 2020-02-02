@@ -7,12 +7,25 @@
 DEFINE_ARRAY(LitValues, LitValue, values)
 
 static void print_object(LitValue value) {
-	if (IS_STRING(value)) {
-		printf("%s", AS_CSTRING(value));
-	} else if (IS_FUNCTION(value)) {
-		printf("function %s", AS_FUNCTION(value)->name->chars);
-	} else {
-		UNREACHABLE
+	switch (OBJECT_TYPE(value)) {
+		case OBJECT_STRING: {
+			printf("%s", AS_CSTRING(value));
+			break;
+		}
+
+		case OBJECT_FUNCTION: {
+			printf("function %s", AS_FUNCTION(value)->name->chars);
+			break;
+		}
+
+		case OBJECT_NATIVE: {
+			printf("native function");
+			break;
+		}
+
+		default: {
+			UNREACHABLE
+		}
 	}
 }
 

@@ -62,3 +62,9 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type)
 
 	return object;
 }
+
+LitNative* lit_new_native(LitState* state, LitNativeFn function) {
+	LitNative* native = ALLOCATE_OBJECT(state, LitNative, OBJECT_NATIVE);
+	native->function = function;
+	return native;
+}

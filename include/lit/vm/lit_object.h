@@ -12,16 +12,19 @@
 #define IS_OBJECTS_TYPE(value, t) (IS_OBJECT(value) && AS_OBJECT(value)->type == t)
 #define IS_STRING(value) IS_OBJECTS_TYPE(value, OBJECT_STRING)
 #define IS_FUNCTION(value) IS_OBJECTS_TYPE(value, OBJECT_FUNCTION)
+#define IS_NATIVE(value) IS_OBJECTS_TYPE(value, OBJECT_NATIVE)
 
 #define AS_STRING(value) ((LitString*) AS_OBJECT(value))
 #define AS_CSTRING(value) (((LitString*) AS_OBJECT(value))->chars)
 #define AS_FUNCTION(value) ((LitFunction*) AS_OBJECT(value))
+#define AS_NATIVE(value) (((LitNative*) AS_OBJECT(value))->function)
 
 #define ALLOCATE_OBJECT(state, type, objectType) (type*) lit_allocate_object(state, sizeof(type), objectType)
 
 typedef enum {
 	OBJECT_STRING,
-	OBJECT_FUNCTION
+	OBJECT_FUNCTION,
+	OBJECT_NATIVE
 } LitObjectType;
 
 typedef struct sLitObject {
@@ -55,5 +58,14 @@ typedef struct sLitString {
 } sLitString;
 
 LitString* lit_copy_string(LitState* state, const char* chars, uint length);
+
+typedef LitValue (*LitNativeFn)(LitVm* vm, uint arg_count, LitValue* args);
+
+typedef struct {
+	LitObject object;
+	LitNativeFn function;
+} LitNative;
+
+LitNative* lit_new_native(LitState* state, LitNativeFn function);
 
 #endif

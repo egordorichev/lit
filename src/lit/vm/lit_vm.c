@@ -5,9 +5,25 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
+#include <time.h>
 
 void reset_stack(LitVm* vm) {
 	vm->stack_top = vm->stack;
+}
+
+static void define_native(LitVm* vm, const char* name, LitNativeFn function) {
+	LitState* state = vm->state;
+
+	lit_push(vm, OBJECT_VAL(lit_copy_string(state, name, (uint) strlen(name))));
+	lit_push(vm, OBJECT_VAL(lit_new_native(state, function)));
+	lit_table_set(state, &vm->globals, AS_STRING(vm->stack[0]), vm->stack[1]);
+	lit_pop(vm);
+	lit_pop(vm);
+}
+
+static LitValue time_native(LitVm* vm, uint arg_count, LitValue* args) {
+	return NUMBER_VAL((double) clock() / CLOCKS_PER_SEC);
 }
 
 void lit_init_vm(LitState* state, LitVm* vm) {
@@ -19,6 +35,10 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 
 	lit_init_table(&vm->strings);
 	lit_init_table(&vm->globals);
+}
+
+void lit_define_std(LitVm* vm) {
+	define_native(vm, "time", time_native);
 }
 
 void lit_free_vm(LitVm* vm) {
@@ -106,6 +126,10 @@ static bool call(LitVm* vm, LitFunction* function, uint8_t arg_count) {
 		}
 	}
 
+#ifdef LIT_TRACE_EXECUTION
+	printf("== %s ==\n", frame->function->name->chars);
+#endif
+
 	return true;
 }
 
@@ -114,6 +138,15 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 		switch (OBJECT_TYPE(callee)) {
 			case OBJECT_FUNCTION: {
 				return call(vm, AS_FUNCTION(callee), arg_count);
+			}
+
+			case OBJECT_NATIVE: {
+				LitNativeFn native = AS_NATIVE(callee);
+				LitValue result = native(vm, arg_count, vm->stack_top - arg_count);
+				vm->stack_top -= arg_count + 1;
+				lit_push(vm, result);
+
+				return true;
 			}
 
 			default: break;
@@ -223,7 +256,7 @@ LitInterpretResult lit_interpret_frame(LitState* state) {
 			READ_FRAME()
 
 			#ifdef LIT_TRACE_EXECUTION
-					printf("== %s ==\n", frame->function->name->chars);
+				printf("== %s ==\n", frame->function->name->chars);
 			#endif
 
 			continue;
@@ -417,10 +450,6 @@ LitInterpretResult lit_interpret_frame(LitState* state) {
 			}
 
 			READ_FRAME()
-
-			#ifdef LIT_TRACE_EXECUTION
-				printf("== %s ==\n", frame->function->name->chars);
-			#endif
 
 			continue;
 		}

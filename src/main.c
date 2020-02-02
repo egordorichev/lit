@@ -83,7 +83,7 @@ int main(int argc, char* argv[]) {
 	int64_t amount = lit_free_state(state);
 
 	if (amount != 0) {
-		printf("Error: memory leak of %ld bytes!\n", amount);
+		fprintf(stderr, "Error: memory leak of %ld bytes!\n", amount);
 	}
 
 	free(source);
