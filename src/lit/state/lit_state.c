@@ -79,7 +79,7 @@ LitInterpretResult lit_interpret(LitState* state, const char* file_name, const c
 
 	if (lit_parse(state->parser, file_name, code, &statements)) {
 		free_statements(state, &statements);
-		return INTERPRET_COMPILE_ERROR;
+		return (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VAL };
 	}
 
 	LitFunction* function = lit_emit(state->emitter, &statements);
@@ -88,7 +88,7 @@ LitInterpretResult lit_interpret(LitState* state, const char* file_name, const c
 	LitInterpretResult result;
 
 	if (state->had_error) {
-		result = INTERPRET_COMPILE_ERROR;
+		result = (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VAL };
 	} else {
 		result = lit_interpret_function(state, function);
 	}
@@ -97,6 +97,7 @@ LitInterpretResult lit_interpret(LitState* state, const char* file_name, const c
 		lit_error(state, RUNTIME_ERROR, 0, "Stack had left over trash in it");
 	}
 
+	state->vm->fiber = state->vm->fiber->parent;
 	return result;
 }
 

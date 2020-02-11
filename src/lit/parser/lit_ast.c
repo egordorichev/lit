@@ -79,6 +79,12 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
+		case REQUIRE_EXPRESSION: {
+			lit_free_expression(state, ((LitRequireExpression*) expression)->argument);
+			FREE_EXPRESSION(LitRequireExpression)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -161,6 +167,13 @@ LitCallExpression *lit_create_call_expression(LitState* state, uint line, LitExp
 	lit_init_expressions(&expression->args);
 
 	return expression;
+}
+
+LitRequireExpression *lit_create_require_expression(LitState* state, uint line, LitExpression* expression) {
+	LitRequireExpression* statement = ALLOCATE_EXPRESSION(state, LitRequireExpression, REQUIRE_EXPRESSION);
+	statement->argument = expression;
+
+	return statement;
 }
 
 #define FREE_STATEMENT(type) lit_reallocate(state, statement, sizeof(type), 0);

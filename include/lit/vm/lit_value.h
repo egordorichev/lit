@@ -5,14 +5,14 @@
 #include <lit/state/lit_state.h>
 #include <lit/util/lit_array.h>
 
+typedef uint64_t LitValue;
+
 #define SIGN_BIT ((uint64_t) 1 << 63)
 #define QNAN ((uint64_t) 0x7ffc000000000000)
 
 #define TAG_NULL 1
 #define TAG_FALSE 2
 #define TAG_TRUE 3
-
-typedef uint64_t LitValue;
 
 #define IS_BOOL(v) (((v) & FALSE_VAL) == FALSE_VAL)
 #define IS_NULL(v) ((v) == NULL_VAL)

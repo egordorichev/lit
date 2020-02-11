@@ -22,6 +22,11 @@ typedef struct sLitVm {
 	uint8_t root_count;
 } sLitVm;
 
+typedef struct sLitInterpretResult {
+	LitInterpretResultType type;
+	LitValue result;
+} LitInterpretResult;
+
 void lit_init_vm(LitState* state, LitVm* vm);
 void lit_define_std(LitVm* vm);
 void lit_free_vm(LitVm* vm);

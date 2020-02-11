@@ -2,6 +2,7 @@
 #include <lit/vm/lit_object.h>
 #include <lit/debug/lit_debug.h>
 #include <lit/mem/lit_mem.h>
+#include <lit/util/lit_fs.h>
 
 #include <stdio.h>
 #include <math.h>
@@ -194,7 +195,9 @@ LitInterpretResult lit_interpret_function(LitState* state, LitFunction* function
 
 	lit_push(vm, OBJECT_VAL(function));
 
-	return lit_interpret_fiber(state, fiber);
+	LitInterpretResult result = lit_interpret_fiber(state, fiber);
+
+	return result;
 }
 
 LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber) {
@@ -224,12 +227,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	slots = frame->slots;
 
 #define WRITE_FRAME() frame->ip = ip;
+#define RETURN_ERROR() return (LitInterpretResult) {INTERPRET_RUNTIME_ERROR, NULL_VAL};
 
 #define BINARY_OP(type, op) \
     do { \
 			if (!IS_NUMBER(PEEK(0)) || !IS_NUMBER(PEEK(1))) { \
 				runtime_error(vm, "Operands must be numbers"); \
-				return INTERPRET_RUNTIME_ERROR; \
+				RETURN_ERROR() \
 			} \
       double b = AS_NUMBER(lit_pop(vm)); \
       double a = AS_NUMBER(lit_pop(vm)); \
@@ -274,7 +278,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			if (fiber->frame_count == 0) {
 				lit_pop(vm);
-				return INTERPRET_OK;
+				return (LitInterpretResult) { INTERPRET_OK, result };
 			}
 
 			fiber->stack_top = frame->slots;
@@ -316,7 +320,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(NEGATE) {
 			if (!IS_NUMBER(PEEK(0))) {
 				runtime_error(vm, "Operand must be a number");
-				return INTERPRET_RUNTIME_ERROR;
+				RETURN_ERROR()
 			}
 
 			lit_push(vm, NUMBER_VAL(-AS_NUMBER(lit_pop(vm))));
@@ -351,7 +355,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(MOD) {
 			if (!IS_NUMBER(PEEK(0)) || !IS_NUMBER(PEEK(1))) {
 				runtime_error(vm, "Operands must be numbers");
-				return INTERPRET_RUNTIME_ERROR;
+				RETURN_ERROR()
 			}
 
       double b = AS_NUMBER(lit_pop(vm));
@@ -466,10 +470,35 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			WRITE_FRAME()
 
 			if (!call_value(vm, PEEK(arg_count), arg_count)) {
-				return INTERPRET_RUNTIME_ERROR;
+				RETURN_ERROR()
 			}
 
 			READ_FRAME()
+
+			continue;
+		}
+
+		CASE_CODE(REQUIRE) {
+			LitValue name = lit_pop(vm);
+
+			if (!IS_STRING(name)) {
+				runtime_error(vm, "require() argument must be a string");
+				RETURN_ERROR()
+			}
+
+			const char* path = AS_STRING(name)->chars;
+			const char* source = lit_read_file(path);
+
+			if (source == NULL) {
+				runtime_error(vm, "Failed to require '%s'", path);
+				RETURN_ERROR()
+			}
+
+			lit_push(vm, lit_interpret(state, path, source).result);
+
+			#ifdef LIT_TRACE_EXECUTION
+				printf("== %s ==\n", frame->function->name->chars);
+			#endif
 
 			continue;
 		}
@@ -489,5 +518,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #undef READ_SHORT
 #undef READ_BYTE
 
-	return INTERPRET_RUNTIME_ERROR;
+	RETURN_ERROR()
+
+#undef RETURN_ERROR
 }

@@ -193,7 +193,18 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 
 		case 'i': return check_keyword(scanner, 1, 1, "f", TOKEN_IF);
 		case 'n': return check_keyword(scanner, 1, 3, "ull", TOKEN_NULL);
-		case 'r': return check_keyword(scanner, 1, 5, "eturn", TOKEN_RETURN);
+
+		case 'r': {
+			if (scanner->current - scanner->start > 2) {
+				switch (scanner->start[2]) {
+					case 't': return check_keyword(scanner, 3, 3, "urn", TOKEN_RETURN);
+					case 'q': return check_keyword(scanner, 3, 4, "uire", TOKEN_REQUIRE);
+				}
+			}
+
+			break;
+		}
+
 		case 's': return check_keyword(scanner, 1, 4, "uper", TOKEN_SUPER);
 
 		case 't': {

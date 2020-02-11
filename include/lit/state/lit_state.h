@@ -32,7 +32,7 @@ typedef enum {
 	INTERPRET_OK,
 	INTERPRET_COMPILE_ERROR,
 	INTERPRET_RUNTIME_ERROR
-} LitInterpretResult;
+} LitInterpretResultType;
 
 LitState* lit_new_state();
 int64_t lit_free_state(LitState* state);

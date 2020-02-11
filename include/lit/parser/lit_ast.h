@@ -18,11 +18,11 @@ typedef enum {
 	LOCAL_VAR_EXPRESSION,
 	ASSIGN_EXPRESSION,
 	CALL_EXPRESSION,
-	LOGICAL_EXPRESSION,
 	GET_EXPRESSION,
 	SET_EXPRESSION,
 	THIS_EXPRESSION,
 	SUPER_EXPRESSION,
+	REQUIRE_EXPRESSION
 } LitExpressionType;
 
 typedef struct LitExpression {
@@ -100,6 +100,13 @@ typedef struct {
 } LitCallExpression;
 
 LitCallExpression *lit_create_call_expression(LitState* state, uint line, LitExpression* callee);
+
+typedef struct {
+	LitExpression expression;
+	LitExpression* argument;
+} LitRequireExpression;
+
+LitRequireExpression *lit_create_require_expression(LitState* state, uint line, LitExpression* expression);
 
 /*
  * Statements

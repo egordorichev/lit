@@ -6,6 +6,7 @@ typedef struct sLitVm LitVm;
 typedef struct sLitParser LitParser;
 typedef struct sLitEmitter LitEmitter;
 typedef struct sLitState LitState;
+typedef struct sLitInterpretResult LitInterpretResult;
 
 typedef struct sLitObject LitObject;
 typedef struct sLitString LitString;

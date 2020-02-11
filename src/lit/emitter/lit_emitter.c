@@ -3,8 +3,6 @@
 #include <lit/debug/lit_debug.h>
 #include <lit/vm/lit_object.h>
 #include <lit/scanner/lit_scanner.h>
-#include <lit/lit.h>
-#include <lit/debug/lit_debug.h>
 
 #include <string.h>
 
@@ -33,7 +31,7 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 	compiler->type = type;
 	compiler->local_count = 0;
 	compiler->scope_depth = 0;
-	compiler->enclosing = emitter->compiler;
+	compiler->enclosing = (struct LitCompiler *) emitter->compiler;
 	compiler->skip_return = false;
 	compiler->function = lit_create_function(emitter->state);
 
@@ -64,7 +62,7 @@ static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
 
 	LitFunction* function = emitter->compiler->function;
 
-	emitter->compiler = emitter->compiler->enclosing;
+	emitter->compiler = (LitCompiler *) emitter->compiler->enclosing;
 	emitter->chunk = emitter->compiler == NULL ? NULL : &emitter->compiler->function->chunk;
 
 	if (name != NULL) {
@@ -171,7 +169,7 @@ static int resolve_local(LitEmitter* emitter, LitCompiler* compiler, const char*
 	}
 
 	if (compiler->enclosing != NULL) {
-		return resolve_local(emitter, compiler->enclosing, name, length, line);
+		return resolve_local(emitter, (LitCompiler *) compiler->enclosing, name, length, line);
 	}
 
 	return -1;
@@ -412,6 +410,13 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
+		case REQUIRE_EXPRESSION: {
+			emit_expression(emitter, ((LitRequireExpression*) expression)->argument);
+			emit_byte(emitter, emitter->last_line, OP_REQUIRE);
+
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -616,10 +621,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case RETURN_STATEMENT: {
 			LitExpression* expression = ((LitReturnStatement*) statement)->expression;
-
-			if (emitter->compiler->type == FUNCTION_SCRIPT) {
-				lit_error(emitter->state, COMPILE_ERROR, statement->line, "Can't return from top-level code");
-			}
 
 			if (expression == NULL) {
 				emit_byte(emitter, emitter->last_line, OP_NULL);

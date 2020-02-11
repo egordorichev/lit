@@ -9,13 +9,13 @@ static void init_compiler(LitParser* parser, LitCompiler* compiler) {
 	compiler->local_count = 0;
 	compiler->scope_depth = 0;
 	compiler->function = NULL;
-	compiler->enclosing = parser->compiler;
+	compiler->enclosing = (struct LitCompiler *) parser->compiler;
 
 	parser->compiler = compiler;
 }
 
 static void end_compiler(LitParser* parser, LitCompiler* compiler) {
-	parser->compiler = compiler->enclosing;
+	parser->compiler = (LitCompiler *) compiler->enclosing;
 }
 
 static void begin_scope(LitParser* parser) {
@@ -180,7 +180,7 @@ static LitExpression* parse_grouping(LitParser* parser, bool can_assign) {
 	LitExpression* expression = parse_expression(parser);
 	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after expression");
 
-	return (LitExpression*) lit_create_grouping_expression(parser->state, parser->previous.line, expression);
+	return expression; // (LitExpression*) lit_create_grouping_expression(parser->state, parser->previous.line, expression);
 }
 
 static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool can_assign) {
@@ -309,6 +309,11 @@ static LitExpression* parse_variable_expression(LitParser* parser, bool can_assi
 	}
 
 	return expression;
+}
+
+static LitExpression* parse_require(LitParser* parser, bool can_assign) {
+	uint line = parser->previous.line;
+	return (LitExpression*) lit_create_require_expression(parser->state, line, parse_expression(parser));
 }
 
 static LitExpression* parse_expression(LitParser* parser) {
@@ -598,4 +603,5 @@ static void setup_rules() {
 	rules[TOKEN_AMPERSAND_AMPERSAND] = (LitParseRule) { NULL, parse_and, PREC_AND };
 	rules[TOKEN_BAR_BAR] = (LitParseRule) { NULL, parse_or, PREC_AND };
 	rules[TOKEN_QUESTION_QUESTION] = (LitParseRule) { NULL, parse_null_filter, PREC_NULL };
+	rules[TOKEN_REQUIRE] = (LitParseRule) { parse_require, NULL, PREC_NONE };
 }
