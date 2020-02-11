@@ -6,5 +6,6 @@ cmake_install*
 *.o
 *.a
 dist/*
+lens/*
 .idea/*
 Makefile
