@@ -6,6 +6,7 @@
 #include <lit/vm/lit_value.h>
 #include <lit/mem/lit_mem.h>
 #include <lit/vm/lit_chunk.h>
+#include <lit/lit.h>
 
 #define OBJECT_TYPE(value) (AS_OBJECT(value)->type)
 
@@ -24,7 +25,8 @@
 typedef enum {
 	OBJECT_STRING,
 	OBJECT_FUNCTION,
-	OBJECT_NATIVE
+	OBJECT_NATIVE,
+	OBJECT_FIBER
 } LitObjectType;
 
 typedef struct sLitObject {
@@ -66,6 +68,26 @@ typedef struct {
 	LitNativeFn function;
 } LitNative;
 
-LitNative* lit_new_native(LitState* state, LitNativeFn function);
+LitNative* lit_create_native(LitState* state, LitNativeFn function);
+
+typedef struct {
+	LitFunction* function;
+	uint8_t* ip;
+	LitValue* slots;
+} LitCallFrame;
+
+typedef struct LitFiber {
+	LitObject object;
+
+	struct LitFiber* parent;
+
+	LitValue stack[LIT_STACK_MAX];
+	LitValue* stack_top;
+
+	LitCallFrame frames[LIT_CALL_FRAMES_MAX];
+	uint frame_count;
+} LitFiber;
+
+LitFiber* lit_create_fiber(LitState* state, LitFunction* function);
 
 #endif

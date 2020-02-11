@@ -63,8 +63,24 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type)
 	return object;
 }
 
-LitNative* lit_new_native(LitState* state, LitNativeFn function) {
+LitNative* lit_create_native(LitState* state, LitNativeFn function) {
 	LitNative* native = ALLOCATE_OBJECT(state, LitNative, OBJECT_NATIVE);
 	native->function = function;
 	return native;
+}
+
+LitFiber* lit_create_fiber(LitState* state, LitFunction* function) {
+	LitFiber* fiber = ALLOCATE_OBJECT(state, LitFiber, OBJECT_FIBER);
+
+	fiber->stack_top = fiber->stack;
+	fiber->parent = NULL;
+	fiber->frame_count = 1;
+
+	LitCallFrame* frame = &fiber->frames[0];
+
+	frame->function = function;
+	frame->ip = function->chunk.code;
+	frame->slots = fiber->stack;
+
+	return fiber;
 }

@@ -9,24 +9,17 @@
 
 #include <lit/lit.h>
 
-typedef struct {
-	LitFunction* function;
-	uint8_t* ip;
-	LitValue* slots;
-} LitCallFrame;
-
 typedef struct sLitVm {
 	LitState* state;
-
-	LitValue stack[LIT_STACK_MAX];
-	LitValue* stack_top;
-
-	LitCallFrame frames[LIT_CALL_FRAMES_MAX];
-	uint frame_count;
 
 	LitObject* objects;
 	LitTable strings;
 	LitTable globals;
+
+	LitFiber* fiber;
+
+	LitObject* roots[LIT_ROOT_MAX];
+	uint8_t root_count;
 } sLitVm;
 
 void lit_init_vm(LitState* state, LitVm* vm);
@@ -37,6 +30,6 @@ void lit_push(LitVm* vm, LitValue value);
 LitValue lit_pop(LitVm* vm);
 
 LitInterpretResult lit_interpret_function(LitState* state, LitFunction* function);
-LitInterpretResult lit_interpret_frame(LitState* state);
+LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber);
 
 #endif

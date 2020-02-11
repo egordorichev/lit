@@ -13,5 +13,6 @@
 
 #define LIT_CALL_FRAMES_MAX 64
 #define LIT_STACK_MAX (LIT_CALL_FRAMES_MAX * 256)
+#define LIT_ROOT_MAX 5
 
 #endif

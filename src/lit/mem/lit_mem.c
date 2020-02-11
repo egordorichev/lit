@@ -45,6 +45,11 @@ static void free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_FIBER: {
+			LIT_FREE(state, LitFiber, object);
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}

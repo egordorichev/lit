@@ -93,7 +93,7 @@ LitInterpretResult lit_interpret(LitState* state, const char* file_name, const c
 		result = lit_interpret_function(state, function);
 	}
 
-	if (state->vm->stack_top != state->vm->stack) {
+	if (state->vm->fiber->stack_top != state->vm->fiber->stack) {
 		lit_error(state, RUNTIME_ERROR, 0, "Stack had left over trash in it");
 	}
 

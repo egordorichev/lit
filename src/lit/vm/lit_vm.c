@@ -8,18 +8,35 @@
 #include <string.h>
 #include <time.h>
 
-void reset_stack(LitVm* vm) {
-	vm->stack_top = vm->stack;
+static void push_root(LitVm* vm, LitObject* object) {
+	assert(vm->root_count < LIT_ROOT_MAX);
+	vm->roots[vm->root_count++] = object;
+}
+
+static LitObject* peek_root(LitVm* vm, uint8_t distance) {
+	assert(vm->root_count - distance + 1 > 0);
+	return vm->roots[vm->root_count - distance - 1];
+}
+
+static void pop_root(LitVm* vm) {
+	assert(vm->root_count > 0);
+	vm->root_count--;
+}
+
+static void reset_stack(LitVm* vm) {
+	if (vm->fiber != NULL) {
+		vm->fiber->stack_top = vm->fiber->stack;
+	}
 }
 
 static void define_native(LitVm* vm, const char* name, LitNativeFn function) {
 	LitState* state = vm->state;
 
-	lit_push(vm, OBJECT_VAL(lit_copy_string(state, name, (uint) strlen(name))));
-	lit_push(vm, OBJECT_VAL(lit_new_native(state, function)));
-	lit_table_set(state, &vm->globals, AS_STRING(vm->stack[0]), vm->stack[1]);
-	lit_pop(vm);
-	lit_pop(vm);
+	push_root(vm, (LitObject *) lit_create_native(state, function));
+	push_root(vm, (LitObject *) lit_copy_string(state, name, (uint) strlen(name)));
+	lit_table_set(state, &vm->globals, (LitString*) peek_root(vm, 0), OBJECT_VAL(peek_root(vm, 1)));
+	pop_root(vm);
+	pop_root(vm);
 }
 
 static LitValue time_native(LitVm* vm, uint arg_count, LitValue* args) {
@@ -36,11 +53,10 @@ static LitValue print_native(LitVm* vm, uint arg_count, LitValue* args) {
 }
 
 void lit_init_vm(LitState* state, LitVm* vm) {
-	reset_stack(vm);
-
 	vm->state = state;
 	vm->objects = NULL;
-	vm->frame_count = 0;
+	vm->fiber = NULL;
+	vm->root_count = 0;
 
 	lit_init_table(&vm->strings);
 	lit_init_table(&vm->globals);
@@ -60,24 +76,24 @@ void lit_free_vm(LitVm* vm) {
 }
 
 void lit_push(LitVm* vm, LitValue value) {
-	*vm->stack_top = value;
-	vm->stack_top++;
+	*vm->fiber->stack_top = value;
+	vm->fiber->stack_top++;
 }
 
 LitValue lit_pop(LitVm* vm) {
-	assert(vm->stack_top > vm->stack);
-	vm->stack_top--;
-	return *vm->stack_top;
+	assert(vm->fiber->stack_top > vm->fiber->stack);
+	vm->fiber->stack_top--;
+	return *vm->fiber->stack_top;
 }
 
 static void trace_stack(LitVm* vm) {
-	if (vm->stack_top == vm->stack) {
+	if (vm->fiber->stack_top == vm->fiber->stack) {
 		return;
 	}
 
 	printf("        | ");
 
-	for (LitValue* slot = vm->stack; slot < vm->stack_top; slot++) {
+	for (LitValue* slot = vm->fiber->stack; slot < vm->fiber->stack_top; slot++) {
 		printf("[ ");
 		lit_print_value(*slot);
 		printf(" ]");
@@ -93,8 +109,8 @@ static void runtime_error(LitVm* vm, const char* format, ...) {
 	va_end(args);
 	fputs("\n", stderr);
 
-	for (int i = vm->frame_count - 1; i >= 0; i--) {
-		LitCallFrame* frame = &vm->frames[i];
+	for (int i = vm->fiber->frame_count - 1; i >= 0; i--) {
+		LitCallFrame* frame = &vm->fiber->frames[i];
 		LitFunction* function = frame->function;
 
 		fprintf(stderr, "[line %d] in %s()\n", lit_chunk_get_line(&function->chunk, frame->ip - function->chunk.code - 1), function->name->chars);
@@ -112,17 +128,19 @@ static inline bool is_falsey(LitValue value) {
 }
 
 static bool call(LitVm* vm, LitFunction* function, uint8_t arg_count) {
-	if (vm->frame_count == LIT_CALL_FRAMES_MAX) {
+	LitFiber* fiber = vm->fiber;
+
+	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
 		runtime_error(vm, "Stack overflow");
 		return false;
 	}
 
-	LitCallFrame* frame = &vm->frames[vm->frame_count++];
+	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 
 	frame->function = function;
 	frame->ip = function->chunk.code;
 
-	frame->slots = vm->stack_top - arg_count - 1;
+	frame->slots = fiber->stack_top - arg_count - 1;
 
 	uint function_arg_count = function->arg_count;
 
@@ -152,8 +170,8 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 
 			case OBJECT_NATIVE: {
 				LitNativeFn native = AS_NATIVE(callee);
-				LitValue result = native(vm, arg_count, vm->stack_top - arg_count);
-				vm->stack_top -= arg_count + 1;
+				LitValue result = native(vm, arg_count, vm->fiber->stack_top - arg_count);
+				vm->fiber->stack_top -= arg_count + 1;
 				lit_push(vm, result);
 
 				return true;
@@ -170,20 +188,18 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 LitInterpretResult lit_interpret_function(LitState* state, LitFunction* function) {
 	register LitVm *vm = state->vm;
 
+	LitFiber* fiber = lit_create_fiber(state, function);
+	fiber->parent = vm->fiber;
+	vm->fiber = fiber;
+
 	lit_push(vm, OBJECT_VAL(function));
 
-	LitCallFrame* frame = &vm->frames[vm->frame_count++];
-
-	frame->function = function;
-	frame->ip = function->chunk.code;
-	frame->slots = vm->stack;
-
-	return lit_interpret_frame(state);
+	return lit_interpret_fiber(state, fiber);
 }
 
-LitInterpretResult lit_interpret_frame(LitState* state) {
+LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber) {
 	register LitVm *vm = state->vm;
-	register LitCallFrame* frame = &vm->frames[vm->frame_count - 1];
+	register LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
 	register LitChunk* current_chunk = &frame->function->chunk;
 	register uint8_t* ip = frame->ip = current_chunk->code;
 	register LitValue* slots = frame->slots;
@@ -201,8 +217,8 @@ LitInterpretResult lit_interpret_frame(LitState* state) {
 #define READ_CONSTANT() (current_chunk->constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() (current_chunk->constants.values[READ_SHORT()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
-#define PEEK(distance) vm->stack_top[-1 - distance]
-#define READ_FRAME() frame = &vm->frames[vm->frame_count - 1]; \
+#define PEEK(distance) fiber->stack_top[-1 - distance]
+#define READ_FRAME() frame = &fiber->frames[fiber->frame_count - 1]; \
 	current_chunk = &frame->function->chunk; \
 	ip = frame->ip; \
 	slots = frame->slots;
@@ -245,7 +261,7 @@ LitInterpretResult lit_interpret_frame(LitState* state) {
 
 		CASE_CODE(POP_MULTIPLE) {
 			uint8_t index = READ_BYTE();
-			vm->stack_top -= index;
+			fiber->stack_top -= index;
 
 			continue;
 		}
@@ -254,14 +270,14 @@ LitInterpretResult lit_interpret_frame(LitState* state) {
 			LitValue result = lit_pop(vm);
 
 			WRITE_FRAME()
-			vm->frame_count--;
+			fiber->frame_count--;
 
-			if (vm->frame_count == 0) {
+			if (fiber->frame_count == 0) {
 				lit_pop(vm);
 				return INTERPRET_OK;
 			}
 
-			vm->stack_top = frame->slots;
+			fiber->stack_top = frame->slots;
 			lit_push(vm, result);
 			READ_FRAME()
 
