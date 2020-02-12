@@ -7,6 +7,7 @@
 #include <lit/scanner/lit_scanner.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 static void default_error(LitState* state, LitErrorType type, uint line, const char* message, va_list args) {
 	if (line > 0) {
@@ -71,15 +72,19 @@ static void free_statements(LitState* state, LitStatements* statements) {
 	lit_free_stataments(state, statements);
 }
 
-LitInterpretResult lit_interpret(LitState* state, const char* file_name, const char* code) {
+LitInterpretResult lit_interpret(LitState* state, const char* module_name, const char* code) {
+	return lit_internal_interpret(state, lit_copy_string(state, module_name, strlen(module_name)), code);
+}
+
+LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code) {
 	state->had_error = false;
 
 	LitStatements statements;
 	lit_init_stataments(&statements);
 
-	if (lit_parse(state->parser, file_name, code, &statements)) {
+	if (lit_parse(state->parser, module_name->chars, code, &statements)) {
 		free_statements(state, &statements);
-		return (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VAL };
+		return (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VALUE };
 	}
 
 	LitFunction* function = lit_emit(state->emitter, &statements);
@@ -88,16 +93,21 @@ LitInterpretResult lit_interpret(LitState* state, const char* file_name, const c
 	LitInterpretResult result;
 
 	if (state->had_error) {
-		result = (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VAL };
+		result = (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VALUE };
 	} else {
-		result = lit_interpret_function(state, function);
+		LitModule* module = lit_create_module(state, module_name);
+		lit_table_set(state, &state->vm->modules, module_name, OBJECT_VALUE(module));
+
+		result = lit_interpret_function(state, module, function);
+		module->return_value = result.result;
+
+		if (state->vm->fiber->stack_top != state->vm->fiber->stack) {
+			lit_error(state, RUNTIME_ERROR, 0, "Stack had left over trash in it");
+		}
+
+		state->vm->fiber = state->vm->fiber->parent;
 	}
 
-	if (state->vm->fiber->stack_top != state->vm->fiber->stack) {
-		lit_error(state, RUNTIME_ERROR, 0, "Stack had left over trash in it");
-	}
-
-	state->vm->fiber = state->vm->fiber->parent;
 	return result;
 }
 

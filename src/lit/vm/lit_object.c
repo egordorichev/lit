@@ -21,7 +21,7 @@ static LitString* allocate_string(LitState* state, char* chars, int length, uint
 	string->chars = chars;
 	string->hash = hash;
 
-	lit_table_set(state, &state->vm->strings, string, NULL_VAL);
+	lit_table_set(state, &state->vm->strings, string, NULL_VALUE);
 
 	return string;
 }
@@ -69,12 +69,13 @@ LitNative* lit_create_native(LitState* state, LitNativeFn function) {
 	return native;
 }
 
-LitFiber* lit_create_fiber(LitState* state, LitFunction* function) {
+LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function) {
 	LitFiber* fiber = ALLOCATE_OBJECT(state, LitFiber, OBJECT_FIBER);
 
 	fiber->stack_top = fiber->stack;
 	fiber->parent = NULL;
 	fiber->frame_count = 1;
+	fiber->module = module;
 
 	LitCallFrame* frame = &fiber->frames[0];
 
@@ -83,4 +84,13 @@ LitFiber* lit_create_fiber(LitState* state, LitFunction* function) {
 	frame->slots = fiber->stack;
 
 	return fiber;
+}
+
+LitModule* lit_create_module(LitState* state, LitString* name) {
+	LitModule* module = ALLOCATE_OBJECT(state, LitModule, OBJECT_MODULE);
+
+	module->name = name;
+	module->return_value = NULL_VALUE;
+
+	return module;
 }

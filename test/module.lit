@@ -1,1 +1,2 @@
-print("Test module")
+print("Executing test module")
+return global

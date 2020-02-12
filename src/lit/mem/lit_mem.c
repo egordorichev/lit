@@ -50,6 +50,17 @@ static void free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_MODULE: {
+			LitValue value = ((LitModule*) object)->return_value;
+
+			if (IS_OBJECT(value) && !IS_STRING(value)) {
+				free_object(state, AS_OBJECT(value));
+			}
+
+			LIT_FREE(state, LitModule, object);
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}

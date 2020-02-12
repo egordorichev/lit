@@ -44,7 +44,7 @@ static void adjust_capacity(LitState* state, LitTable* table, int capacity) {
 
 	for (int i = 0; i < capacity; i++) {
 		entries[i].key = NULL;
-		entries[i].value = NULL_VAL;
+		entries[i].value = NULL_VALUE;
 	}
 
 	table->count = 0;
@@ -118,7 +118,7 @@ bool lit_table_delete(LitTable* table, LitString* key) {
 	}
 
 	entry->key = NULL;
-	entry->value = BOOL_VAL(true);
+	entry->value = BOOL_VALUE(true);
 
 	return true;
 }

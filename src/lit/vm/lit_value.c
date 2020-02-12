@@ -23,6 +23,16 @@ static void print_object(LitValue value) {
 			break;
 		}
 
+		case OBJECT_FIBER: {
+			printf("fiber");
+			break;
+		}
+
+		case OBJECT_MODULE: {
+			printf("module %s", AS_MODULE(value)->name->chars);
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}

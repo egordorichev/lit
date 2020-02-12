@@ -14,11 +14,13 @@
 #define IS_STRING(value) IS_OBJECTS_TYPE(value, OBJECT_STRING)
 #define IS_FUNCTION(value) IS_OBJECTS_TYPE(value, OBJECT_FUNCTION)
 #define IS_NATIVE(value) IS_OBJECTS_TYPE(value, OBJECT_NATIVE)
+#define IS_MODULE(value) IS_OBJECTS_TYPE(value, OBJECT_MODULE)
 
 #define AS_STRING(value) ((LitString*) AS_OBJECT(value))
 #define AS_CSTRING(value) (((LitString*) AS_OBJECT(value))->chars)
 #define AS_FUNCTION(value) ((LitFunction*) AS_OBJECT(value))
 #define AS_NATIVE(value) (((LitNative*) AS_OBJECT(value))->function)
+#define AS_MODULE(value) ((LitModule*) AS_OBJECT(value))
 
 #define ALLOCATE_OBJECT(state, type, objectType) (type*) lit_allocate_object(state, sizeof(type), objectType)
 
@@ -26,7 +28,8 @@ typedef enum {
 	OBJECT_STRING,
 	OBJECT_FUNCTION,
 	OBJECT_NATIVE,
-	OBJECT_FIBER
+	OBJECT_FIBER,
+	OBJECT_MODULE
 } LitObjectType;
 
 typedef struct sLitObject {
@@ -76,6 +79,15 @@ typedef struct {
 	LitValue* slots;
 } LitCallFrame;
 
+typedef struct {
+	LitObject object;
+
+	LitValue return_value;
+	LitString* name;
+} LitModule;
+
+LitModule* lit_create_module(LitState* state, LitString* name);
+
 typedef struct LitFiber {
 	LitObject object;
 
@@ -86,8 +98,10 @@ typedef struct LitFiber {
 
 	LitCallFrame frames[LIT_CALL_FRAMES_MAX];
 	uint frame_count;
+
+	LitModule* module;
 } LitFiber;
 
-LitFiber* lit_create_fiber(LitState* state, LitFunction* function);
+LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function);
 
 #endif

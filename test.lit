@@ -1,1 +1,5 @@
-require "test.module"
+global = "owo"
+
+for (var i = 0; i < 2; i++) {
+	print(require "test.module")
+}

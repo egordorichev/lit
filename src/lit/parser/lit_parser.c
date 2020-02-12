@@ -173,7 +173,7 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
 }
 
 static LitExpression* parse_number(LitParser* parser, bool can_assign) {
-	return (LitExpression*) lit_create_literal_expression(parser->state, parser->previous.line, NUMBER_VAL(strtod(parser->previous.start, NULL)));
+	return (LitExpression*) lit_create_literal_expression(parser->state, parser->previous.line, NUMBER_VALUE(strtod(parser->previous.start, NULL)));
 }
 
 static LitExpression* parse_grouping(LitParser* parser, bool can_assign) {
@@ -266,7 +266,7 @@ static LitExpression* parse_compound(LitParser* parser, LitExpression* prev, boo
 	LitExpression* expression;
 
 	if (operator == TOKEN_PLUS_PLUS || operator == TOKEN_MINUS_MINUS) {
-		expression = (LitExpression*) lit_create_literal_expression(parser->state, line, NUMBER_VAL(1));
+		expression = (LitExpression*) lit_create_literal_expression(parser->state, line, NUMBER_VALUE(1));
 	} else {
 		expression = parse_precedence(parser, (LitPrecedence) (rule->precedence + 1));
 	}
@@ -282,19 +282,19 @@ static LitExpression* parse_literal(LitParser* parser, bool can_assign) {
 
 	switch (parser->previous.type) {
 		case TOKEN_TRUE: {
-			return (LitExpression*) lit_create_literal_expression(parser->state, line, TRUE_VAL);
+			return (LitExpression*) lit_create_literal_expression(parser->state, line, TRUE_VALUE);
 		}
 
 		case TOKEN_FALSE: {
-			return (LitExpression*) lit_create_literal_expression(parser->state, line, FALSE_VAL);
+			return (LitExpression*) lit_create_literal_expression(parser->state, line, FALSE_VALUE);
 		}
 
 		case TOKEN_NULL: {
-			return (LitExpression*) lit_create_literal_expression(parser->state, line, NULL_VAL);
+			return (LitExpression*) lit_create_literal_expression(parser->state, line, NULL_VALUE);
 		}
 
 		case TOKEN_STRING: {
-			return (LitExpression*) lit_create_literal_expression(parser->state, line, OBJECT_VAL(lit_copy_string(parser->state, parser->previous.start + 1, parser->previous.length - 2)));
+			return (LitExpression*) lit_create_literal_expression(parser->state, line, OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start + 1, parser->previous.length - 2)));
 		}
 
 		default: UNREACHABLE

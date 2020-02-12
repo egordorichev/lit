@@ -35,13 +35,13 @@ static void define_native(LitVm* vm, const char* name, LitNativeFn function) {
 
 	push_root(vm, (LitObject *) lit_create_native(state, function));
 	push_root(vm, (LitObject *) lit_copy_string(state, name, (uint) strlen(name)));
-	lit_table_set(state, &vm->globals, (LitString*) peek_root(vm, 0), OBJECT_VAL(peek_root(vm, 1)));
+	lit_table_set(state, &vm->globals, (LitString*) peek_root(vm, 0), OBJECT_VALUE(peek_root(vm, 1)));
 	pop_root(vm);
 	pop_root(vm);
 }
 
 static LitValue time_native(LitVm* vm, uint arg_count, LitValue* args) {
-	return NUMBER_VAL((double) clock() / CLOCKS_PER_SEC);
+	return NUMBER_VALUE((double) clock() / CLOCKS_PER_SEC);
 }
 
 static LitValue print_native(LitVm* vm, uint arg_count, LitValue* args) {
@@ -50,7 +50,7 @@ static LitValue print_native(LitVm* vm, uint arg_count, LitValue* args) {
 		printf("\n");
 	}
 
-	return NULL_VAL;
+	return NULL_VALUE;
 }
 
 void lit_init_vm(LitState* state, LitVm* vm) {
@@ -61,6 +61,7 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 
 	lit_init_table(&vm->strings);
 	lit_init_table(&vm->globals);
+	lit_init_table(&vm->modules);
 }
 
 void lit_define_std(LitVm* vm) {
@@ -71,6 +72,7 @@ void lit_define_std(LitVm* vm) {
 void lit_free_vm(LitVm* vm) {
 	lit_free_table(vm->state, &vm->strings);
 	lit_free_table(vm->state, &vm->globals);
+	lit_free_table(vm->state, &vm->modules);
 	lit_free_objects(vm->state, vm->objects);
 
 	lit_init_vm(vm->state, vm);
@@ -147,7 +149,7 @@ static bool call(LitVm* vm, LitFunction* function, uint8_t arg_count) {
 
 	if (arg_count < function_arg_count) {
 		for (uint i = 0; i < function_arg_count - arg_count; i++) {
-			lit_push(vm, NULL_VAL);
+			lit_push(vm, NULL_VALUE);
 		}
 	} else if (arg_count > function_arg_count) {
 		for (uint i = 0; i < arg_count - function_arg_count; i++) {
@@ -186,14 +188,14 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 	return false;
 }
 
-LitInterpretResult lit_interpret_function(LitState* state, LitFunction* function) {
+LitInterpretResult lit_interpret_function(LitState* state, LitModule* module, LitFunction* function) {
 	register LitVm *vm = state->vm;
 
-	LitFiber* fiber = lit_create_fiber(state, function);
+	LitFiber* fiber = lit_create_fiber(state, module, function);
 	fiber->parent = vm->fiber;
 	vm->fiber = fiber;
 
-	lit_push(vm, OBJECT_VAL(function));
+	lit_push(vm, OBJECT_VALUE(function));
 
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 
@@ -227,7 +229,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	slots = frame->slots;
 
 #define WRITE_FRAME() frame->ip = ip;
-#define RETURN_ERROR() return (LitInterpretResult) {INTERPRET_RUNTIME_ERROR, NULL_VAL};
+#define RETURN_ERROR() return (LitInterpretResult) {INTERPRET_RUNTIME_ERROR, NULL_VALUE};
 
 #define BINARY_OP(type, op) \
     do { \
@@ -303,17 +305,17 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(TRUE) {
-			lit_push(vm, TRUE_VAL);
+			lit_push(vm, TRUE_VALUE);
 			continue;
 		}
 
 		CASE_CODE(FALSE) {
-			lit_push(vm, FALSE_VAL);
+			lit_push(vm, FALSE_VALUE);
 			continue;
 		}
 
 		CASE_CODE(NULL) {
-			lit_push(vm, NULL_VAL);
+			lit_push(vm, NULL_VALUE);
 			continue;
 		}
 
@@ -323,32 +325,32 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				RETURN_ERROR()
 			}
 
-			lit_push(vm, NUMBER_VAL(-AS_NUMBER(lit_pop(vm))));
+			lit_push(vm, NUMBER_VALUE(-AS_NUMBER(lit_pop(vm))));
 			continue;
 		}
 
 		CASE_CODE(NOT) {
-			lit_push(vm, BOOL_VAL(is_falsey(lit_pop(vm))));
+			lit_push(vm, BOOL_VALUE(is_falsey(lit_pop(vm))));
 			continue;
 		}
 
 		CASE_CODE(ADD) {
-			BINARY_OP(NUMBER_VAL, +)
+			BINARY_OP(NUMBER_VALUE, +)
 			continue;
 		}
 
 		CASE_CODE(SUBTRACT) {
-			BINARY_OP(NUMBER_VAL, -)
+			BINARY_OP(NUMBER_VALUE, -)
 			continue;
 		}
 
 		CASE_CODE(MULTIPLY) {
-			BINARY_OP(NUMBER_VAL, *)
+			BINARY_OP(NUMBER_VALUE, *)
 			continue;
 		}
 
 		CASE_CODE(DIVIDE) {
-			BINARY_OP(NUMBER_VAL, /)
+			BINARY_OP(NUMBER_VALUE, /)
 			continue;
 		}
 
@@ -361,7 +363,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
       double b = AS_NUMBER(lit_pop(vm));
       double a = AS_NUMBER(lit_pop(vm));
 
-      lit_push(vm, NUMBER_VAL(fmod(a, b)));
+      lit_push(vm, NUMBER_VALUE(fmod(a, b)));
 
       continue;
 		}
@@ -370,7 +372,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue a = lit_pop(vm);
 			LitValue b = lit_pop(vm);
 
-			lit_push(vm, BOOL_VAL(a == b));
+			lit_push(vm, BOOL_VALUE(a == b));
 			continue;
 		}
 
@@ -378,27 +380,27 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue a = lit_pop(vm);
 			LitValue b = lit_pop(vm);
 
-			lit_push(vm, BOOL_VAL(a != b));
+			lit_push(vm, BOOL_VALUE(a != b));
 			continue;
 		}
 
 		CASE_CODE(GREATER) {
-			BINARY_OP(BOOL_VAL, >)
+			BINARY_OP(BOOL_VALUE, >)
 			continue;
 		}
 
 		CASE_CODE(GREATER_EQUAL) {
-			BINARY_OP(BOOL_VAL, >=)
+			BINARY_OP(BOOL_VALUE, >=)
 			continue;
 		}
 
 		CASE_CODE(LESS) {
-			BINARY_OP(BOOL_VAL, <)
+			BINARY_OP(BOOL_VALUE, <)
 			continue;
 		}
 
 		CASE_CODE(LESS_EQUAL) {
-			BINARY_OP(BOOL_VAL, <=)
+			BINARY_OP(BOOL_VALUE, <=)
 			continue;
 		}
 
@@ -414,7 +416,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue value;
 
 			if (!lit_table_get(&vm->globals, name, &value)) {
-				lit_push(vm, NULL_VAL);
+				lit_push(vm, NULL_VALUE);
 			} else {
 				lit_push(vm, value);
 			}
@@ -499,6 +501,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				}
 			}
 
+			LitString* module_name = lit_copy_string(state, full_path, length);
+			LitValue existing_module;
+
+			if (lit_table_get(&vm->modules, module_name, &existing_module)) {
+				lit_push(vm, AS_MODULE(existing_module)->return_value);
+				continue;
+			}
+
 			const char* source = lit_read_file(full_path);
 
 			if (source == NULL) {
@@ -506,7 +516,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				RETURN_ERROR()
 			}
 
-			lit_push(vm, lit_interpret(state, path, source).result);
+			lit_push(vm, lit_internal_interpret(state, module_name, source).result);
 
 			#ifdef LIT_TRACE_EXECUTION
 				printf("== %s ==\n", frame->function->name->chars);
