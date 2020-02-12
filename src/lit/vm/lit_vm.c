@@ -487,10 +487,22 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			}
 
 			const char* path = AS_STRING(name)->chars;
-			const char* source = lit_read_file(path);
+			size_t length = strlen(path);
+			char full_path[length + 5];
+
+			memcpy((void *) full_path, path, length);
+			memcpy((void *) (full_path + length), ".lit\0", length);
+
+			for (uint i = 0; i < length; i++) {
+				if (full_path[i] == '.' || full_path[i] == '\\') {
+					full_path[i] = '/';
+				}
+			}
+
+			const char* source = lit_read_file(full_path);
 
 			if (source == NULL) {
-				runtime_error(vm, "Failed to require '%s'", path);
+				runtime_error(vm, "Failed to open '%s'", full_path);
 				RETURN_ERROR()
 			}
 

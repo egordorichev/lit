@@ -1,1 +1,1 @@
-print(require "test_module")
+require "test.module"
