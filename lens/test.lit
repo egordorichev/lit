@@ -1,3 +1,0 @@
-import state
-
-var engine = new Engine(new InGameState())
