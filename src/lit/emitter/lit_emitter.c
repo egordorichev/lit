@@ -29,6 +29,10 @@ static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b)
 	lit_write_chunk(emitter->state, emitter->chunk, b, line);
 }
 
+static void emit_short(LitEmitter* emitter, uint16_t line, uint16_t value) {
+	emit_bytes(emitter, line, (uint8_t) ((value >> 8) & 0xff), (uint8_t) (value & 0xff));
+}
+
 static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctionType type) {
 	lit_init_locals(&compiler->locals);
 
@@ -124,7 +128,7 @@ static uint emit_constant(LitEmitter* emitter, uint line, LitValue value) {
 		emit_bytes(emitter, line, OP_CONSTANT, constant);
 	} else if (constant < UINT16_MAX) {
 		emit_byte(emitter, line, OP_CONSTANT_LONG);
-		emit_bytes(emitter, line, (uint8_t) ((constant >> 8) & 0xff), (uint8_t) (constant & 0xff));
+		emit_short(emitter, line, constant);
 	} else {
 		lit_error(emitter->state, COMPILE_ERROR, line, "Too many constants in one chunk");
 	}
@@ -136,7 +140,7 @@ static int add_local(LitEmitter* emitter, const char* name, uint length, uint li
 	LitCompiler* compiler = emitter->compiler;
 	LitLocals* locals = &compiler->locals;
 
-	if (locals->count == UINT8_MAX + 1) {
+	if (locals->count == UINT16_MAX) {
 		lit_error(emitter->state, COMPILE_ERROR, line, "Too many local variables in function");
 	}
 
@@ -211,7 +215,7 @@ static void emit_loop(LitEmitter* emitter, uint start, uint line) {
 		lit_error(emitter->state, COMPILE_ERROR, line, "Loop body is too large");
 	}
 
-	emit_bytes(emitter, line, (offset >> 8) & 0xff, offset & 0xff);
+	emit_short(emitter, line, offset);
 }
 
 static void patch_breaks(LitEmitter* emitter, uint line) {
@@ -368,7 +372,13 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				break;
 			}
 
-			emit_bytes(emitter, expression->line, OP_GET_LOCAL, (uint8_t) index);
+			if (index > UINT8_MAX) {
+				emit_byte(emitter, expression->line, OP_GET_LOCAL_LONG);
+				emit_short(emitter, expression->line, (uint16_t) index);
+			} else {
+				emit_bytes(emitter, expression->line, OP_GET_LOCAL, (uint8_t) index);
+			}
+
 			break;
 		}
 
@@ -384,7 +394,12 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
 					break;
 				} else {
-					emit_bytes(emitter, expression->line, OP_SET_LOCAL, (uint8_t) index);
+					if (index > UINT8_MAX) {
+						emit_byte(emitter, expression->line, OP_SET_LOCAL_LONG);
+						emit_short(emitter, expression->line, (uint16_t) index);
+					} else {
+						emit_bytes(emitter, expression->line, OP_SET_LOCAL, (uint8_t) index);
+					}
 				}
 			} else {
 				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Invalid assigment target %d", (int) expr->to->type);
@@ -459,7 +474,13 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			mark_initialized(emitter, index);
-			emit_bytes(emitter, line, OP_SET_LOCAL, (uint8_t) index);
+
+			if (index > UINT8_MAX) {
+				emit_byte(emitter, statement->line, OP_SET_LOCAL_LONG);
+				emit_short(emitter, statement->line, (uint16_t) index);
+			} else {
+				emit_bytes(emitter, statement->line, OP_SET_LOCAL, (uint8_t) index);
+			}
 
 			break;
 		}

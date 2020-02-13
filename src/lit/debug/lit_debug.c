@@ -31,6 +31,15 @@ static uint print_byte_op(const char* name, LitChunk* chunk, uint offset) {
 	return offset + 2;
 }
 
+static uint print_short_op(const char* name, LitChunk* chunk, uint offset) {
+	uint16_t slot = (uint16_t) (chunk->code[offset + 1] << 8);
+	slot |= chunk->code[offset + 2];
+
+	printf("%-16s %4d\n", name, slot);
+
+	return offset + 2;
+}
+
 static uint print_jump_op(const char* name, int sign, LitChunk* chunk, uint offset) {
 	uint16_t jump = (uint16_t)(chunk->code[offset + 1] << 8);
 	jump |= chunk->code[offset + 2];
@@ -76,6 +85,8 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_GET_GLOBAL: return print_constant_op("OP_GET_GLOBAL", chunk, offset, false);
 		case OP_SET_LOCAL: return print_byte_op("OP_SET_LOCAL", chunk, offset);
 		case OP_GET_LOCAL: return print_byte_op("OP_GET_LOCAL", chunk, offset);
+		case OP_SET_LOCAL_LONG: return print_short_op("OP_SET_LOCAL_LONG", chunk, offset);
+		case OP_GET_LOCAL_LONG: return print_short_op("OP_GET_LOCAL_LONG", chunk, offset);
 
 		case OP_JUMP_IF_FALSE: return print_jump_op("OP_JUMP_IF_FALSE", 1, chunk, offset);
 		case OP_JUMP_IF_NULL: return print_jump_op("OP_JUMP_IF_NULL", 1, chunk, offset);

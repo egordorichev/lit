@@ -433,7 +433,18 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(GET_LOCAL) {
 			lit_push(vm, slots[READ_BYTE()]);
+			continue;
+		}
 
+		CASE_CODE(SET_LOCAL_LONG) {
+			uint8_t index = READ_SHORT();
+			slots[index] = PEEK(0);
+
+			continue;
+		}
+
+		CASE_CODE(GET_LOCAL_LONG) {
+			lit_push(vm, slots[READ_SHORT()]);
 			continue;
 		}
 
