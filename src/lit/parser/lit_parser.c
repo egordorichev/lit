@@ -6,7 +6,6 @@
 #include <stdlib.h>
 
 static void init_compiler(LitParser* parser, LitCompiler* compiler) {
-	compiler->local_count = 0;
 	compiler->scope_depth = 0;
 	compiler->function = NULL;
 	compiler->enclosing = (struct LitCompiler *) parser->compiler;
@@ -302,7 +301,7 @@ static LitExpression* parse_literal(LitParser* parser, bool can_assign) {
 }
 
 static LitExpression* parse_variable_expression(LitParser* parser, bool can_assign) {
-	LitExpression* expression = (LitExpression*) lit_create_local_var_expression(parser->state, parser->previous.line, parser->previous);
+	LitExpression* expression = (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, parser->previous);
 
 	if (can_assign && match(parser, TOKEN_EQUAL)) {
 		return (LitExpression*) lit_create_assign_expression(parser->state, parser->previous.line, expression, parse_expression(parser));

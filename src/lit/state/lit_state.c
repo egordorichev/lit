@@ -1,6 +1,5 @@
 #include <lit/state/lit_state.h>
 #include <lit/vm/lit_vm.h>
-#include <lit/mem/lit_mem.h>
 #include <lit/debug/lit_debug.h>
 #include <lit/emitter/lit_emitter.h>
 #include <lit/parser/lit_parser.h>

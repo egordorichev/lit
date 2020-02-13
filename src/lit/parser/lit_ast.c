@@ -50,11 +50,6 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
-		case LOCAL_VAR_EXPRESSION: {
-			FREE_EXPRESSION(LitLocalVarExpression)
-			break;
-		}
-
 		case ASSIGN_EXPRESSION: {
 			LitAssignExpression *expr = (LitAssignExpression *) expression;
 
@@ -136,14 +131,8 @@ LitGroupingExpression *lit_create_grouping_expression(LitState* state, uint line
 	return expression;
 }
 
-LitVarExpression *lit_create_var_expression(LitState* state, uint line, LitString* name) {
+LitVarExpression *lit_create_var_expression(LitState* state, uint line, LitToken name) {
 	LitVarExpression* expression = ALLOCATE_EXPRESSION(state, LitVarExpression, VAR_EXPRESSION);
-	expression->name = name;
-	return expression;
-}
-
-LitLocalVarExpression *lit_create_local_var_expression(LitState* state, uint line, LitToken name) {
-	LitLocalVarExpression* expression = ALLOCATE_EXPRESSION(state, LitLocalVarExpression, LOCAL_VAR_EXPRESSION);
 
 	expression->name = name.start;
 	expression->length = name.length;

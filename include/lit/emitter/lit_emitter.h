@@ -14,9 +14,11 @@ typedef struct {
 	int depth;
 } LitLocal;
 
+DECLARE_ARRAY(LitLocals, LitLocal, locals)
+
 typedef struct {
-	LitLocal locals[UINT8_MAX + 1];
-	int local_count;
+	LitLocals locals;
+
 	int scope_depth;
 
 	LitFunction* function;

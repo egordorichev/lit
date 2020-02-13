@@ -15,7 +15,6 @@ typedef enum {
 	UNARY_EXPRESSION,
 	GROUPING_EXPRESSION,
 	VAR_EXPRESSION,
-	LOCAL_VAR_EXPRESSION,
 	ASSIGN_EXPRESSION,
 	CALL_EXPRESSION,
 	GET_EXPRESSION,
@@ -63,18 +62,11 @@ LitUnaryExpression *lit_create_unary_expression(LitState* state, uint line, LitE
 
 typedef struct {
 	LitExpression expression;
-	LitString* name;
-} LitVarExpression;
-
-LitVarExpression *lit_create_var_expression(LitState* state, uint line, LitString* name);
-
-typedef struct {
-	LitExpression expression;
 	const char* name;
 	uint length;
-} LitLocalVarExpression;
+} LitVarExpression;
 
-LitLocalVarExpression *lit_create_local_var_expression(LitState* state, uint line, LitToken name);
+LitVarExpression *lit_create_var_expression(LitState* state, uint line, LitToken name);
 
 typedef struct {
 	LitExpression expression;

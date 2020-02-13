@@ -6,6 +6,8 @@
 
 #include <string.h>
 
+DEFINE_ARRAY(LitLocals, LitLocal, locals)
+
 void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->state = state;
 	emitter->loop_start = 0;
@@ -28,8 +30,9 @@ static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b)
 }
 
 static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctionType type) {
+	lit_init_locals(&compiler->locals);
+
 	compiler->type = type;
-	compiler->local_count = 0;
 	compiler->scope_depth = 0;
 	compiler->enclosing = (struct LitCompiler *) emitter->compiler;
 	compiler->skip_return = false;
@@ -44,10 +47,9 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 	emitter->compiler = compiler;
 	emitter->chunk = &compiler->function->chunk;
 
-	LitLocal* local = &compiler->locals[compiler->local_count++];
-	local->depth = -1;
-	local->name = "";
-	local->length = 0;
+	lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
+		"", 0, -1
+	});
 }
 
 static void emit_return(LitEmitter* emitter, uint line) {
@@ -61,6 +63,7 @@ static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
 	}
 
 	LitFunction* function = emitter->compiler->function;
+	lit_free_locals(emitter->state, &emitter->compiler->locals);
 
 	emitter->compiler = (LitCompiler *) emitter->compiler->enclosing;
 	emitter->chunk = emitter->compiler == NULL ? NULL : &emitter->compiler->function->chunk;
@@ -86,8 +89,10 @@ static void end_scope(LitEmitter* emitter, uint16_t line) {
 	LitCompiler* compiler = emitter->compiler;
 	uint count = 0;
 
-	while (compiler->local_count > 0 && compiler->locals[compiler->local_count - 1].depth > compiler->scope_depth) {
-		compiler->local_count--;
+	LitLocals locals = compiler->locals;
+
+	while (locals.count > 0 && locals.values[locals.count - 1].depth > compiler->scope_depth) {
+		locals.count--;
 		count++;
 	}
 
@@ -129,13 +134,14 @@ static uint emit_constant(LitEmitter* emitter, uint line, LitValue value) {
 
 static int add_local(LitEmitter* emitter, const char* name, uint length, uint line) {
 	LitCompiler* compiler = emitter->compiler;
+	LitLocals* locals = &compiler->locals;
 
-	if (compiler->local_count == UINT8_MAX + 1) {
+	if (locals->count == UINT8_MAX + 1) {
 		lit_error(emitter->state, COMPILE_ERROR, line, "Too many local variables in function");
 	}
 
-	for (int i = compiler->local_count - 1; i >= 0; i--) {
-		LitLocal* local = &compiler->locals[i];
+	for (int i = (int) locals->count - 1; i >= 0; i--) {
+		LitLocal* local = &locals->values[i];
 
 		if (local->depth != UINT16_MAX && local->depth < compiler->scope_depth) {
 			break;
@@ -146,18 +152,18 @@ static int add_local(LitEmitter* emitter, const char* name, uint length, uint li
 		}
 	}
 
-	LitLocal* local = &compiler->locals[compiler->local_count++];
+	lit_locals_write(emitter->state, locals, (LitLocal) {
+		name, length, UINT16_MAX
+	});
 
-	local->name = name;
-	local->length = length;
-	local->depth = UINT16_MAX;
-
-	return compiler->local_count - 1;
+	return (int) locals->count - 1;
 }
 
 static int resolve_local(LitEmitter* emitter, LitCompiler* compiler, const char* name, uint length, uint line) {
-	for (int i = compiler->local_count - 1; i >= 0; i--) {
-		LitLocal* local = &compiler->locals[i];
+	LitLocals* locals = &compiler->locals;
+
+	for (int i = (int) locals->count - 1; i >= 0; i--) {
+		LitLocal* local = &locals->values[i];
 
 		if (local->length == length && memcmp(local->name, name, length) == 0) {
 			if (local->depth == UINT16_MAX) {
@@ -168,15 +174,15 @@ static int resolve_local(LitEmitter* emitter, LitCompiler* compiler, const char*
 		}
 	}
 
-	if (compiler->enclosing != NULL) {
+	/*if (compiler->enclosing != NULL) {
 		return resolve_local(emitter, (LitCompiler *) compiler->enclosing, name, length, line);
-	}
+	}*/
 
 	return -1;
 }
 
 static void mark_initialized(LitEmitter* emitter, uint index) {
-	emitter->compiler->locals[index].depth = emitter->compiler->scope_depth;
+	emitter->compiler->locals.values[index].depth = emitter->compiler->scope_depth;
 }
 
 static uint emit_jump(LitEmitter* emitter, LitOpCode code, uint line) {
@@ -354,17 +360,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		}
 
 		case VAR_EXPRESSION: {
-			emit_bytes(emitter, expression->line, OP_GET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(((LitVarExpression*) expression)->name)));
-			break;
-		}
-
-		case LOCAL_VAR_EXPRESSION: {
-			LitLocalVarExpression* expr = (LitLocalVarExpression*) expression;
+			LitVarExpression* expr = (LitVarExpression*) expression;
 			int index = resolve_local(emitter, emitter->compiler, expr->name, expr->length, expression->line);
 
 			if (index == -1) {
 				emit_bytes(emitter, expression->line, OP_GET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length))));
-				// lit_error(emitter->state, COMPILE_ERROR, expression->line, "Undefined variable '%.*s'", (int) expr->length, expr->name);
 				break;
 			}
 
@@ -377,14 +377,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			emit_expression(emitter, expr->value);
 
 			if (expr->to->type == VAR_EXPRESSION) {
-				emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(((LitVarExpression*) expr->to)->name)));
-			} else if (expr->to->type == LOCAL_VAR_EXPRESSION) {
-				LitLocalVarExpression* e = (LitLocalVarExpression*) expr->to;
+				LitVarExpression* e = (LitVarExpression*) expr->to;
 				int index = resolve_local(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 
 				if (index == -1) {
 					emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
-					// lit_error(emitter->state, COMPILE_ERROR, expression->line, "Undefined variable '%.*s'", (int) e->length, e->name);
 					break;
 				} else {
 					emit_bytes(emitter, expression->line, OP_SET_LOCAL, (uint8_t) index);
