@@ -93,10 +93,10 @@ static void end_scope(LitEmitter* emitter, uint16_t line) {
 	LitCompiler* compiler = emitter->compiler;
 	uint count = 0;
 
-	LitLocals locals = compiler->locals;
+	LitLocals* locals = &compiler->locals;
 
-	while (locals.count > 0 && locals.values[locals.count - 1].depth > compiler->scope_depth) {
-		locals.count--;
+	while (locals->count > 0 && locals->values[locals->count - 1].depth > compiler->scope_depth) {
+		locals->count--;
 		count++;
 	}
 
