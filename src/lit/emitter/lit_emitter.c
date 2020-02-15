@@ -6,11 +6,13 @@
 
 #include <string.h>
 
+DEFINE_ARRAY(LitPrivates, LitPrivate, privates)
 DEFINE_ARRAY(LitLocals, LitLocal, locals)
 
 void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->state = state;
 	emitter->loop_start = 0;
+	emitter->privates_count = 0;
 
 	lit_init_uints(&emitter->breaks);
 }
@@ -34,6 +36,7 @@ static void emit_short(LitEmitter* emitter, uint16_t line, uint16_t value) {
 }
 
 static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctionType type) {
+	lit_init_privates(&compiler->privates);
 	lit_init_locals(&compiler->locals);
 
 	compiler->type = type;
@@ -67,6 +70,8 @@ static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
 	}
 
 	LitFunction* function = emitter->compiler->function;
+
+	lit_free_privates(emitter->state, &emitter->compiler->privates);
 	lit_free_locals(emitter->state, &emitter->compiler->locals);
 
 	emitter->compiler = (LitCompiler *) emitter->compiler->enclosing;
@@ -661,7 +666,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	return false;
 }
 
-LitFunction* lit_emit(LitEmitter* emitter, LitStatements* statements) {
+LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* module_name) {
 	LitCompiler compiler;
 	init_compiler(emitter, &compiler, FUNCTION_SCRIPT);
 
@@ -676,5 +681,13 @@ LitFunction* lit_emit(LitEmitter* emitter, LitStatements* statements) {
 	}
 
 	end_scope(emitter, emitter->last_line);
-	return end_compiler(emitter, NULL);
+	LitFunction* function = end_compiler(emitter, NULL);
+
+	LitModule* module = lit_create_module(emitter->state, module_name);
+
+	module->main_function = function;
+	module->privates_count = emitter->privates_count;
+	module->privates = LIT_ALLOCATE(emitter->state, LitValue, emitter->privates_count);
+
+	return module;
 }

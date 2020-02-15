@@ -188,15 +188,14 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 	return false;
 }
 
-LitInterpretResult lit_interpret_function(LitState* state, LitModule* module, LitFunction* function) {
+LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 	register LitVm *vm = state->vm;
 
-	LitFiber* fiber = lit_create_fiber(state, module, function);
+	LitFiber* fiber = lit_create_fiber(state, module, module->main_function);
 	fiber->parent = vm->fiber;
 	vm->fiber = fiber;
 
-	lit_push(vm, OBJECT_VALUE(function));
-
+	lit_push(vm, OBJECT_VALUE(module->main_function));
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 
 	return result;
@@ -208,10 +207,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	register LitChunk* current_chunk = &frame->function->chunk;
 	register uint8_t* ip = frame->ip = current_chunk->code;
 	register LitValue* slots = frame->slots;
+	register LitValue* privates = fiber->module->privates;
 
 	// Has to be inside of the function in order for goto to work
 	static void* dispatch_table[] = {
-#define OPCODE(name) &&OP_##name,
+#define OPCODE(name, effect) &&OP_##name,
 #include <lit/vm/lit_opcodes.h>
 #undef OPCODE
 	};
@@ -445,6 +445,30 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(GET_LOCAL_LONG) {
 			lit_push(vm, slots[READ_SHORT()]);
+			continue;
+		}
+
+		CASE_CODE(SET_PRIVATE) {
+			uint8_t index = READ_BYTE();
+			privates[index] = PEEK(0);
+
+			continue;
+		}
+
+		CASE_CODE(GET_PRIVATE) {
+			lit_push(vm, privates[READ_BYTE()]);
+			continue;
+		}
+
+		CASE_CODE(SET_PRIVATE_LONG) {
+			uint8_t index = READ_SHORT();
+			privates[index] = PEEK(0);
+
+			continue;
+		}
+
+		CASE_CODE(GET_PRIVATE_LONG) {
+			lit_push(vm, privates[READ_SHORT()]);
 			continue;
 		}
 

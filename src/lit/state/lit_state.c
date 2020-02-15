@@ -86,7 +86,7 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 		return (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VALUE };
 	}
 
-	LitFunction* function = lit_emit(state->emitter, &statements);
+	LitModule* module = lit_emit(state->emitter, &statements, module_name);
 	free_statements(state, &statements);
 
 	LitInterpretResult result;
@@ -94,10 +94,9 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 	if (state->had_error) {
 		result = (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VALUE };
 	} else {
-		LitModule* module = lit_create_module(state, module_name);
 		lit_table_set(state, &state->vm->modules, module_name, OBJECT_VALUE(module));
 
-		result = lit_interpret_function(state, module, function);
+		result = lit_interpret_module(state, module);
 		module->return_value = result.result;
 
 		if (state->vm->fiber->stack_top != state->vm->fiber->stack) {

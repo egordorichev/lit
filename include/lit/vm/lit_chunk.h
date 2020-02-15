@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 typedef enum {
-#define OPCODE(name) OP_##name,
+#define OPCODE(name, effect) OP_##name,
 #include <lit/vm/lit_opcodes.h>
 #undef OPCODE
 } LitOpCode;

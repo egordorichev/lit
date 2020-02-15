@@ -36,7 +36,7 @@ void lit_free_vm(LitVm* vm);
 void lit_push(LitVm* vm, LitValue value);
 LitValue lit_pop(LitVm* vm);
 
-LitInterpretResult lit_interpret_function(LitState* state, LitModule* module, LitFunction* function);
+LitInterpretResult lit_interpret_module(LitState* state, LitModule* module);
 LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber);
 
 #endif

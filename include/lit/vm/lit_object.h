@@ -39,6 +39,21 @@ typedef struct sLitObject {
 
 LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type);
 
+typedef struct sLitString {
+		LitObject object;
+
+		uint length;
+		uint32_t hash;
+		char* chars;
+} sLitString;
+
+LitString* lit_copy_string(LitState* state, const char* chars, uint length);
+
+typedef enum {
+	FUNCTION_REGULAR,
+	FUNCTION_SCRIPT
+} LitFunctionType;
+
 typedef struct {
 	LitObject object;
 
@@ -47,22 +62,7 @@ typedef struct {
 	uint arg_count;
 } LitFunction;
 
-typedef enum {
-	FUNCTION_REGULAR,
-	FUNCTION_SCRIPT
-} LitFunctionType;
-
 LitFunction* lit_create_function(LitState* state);
-
-typedef struct sLitString {
-	LitObject object;
-
-	uint length;
-	uint32_t hash;
-	char* chars;
-} sLitString;
-
-LitString* lit_copy_string(LitState* state, const char* chars, uint length);
 
 typedef LitValue (*LitNativeFn)(LitVm* vm, uint arg_count, LitValue* args);
 
@@ -84,6 +84,11 @@ typedef struct {
 
 	LitValue return_value;
 	LitString* name;
+
+	uint privates_count;
+	LitValue* privates;
+
+	LitFunction* main_function;
 } LitModule;
 
 LitModule* lit_create_module(LitState* state, LitString* name);

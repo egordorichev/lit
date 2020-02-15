@@ -11,6 +11,13 @@
 typedef struct {
 	const char* name;
 	uint length;
+} LitPrivate;
+
+DECLARE_ARRAY(LitPrivates, LitPrivate, privates)
+
+typedef struct {
+	const char* name;
+	uint length;
 	int depth;
 } LitLocal;
 
@@ -18,6 +25,7 @@ DECLARE_ARRAY(LitLocals, LitLocal, locals)
 
 typedef struct {
 	LitLocals locals;
+	LitPrivates privates;
 
 	int scope_depth;
 
@@ -35,6 +43,7 @@ typedef struct sLitEmitter {
 
 	uint last_line;
 	uint loop_start;
+	uint privates_count;
 
 	LitUInts breaks;
 } sLitEmitter;
@@ -42,6 +51,6 @@ typedef struct sLitEmitter {
 void lit_init_emitter(LitState* state, LitEmitter* emitter);
 void lit_free_emitter(LitEmitter* emitter);
 
-LitFunction* lit_emit(LitEmitter* emitter, LitStatements* statements);
+LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* module_name);
 
 #endif

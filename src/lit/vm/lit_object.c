@@ -91,6 +91,9 @@ LitModule* lit_create_module(LitState* state, LitString* name) {
 
 	module->name = name;
 	module->return_value = NULL_VALUE;
+	module->main_function = NULL;
+	module->privates = NULL;
+	module->privates_count = 0;
 
 	return module;
 }
