@@ -66,7 +66,10 @@ LitFunction* lit_create_function(LitState* state) {
 
 LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot) {
 	LitUpvalue* upvalue = ALLOCATE_OBJECT(state, LitUpvalue, OBJECT_UPVALUE);
+
 	upvalue->location = slot;
+	upvalue->closed = NULL_VALUE;
+	upvalue->next = NULL;
 
 	return upvalue;
 }

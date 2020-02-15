@@ -57,6 +57,7 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 	vm->state = state;
 	vm->objects = NULL;
 	vm->fiber = NULL;
+	vm->open_upvalues = NULL;
 	vm->root_count = 0;
 
 	lit_init_table(&vm->strings);
@@ -194,8 +195,39 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 }
 
 static LitUpvalue* capture_upvalue(LitState* state, LitValue* local) {
-	LitUpvalue* upvalue = lit_create_upvalue(state, local);
-	return upvalue;
+	LitUpvalue* previous_upvalue = NULL;
+	LitUpvalue* upvalue = state->vm->open_upvalues;
+
+	while (upvalue != NULL && upvalue->location > local) {
+		previous_upvalue = upvalue;
+		upvalue = upvalue->next;
+	}
+
+	if (upvalue != NULL && upvalue->location == local) {
+		return upvalue;
+	}
+
+	LitUpvalue* created_upvalue = lit_create_upvalue(state, local);
+	created_upvalue->next = upvalue;
+
+	if (previous_upvalue == NULL) {
+		state->vm->open_upvalues = created_upvalue;
+	} else {
+		previous_upvalue->next = created_upvalue;
+	}
+
+	return created_upvalue;
+}
+
+static void close_upvalues(LitVm* vm, LitValue* last) {
+	while (vm->open_upvalues != NULL && vm->open_upvalues->location >= last) {
+		LitUpvalue* upvalue = vm->open_upvalues;
+
+		upvalue->closed = *upvalue->location;
+		upvalue->location = &upvalue->closed;
+
+		vm->open_upvalues = upvalue->next;
+	}
 }
 
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
@@ -286,6 +318,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(RETURN) {
 			LitValue result = lit_pop(vm);
+			close_upvalues(vm, slots);
 
 			WRITE_FRAME()
 			fiber->frame_count--;
@@ -600,6 +633,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					closure->upvalues[i] = upvalues[index];
 				}
 			}
+
+			continue;
+		}
+
+		CASE_CODE(CLOSE_UPVALUE) {
+			close_upvalues(vm, fiber->stack_top - 1);
+			lit_pop(vm);
 
 			continue;
 		}

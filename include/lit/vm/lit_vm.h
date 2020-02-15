@@ -19,8 +19,9 @@ typedef struct sLitVm {
 	LitTable modules;
 
 	LitFiber* fiber;
-
 	LitObject* roots[LIT_ROOT_MAX];
+	LitUpvalue* open_upvalues;
+
 	uint8_t root_count;
 } sLitVm;
 

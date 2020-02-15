@@ -72,9 +72,13 @@ typedef struct {
 
 LitFunction* lit_create_function(LitState* state);
 
-typedef struct {
+typedef struct sLitUpvalue {
 	LitObject object;
+
 	LitValue* location;
+	LitValue closed;
+
+	struct sLitUpvalue* next;
 } LitUpvalue;
 
 LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot);

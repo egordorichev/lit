@@ -63,7 +63,7 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 	emitter->chunk = &compiler->function->chunk;
 
 	lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
-		"", 0, -1
+		"", 0, -1, false
 	});
 }
 
@@ -103,23 +103,16 @@ static void end_scope(LitEmitter* emitter, uint16_t line) {
 	emitter->compiler->scope_depth--;
 
 	LitCompiler* compiler = emitter->compiler;
-	uint count = 0;
-
 	LitLocals* locals = &compiler->locals;
 
 	while (locals->count > 0 && locals->values[locals->count - 1].depth > compiler->scope_depth) {
-		locals->count--;
-		count++;
-	}
-
-	if (count == 1) {
-		emit_byte(emitter, line, OP_POP);
-	} else if (count > 0) {
-		if (count > UINT8_MAX) {
-			lit_error(emitter->state, COMPILE_ERROR, line, "Too many locals popped for one scope");
+		if (locals->values[locals->count - 1].captured) {
+			emit_byte(emitter, line, OP_CLOSE_UPVALUE);
+		} else {
+			emit_byte(emitter, line, OP_POP);
 		}
 
-		emit_bytes(emitter, line, OP_POP_MULTIPLE, (uint8_t) count);
+		locals->count--;
 	}
 }
 
@@ -205,7 +198,7 @@ static int add_local(LitEmitter* emitter, const char* name, uint length, uint li
 	}
 
 	lit_locals_write(emitter->state, locals, (LitLocal) {
-		name, length, UINT16_MAX
+		name, length, UINT16_MAX, false
 	});
 
 	return (int) locals->count - 1;
@@ -259,6 +252,7 @@ static int resolve_upvalue(LitEmitter* emitter, LitCompiler* compiler, const cha
 	int local = resolve_local(emitter, (LitCompiler *) compiler->enclosing, name, length, line);
 
 	if (local != -1) {
+		((LitCompiler*) compiler->enclosing)->locals.values[local].captured = true;
 		return add_upvalue(emitter, compiler, (uint8_t) local, line, true);
 	}
 

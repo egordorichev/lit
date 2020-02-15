@@ -1,11 +1,13 @@
-function outer() {
-	var upvalue = "test"
-
+function outer(arg) {
 	function inner() {
-		print(upvalue)
+		print(arg)
 	}
 
-	inner()
+	return inner
 }
 
-outer()
+var a = outer("begget")
+var b = outer("not begget")
+
+a()
+b()

@@ -19,6 +19,7 @@ typedef struct {
 	const char* name;
 	uint length;
 	int depth;
+	bool captured;
 } LitLocal;
 
 DECLARE_ARRAY(LitLocals, LitLocal, locals)
