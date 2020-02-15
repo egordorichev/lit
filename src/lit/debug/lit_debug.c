@@ -1,4 +1,5 @@
 #include <lit/debug/lit_debug.h>
+#include <lit/vm/lit_object.h>
 #include <stdio.h>
 
 void lit_disassemble_chunk(LitChunk* chunk, const char* name) {
@@ -95,6 +96,9 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_SET_PRIVATE_LONG: return print_short_op("OP_SET_PRIVATE_LONG", chunk, offset);
 		case OP_GET_PRIVATE_LONG: return print_short_op("OP_GET_PRIVATE_LONG", chunk, offset);
 
+		case OP_SET_UPVALUE: return print_byte_op("OP_SET_UPVALUE", chunk, offset);
+		case OP_GET_UPVALUE: return print_byte_op("OP_GET_UPVALUE", chunk, offset);
+
 		case OP_JUMP_IF_FALSE: return print_jump_op("OP_JUMP_IF_FALSE", 1, chunk, offset);
 		case OP_JUMP_IF_NULL: return print_jump_op("OP_JUMP_IF_NULL", 1, chunk, offset);
 		case OP_JUMP: return print_jump_op("OP_JUMP", 1, chunk, offset);
@@ -102,6 +106,26 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 
 		case OP_CALL: return print_byte_op("OP_CALL", chunk, offset);
 		case OP_REQUIRE: return print_simple_op("OP_REQUIRE", offset);
+
+		case OP_CLOSURE: {
+			offset++;
+
+			uint8_t constant = chunk->code[offset++];
+			printf("%-16s %4d ", "OP_CLOSURE", constant);
+			lit_print_value(chunk->constants.values[constant]);
+			printf("\n");
+
+			LitFunction* function = AS_FUNCTION(chunk->constants.values[constant]);
+
+			for (int j = 0; j < function->upvalue_count; j++) {
+				int is_local = chunk->code[offset++];
+				int index = chunk->code[offset++];
+
+				printf("%04d      |                     %s %d\n", offset - 2, is_local ? "local" : "upvalue", index);
+			}
+
+			return offset;
+		}
 
 		default: {
 			printf("Unknown opcode %d\n", instruction);

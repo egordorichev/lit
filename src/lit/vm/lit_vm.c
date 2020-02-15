@@ -130,7 +130,7 @@ static inline bool is_falsey(LitValue value) {
 	return IS_NULL(value) || (IS_BOOL(value) && !AS_BOOL(value));
 }
 
-static bool call(LitVm* vm, LitFunction* function, uint8_t arg_count) {
+static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t arg_count) {
 	LitFiber* fiber = vm->fiber;
 
 	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
@@ -141,8 +141,8 @@ static bool call(LitVm* vm, LitFunction* function, uint8_t arg_count) {
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 
 	frame->function = function;
+	frame->closure = closure;
 	frame->ip = function->chunk.code;
-
 	frame->slots = fiber->stack_top - arg_count - 1;
 
 	uint function_arg_count = function->arg_count;
@@ -168,7 +168,12 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 	if (IS_OBJECT(callee)) {
 		switch (OBJECT_TYPE(callee)) {
 			case OBJECT_FUNCTION: {
-				return call(vm, AS_FUNCTION(callee), arg_count);
+				return call(vm, AS_FUNCTION(callee), NULL, arg_count);
+			}
+
+			case OBJECT_CLOSURE: {
+				LitClosure* closure = AS_CLOSURE(callee);
+				return call(vm, closure->function, closure, arg_count);
 			}
 
 			case OBJECT_NATIVE: {
@@ -186,6 +191,11 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 
 	runtime_error(vm, "Can only call functions and classes.");
 	return false;
+}
+
+static LitUpvalue* capture_upvalue(LitState* state, LitValue* local) {
+	LitUpvalue* upvalue = lit_create_upvalue(state, local);
+	return upvalue;
 }
 
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
@@ -208,6 +218,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	register uint8_t* ip = frame->ip = current_chunk->code;
 	register LitValue* slots = frame->slots;
 	register LitValue* privates = fiber->module->privates;
+	register LitUpvalue** upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
 
 	// Has to be inside of the function in order for goto to work
 	static void* dispatch_table[] = {
@@ -226,7 +237,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #define READ_FRAME() frame = &fiber->frames[fiber->frame_count - 1]; \
 	current_chunk = &frame->function->chunk; \
 	ip = frame->ip; \
-	slots = frame->slots;
+	slots = frame->slots; \
+	upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
 
 #define WRITE_FRAME() frame->ip = ip;
 #define RETURN_ERROR() return (LitInterpretResult) {INTERPRET_RUNTIME_ERROR, NULL_VALUE};
@@ -472,6 +484,18 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(SET_UPVALUE) {
+			uint8_t index = READ_BYTE();
+			*upvalues[index]->location = PEEK(0);
+
+			continue;
+		}
+
+		CASE_CODE(GET_UPVALUE) {
+			lit_push(vm, *upvalues[READ_BYTE()]->location);
+			continue;
+		}
+
 		CASE_CODE(JUMP_IF_FALSE) {
 			uint16_t offset = READ_SHORT();
 
@@ -556,6 +580,26 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			#ifdef LIT_TRACE_EXECUTION
 				printf("== %s ==\n", frame->function->name->chars);
 			#endif
+
+			continue;
+		}
+
+		CASE_CODE(CLOSURE) {
+			LitFunction* function = AS_FUNCTION(READ_CONSTANT());
+			LitClosure* closure = lit_create_closure(state, function);
+
+			lit_push(vm, OBJECT_VALUE(closure));
+
+			for (uint i = 0; i < closure->upvalue_count; i++) {
+				uint8_t is_local = READ_BYTE();
+				uint8_t index = READ_BYTE();
+
+				if (is_local) {
+					closure->upvalues[i] = capture_upvalue(state, frame->slots + index);
+				} else {
+					closure->upvalues[i] = upvalues[index];
+				}
+			}
 
 			continue;
 		}

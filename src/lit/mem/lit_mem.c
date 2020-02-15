@@ -64,6 +64,19 @@ static void free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_CLOSURE: {
+			LitClosure* closure = (LitClosure*) object;
+
+			LIT_FREE_ARRAY(state, LitUpvalue*, closure->upvalues, closure->upvalue_count);
+			LIT_FREE(state, LitClosure, object);
+			break;
+		}
+
+		case OBJECT_UPVALUE: {
+			LIT_FREE(state, LitUpvalue, object);
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}

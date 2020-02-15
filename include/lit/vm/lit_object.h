@@ -15,12 +15,16 @@
 #define IS_FUNCTION(value) IS_OBJECTS_TYPE(value, OBJECT_FUNCTION)
 #define IS_NATIVE(value) IS_OBJECTS_TYPE(value, OBJECT_NATIVE)
 #define IS_MODULE(value) IS_OBJECTS_TYPE(value, OBJECT_MODULE)
+#define IS_CLOSURE(value) IS_OBJECTS_TYPE(value, OBJECT_CLOSURE)
+#define IS_UPVALUE(value) IS_OBJECTS_TYPE(value, OBJECT_UPVALUE)
 
 #define AS_STRING(value) ((LitString*) AS_OBJECT(value))
 #define AS_CSTRING(value) (((LitString*) AS_OBJECT(value))->chars)
 #define AS_FUNCTION(value) ((LitFunction*) AS_OBJECT(value))
 #define AS_NATIVE(value) (((LitNative*) AS_OBJECT(value))->function)
 #define AS_MODULE(value) ((LitModule*) AS_OBJECT(value))
+#define AS_CLOSURE(value) ((LitClosure*) AS_OBJECT(value))
+#define AS_UPVALUE(value) ((LitUpvalue*) AS_OBJECT(value))
 
 #define ALLOCATE_OBJECT(state, type, objectType) (type*) lit_allocate_object(state, sizeof(type), objectType)
 
@@ -29,7 +33,9 @@ typedef enum {
 	OBJECT_FUNCTION,
 	OBJECT_NATIVE,
 	OBJECT_FIBER,
-	OBJECT_MODULE
+	OBJECT_MODULE,
+	OBJECT_CLOSURE,
+	OBJECT_UPVALUE
 } LitObjectType;
 
 typedef struct sLitObject {
@@ -40,11 +46,11 @@ typedef struct sLitObject {
 LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type);
 
 typedef struct sLitString {
-		LitObject object;
+	LitObject object;
 
-		uint length;
-		uint32_t hash;
-		char* chars;
+	uint length;
+	uint32_t hash;
+	char* chars;
 } sLitString;
 
 LitString* lit_copy_string(LitState* state, const char* chars, uint length);
@@ -59,10 +65,29 @@ typedef struct {
 
 	LitChunk chunk;
 	LitString* name;
+
 	uint arg_count;
+	uint upvalue_count;
 } LitFunction;
 
 LitFunction* lit_create_function(LitState* state);
+
+typedef struct {
+	LitObject object;
+	LitValue* location;
+} LitUpvalue;
+
+LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot);
+
+typedef struct {
+	LitObject object;
+	LitFunction* function;
+
+	LitUpvalue** upvalues;
+	uint upvalue_count;
+} LitClosure;
+
+LitClosure* lit_create_closure(LitState* state, LitFunction* function);
 
 typedef LitValue (*LitNativeFn)(LitVm* vm, uint arg_count, LitValue* args);
 
@@ -75,6 +100,8 @@ LitNative* lit_create_native(LitState* state, LitNativeFn function);
 
 typedef struct {
 	LitFunction* function;
+	LitClosure* closure;
+
 	uint8_t* ip;
 	LitValue* slots;
 } LitCallFrame;

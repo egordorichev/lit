@@ -229,6 +229,48 @@ static int resolve_local(LitEmitter* emitter, LitCompiler* compiler, const char*
 	return -1;
 }
 
+static int add_upvalue(LitEmitter* emitter, LitCompiler* compiler, uint8_t index, uint line, bool is_local) {
+	int upvalue_count = compiler->function->upvalue_count;
+
+	for (uint i = 0; i < upvalue_count; i++) {
+		LitCompilerUpvalue* upvalue = &compiler->upvalues[i];
+
+		if (upvalue->index == index && upvalue->isLocal == is_local) {
+			return i;
+		}
+	}
+
+	if (upvalue_count == UINT8_COUNT) {
+		lit_error(emitter->state, COMPILE_ERROR, line, "Too many closure variables in function");
+		return 0;
+	}
+
+	compiler->upvalues[upvalue_count].isLocal = is_local;
+	compiler->upvalues[upvalue_count].index = index;
+
+	return compiler->function->upvalue_count++;
+}
+
+static int resolve_upvalue(LitEmitter* emitter, LitCompiler* compiler, const char* name, uint length, uint line) {
+	if (compiler->enclosing == NULL) {
+		return -1;
+	}
+
+	int local = resolve_local(emitter, (LitCompiler *) compiler->enclosing, name, length, line);
+
+	if (local != -1) {
+		return add_upvalue(emitter, compiler, (uint8_t) local, line, true);
+	}
+
+	int upvalue = resolve_upvalue(emitter, (LitCompiler *) compiler->enclosing, name, length, line);
+
+	if (upvalue != -1) {
+		return add_upvalue(emitter, compiler, (uint8_t) upvalue, line, false);
+	}
+
+	return -1;
+}
+
 static void mark_initialized(LitEmitter* emitter, uint index) {
 	emitter->compiler->locals.values[index].depth = emitter->compiler->scope_depth;
 }
@@ -412,12 +454,19 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			int index = resolve_local(emitter, emitter->compiler, expr->name, expr->length, expression->line);
 
 			if (index == -1) {
-				index = resolve_private(emitter, expr->name, expr->length, expression->line);
+				index = resolve_upvalue(emitter, emitter->compiler, expr->name, expr->length, expression->line);
 
 				if (index == -1) {
-					emit_bytes(emitter, expression->line, OP_GET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length))));
+					index = resolve_private(emitter, expr->name, expr->length, expression->line);
+
+					if (index == -1) {
+						emit_bytes(emitter, expression->line, OP_GET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(
+							lit_copy_string(emitter->state, expr->name, expr->length))));
+					} else {
+						emit_byte_or_short(emitter, expression->line, OP_GET_PRIVATE, OP_GET_PRIVATE_LONG, index);
+					}
 				} else {
-					emit_byte_or_short(emitter, expression->line, OP_GET_PRIVATE, OP_GET_PRIVATE_LONG, index);
+					emit_bytes(emitter, expression->line, OP_GET_UPVALUE, (uint8_t) index);
 				}
 			} else {
 				emit_byte_or_short(emitter, expression->line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, index);
@@ -435,12 +484,19 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				int index = resolve_local(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 
 				if (index == -1) {
-					index = resolve_private(emitter, e->name, e->length, expr->to->line);
+					index = resolve_upvalue(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 
 					if (index == -1) {
-						emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
+						index = resolve_private(emitter, e->name, e->length, expr->to->line);
+
+						if (index == -1) {
+							emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(
+								lit_copy_string(emitter->state, e->name, e->length))));
+						} else {
+							emit_byte_or_short(emitter, expression->line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
+						}
 					} else {
-						emit_byte_or_short(emitter, expression->line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
+						emit_bytes(emitter, expression->line, OP_SET_UPVALUE, (uint8_t) index);
 					}
 
 					break;
@@ -662,11 +718,15 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case FUNCTION_STATEMENT: {
 			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
-			int index = add_private(emitter, stmt->name, stmt->length, statement->line);
-			bool private = true;
+			bool private = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
+			int index = private ? add_private(emitter, stmt->name, stmt->length, statement->line) : add_local(emitter, stmt->name, stmt->length, statement->line);
+			LitString* name = lit_copy_string(emitter->state, stmt->name, stmt->length);
+
+			if (!private) {
+				mark_initialized(emitter, index);
+			}
 
 			begin_scope(emitter);
-			LitString* name = lit_copy_string(emitter->state, stmt->name, stmt->length);
 
 			LitCompiler compiler;
 			init_compiler(emitter, &compiler, FUNCTION_REGULAR);
@@ -681,7 +741,16 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitFunction* function = end_compiler(emitter, name);
 			function->arg_count = stmt->parameters.count;
 
-			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
+			if (function->upvalue_count > 0) {
+				emit_bytes(emitter, emitter->last_line, OP_CLOSURE, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
+
+				for (uint i = 0; i < function->upvalue_count; i++) {
+					emit_bytes(emitter, emitter->last_line, compiler.upvalues[i].isLocal ? 1 : 0, compiler.upvalues[i].index);
+				}
+			} else {
+				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
+			}
+
 			emit_byte_or_short(emitter, statement->line, private ? OP_SET_PRIVATE : OP_SET_LOCAL, private ? OP_SET_PRIVATE_LONG : OP_SET_LOCAL_LONG, index);
 
 			emit_byte(emitter, emitter->last_line, OP_POP);

@@ -24,12 +24,19 @@ typedef struct {
 DECLARE_ARRAY(LitLocals, LitLocal, locals)
 
 typedef struct {
-	LitLocals locals;
+	uint8_t index;
+	bool isLocal;
+} LitCompilerUpvalue;
 
+typedef struct {
+	LitLocals locals;
 	int scope_depth;
 
 	LitFunction* function;
 	LitFunctionType type;
+
+	LitCompilerUpvalue upvalues[UINT8_COUNT];
+
 	struct LitCompiler* enclosing;
 
 	bool skip_return;

@@ -1,2 +1,11 @@
-var d = 32
-d = 10
+function outer() {
+	var upvalue = "test"
+
+	function inner() {
+		print(upvalue)
+	}
+
+	inner()
+}
+
+outer()

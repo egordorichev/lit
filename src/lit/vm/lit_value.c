@@ -18,6 +18,27 @@ static void print_object(LitValue value) {
 			break;
 		}
 
+		case OBJECT_CLOSURE: {
+			printf("function %s", AS_CLOSURE(value)->function->name->chars);
+			LitClosure* closure = AS_CLOSURE(value);
+
+			for (uint i = 0; i < closure->upvalue_count; i++) {
+				if (closure->upvalues[i] == NULL) {
+					printf(" ()");
+					continue;
+				} else if (AS_OBJECT(*closure->upvalues[i]->location) == closure) {
+					printf(" (self)");
+					continue;
+				}
+
+				printf(" ( ");
+				lit_print_value(*closure->upvalues[i]->location);
+				printf(" )");
+			}
+
+			break;
+		}
+
 		case OBJECT_NATIVE: {
 			printf("native function");
 			break;
@@ -30,6 +51,11 @@ static void print_object(LitValue value) {
 
 		case OBJECT_MODULE: {
 			printf("module %s", AS_MODULE(value)->name->chars);
+			break;
+		}
+
+		case OBJECT_UPVALUE: {
+			print_object(*AS_UPVALUE(value)->location);
 			break;
 		}
 

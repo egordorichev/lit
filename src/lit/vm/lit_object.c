@@ -4,16 +4,6 @@
 
 #include <memory.h>
 
-LitFunction* lit_create_function(LitState* state) {
-	LitFunction* function = ALLOCATE_OBJECT(state, LitFunction, OBJECT_FUNCTION);
-	lit_init_chunk(&function->chunk);
-
-	function->name = NULL;
-	function->arg_count = 0;
-
-	return function;
-}
-
 static LitString* allocate_string(LitState* state, char* chars, int length, uint32_t hash) {
 	LitString* string = ALLOCATE_OBJECT(state, LitString, OBJECT_STRING);
 
@@ -61,6 +51,40 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type)
 	state->vm->objects = object;
 
 	return object;
+}
+
+LitFunction* lit_create_function(LitState* state) {
+	LitFunction* function = ALLOCATE_OBJECT(state, LitFunction, OBJECT_FUNCTION);
+	lit_init_chunk(&function->chunk);
+
+	function->name = NULL;
+	function->arg_count = 0;
+	function->upvalue_count = 0;
+
+	return function;
+}
+
+LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot) {
+	LitUpvalue* upvalue = ALLOCATE_OBJECT(state, LitUpvalue, OBJECT_UPVALUE);
+	upvalue->location = slot;
+
+	return upvalue;
+}
+
+LitClosure* lit_create_closure(LitState* state, LitFunction* function) {
+	LitClosure* closure = ALLOCATE_OBJECT(state, LitClosure, OBJECT_CLOSURE);
+
+	LitUpvalue** upvalues = LIT_ALLOCATE(state, LitUpvalue*, function->upvalue_count);
+
+	for (uint i = 0; i < function->upvalue_count; i++) {
+		upvalues[i] = NULL;
+	}
+
+	closure->function = function;
+	closure->upvalues = upvalues;
+	closure->upvalue_count = function->upvalue_count;
+
+	return closure;
 }
 
 LitNative* lit_create_native(LitState* state, LitNativeFn function) {
