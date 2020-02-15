@@ -25,7 +25,6 @@ DECLARE_ARRAY(LitLocals, LitLocal, locals)
 
 typedef struct {
 	LitLocals locals;
-	LitPrivates privates;
 
 	int scope_depth;
 
@@ -43,8 +42,8 @@ typedef struct sLitEmitter {
 
 	uint last_line;
 	uint loop_start;
-	uint privates_count;
 
+	LitPrivates privates;
 	LitUInts breaks;
 } sLitEmitter;
 

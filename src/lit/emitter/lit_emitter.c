@@ -12,8 +12,8 @@ DEFINE_ARRAY(LitLocals, LitLocal, locals)
 void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->state = state;
 	emitter->loop_start = 0;
-	emitter->privates_count = 0;
 
+	lit_init_privates(&emitter->privates);
 	lit_init_uints(&emitter->breaks);
 }
 
@@ -36,7 +36,6 @@ static void emit_short(LitEmitter* emitter, uint16_t line, uint16_t value) {
 }
 
 static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctionType type) {
-	lit_init_privates(&compiler->privates);
 	lit_init_locals(&compiler->locals);
 
 	compiler->type = type;
@@ -71,7 +70,6 @@ static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
 
 	LitFunction* function = emitter->compiler->function;
 
-	lit_free_privates(emitter->state, &emitter->compiler->privates);
 	lit_free_locals(emitter->state, &emitter->compiler->locals);
 
 	emitter->compiler = (LitCompiler *) emitter->compiler->enclosing;
@@ -141,6 +139,43 @@ static uint emit_constant(LitEmitter* emitter, uint line, LitValue value) {
 	return constant;
 }
 
+static int add_private(LitEmitter* emitter, const char* name, uint length, uint line) {
+	LitCompiler* compiler = emitter->compiler;
+	LitPrivates* privates = &emitter->privates;
+
+	if (privates->count == UINT16_MAX) {
+		lit_error(emitter->state, COMPILE_ERROR, line, "Too many top-level local variables in module");
+	}
+
+	for (int i = (int) privates->count - 1; i >= 0; i--) {
+		LitPrivate* private = &privates->values[i];
+
+		if (name == private->name && length == private->length) {
+			lit_error(emitter->state, COMPILE_ERROR, line, "Variable '%.*s' was already declared in this module", length, name);
+		}
+	}
+
+	lit_privates_write(emitter->state, privates, (LitPrivate) {
+		name, length
+	});
+
+	return (int) privates->count - 1;
+}
+
+static int resolve_private(LitEmitter* emitter, LitCompiler* compiler, const char* name, uint length, uint line) {
+	LitPrivates* privates = &emitter->privates;
+
+	for (int i = (int) privates->count - 1; i >= 0; i--) {
+		LitPrivate* private = &privates->values[i];
+
+		if (private->length == length && memcmp(private->name, name, length) == 0) {
+			return i;
+		}
+	}
+
+	return -1;
+}
+
 static int add_local(LitEmitter* emitter, const char* name, uint length, uint line) {
 	LitCompiler* compiler = emitter->compiler;
 	LitLocals* locals = &compiler->locals;
@@ -182,10 +217,6 @@ static int resolve_local(LitEmitter* emitter, LitCompiler* compiler, const char*
 			return i;
 		}
 	}
-
-	/*if (compiler->enclosing != NULL) {
-		return resolve_local(emitter, (LitCompiler *) compiler->enclosing, name, length, line);
-	}*/
 
 	return -1;
 }
@@ -373,7 +404,19 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			int index = resolve_local(emitter, emitter->compiler, expr->name, expr->length, expression->line);
 
 			if (index == -1) {
-				emit_bytes(emitter, expression->line, OP_GET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length))));
+				index = resolve_private(emitter, emitter->compiler, expr->name, expr->length, expression->line);
+
+				if (index == -1) {
+					emit_bytes(emitter, expression->line, OP_GET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length))));
+				} else {
+					if (index > UINT8_MAX) {
+						emit_byte(emitter, expression->line, OP_GET_PRIVATE_LONG);
+						emit_short(emitter, expression->line, (uint16_t) index);
+					} else {
+						emit_bytes(emitter, expression->line, OP_GET_PRIVATE, (uint8_t) index);
+					}
+				}
+
 				break;
 			}
 
@@ -396,7 +439,19 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				int index = resolve_local(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 
 				if (index == -1) {
-					emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
+					index = resolve_local(emitter, emitter->compiler, e->name, e->length, expr->to->line);
+
+					if (index == -1) {
+						emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
+					} else {
+						if (index > UINT8_MAX) {
+							emit_byte(emitter, expression->line, OP_SET_PRIVATE_LONG);
+							emit_short(emitter, expression->line, (uint16_t) index);
+						} else {
+							emit_bytes(emitter, expression->line, OP_SET_PRIVATE, (uint8_t) index);
+						}
+					}
+
 					break;
 				} else {
 					if (index > UINT8_MAX) {
@@ -470,7 +525,11 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitVarStatement* stmt = (LitVarStatement*) statement;
 
 			uint line = statement->line;
-			int index = add_local(emitter, stmt->name, stmt->length, statement->line);
+			bool private = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
+
+			int index = private ?
+				add_private(emitter, stmt->name, stmt->length, statement->line) :
+				add_local(emitter, stmt->name, stmt->length, statement->line);
 
 			if (stmt->init == NULL) {
 				emit_byte(emitter, line, OP_NULL);
@@ -481,10 +540,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			mark_initialized(emitter, index);
 
 			if (index > UINT8_MAX) {
-				emit_byte(emitter, statement->line, OP_SET_LOCAL_LONG);
+				emit_byte(emitter, statement->line, private ? OP_SET_PRIVATE_LONG : OP_SET_LOCAL_LONG);
 				emit_short(emitter, statement->line, (uint16_t) index);
 			} else {
-				emit_bytes(emitter, statement->line, OP_SET_LOCAL, (uint8_t) index);
+				emit_bytes(emitter, statement->line, private ? OP_SET_PRIVATE : OP_SET_LOCAL, (uint8_t) index);
 			}
 
 			break;
@@ -686,8 +745,10 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	LitModule* module = lit_create_module(emitter->state, module_name);
 
 	module->main_function = function;
-	module->privates_count = emitter->privates_count;
-	module->privates = LIT_ALLOCATE(emitter->state, LitValue, emitter->privates_count);
+	module->privates_count = emitter->privates.count;
+	module->privates = LIT_ALLOCATE(emitter->state, LitValue, module->privates_count);
+
+	lit_free_privates(emitter->state, &emitter->privates);
 
 	return module;
 }
