@@ -5,21 +5,21 @@
 #include <string.h>
 
 void lit_init_table(LitTable* table) {
-	table->capacity = 0;
+	table->capacity = -1;
 	table->count = 0;
 	table->entries = NULL;
 }
 
 void lit_free_table(LitState* state, LitTable* table) {
 	if (table->capacity > 0) {
-		LIT_FREE_ARRAY(state, LitTableEntry, table->entries, table->capacity);
+		LIT_FREE_ARRAY(state, LitTableEntry, table->entries, table->capacity + 1);
 	}
 
 	lit_init_table(table);
 }
 
 static LitTableEntry* find_entry(LitTableEntry* entries, int capacity, LitString* key) {
-	int32_t index = key->hash % capacity;
+	uint32_t index = key->hash % capacity;
 	LitTableEntry* tombstone = NULL;
 
 	while (true) {
@@ -40,16 +40,16 @@ static LitTableEntry* find_entry(LitTableEntry* entries, int capacity, LitString
 }
 
 static void adjust_capacity(LitState* state, LitTable* table, int capacity) {
-	LitTableEntry* entries = LIT_ALLOCATE(state, LitTableEntry, capacity);
+	LitTableEntry* entries = LIT_ALLOCATE(state, LitTableEntry, capacity + 1);
 
-	for (int i = 0; i < capacity; i++) {
+	for (int i = 0; i <= capacity; i++) {
 		entries[i].key = NULL;
 		entries[i].value = NULL_VALUE;
 	}
 
 	table->count = 0;
 
-	for (int i = 0; i < table->capacity; i++) {
+	for (int i = 0; i <= table->capacity; i++) {
 		LitTableEntry* entry = &table->entries[i];
 
 		if (entry->key == NULL) {
@@ -64,17 +64,15 @@ static void adjust_capacity(LitState* state, LitTable* table, int capacity) {
 		table->count++;
 	}
 
-	if (table->capacity > 0) {
-		LIT_FREE_ARRAY(state, LitTableEntry, table->entries, table->capacity);
-	}
+	LIT_FREE_ARRAY(state, LitTableEntry, table->entries, table->capacity + 1);
 
 	table->capacity = capacity;
 	table->entries = entries;
 }
 
 bool lit_table_set(LitState* state, LitTable* table, LitString* key, LitValue value) {
-	if (table->count + 1 > table->capacity * TABLE_MAX_LOAD) {
-		int capacity = LIT_GROW_CAPACITY(table->capacity);
+	if (table->count + 1 > (table->capacity + 1) * TABLE_MAX_LOAD) {
+		int capacity = LIT_GROW_CAPACITY(table->capacity + 1) - 1;
 		adjust_capacity(state, table, capacity);
 	}
 
@@ -128,7 +126,7 @@ LitString* lit_table_find_string(LitTable* table, const char* chars, uint length
 		return NULL;
 	}
 
-	int32_t index = hash % table->capacity;
+	uint32_t index = hash % table->capacity;
 
 	while (true) {
 		LitTableEntry* entry = &table->entries[index];
@@ -162,7 +160,7 @@ void lit_table_remove_white(LitTable* table) {
 	for (uint i = 0; i <= table->capacity; i++) {
 		LitTableEntry* entry = &table->entries[i];
 
-		if (entry != NULL && entry->key != NULL && !entry->key->object.marked) {
+		if (entry->key != NULL && !entry->key->object.marked) {
 			lit_table_delete(table, entry->key);
 		}
 	}
@@ -172,9 +170,7 @@ void lit_mark_table(LitVm* vm, LitTable* table) {
 	for (int i = 0; i <= table->capacity; i++) {
 		LitTableEntry* entry = &table->entries[i];
 
-		if (entry != NULL) {
-			lit_mark_object(vm, (LitObject *) entry->key);
-			lit_mark_value(vm, entry->value);
-		}
+		lit_mark_object(vm, (LitObject *) entry->key);
+		lit_mark_value(vm, entry->value);
 	}
 }

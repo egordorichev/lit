@@ -233,8 +233,11 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 			LitClosure* closure = (LitClosure*) object;
 			lit_mark_object(vm, (LitObject*) closure->function);
 
-			for (uint i = 0; i < closure->upvalue_count; i++) {
-				lit_mark_object(vm, (LitObject*) closure->upvalues[i]);
+			// Check for NULL is needed for a really specific gc-case
+			if (closure->upvalues != NULL) {
+				for (uint i = 0; i < closure->upvalue_count; i++) {
+					lit_mark_object(vm, (LitObject *) closure->upvalues[i]);
+				}
 			}
 
 			break;

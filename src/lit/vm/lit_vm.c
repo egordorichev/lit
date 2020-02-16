@@ -109,8 +109,9 @@ static void runtime_error(LitVm* vm, const char* format, ...) {
 	for (int i = vm->fiber->frame_count - 1; i >= 0; i--) {
 		LitCallFrame* frame = &vm->fiber->frames[i];
 		LitFunction* function = frame->function;
+		LitString* name = function->name;
 
-		fprintf(stderr, "[line %d] in %s()\n", lit_chunk_get_line(&function->chunk, frame->ip - function->chunk.code - 1), function->name->chars);
+		fprintf(stderr, "[line %d] in %s()\n", lit_chunk_get_line(&function->chunk, frame->ip - function->chunk.code - 1), name == NULL ? "unknown" : name->chars);
 	}
 
 	reset_stack(vm);
@@ -179,7 +180,10 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				return true;
 			}
 
-			default: break;
+			default: {
+				LitObjectType type = OBJECT_TYPE(callee);
+				break;
+			}
 		}
 	}
 

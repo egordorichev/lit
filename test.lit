@@ -1,5 +1,19 @@
-{
-	var a = "hi"
+function outer(arg) {
+	function inner() {
+		print(arg)
+	}
+
+	return inner
 }
 
-var b = "test"
+var b = outer("begget")
+var c = outer("not begget")
+
+b() // Expected: begget
+c() // Expected: not begget
+
+function z() {
+	return b
+}
+
+print(z() == b) // Expected: true

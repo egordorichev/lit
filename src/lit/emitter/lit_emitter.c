@@ -796,7 +796,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	end_scope(emitter, emitter->last_line);
 
 	LitState* state = emitter->state;
-	LitFunction* function = end_compiler(emitter, NULL);
+	LitFunction* function = end_compiler(emitter, module_name);
 	lit_push_root(state, (LitObject *) function);
 
 	LitModule* module = lit_create_module(emitter->state, module_name);

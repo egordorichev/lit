@@ -85,7 +85,9 @@ LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot) {
 LitClosure* lit_create_closure(LitState* state, LitFunction* function) {
 	LitClosure* closure = ALLOCATE_OBJECT(state, LitClosure, OBJECT_CLOSURE);
 
+	lit_push_root(state, (LitObject *) closure);
 	LitUpvalue** upvalues = LIT_ALLOCATE(state, LitUpvalue*, function->upvalue_count);
+	lit_pop_root(state);
 
 	for (uint i = 0; i < function->upvalue_count; i++) {
 		upvalues[i] = NULL;

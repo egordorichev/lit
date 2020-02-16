@@ -6,7 +6,7 @@ test() // Expected: Yahoo
 var d = test
 d() // Expected: Yahoo
 
-function outer() {
+function out() {
 	function inner() {
 		print("good")
 	}
@@ -14,7 +14,7 @@ function outer() {
 	return inner
 }
 
-var a = outer()
+var a = out()
 a() // Expected: good
 
 function outer(arg) {
