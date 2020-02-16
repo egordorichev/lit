@@ -6,6 +6,7 @@
 #include <lit/vm/lit_value.h>
 #include <lit/mem/lit_mem.h>
 #include <lit/vm/lit_chunk.h>
+#include <lit/util/lit_table.h>
 #include <lit/lit.h>
 
 #define OBJECT_TYPE(value) (AS_OBJECT(value)->type)
@@ -164,5 +165,14 @@ typedef struct {
 } LitClass;
 
 LitClass* lit_create_class(LitState* state, LitString* name);
+
+typedef struct {
+	LitObject object;
+
+	LitClass* klass;
+	LitTable fields;
+} LitInstance;
+
+LitInstance* lit_create_instance(LitState* state, LitClass* klass);
 
 #endif

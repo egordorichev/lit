@@ -65,6 +65,11 @@ static void print_object(LitValue value) {
 			break;
 		}
 
+		case OBJECT_INSTANCE: {
+			printf("%s instance", AS_INSTANCE(value)->klass->name->chars);
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}

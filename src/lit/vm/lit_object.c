@@ -141,3 +141,12 @@ LitClass* lit_create_class(LitState* state, LitString* name) {
 
 	return klass;
 }
+
+LitInstance* lit_create_instance(LitState* state, LitClass* klass) {
+	LitInstance* instance = ALLOCATE_OBJECT(state, LitInstance, OBJECT_INSTANCE);
+
+	instance->klass = klass;
+	lit_init_table(&instance->fields);
+
+	return instance;
+}

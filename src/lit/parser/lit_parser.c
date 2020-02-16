@@ -300,14 +300,31 @@ static LitExpression* parse_literal(LitParser* parser, bool can_assign) {
 	}
 }
 
-static LitExpression* parse_variable_expression(LitParser* parser, bool can_assign) {
+static LitExpression* parse_variable_expression_base(LitParser* parser, bool can_assign, bool new) {
 	LitExpression* expression = (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, parser->previous);
+
+	if (new) {
+		if (!check(parser, TOKEN_LEFT_PAREN)) {
+			error_at_current(parser, "Expected argument list for instance creation");
+		}
+
+		return expression;
+	}
 
 	if (can_assign && match(parser, TOKEN_EQUAL)) {
 		return (LitExpression*) lit_create_assign_expression(parser->state, parser->previous.line, expression, parse_expression(parser));
 	}
 
 	return expression;
+}
+
+static LitExpression* parse_variable_expression(LitParser* parser, bool can_assign) {
+	return parse_variable_expression_base(parser, can_assign, false);
+}
+
+static LitExpression* parse_new_expression(LitParser* parser, bool can_assign) {
+	consume(parser, TOKEN_IDENTIFIER, "Expected class name after 'new'");
+	return parse_variable_expression_base(parser, false, true);
 }
 
 static LitExpression* parse_require(LitParser* parser, bool can_assign) {
@@ -610,6 +627,7 @@ static void setup_rules() {
 	rules[TOKEN_LESS_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_STRING] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
 	rules[TOKEN_IDENTIFIER] = (LitParseRule) { parse_variable_expression, NULL, PREC_NONE };
+	rules[TOKEN_NEW] = (LitParseRule) { parse_new_expression, NULL, PREC_NONE };
 	rules[TOKEN_PLUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_MINUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_STAR_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };

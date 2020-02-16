@@ -2,4 +2,4 @@ class Awesome {
 
 }
 
-print(Awesome)
+print(new Awesome())

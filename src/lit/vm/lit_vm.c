@@ -180,14 +180,18 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				return true;
 			}
 
+			case OBJECT_CLASS: {
+				vm->fiber->stack_top[-arg_count - 1] = OBJECT_VALUE(lit_create_instance(vm->state, AS_CLASS(callee)));
+				return true;
+			}
+
 			default: {
-				LitObjectType type = OBJECT_TYPE(callee);
 				break;
 			}
 		}
 	}
 
-	runtime_error(vm, "Can only call functions and classes.");
+	runtime_error(vm, "Can only call functions and classes");
 	return false;
 }
 

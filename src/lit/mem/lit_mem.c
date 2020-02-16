@@ -102,6 +102,12 @@ static void free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_INSTANCE: {
+			lit_free_table(state, &((LitInstance*) object)->fields);
+			LIT_FREE(state, LitInstance, object);
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}
@@ -256,6 +262,15 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		case OBJECT_CLASS: {
 			LitClass* klass = (LitClass*) object;
 			lit_mark_object(vm, (LitObject *) klass->name);
+
+			break;
+		}
+
+		case OBJECT_INSTANCE: {
+			LitInstance* instance = (LitInstance*) object;
+
+			lit_mark_object(vm, (LitObject *) instance->klass);
+			lit_mark_table(vm, &instance->fields);
 
 			break;
 		}
