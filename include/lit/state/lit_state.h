@@ -3,6 +3,7 @@
 
 #include <lit/lit_common.h>
 #include <lit/lit_predefines.h>
+#include <lit/lit.h>
 
 #include <stdarg.h>
 
@@ -16,9 +17,13 @@ typedef void (*LitPrintFn)(const char* message, va_list args);
 
 typedef struct sLitState {
 	int64_t bytes_allocated;
+	int64_t next_gc;
 
 	LitErrorFn errorFn;
 	LitPrintFn printFn;
+
+	LitValue roots[LIT_ROOT_MAX];
+	uint8_t root_count;
 
 	struct sLitScanner* scanner;
 	struct sLitParser* parser;
@@ -36,6 +41,12 @@ typedef enum {
 
 LitState* lit_new_state();
 int64_t lit_free_state(LitState* state);
+
+void lit_push_root(LitState* state, LitObject* object);
+void lit_push_value_root(LitState* state, LitValue value);
+LitValue lit_peek_root(LitState* state, uint8_t distance);
+void lit_pop_root(LitState* state);
+void lit_pop_roots(LitState* state, uint8_t amount);
 
 LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code);
 LitInterpretResult lit_interpret(LitState* state, const char* module_name, const char* code);

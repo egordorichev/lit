@@ -14,7 +14,8 @@ static void print_object(LitValue value) {
 		}
 
 		case OBJECT_FUNCTION: {
-			printf("function %s", AS_FUNCTION(value)->name->chars);
+			LitString* name = AS_FUNCTION(value)->name;
+			printf("function %s", name == NULL ? "unknown" : name->chars);
 			break;
 		}
 

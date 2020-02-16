@@ -2,6 +2,7 @@
 #define LIT_MEM_H
 
 #include <lit/state/lit_state.h>
+#include <lit/vm/lit_value.h>
 #include <lit/lit_common.h>
 
 #define LIT_GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
@@ -15,5 +16,9 @@
 
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size);
 void lit_free_objects(LitState* state, LitObject* objects);
+
+void lit_collect_garbage(LitVm* vm);
+void lit_mark_object(LitVm* vm, LitObject* object);
+void lit_mark_value(LitVm* vm, LitValue value);
 
 #endif

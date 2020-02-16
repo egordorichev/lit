@@ -59,5 +59,6 @@ void lit_init_emitter(LitState* state, LitEmitter* emitter);
 void lit_free_emitter(LitEmitter* emitter);
 
 LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* module_name);
+void lit_mark_emitter_roots(LitEmitter* emitter);
 
 #endif

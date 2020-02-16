@@ -38,9 +38,21 @@ typedef enum {
 	OBJECT_UPVALUE
 } LitObjectType;
 
+static const char* lit_object_type_names[] = {
+	"string",
+	"function",
+	"native",
+	"fiber",
+	"module",
+	"closure",
+	"upvalue"
+};
+
 typedef struct sLitObject {
 	LitObjectType type;
 	struct sLitObject* next;
+
+	bool marked;
 } sLitObject;
 
 LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type);

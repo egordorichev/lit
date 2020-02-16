@@ -1,13 +1,1 @@
-function outer(arg) {
-	function inner() {
-		print(arg)
-	}
-
-	return inner
-}
-
-var a = outer("begget")
-var b = outer("not begget")
-
-a()
-b()
+var a = "hi"

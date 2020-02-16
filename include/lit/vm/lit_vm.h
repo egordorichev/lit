@@ -19,10 +19,12 @@ typedef struct sLitVm {
 	LitTable modules;
 
 	LitFiber* fiber;
-	LitObject* roots[LIT_ROOT_MAX];
 	LitUpvalue* open_upvalues;
 
-	uint8_t root_count;
+	// For garbage collection
+	uint gray_count;
+	uint gray_capacity;
+	LitObject** gray_stack;
 } sLitVm;
 
 typedef struct sLitInterpretResult {

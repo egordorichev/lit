@@ -25,9 +25,12 @@ LitState* lit_new_state() {
 	LitState* state = (LitState*) malloc(sizeof(LitState));
 
 	state->bytes_allocated = 0;
+	state->next_gc = 1024 * 1024;
+
 	state->errorFn = default_error;
 	state->printFn = default_printf;
 	state->had_error = false;
+	state->root_count = 0;
 
 	state->scanner = (LitScanner*) malloc(sizeof(LitScanner));
 
@@ -63,6 +66,31 @@ int64_t lit_free_state(LitState* state) {
 	return amount;
 }
 
+void lit_push_root(LitState* state, LitObject* object) {
+	assert(state->root_count < LIT_ROOT_MAX);
+	state->roots[state->root_count++] = OBJECT_VALUE(object);
+}
+
+void lit_push_value_root(LitState* state, LitValue value) {
+	assert(state->root_count < LIT_ROOT_MAX);
+	state->roots[state->root_count++] = value;
+}
+
+LitValue lit_peek_root(LitState* state, uint8_t distance) {
+	assert(state->root_count - distance + 1 > 0);
+	return state->roots[state->root_count - distance - 1];
+}
+
+void lit_pop_root(LitState* state) {
+	assert(state->root_count > 0);
+	state->root_count--;
+}
+
+void lit_pop_roots(LitState* state, uint8_t amount) {
+	assert(state->root_count - amount >= 0);
+	state->root_count -= amount;
+}
+
 static void free_statements(LitState* state, LitStatements* statements) {
 	for (uint i = 0; i < statements->count; i++) {
 		lit_free_statement(state, statements->values[i]);
@@ -94,8 +122,6 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 	if (state->had_error) {
 		result = (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VALUE };
 	} else {
-		lit_table_set(state, &state->vm->modules, module_name, OBJECT_VALUE(module));
-
 		result = lit_interpret_module(state, module);
 		module->return_value = result.result;
 

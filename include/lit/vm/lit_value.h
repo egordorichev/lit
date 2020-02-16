@@ -2,10 +2,9 @@
 #define LIT_VALUE_H
 
 #include <lit/lit_common.h>
+#include <lit/lit_predefines.h>
 #include <lit/state/lit_state.h>
 #include <lit/util/lit_array.h>
-
-typedef uint64_t LitValue;
 
 #define SIGN_BIT ((uint64_t) 1 << 63)
 #define QNAN ((uint64_t) 0x7ffc000000000000)

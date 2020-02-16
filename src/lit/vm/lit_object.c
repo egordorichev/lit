@@ -11,7 +11,9 @@ static LitString* allocate_string(LitState* state, char* chars, int length, uint
 	string->chars = chars;
 	string->hash = hash;
 
+	lit_push_root(state, (LitObject *) string);
 	lit_table_set(state, &state->vm->strings, string, NULL_VALUE);
+	lit_pop_root(state);
 
 	return string;
 }
@@ -47,8 +49,14 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type)
 	LitObject* object = (LitObject*) lit_reallocate(state, NULL, 0, size);
 
 	object->type = type;
+	object->marked = false;
 	object->next = state->vm->objects;
+
 	state->vm->objects = object;
+
+#ifdef LIT_LOG_GC
+	printf("%p allocate %ld for %s\n", (void*) object, size, lit_object_type_names[type]);
+#endif
 
 	return object;
 }

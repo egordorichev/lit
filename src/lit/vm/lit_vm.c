@@ -9,21 +9,6 @@
 #include <string.h>
 #include <time.h>
 
-static void push_root(LitVm* vm, LitObject* object) {
-	assert(vm->root_count < LIT_ROOT_MAX);
-	vm->roots[vm->root_count++] = object;
-}
-
-static LitObject* peek_root(LitVm* vm, uint8_t distance) {
-	assert(vm->root_count - distance + 1 > 0);
-	return vm->roots[vm->root_count - distance - 1];
-}
-
-static void pop_root(LitVm* vm) {
-	assert(vm->root_count > 0);
-	vm->root_count--;
-}
-
 static void reset_stack(LitVm* vm) {
 	if (vm->fiber != NULL) {
 		vm->fiber->stack_top = vm->fiber->stack;
@@ -33,11 +18,10 @@ static void reset_stack(LitVm* vm) {
 static void define_native(LitVm* vm, const char* name, LitNativeFn function) {
 	LitState* state = vm->state;
 
-	push_root(vm, (LitObject *) lit_create_native(state, function));
-	push_root(vm, (LitObject *) lit_copy_string(state, name, (uint) strlen(name)));
-	lit_table_set(state, &vm->globals, (LitString*) peek_root(vm, 0), OBJECT_VALUE(peek_root(vm, 1)));
-	pop_root(vm);
-	pop_root(vm);
+	lit_push_root(state, (LitObject *) lit_create_native(state, function));
+	lit_push_root(state, (LitObject *) lit_copy_string(state, name, (uint) strlen(name)));
+	lit_table_set(state, &vm->globals, AS_STRING(lit_peek_root(state, 0)), lit_peek_root(state, 1));
+	lit_pop_roots(state, 2);
 }
 
 static LitValue time_native(LitVm* vm, uint arg_count, LitValue* args) {
@@ -58,7 +42,10 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 	vm->objects = NULL;
 	vm->fiber = NULL;
 	vm->open_upvalues = NULL;
-	vm->root_count = 0;
+
+	vm->gray_stack = NULL;
+	vm->gray_count = 0;
+	vm->gray_capacity = 0;
 
 	lit_init_table(&vm->strings);
 	lit_init_table(&vm->globals);

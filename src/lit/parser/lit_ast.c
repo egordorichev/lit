@@ -1,4 +1,5 @@
 #include <lit/parser/lit_ast.h>
+#include <lit/parser/lit_parser.h>
 #include <lit/mem/lit_mem.h>
 
 DEFINE_ARRAY(LitExpressions, LitExpression*, expressions)
@@ -295,7 +296,9 @@ LitBlockStatement *lit_create_block_statement(LitState* state, uint line) {
 }
 
 LitVarStatement *lit_create_var_statement(LitState* state, uint line, const char* name, uint length, LitExpression* init) {
+	lit_push_parser_expression_root(state->parser, init);
 	LitVarStatement* statement = ALLOCATE_STATEMENT(state, LitVarStatement, VAR_STATEMENT);
+	lit_pop_parser_expression_root(state->parser);
 
 	statement->name = name;
 	statement->length = length;

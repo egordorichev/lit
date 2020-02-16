@@ -11,4 +11,6 @@ typedef struct sLitInterpretResult LitInterpretResult;
 typedef struct sLitObject LitObject;
 typedef struct sLitString LitString;
 
+typedef uint64_t LitValue;
+
 #endif

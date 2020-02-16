@@ -25,9 +25,24 @@ static void end_scope(LitParser* parser) {
 	parser->compiler->scope_depth--;
 }
 
+static void safe_write_expression(LitParser* parser, LitExpressions* expressions, LitExpression* expression) {
+	lit_push_parser_expression_root(parser, expression);
+	lit_expressions_write(parser->state, expressions, expression);
+	lit_pop_parser_expression_root(parser);
+}
+
+static void safe_write_statement(LitParser* parser, LitStatements* statements, LitStatement* statement) {
+	lit_push_parser_statement_root(parser, statement);
+	lit_stataments_write(parser->state, statements, statement);
+	lit_pop_parser_statement_root(parser);
+}
+
+
 static LitExpression* parse_expression(LitParser* parser);
 static LitStatement* parse_statement(LitParser* parser);
 static LitStatement* parse_declaration(LitParser* parser);
+static void mark_expressions(LitParser* parser, LitExpressions* expressions);
+static void mark_statements(LitParser* parser, LitStatements* statements);
 
 static LitParseRule rules[TOKEN_EOF + 1];
 static bool did_setup_rules;
@@ -50,6 +65,8 @@ void lit_init_parser(LitState* state, LitParser* parser) {
 	parser->state = state;
 	parser->had_error = false;
 	parser->panic_mode = false;
+	parser->statement_root_count = 0;
+	parser->expression_root_count = 0;
 }
 
 void lit_free_parser(LitParser* parser) {
@@ -136,7 +153,7 @@ static LitStatement* parse_block(LitParser* parser) {
 	ignore_new_lines(parser);
 
 	while (!check(parser, TOKEN_RIGHT_BRACE) && !check(parser, TOKEN_EOF)) {
-		lit_stataments_write(parser->state, &statement->statements, parse_statement(parser));
+		safe_write_statement(parser, &statement->statements, parse_statement(parser));
 		ignore_new_lines(parser);
 	}
 
@@ -186,7 +203,7 @@ static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool ca
 	LitCallExpression* expression = lit_create_call_expression(parser->state, parser->previous.line, prev);
 
 	while (!check(parser, TOKEN_RIGHT_PAREN)) {
-		lit_expressions_write(parser->state, &expression->args, parse_expression(parser));
+		safe_write_expression(parser, &expression->args, parse_expression(parser));
 
 		if (!match(parser, TOKEN_COMMA)) {
 			break;
@@ -293,7 +310,13 @@ static LitExpression* parse_literal(LitParser* parser, bool can_assign) {
 		}
 
 		case TOKEN_STRING: {
-			return (LitExpression*) lit_create_literal_expression(parser->state, line, OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start + 1, parser->previous.length - 2)));
+			LitValue string = OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start + 1, parser->previous.length - 2));
+			lit_push_value_root(parser->state, string);
+
+			LitExpression* expression = (LitExpression*) lit_create_literal_expression(parser->state, line, string);
+
+			lit_pop_root(parser->state);
+			return expression;
 		}
 
 		default: UNREACHABLE
@@ -371,9 +394,8 @@ static LitStatement* parse_if(LitParser* parser) {
 				e = (LitExpression*) lit_create_unary_expression(parser->state, condition->line, e, TOKEN_BANG);
 			}
 
-			lit_expressions_write(parser->state, elseif_conditions, e);
-
-			lit_stataments_write(parser->state, elseif_branches, parse_statement(parser));
+			safe_write_expression(parser, elseif_conditions, e);
+			safe_write_statement(parser, elseif_branches, parse_statement(parser));
 
 			continue;
 		}
@@ -541,6 +563,8 @@ static LitStatement* parse_declaration(LitParser* parser) {
 }
 
 bool lit_parse(LitParser* parser, const char* file_name, const char* source, LitStatements* statements) {
+	parser->statements = statements;
+
 	parser->had_error = false;
 	parser->panic_mode = false;
 
@@ -559,7 +583,7 @@ bool lit_parse(LitParser* parser, const char* file_name, const char* source, Lit
 			LitStatement* statement = parse_declaration(parser);
 
 			if (statement != NULL) {
-				lit_stataments_write(parser->state, statements, statement);
+				safe_write_statement(parser, statements, statement);
 			}
 
 			if (!match_new_line(parser)) {
@@ -603,4 +627,198 @@ static void setup_rules() {
 	rules[TOKEN_BAR_BAR] = (LitParseRule) { NULL, parse_or, PREC_AND };
 	rules[TOKEN_QUESTION_QUESTION] = (LitParseRule) { NULL, parse_null_filter, PREC_NULL };
 	rules[TOKEN_REQUIRE] = (LitParseRule) { parse_require, NULL, PREC_NONE };
+}
+
+static void mark_expression(LitParser* parser, LitExpression* expression) {
+	if (expression == NULL) {
+		return;
+	}
+
+	switch (expression->type) {
+		case LITERAL_EXPRESSION: {
+			LitValue value = ((LitLiteralExpression*) expression)->value;
+			// lit_print_value(value);
+			lit_mark_value(parser->state->vm, ((LitLiteralExpression*) expression)->value);
+			break;
+		}
+
+		case BINARY_EXPRESSION: {
+			LitBinaryExpression* expr = (LitBinaryExpression*) expression;
+
+			mark_expression(parser, expr->left);
+			mark_expression(parser, expr->right);
+
+			break;
+		}
+
+		case UNARY_EXPRESSION: {
+			mark_expression(parser, ((LitUnaryExpression*) expression)->right);
+			break;
+		}
+
+		case GROUPING_EXPRESSION: {
+			mark_expression(parser, ((LitGroupingExpression*) expression)->child);
+			break;
+		}
+
+		case VAR_EXPRESSION: {
+			break;
+		}
+
+		case ASSIGN_EXPRESSION: {
+			LitAssignExpression* expr = (LitAssignExpression*) expression;
+
+			mark_expression(parser, expr->to);
+			mark_expression(parser, expr->value);
+
+			break;
+		}
+
+		case CALL_EXPRESSION: {
+			LitCallExpression* expr = (LitCallExpression*) expression;
+
+			mark_expressions(parser, &expr->args);
+			mark_expression(parser, expr->callee);
+
+			break;
+		}
+
+		case REQUIRE_EXPRESSION: {
+			mark_expression(parser, ((LitRequireExpression *) expression)->argument);
+			break;
+		}
+
+		default: {
+			UNREACHABLE
+		}
+	}
+}
+
+static void mark_expressions(LitParser* parser, LitExpressions* expressions) {
+	if (expressions == NULL) {
+		return;
+	}
+
+	for (uint i = 0; i < expressions->count; i++) {
+		mark_expression(parser, expressions->values[i]);
+	}
+}
+
+static void mark_statement(LitParser* parser, LitStatement* statement) {
+	if (statement == NULL) {
+		return;
+	}
+
+	switch (statement->type) {
+		case EXPRESSION_STATEMENT: {
+			mark_expression(parser, ((LitExpressionStatement*) statement)->expression);
+			break;
+		}
+
+		case BLOCK_STATEMENT: {
+			mark_statements(parser, &((LitBlockStatement*) statement)->statements);
+			break;
+		}
+
+		case IF_STATEMENT: {
+			LitIfStatement* stmt = (LitIfStatement*) statement;
+
+			mark_expression(parser, stmt->condition);
+			mark_statement(parser, stmt->if_branch);
+			mark_statement(parser, stmt->else_branch);
+
+			mark_expressions(parser, stmt->elseif_conditions);
+			mark_statements(parser, stmt->elseif_branches);
+
+			break;
+		}
+
+		case WHILE_STATEMENT: {
+			LitWhileStatement* stmt = (LitWhileStatement*) statement;
+
+			mark_expression(parser, stmt->condition);
+			mark_statement(parser, stmt->body);
+
+			break;
+		}
+
+		case FOR_STATEMENT: {
+			LitForStatement* stmt = (LitForStatement*) statement;
+
+			mark_expression(parser, stmt->init);
+			mark_statement(parser, stmt->var);
+
+			mark_expression(parser, stmt->condition);
+			mark_expression(parser, stmt->increment);
+			mark_statement(parser, stmt->body);
+
+			break;
+		}
+
+		case VAR_STATEMENT: {
+			mark_expression(parser, ((LitVarStatement*) statement)->init);
+			break;
+		}
+
+		case CONTINUE_STATEMENT:
+		case BREAK_STATEMENT: {
+			break;
+		}
+
+		case FUNCTION_STATEMENT: {
+			mark_statement(parser, ((LitFunctionStatement*) statement)->body);
+			break;
+		}
+
+		case RETURN_STATEMENT: {
+			mark_expression(parser, ((LitReturnStatement*) statement)->expression);
+			break;
+		}
+
+		default: {
+			UNREACHABLE
+		}
+	}
+}
+
+static void mark_statements(LitParser* parser, LitStatements* statements) {
+	if (statements == NULL) {
+		return;
+	}
+
+	for (uint i = 0; i < statements->count; i++) {
+		mark_statement(parser, statements->values[i]);
+	}
+}
+
+void lit_mark_parser_roots(LitParser* parser) {
+	for (uint i = 0; i < parser->expression_root_count; i++) {
+		mark_expression(parser, parser->expression_roots[i]);
+	}
+
+	for (uint i = 0; i < parser->statement_root_count; i++) {
+		mark_statement(parser, parser->statement_roots[i]);
+	}
+
+	mark_statements(parser, parser->statements);
+}
+
+void lit_push_parser_expression_root(LitParser* parser, LitExpression* expression) {
+	assert(parser->expression_root_count < LIT_ROOT_MAX);
+	parser->expression_roots[parser->expression_root_count++] = expression;
+}
+
+void lit_pop_parser_expression_root(LitParser* parser) {
+	assert(parser->expression_root_count > 0);
+	parser->expression_root_count--;
+}
+
+void lit_push_parser_statement_root(LitParser* parser, LitStatement* statement) {
+	assert(parser->statement_root_count < LIT_ROOT_MAX);
+	parser->statement_roots[parser->statement_root_count++] = statement;
+}
+
+void lit_pop_parser_statement_root(LitParser* parser) {
+	assert(parser->statement_root_count > 0);
+	parser->statement_root_count--;
 }

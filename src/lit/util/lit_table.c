@@ -149,11 +149,32 @@ LitString* lit_table_find_string(LitTable* table, const char* chars, uint length
 }
 
 void lit_table_add_all(LitState* state, LitTable* from, LitTable* to) {
-	for (int i = 0; i < from->capacity; i++) {
+	for (int i = 0; i <= from->capacity; i++) {
 		LitTableEntry* entry = &from->entries[i];
 
 		if (entry->key != NULL) {
 			lit_table_set(state, to, entry->key, entry->value);
+		}
+	}
+}
+
+void lit_table_remove_white(LitTable* table) {
+	for (uint i = 0; i <= table->capacity; i++) {
+		LitTableEntry* entry = &table->entries[i];
+
+		if (entry != NULL && entry->key != NULL && !entry->key->object.marked) {
+			lit_table_delete(table, entry->key);
+		}
+	}
+}
+
+void lit_mark_table(LitVm* vm, LitTable* table) {
+	for (int i = 0; i <= table->capacity; i++) {
+		LitTableEntry* entry = &table->entries[i];
+
+		if (entry != NULL) {
+			lit_mark_object(vm, (LitObject *) entry->key);
+			lit_mark_value(vm, entry->value);
 		}
 	}
 }

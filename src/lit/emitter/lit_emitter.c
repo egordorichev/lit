@@ -2,7 +2,9 @@
 #include <lit/mem/lit_mem.h>
 #include <lit/debug/lit_debug.h>
 #include <lit/vm/lit_object.h>
+#include <lit/vm/lit_vm.h>
 #include <lit/scanner/lit_scanner.h>
+#include <lit/util/lit_table.h>
 
 #include <string.h>
 
@@ -52,6 +54,7 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 	compiler->enclosing = (struct LitCompiler *) emitter->compiler;
 	compiler->skip_return = false;
 	compiler->function = lit_create_function(emitter->state);
+	emitter->compiler = compiler;
 
 	const char* name = emitter->state->scanner->file_name;
 
@@ -59,7 +62,6 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 		compiler->function->name = lit_copy_string(emitter->state, name, strlen(name));
 	}
 
-	emitter->compiler = compiler;
 	emitter->chunk = &compiler->function->chunk;
 
 	lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
@@ -792,15 +794,35 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	}
 
 	end_scope(emitter, emitter->last_line);
+
+	LitState* state = emitter->state;
 	LitFunction* function = end_compiler(emitter, NULL);
+	lit_push_root(state, (LitObject *) function);
 
 	LitModule* module = lit_create_module(emitter->state, module_name);
+	lit_push_root(state, (LitObject *) module);
 
 	module->main_function = function;
+	module->privates = LIT_ALLOCATE(emitter->state, LitValue, emitter->privates.count);
+	// This must go after privates is allocated, to make sure, that gc doesn't crash trying to iterate NULL array with count > 0
 	module->privates_count = emitter->privates.count;
-	module->privates = LIT_ALLOCATE(emitter->state, LitValue, module->privates_count);
 
 	lit_free_privates(emitter->state, &emitter->privates);
+	lit_table_set(state, &state->vm->modules, module_name, OBJECT_VALUE(module));
+	lit_pop_roots(state, 2);
 
 	return module;
+}
+
+void lit_mark_emitter_roots(LitEmitter* emitter) {
+	LitCompiler* compiler = emitter->compiler;
+
+	while (compiler != NULL) {
+		lit_mark_object(emitter->state->vm, (LitObject*) compiler->function);
+		compiler = (LitCompiler *) compiler->enclosing;
+	}
+
+	if (emitter->compiler != NULL) {
+		lit_mark_object(emitter->state->vm, (LitObject *) emitter->compiler->function);
+	}
 }
