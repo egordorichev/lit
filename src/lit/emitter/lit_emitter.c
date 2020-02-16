@@ -527,6 +527,28 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
+		case GET_EXPRESSION: {
+			LitGetExpression* expr = (LitGetExpression*) expression;
+
+			emit_expression(emitter, expr->where);
+			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+			emit_byte(emitter, emitter->last_line, OP_GET_FIELD);
+
+			break;
+		}
+
+		case SET_EXPRESSION: {
+			LitSetExpression* expr = (LitSetExpression*) expression;
+
+			emit_expression(emitter, expr->where);
+			emit_expression(emitter, expr->value);
+			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+
+			emit_byte(emitter, emitter->last_line, OP_SET_FIELD);
+
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown expression type %d", (int) expression->type);
 			break;

@@ -81,6 +81,22 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
+		case GET_EXPRESSION: {
+			lit_free_expression(state, ((LitGetExpression*) expression)->where);
+			FREE_EXPRESSION(LitGetExpression)
+			break;
+		}
+
+		case SET_EXPRESSION: {
+			LitSetExpression* expr = (LitSetExpression*) expression;
+
+			lit_free_expression(state, expr->where);
+			lit_free_expression(state, expr->value);
+
+			FREE_EXPRESSION(LitSetExpression)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -164,6 +180,27 @@ LitRequireExpression *lit_create_require_expression(LitState* state, uint line, 
 	statement->argument = expression;
 
 	return statement;
+}
+
+LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length) {
+	LitGetExpression* expression = ALLOCATE_EXPRESSION(state, LitGetExpression, GET_EXPRESSION);
+
+	expression->where = where;
+	expression->name = name;
+	expression->length = length;
+
+	return expression;
+}
+
+LitSetExpression *lit_create_set_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length, LitExpression* value) {
+	LitSetExpression* expression = ALLOCATE_EXPRESSION(state, LitSetExpression, SET_EXPRESSION);
+
+	expression->where = where;
+	expression->name = name;
+	expression->length = length;
+	expression->value = value;
+
+	return expression;
 }
 
 #define FREE_STATEMENT(type) lit_reallocate(state, statement, sizeof(type), 0);

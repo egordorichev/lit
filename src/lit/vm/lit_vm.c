@@ -659,6 +659,40 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(GET_FIELD) {
+			if (!IS_INSTANCE(PEEK(1))) {
+				runtime_error(vm, "Only instances have fields");
+				RETURN_ERROR()
+			}
+
+			LitValue value;
+
+			if (!lit_table_get(&AS_INSTANCE(PEEK(1))->fields, AS_STRING(PEEK(0)), &value)) {
+				value = NULL_VALUE;
+			}
+
+			lit_pop(vm); // Pop field name
+			fiber->stack_top[-1] = value;
+
+			continue;
+		}
+
+		CASE_CODE(SET_FIELD) {
+			if (!IS_INSTANCE(PEEK(2))) {
+				runtime_error(vm, "Only instances have fields");
+				RETURN_ERROR()
+			}
+
+			LitValue value = PEEK(1);
+			lit_table_set(state, &AS_INSTANCE(PEEK(2))->fields, AS_STRING(PEEK(0)), value);
+
+			lit_pop(vm); // Pop field name
+			lit_pop(vm); // Pop the value
+			fiber->stack_top[-1] = value;
+
+			continue;
+		}
+
 		printf("Unknown op code!");
 		break;
 	}

@@ -2,4 +2,6 @@ class Awesome {
 
 }
 
-print(new Awesome())
+var a = new Awesome()
+a.test = 32
+print(a.test)

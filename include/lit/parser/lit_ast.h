@@ -17,7 +17,9 @@ typedef enum {
 	VAR_EXPRESSION,
 	ASSIGN_EXPRESSION,
 	CALL_EXPRESSION,
-	REQUIRE_EXPRESSION
+	REQUIRE_EXPRESSION,
+	SET_EXPRESSION,
+	GET_EXPRESSION
 } LitExpressionType;
 
 typedef struct LitExpression {
@@ -95,6 +97,28 @@ typedef struct {
 } LitRequireExpression;
 
 LitRequireExpression *lit_create_require_expression(LitState* state, uint line, LitExpression* expression);
+
+typedef struct {
+	LitExpression expression;
+
+	LitExpression* where;
+	const char* name;
+	uint length;
+} LitGetExpression;
+
+LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length);
+
+typedef struct {
+	LitExpression expression;
+
+	LitExpression* where;
+	const char* name;
+	uint length;
+
+	LitExpression* value;
+} LitSetExpression;
+
+LitSetExpression *lit_create_set_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length, LitExpression* value);
 
 /*
  * Statements

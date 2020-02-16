@@ -130,6 +130,9 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_CLOSE_UPVALUE: return print_simple_op("OP_CLOSE_UPVALUE", offset);
 		case OP_CLASS: return print_simple_op("OP_CLASS", offset);
 
+		case OP_GET_FIELD: return print_simple_op("OP_GET_FIELD", offset);
+		case OP_SET_FIELD: return print_simple_op("OP_SET_FIELD", offset);
+
 		default: {
 			printf("Unknown opcode %d\n", instruction);
 			return offset + 1;
