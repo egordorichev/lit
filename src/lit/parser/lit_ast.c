@@ -264,6 +264,11 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 			break;
 		}
 
+		case CLASS_STATEMENT: {
+			FREE_STATEMENT(LitClassStatement)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown statement type %d", (int) statement->type);
 			break;
@@ -361,6 +366,13 @@ LitFunctionStatement *lit_create_function_statement(LitState* state, uint line, 
 LitReturnStatement *lit_create_return_statement(LitState* state, uint line, LitExpression* expression) {
 	LitReturnStatement* statement = ALLOCATE_STATEMENT(state, LitReturnStatement, RETURN_STATEMENT);
 	statement->expression = expression;
+
+	return statement;
+}
+
+LitClassStatement *lit_create_class_statement(LitState* state, uint line, LitString* name) {
+	LitClassStatement* statement = ALLOCATE_STATEMENT(state, LitClassStatement, CLASS_STATEMENT);
+	statement->name = name;
 
 	return statement;
 }

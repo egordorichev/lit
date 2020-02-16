@@ -1,0 +1,3 @@
+var a = require "test.expression.folder.module" // Expected: hi
+print(a) // Expected: 32
+print(require "test.expression.folder.module") // Expected: 32

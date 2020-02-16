@@ -17,6 +17,8 @@
 #define IS_MODULE(value) IS_OBJECTS_TYPE(value, OBJECT_MODULE)
 #define IS_CLOSURE(value) IS_OBJECTS_TYPE(value, OBJECT_CLOSURE)
 #define IS_UPVALUE(value) IS_OBJECTS_TYPE(value, OBJECT_UPVALUE)
+#define IS_CLASS(value) IS_OBJECTS_TYPE(value, OBJECT_CLASS)
+#define IS_INSTANCE(value) IS_OBJECTS_TYPE(value, OBJECT_INSTANCE)
 
 #define AS_STRING(value) ((LitString*) AS_OBJECT(value))
 #define AS_CSTRING(value) (((LitString*) AS_OBJECT(value))->chars)
@@ -25,6 +27,8 @@
 #define AS_MODULE(value) ((LitModule*) AS_OBJECT(value))
 #define AS_CLOSURE(value) ((LitClosure*) AS_OBJECT(value))
 #define AS_UPVALUE(value) ((LitUpvalue*) AS_OBJECT(value))
+#define AS_CLASS(value) ((LitClass*) AS_OBJECT(value))
+#define AS_INSTANCE(value) ((LitInstance*) AS_OBJECT(value))
 
 #define ALLOCATE_OBJECT(state, type, objectType) (type*) lit_allocate_object(state, sizeof(type), objectType)
 
@@ -35,7 +39,9 @@ typedef enum {
 	OBJECT_FIBER,
 	OBJECT_MODULE,
 	OBJECT_CLOSURE,
-	OBJECT_UPVALUE
+	OBJECT_UPVALUE,
+	OBJECT_CLASS,
+	OBJECT_INSTANCE
 } LitObjectType;
 
 static const char* lit_object_type_names[] = {
@@ -151,5 +157,12 @@ typedef struct LitFiber {
 } LitFiber;
 
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function);
+
+typedef struct {
+	LitObject object;
+	LitString* name;
+} LitClass;
+
+LitClass* lit_create_class(LitState* state, LitString* name);
 
 #endif

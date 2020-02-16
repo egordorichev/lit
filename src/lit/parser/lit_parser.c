@@ -479,6 +479,20 @@ static LitStatement* parse_return(LitParser* parser) {
 	return (LitStatement*) lit_create_return_statement(parser->state, line, expression);
 }
 
+static LitStatement* parse_class(LitParser* parser) {
+	uint line = parser->previous.line;
+
+	consume(parser, TOKEN_IDENTIFIER, "Expected variable name");
+	LitString* name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
+
+	ignore_new_lines(parser);
+	consume(parser, TOKEN_LEFT_BRACE, "Expected '{' before class body");
+	ignore_new_lines(parser);
+	consume(parser, TOKEN_RIGHT_BRACE, "Expected '}' after class body");
+
+	return (LitStatement*) lit_create_class_statement(parser->state, line, name);
+}
+
 static LitStatement* parse_statement(LitParser* parser) {
 	if (match(parser, TOKEN_VAR)) {
 		return parse_var_declaration(parser);
@@ -531,6 +545,10 @@ static void sync(LitParser* parser) {
 }
 
 static LitStatement* parse_declaration(LitParser* parser) {
+	if (match(parser, TOKEN_CLASS)) {
+		return parse_class(parser);
+	}
+
 	LitStatement* statement = parse_statement(parser);
 
 	if (parser->panic_mode) {

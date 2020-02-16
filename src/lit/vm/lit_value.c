@@ -60,6 +60,11 @@ static void print_object(LitValue value) {
 			break;
 		}
 
+		case OBJECT_CLASS: {
+			printf("class %s", AS_CLASS(value)->name->chars);
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}

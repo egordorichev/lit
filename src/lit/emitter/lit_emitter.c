@@ -770,6 +770,15 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			return true;
 		}
 
+		case CLASS_STATEMENT: {
+			LitClassStatement* stmt = (LitClassStatement*) statement;
+
+			emit_constant(emitter, statement->line, OBJECT_VALUE(stmt->name));
+			emit_byte(emitter, statement->line, OP_CLASS);
+
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, statement->line, "Unknown statement type %d", (int) statement->type);
 			break;

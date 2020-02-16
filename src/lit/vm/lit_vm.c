@@ -641,6 +641,20 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(CLASS) {
+			LitString* name = AS_STRING(PEEK(0));
+			LitClass* klass = lit_create_class(state, name);
+			lit_pop(vm); // Pop the class name
+
+			lit_push_root(state, (LitObject *) klass);
+			lit_table_set(state, &vm->globals, name, OBJECT_VALUE(klass));
+			lit_pop_root(state);
+
+			// lit_push(vm, OBJECT_VALUE(klass));
+
+			continue;
+		}
+
 		printf("Unknown op code!");
 		break;
 	}

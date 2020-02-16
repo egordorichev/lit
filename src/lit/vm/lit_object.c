@@ -134,3 +134,10 @@ LitModule* lit_create_module(LitState* state, LitString* name) {
 
 	return module;
 }
+
+LitClass* lit_create_class(LitState* state, LitString* name) {
+	LitClass* klass = ALLOCATE_OBJECT(state, LitClass, OBJECT_CLASS);
+	klass->name = name;
+
+	return klass;
+}

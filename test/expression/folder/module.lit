@@ -1,0 +1,2 @@
+print("hi") // Expected: hi
+return 32

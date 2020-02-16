@@ -110,7 +110,8 @@ typedef enum {
 	CONTINUE_STATEMENT,
 	BREAK_STATEMENT,
 	FUNCTION_STATEMENT,
-	RETURN_STATEMENT
+	RETURN_STATEMENT,
+	CLASS_STATEMENT
 } LitStatementType;
 
 typedef struct LitStatement {
@@ -216,6 +217,13 @@ typedef struct {
 } LitReturnStatement;
 
 LitReturnStatement *lit_create_return_statement(LitState* state, uint line, LitExpression* expression);
+
+typedef struct {
+	LitStatement statement;
+	LitString* name;
+} LitClassStatement;
+
+LitClassStatement *lit_create_class_statement(LitState* state, uint line, LitString* name);
 
 LitExpressions* lit_allocate_expressions(LitState* state);
 void lit_free_allocated_expressions(LitState* state, LitExpressions* expressions);
