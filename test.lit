@@ -5,3 +5,5 @@ class Awesome {
 var a = new Awesome()
 a.test = 32
 print(a.test)
+a.test = null
+print(a.test)

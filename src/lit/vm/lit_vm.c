@@ -684,7 +684,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			}
 
 			LitValue value = PEEK(1);
-			lit_table_set(state, &AS_INSTANCE(PEEK(2))->fields, AS_STRING(PEEK(0)), value);
+
+			if (value == NULL_VALUE) {
+				lit_table_delete(&AS_INSTANCE(PEEK(2))->fields, AS_STRING(PEEK(0)));
+			} else {
+				lit_table_set(state, &AS_INSTANCE(PEEK(2))->fields, AS_STRING(PEEK(0)), value);
+			}
 
 			lit_pop(vm); // Pop field name
 			lit_pop(vm); // Pop the value

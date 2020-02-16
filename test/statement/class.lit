@@ -1,0 +1,6 @@
+class Awesome {
+
+}
+
+print(Awesome) // Expected: class Awesome
+print(new Awesome()) // Expected: Awesome instance

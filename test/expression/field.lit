@@ -1,0 +1,12 @@
+class Awesome {
+
+}
+
+var instance = new Awesome()
+print(instance.test) // Expected: null
+
+instance.test = 32
+print(instance.test) // Expected: 32
+
+print(instance.test = 48) // Expected: 48
+print(instance.test) // Expected: 48
