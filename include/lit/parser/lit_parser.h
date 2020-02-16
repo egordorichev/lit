@@ -53,11 +53,5 @@ void lit_init_parser(LitState* state, LitParser* parser);
 void lit_free_parser(LitParser* parser);
 
 bool lit_parse(LitParser* parser, const char* file_name, const char* source, LitStatements* statements);
-void lit_mark_parser_roots(LitParser* parser);
-
-void lit_push_parser_expression_root(LitParser* parser, LitExpression* expression);
-void lit_pop_parser_expression_root(LitParser* parser);
-void lit_push_parser_statement_root(LitParser* parser, LitStatement* statement);
-void lit_pop_parser_statement_root(LitParser* parser);
 
 #endif

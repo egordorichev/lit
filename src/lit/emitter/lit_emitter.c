@@ -813,16 +813,3 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 
 	return module;
 }
-
-void lit_mark_emitter_roots(LitEmitter* emitter) {
-	LitCompiler* compiler = emitter->compiler;
-
-	while (compiler != NULL) {
-		lit_mark_object(emitter->state->vm, (LitObject*) compiler->function);
-		compiler = (LitCompiler *) compiler->enclosing;
-	}
-
-	if (emitter->compiler != NULL) {
-		lit_mark_object(emitter->state->vm, (LitObject *) emitter->compiler->function);
-	}
-}

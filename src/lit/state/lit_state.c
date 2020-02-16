@@ -26,6 +26,7 @@ LitState* lit_new_state() {
 
 	state->bytes_allocated = 0;
 	state->next_gc = 1024 * 1024;
+	state->allow_gc = false;
 
 	state->errorFn = default_error;
 	state->printFn = default_printf;
@@ -104,6 +105,9 @@ LitInterpretResult lit_interpret(LitState* state, const char* module_name, const
 }
 
 LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code) {
+	bool allowed_gc = state->allow_gc;
+
+	state->allow_gc = false;
 	state->had_error = false;
 
 	LitStatements statements;
@@ -121,8 +125,11 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 
 	if (state->had_error) {
 		result = (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VALUE };
+		state->allow_gc = allowed_gc;
 	} else {
+		state->allow_gc = true;
 		result = lit_interpret_module(state, module);
+		state->allow_gc = allowed_gc;
 		module->return_value = result.result;
 
 		if (state->vm->fiber->stack_top != state->vm->fiber->stack) {

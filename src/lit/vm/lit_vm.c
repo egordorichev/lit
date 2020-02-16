@@ -28,6 +28,11 @@ static LitValue time_native(LitVm* vm, uint arg_count, LitValue* args) {
 	return NUMBER_VALUE((double) clock() / CLOCKS_PER_SEC);
 }
 
+static LitValue gc_native(LitVm* vm, uint arg_count, LitValue* args) {
+	lit_collect_garbage(vm);
+	return NULL_VALUE;
+}
+
 static LitValue print_native(LitVm* vm, uint arg_count, LitValue* args) {
 	for (uint i = 0; i < arg_count; i++) {
 		lit_print_value(args[i]);
@@ -54,6 +59,7 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 
 void lit_define_std(LitVm* vm) {
 	define_native(vm, "time", time_native);
+	define_native(vm, "gc", gc_native);
 	define_native(vm, "print", print_native);
 }
 

@@ -127,6 +127,7 @@ void lit_mark_object(LitVm* vm, LitObject* object) {
 	printf("%p mark ", (void*) object);
   lit_print_value(OBJECT_VALUE(object));
   printf("\n");
+
 #endif
 
 	if (vm->gray_capacity < vm->gray_count + 1) {
@@ -174,9 +175,6 @@ static void mark_roots(LitVm* vm) {
 
 	lit_mark_table(vm, &vm->globals);
 	lit_mark_table(vm, &vm->modules);
-
-	lit_mark_parser_roots(vm->state->parser);
-	lit_mark_emitter_roots(vm->state->emitter);
 }
 
 static void mark_array(LitVm* vm, LitValues* array) {
@@ -281,6 +279,10 @@ static void sweep(LitVm* vm) {
 }
 
 void lit_collect_garbage(LitVm* vm) {
+	if (!vm->state->allow_gc) {
+		return;
+	}
+
 #ifdef LIT_LOG_GC
 	printf("-- gc begin\n");
 	uint64_t before = vm->state->bytes_allocated;

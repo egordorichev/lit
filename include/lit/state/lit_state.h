@@ -18,6 +18,7 @@ typedef void (*LitPrintFn)(const char* message, va_list args);
 typedef struct sLitState {
 	int64_t bytes_allocated;
 	int64_t next_gc;
+	bool allow_gc;
 
 	LitErrorFn errorFn;
 	LitPrintFn printFn;
