@@ -4,10 +4,33 @@
 
 #include <stdio.h>
 
-int main(int argc, char* argv[]) {
-	LitState* state = lit_new_state();
-	lit_interpret(state, "web", "print(\"Halla world\")");
-	lit_free_state(state);
+static LitState* state = NULL;
 
+void create_state() {
+	if (state != NULL) {
+		return;
+	}
+
+	state = lit_new_state();
+}
+
+void free_state() {
+	if (state == NULL) {
+		return;
+	}
+
+	lit_free_state(state);
+	state = NULL;
+}
+
+void interpret(const char* source) {
+	if (state == NULL) {
+		return;
+	}
+
+	lit_interpret(state, "web", source);
+}
+
+int main(int argc, char* argv[]) {
 	return 0;
 }
