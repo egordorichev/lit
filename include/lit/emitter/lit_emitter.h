@@ -53,6 +53,8 @@ typedef struct sLitEmitter {
 
 	LitPrivates privates;
 	LitUInts breaks;
+
+	LitString* module_name;
 } sLitEmitter;
 
 void lit_init_emitter(LitState* state, LitEmitter* emitter);

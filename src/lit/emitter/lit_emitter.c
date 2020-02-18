@@ -11,6 +11,8 @@
 DEFINE_ARRAY(LitPrivates, LitPrivate, privates)
 DEFINE_ARRAY(LitLocals, LitLocal, locals)
 
+static bool emit_statement(LitEmitter* emitter, LitStatement* statement);
+
 void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->state = state;
 	emitter->loop_start = 0;
@@ -557,6 +559,39 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
+		case LAMBDA_EXPRESSION: {
+			LitLambdaExpression* expr = (LitLambdaExpression*) expression;
+			LitString* name = AS_STRING(lit_string_format(emitter->state, "@:@", OBJECT_VALUE(emitter->module_name), lit_number_to_string(emitter->state, expression->line)));
+
+			begin_scope(emitter);
+
+			LitCompiler compiler;
+			init_compiler(emitter, &compiler, FUNCTION_REGULAR);
+
+			for (uint i = 0; i < expr->parameters.count; i++) {
+				LitParameter parameter = expr->parameters.values[i];
+				mark_initialized(emitter, add_local(emitter, parameter.name, parameter.length, expression->line));
+			}
+
+			emit_statement(emitter, expr->body);
+
+			LitFunction* function = end_compiler(emitter, name);
+			function->arg_count = expr->parameters.count;
+
+			if (function->upvalue_count > 0) {
+				emit_bytes(emitter, emitter->last_line, OP_CLOSURE, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
+
+				for (uint i = 0; i < function->upvalue_count; i++) {
+					emit_bytes(emitter, emitter->last_line, compiler.upvalues[i].isLocal ? 1 : 0, compiler.upvalues[i].index);
+				}
+			} else {
+				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
+			}
+
+			end_scope(emitter, emitter->last_line);
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -823,6 +858,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	init_compiler(emitter, &compiler, FUNCTION_SCRIPT);
 
 	emitter->chunk = &compiler.function->chunk;
+	emitter->module_name = module_name;
 
 	for (uint i = 0; i < statements->count; i++) {
 		LitStatement* stmt = statements->values[i];

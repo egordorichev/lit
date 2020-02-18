@@ -5,10 +5,6 @@
 #include <lit/vm/lit_value.h>
 #include <lit/scanner/lit_token.h>
 
-/*
- * Expressions
- */
-
 typedef enum {
 	LITERAL_EXPRESSION,
 	BINARY_EXPRESSION,
@@ -19,13 +15,37 @@ typedef enum {
 	CALL_EXPRESSION,
 	REQUIRE_EXPRESSION,
 	SET_EXPRESSION,
-	GET_EXPRESSION
+	GET_EXPRESSION,
+	LAMBDA_EXPRESSION
 } LitExpressionType;
 
 typedef struct LitExpression {
 	LitExpressionType type;
 	uint line;
 } LitExpression;
+
+typedef enum {
+	EXPRESSION_STATEMENT,
+	BLOCK_STATEMENT,
+	IF_STATEMENT,
+	WHILE_STATEMENT,
+	FOR_STATEMENT,
+	VAR_STATEMENT,
+	CONTINUE_STATEMENT,
+	BREAK_STATEMENT,
+	FUNCTION_STATEMENT,
+	RETURN_STATEMENT,
+	CLASS_STATEMENT
+} LitStatementType;
+
+typedef struct LitStatement {
+	LitStatementType type;
+	uint line;
+} LitStatement;
+
+/*
+ * Expressions
+ */
 
 DECLARE_ARRAY(LitExpressions, LitExpression*, expressions)
 void lit_free_expression(LitState* state, LitExpression* expression);
@@ -120,28 +140,25 @@ typedef struct {
 
 LitSetExpression *lit_create_set_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length, LitExpression* value);
 
+typedef struct {
+	const char* name;
+	uint length;
+} LitParameter;
+
+DECLARE_ARRAY(LitParameters, LitParameter, parameters);
+
+typedef struct {
+	LitExpression expression;
+
+	LitParameters parameters;
+	LitStatement* body;
+} LitLambdaExpression;
+
+LitLambdaExpression *lit_create_lambda_expression(LitState* state, uint line);
+
 /*
  * Statements
  */
-
-typedef enum {
-	EXPRESSION_STATEMENT,
-	BLOCK_STATEMENT,
-	IF_STATEMENT,
-	WHILE_STATEMENT,
-	FOR_STATEMENT,
-	VAR_STATEMENT,
-	CONTINUE_STATEMENT,
-	BREAK_STATEMENT,
-	FUNCTION_STATEMENT,
-	RETURN_STATEMENT,
-	CLASS_STATEMENT
-} LitStatementType;
-
-typedef struct LitStatement {
-	LitStatementType type;
-	uint line;
-} LitStatement;
 
 DECLARE_ARRAY(LitStatements, LitStatement*, stataments)
 void lit_free_statement(LitState* state, LitStatement* statement);
@@ -215,13 +232,6 @@ typedef struct {
 } LitBreakStatement;
 
 LitBreakStatement *lit_create_break_statement(LitState* state, uint line);
-
-typedef struct {
-	const char* name;
-	uint length;
-} LitParameter;
-
-DECLARE_ARRAY(LitParameters, LitParameter, parameters);
 
 typedef struct {
 	LitStatement statement;

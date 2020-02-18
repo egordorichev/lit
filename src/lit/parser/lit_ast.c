@@ -97,6 +97,16 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
+		case LAMBDA_EXPRESSION: {
+			LitLambdaExpression* expr = (LitLambdaExpression*) expression;
+
+			lit_free_parameters(state,&expr->parameters);
+			lit_free_statement(state, expr->body);
+
+			FREE_EXPRESSION(LitSetExpression)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -199,6 +209,15 @@ LitSetExpression *lit_create_set_expression(LitState* state, uint line, LitExpre
 	expression->name = name;
 	expression->length = length;
 	expression->value = value;
+
+	return expression;
+}
+
+LitLambdaExpression *lit_create_lambda_expression(LitState* state, uint line) {
+	LitLambdaExpression* expression = ALLOCATE_EXPRESSION(state, LitLambdaExpression, LAMBDA_EXPRESSION);
+
+	expression->body = NULL;
+	lit_init_parameters(&expression->parameters);
 
 	return expression;
 }

@@ -32,6 +32,7 @@
 #define AS_INSTANCE(value) ((LitInstance*) AS_OBJECT(value))
 
 #define ALLOCATE_OBJECT(state, type, objectType) (type*) lit_allocate_object(state, sizeof(type), objectType)
+#define CONST_STRING(state, text) OBJECT_VALUE(lit_copy_string((state), (text), sizeof(text) - 1))
 
 typedef enum {
 	OBJECT_STRING,
@@ -73,6 +74,8 @@ typedef struct sLitString {
 } sLitString;
 
 LitString* lit_copy_string(LitState* state, const char* chars, uint length);
+LitValue lit_string_format(LitState* state, const char* format, ...);
+LitValue lit_number_to_string(LitState* state, double value);
 
 typedef enum {
 	FUNCTION_REGULAR,

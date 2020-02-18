@@ -175,11 +175,58 @@ static LitExpression* parse_number(LitParser* parser, bool can_assign) {
 	return (LitExpression*) lit_create_literal_expression(parser->state, parser->previous.line, NUMBER_VALUE(strtod(parser->previous.start, NULL)));
 }
 
-static LitExpression* parse_grouping(LitParser* parser, bool can_assign) {
-	LitExpression* expression = parse_expression(parser);
-	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after expression");
+static LitExpression* parse_lambda(LitParser* parser, LitLambdaExpression* lambda) {
+	lambda->body = parse_statement(parser);
 
-	return expression; // (LitExpression*) lit_create_grouping_expression(parser->state, parser->previous.line, expression);
+	return (LitExpression *) lambda;
+}
+
+static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assign) {
+	if (match(parser, TOKEN_RIGHT_PAREN)) {
+		consume(parser, TOKEN_ARROW, "Expected => after lambda arguments");
+		return parse_lambda(parser, lit_create_lambda_expression(parser->state, parser->previous.line));
+	}
+
+	const char* start = parser->previous.start;
+	uint line = parser->previous.line;
+
+	if (match(parser, TOKEN_IDENTIFIER)) {
+		LitState* state = parser->state;
+
+		const char* arg_start = parser->previous.start;
+		uint arg_length = parser->previous.length;
+
+		if (match(parser, TOKEN_COMMA) || (match(parser, TOKEN_RIGHT_PAREN) && match(parser, TOKEN_ARROW))) {
+			// This is a lambda
+			LitLambdaExpression* lambda = lit_create_lambda_expression(state, line);
+			lit_parameters_write(state, &lambda->parameters, (LitParameter) { arg_start, arg_length });
+
+			if (parser->previous.type == TOKEN_COMMA) {
+				do {
+					consume(parser, TOKEN_IDENTIFIER, "Expected argument name");
+					lit_parameters_write(state, &lambda->parameters, (LitParameter) { parser->previous.start, parser->previous.length });
+				} while (match(parser, TOKEN_COMMA));
+
+			}
+
+			consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' lambda parameters");
+			consume(parser, TOKEN_ARROW, "Expected => after lambda arguments");
+
+			return parse_lambda(parser, lambda);
+		} else {
+			// Ouch, this was a grouping with a single identifier
+
+			LitScanner* scanner = state->scanner;
+
+			scanner->current = start;
+			scanner->line = line;
+		}
+	}
+
+	LitExpression* expression = parse_expression(parser);
+	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after grouping expression");
+
+	return expression;
 }
 
 static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool can_assign) {
@@ -622,7 +669,7 @@ bool lit_parse(LitParser* parser, const char* file_name, const char* source, Lit
 }
 
 static void setup_rules() {
-	rules[TOKEN_LEFT_PAREN] = (LitParseRule) { parse_grouping, parse_call, PREC_CALL };
+	rules[TOKEN_LEFT_PAREN] = (LitParseRule) { parse_grouping_or_lambda, parse_call, PREC_CALL };
 	rules[TOKEN_PLUS] = (LitParseRule) { NULL, parse_binary, PREC_TERM };
 	rules[TOKEN_MINUS] = (LitParseRule) { parse_unary, parse_binary, PREC_TERM };
 	rules[TOKEN_BANG] = (LitParseRule) { parse_unary, NULL, PREC_TERM };

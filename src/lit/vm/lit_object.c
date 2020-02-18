@@ -3,17 +3,27 @@
 #include <lit/vm/lit_vm.h>
 
 #include <memory.h>
+#include <math.h>
 
-static LitString* allocate_string(LitState* state, char* chars, int length, uint32_t hash) {
+static LitString* allocate_empty_string(LitState* state, uint length) {
 	LitString* string = ALLOCATE_OBJECT(state, LitString, OBJECT_STRING);
-
 	string->length = length;
-	string->chars = chars;
-	string->hash = hash;
+	return string;
+}
 
+static void register_string(LitState* state, LitString* string) {
 	lit_push_root(state, (LitObject *) string);
 	lit_table_set(state, &state->vm->strings, string, NULL_VALUE);
 	lit_pop_root(state);
+}
+
+static LitString* allocate_string(LitState* state, char* chars, uint length, uint32_t hash) {
+	LitString* string = allocate_empty_string(state, length);
+
+	string->chars = chars;
+	string->hash = hash;
+
+	register_string(state, string);
 
 	return string;
 }
@@ -43,6 +53,90 @@ LitString* lit_copy_string(LitState* state, const char* chars, uint length) {
 	heap_chars[length] = '\0';
 
 	return allocate_string(state, heap_chars, length, hash);
+}
+
+LitValue lit_number_to_string(LitState* state, double value) {
+	if (isnan(value)) {
+		return CONST_STRING(state, "nan");
+	}
+
+	if (isinf(value)) {
+		if (value > 0.0) {
+			return CONST_STRING(state, "infinity");
+		} else {
+			return CONST_STRING(state, "-infinity");
+		}
+	}
+
+	char buffer[24];
+	int length = sprintf(buffer, "%.14g", value);
+
+	return OBJECT_VALUE(lit_copy_string(state, buffer, length));
+}
+
+LitValue lit_string_format(LitState* state, const char* format, ...) {
+	va_list arg_list;
+
+	va_start(arg_list, format);
+	size_t total_length = 0;
+
+	for (const char* c = format; *c != '\0'; c++) {
+		switch (*c) {
+			case '$': {
+				total_length += strlen(va_arg(arg_list, const char*));
+				break;
+			}
+
+			case '@': {
+				total_length += AS_STRING(va_arg(arg_list, LitValue))->length;
+				break;
+			}
+
+			default: {
+				total_length++;
+			}
+		}
+	}
+
+	va_end(arg_list);
+	LitString* result = allocate_empty_string(state, total_length);
+	result->chars = LIT_ALLOCATE(state, char, total_length + 1);
+	result->chars[total_length] = '\0';
+	va_start(arg_list, format);
+
+	char* start = result->chars;
+
+	for (const char* c = format; *c != '\0'; c++) {
+		switch (*c) {
+			case '$': {
+				const char* string = va_arg(arg_list, const char*);
+				size_t length = strlen(string);
+				memcpy(start, string, length);
+				start += length;
+
+				break;
+			}
+
+			case '@': {
+				LitString* string = AS_STRING(va_arg(arg_list, LitValue));
+				memcpy(start, string->chars, string->length);
+				start += string->length;
+
+				break;
+			}
+
+			default: {
+				*start++ = *c;
+			}
+		}
+	}
+
+	va_end(arg_list);
+
+	result->hash = hash_string(result->chars, result->length);
+	register_string(state, result);
+
+	return OBJECT_VALUE(result);
 }
 
 LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type) {
