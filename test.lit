@@ -4,4 +4,5 @@ class Awesome {
 
 var a = new Awesome()
 a.test = 32
+a.test += (a.test + 4)
 print(a.test)

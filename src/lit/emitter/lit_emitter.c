@@ -476,7 +476,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			emit_expression(emitter, expr->value);
 
 			if (expr->to->type == VAR_EXPRESSION) {
-				LitVarExpression* e = (LitVarExpression*) expr->to;
+				LitVarExpression *e = (LitVarExpression *) expr->to;
 				int index = resolve_local(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 
 				if (index == -1) {
@@ -499,6 +499,14 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				} else {
 					emit_byte_or_short(emitter, expression->line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, index);
 				}
+			} else if (expr->to->type == GET_EXPRESSION) {
+				LitGetExpression* e = (LitGetExpression*) expr->to;
+
+				emit_expression(emitter, e->where);
+				emit_expression(emitter, expr->value);
+				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length)));
+
+				emit_bytes(emitter, emitter->last_line, OP_SET_FIELD, OP_POP);
 			} else {
 				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Invalid assigment target %d", (int) expr->to->type);
 			}

@@ -9,3 +9,9 @@ print((a++)) // Expected: 17
 print((a--)) // Expected: 16
 
 print((a %= 3)) // Expected: 1
+
+class Test {}
+var test = new Test()
+test.a = 32
+
+print(test.a += 32) // Expected: 64
