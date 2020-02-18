@@ -561,7 +561,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case LAMBDA_EXPRESSION: {
 			LitLambdaExpression* expr = (LitLambdaExpression*) expression;
-			LitString* name = AS_STRING(lit_string_format(emitter->state, "@:@", OBJECT_VALUE(emitter->module_name), lit_number_to_string(emitter->state, expression->line)));
+			LitString* name = AS_STRING(lit_string_format(emitter->state, "lambda @:@", OBJECT_VALUE(emitter->module_name), lit_number_to_string(emitter->state, expression->line)));
 
 			begin_scope(emitter);
 
@@ -573,7 +573,18 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				mark_initialized(emitter, add_local(emitter, parameter.name, parameter.length, expression->line));
 			}
 
+			bool single_expression = expr->body->type == EXPRESSION_STATEMENT;
+
+			if (single_expression) {
+				compiler.skip_return = true;
+				((LitExpressionStatement*) expr->body)->pop = false;
+			}
+
 			emit_statement(emitter, expr->body);
+
+			if (single_expression) {
+				emit_byte(emitter, emitter->last_line, OP_RETURN);
+			}
 
 			LitFunction* function = end_compiler(emitter, name);
 			function->arg_count = expr->parameters.count;
@@ -602,8 +613,12 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	switch (statement->type) {
 		case EXPRESSION_STATEMENT: {
-			emit_expression(emitter, ((LitExpressionStatement*) statement)->expression);
-			emit_byte(emitter, statement->line, OP_POP);
+			LitExpressionStatement* expr = (LitExpressionStatement*) statement;
+			emit_expression(emitter, expr->expression);
+
+			if (expr->pop) {
+				emit_byte(emitter, statement->line, OP_POP);
+			}
 
 			break;
 		}

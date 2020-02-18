@@ -103,7 +103,7 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			lit_free_parameters(state,&expr->parameters);
 			lit_free_statement(state, expr->body);
 
-			FREE_EXPRESSION(LitSetExpression)
+			FREE_EXPRESSION(LitLambdaExpression)
 			break;
 		}
 
@@ -346,7 +346,10 @@ static LitStatement* allocate_statement(LitState* state, uint64_t line, size_t s
 
 LitExpressionStatement *lit_create_expression_statement(LitState* state, uint line, LitExpression* expression) {
 	LitExpressionStatement* statement = ALLOCATE_STATEMENT(state, LitExpressionStatement, EXPRESSION_STATEMENT);
+
 	statement->expression = expression;
+	statement->pop = true;
+
 	return statement;
 }
 
