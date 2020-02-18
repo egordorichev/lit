@@ -45,7 +45,7 @@ static int run_file(const char* file) {
 		fprintf(stderr, "Error: memory leak of %ld bytes!\n", amount);
 	}
 
-	free(source);
+	free((void*) source);
 }
 
 int main(int argc, char* argv[]) {

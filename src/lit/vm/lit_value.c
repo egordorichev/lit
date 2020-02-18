@@ -27,7 +27,7 @@ static void print_object(LitValue value) {
 				if (closure->upvalues[i] == NULL) {
 					printf(" ()");
 					continue;
-				} else if (AS_OBJECT(*closure->upvalues[i]->location) == closure) {
+				} else if (AS_OBJECT(*closure->upvalues[i]->location) == (LitObject*) closure) {
 					printf(" (self)");
 					continue;
 				}

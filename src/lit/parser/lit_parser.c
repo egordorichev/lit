@@ -220,6 +220,9 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 
 			scanner->current = start;
 			scanner->line = line;
+
+			parser->current = lit_scan_token(scanner);
+			advance(parser);
 		}
 	}
 

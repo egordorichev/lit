@@ -1,3 +1,3 @@
-var test = () => 32
+var a = 32
 
-print(test())
+print((a += 2)) // Expected: 34
