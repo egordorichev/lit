@@ -20,6 +20,8 @@
 #define IS_UPVALUE(value) IS_OBJECTS_TYPE(value, OBJECT_UPVALUE)
 #define IS_CLASS(value) IS_OBJECTS_TYPE(value, OBJECT_CLASS)
 #define IS_INSTANCE(value) IS_OBJECTS_TYPE(value, OBJECT_INSTANCE)
+#define IS_ARRAY(value) IS_OBJECTS_TYPE(value, OBJECT_ARRAY)
+#define IS_MAP(value) IS_OBJECTS_TYPE(value, OBJECT_MAP)
 
 #define AS_STRING(value) ((LitString*) AS_OBJECT(value))
 #define AS_CSTRING(value) (((LitString*) AS_OBJECT(value))->chars)
@@ -30,6 +32,7 @@
 #define AS_UPVALUE(value) ((LitUpvalue*) AS_OBJECT(value))
 #define AS_CLASS(value) ((LitClass*) AS_OBJECT(value))
 #define AS_INSTANCE(value) ((LitInstance*) AS_OBJECT(value))
+#define AS_ARRAY(value) ((LitArray*) AS_OBJECT(value))
 
 #define ALLOCATE_OBJECT(state, type, objectType) (type*) lit_allocate_object(state, sizeof(type), objectType)
 #define CONST_STRING(state, text) OBJECT_VALUE(lit_copy_string((state), (text), sizeof(text) - 1))
@@ -43,7 +46,9 @@ typedef enum {
 	OBJECT_CLOSURE,
 	OBJECT_UPVALUE,
 	OBJECT_CLASS,
-	OBJECT_INSTANCE
+	OBJECT_INSTANCE,
+	OBJECT_ARRAY,
+	OBJECT_MAP
 } LitObjectType;
 
 static const char* lit_object_type_names[] = {
@@ -177,5 +182,12 @@ typedef struct {
 } LitInstance;
 
 LitInstance* lit_create_instance(LitState* state, LitClass* klass);
+
+typedef struct {
+	LitObject object;
+	LitValues values;
+} LitArray;
+
+LitArray* lit_create_array(LitState* state);
 
 #endif

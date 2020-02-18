@@ -28,7 +28,7 @@
 	\
 	void lit_##shr##_write(LitState* state, name* array, type value) { \
 		if (array->capacity < array->count + 1) { \
-			int old_capacity = array->capacity; \
+			uint old_capacity = array->capacity; \
 			array->capacity = LIT_GROW_CAPACITY(old_capacity); \
 			array->values = LIT_GROW_ARRAY(state, array->values, type, old_capacity, array->capacity); \
 		} \

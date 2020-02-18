@@ -1,3 +1,5 @@
-var a = 32
+var a = []
+a[0] = 10
+a[1] = 32
 
-print((a += 2)) // Expected: 34
+print(a[0], a[1])

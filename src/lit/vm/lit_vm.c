@@ -106,7 +106,7 @@ static void runtime_error(LitVm* vm, const char* format, ...) {
 	va_end(args);
 	fputs("\n", stderr);
 
-	for (int i = vm->fiber->frame_count - 1; i >= 0; i--) {
+	for (int i = (int) vm->fiber->frame_count - 1; i >= 0; i--) {
 		LitCallFrame* frame = &vm->fiber->frames[i];
 		LitFunction* function = frame->function;
 		LitString* name = function->name;
@@ -191,7 +191,12 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 		}
 	}
 
-	runtime_error(vm, "Can only call functions and classes");
+	if (IS_NULL(callee)) {
+		runtime_error(vm, "Attempt to call a null value");
+	} else {
+		runtime_error(vm, "Can only call functions and classes");
+	}
+
 	return false;
 }
 
@@ -220,7 +225,7 @@ static LitUpvalue* capture_upvalue(LitState* state, LitValue* local) {
 	return created_upvalue;
 }
 
-static void close_upvalues(LitVm* vm, LitValue* last) {
+static void close_upvalues(LitVm* vm, const LitValue* last) {
 	while (vm->open_upvalues != NULL && vm->open_upvalues->location >= last) {
 		LitUpvalue* upvalue = vm->open_upvalues;
 
@@ -260,8 +265,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #undef OPCODE
 	};
 
+#define PUSH(value) (*fiber->stack_top++ = value)
+#define POP() (*(--fiber->stack_top))
+#define DROP() (fiber->stack_top--)
+#define DROP_MULTIPLE(amount) (fiber->stack_top -= amount)
 #define READ_BYTE() (*ip++)
-#define READ_SHORT() (ip += 2, (uint16_t) ((ip[-2] << 8) | ip[-1]))
+#define READ_SHORT() (ip += 2u, (uint16_t) ((ip[-2] << 8u) | ip[-1]))
+
 #define CASE_CODE(name) OP_##name:
 #define READ_CONSTANT() (current_chunk->constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() (current_chunk->constants.values[READ_SHORT()])
@@ -282,9 +292,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				runtime_error(vm, "Operands must be numbers"); \
 				RETURN_ERROR() \
 			} \
-      double b = AS_NUMBER(lit_pop(vm)); \
-      double a = AS_NUMBER(lit_pop(vm)); \
-      lit_push(vm, type(a op b)); \
+      double b = AS_NUMBER(POP()); \
+      double a = AS_NUMBER(POP()); \
+      PUSH(type(a op b)); \
     } while (false);
 
 #ifdef LIT_TRACE_EXECUTION
@@ -306,31 +316,29 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #endif
 
 		CASE_CODE(POP) {
-			lit_pop(vm);
+			DROP();
 			continue;
 		}
 
 		CASE_CODE(POP_MULTIPLE) {
-			uint8_t index = READ_BYTE();
-			fiber->stack_top -= index;
-
+			DROP_MULTIPLE(READ_BYTE());
 			continue;
 		}
 
 		CASE_CODE(RETURN) {
-			LitValue result = lit_pop(vm);
+			LitValue result = POP();
 			close_upvalues(vm, slots);
 
 			WRITE_FRAME()
 			fiber->frame_count--;
 
 			if (fiber->frame_count == 0) {
-				lit_pop(vm);
+				DROP();
 				return (LitInterpretResult) { INTERPRET_OK, result };
 			}
 
 			fiber->stack_top = frame->slots;
-			lit_push(vm, result);
+			PUSH(result);
 			READ_FRAME()
 
 			#ifdef LIT_TRACE_EXECUTION
@@ -341,27 +349,32 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(CONSTANT) {
-			lit_push(vm, READ_CONSTANT());
+			PUSH(READ_CONSTANT());
 			continue;
 		}
 
 		CASE_CODE(CONSTANT_LONG) {
-			lit_push(vm, READ_CONSTANT_LONG());
+			PUSH(READ_CONSTANT_LONG());
 			continue;
 		}
 
 		CASE_CODE(TRUE) {
-			lit_push(vm, TRUE_VALUE);
+			PUSH(TRUE_VALUE);
 			continue;
 		}
 
 		CASE_CODE(FALSE) {
-			lit_push(vm, FALSE_VALUE);
+			PUSH(FALSE_VALUE);
 			continue;
 		}
 
 		CASE_CODE(NULL) {
-			lit_push(vm, NULL_VALUE);
+			PUSH(NULL_VALUE);
+			continue;
+		}
+
+		CASE_CODE(ARRAY) {
+			PUSH(OBJECT_VALUE(lit_create_array(state)));
 			continue;
 		}
 
@@ -371,12 +384,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				RETURN_ERROR()
 			}
 
-			lit_push(vm, NUMBER_VALUE(-AS_NUMBER(lit_pop(vm))));
+			PUSH(NUMBER_VALUE(-AS_NUMBER(POP())));
 			continue;
 		}
 
 		CASE_CODE(NOT) {
-			lit_push(vm, BOOL_VALUE(is_falsey(lit_pop(vm))));
+			PUSH(BOOL_VALUE(is_falsey(POP())));
 			continue;
 		}
 
@@ -406,27 +419,26 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				RETURN_ERROR()
 			}
 
-      double b = AS_NUMBER(lit_pop(vm));
-      double a = AS_NUMBER(lit_pop(vm));
+      double b = AS_NUMBER(POP());
+      double a = AS_NUMBER(POP());
 
-      lit_push(vm, NUMBER_VALUE(fmod(a, b)));
-
+      PUSH(NUMBER_VALUE(fmod(a, b)));
       continue;
 		}
 
 		CASE_CODE(EQUAL) {
-			LitValue a = lit_pop(vm);
-			LitValue b = lit_pop(vm);
+			LitValue a = POP();
+			LitValue b = POP();
 
-			lit_push(vm, BOOL_VALUE(a == b));
+			PUSH(BOOL_VALUE(a == b));
 			continue;
 		}
 
 		CASE_CODE(NOT_EQUAL) {
-			LitValue a = lit_pop(vm);
-			LitValue b = lit_pop(vm);
+			LitValue a = POP();
+			LitValue b = POP();
 
-			lit_push(vm, BOOL_VALUE(a != b));
+			PUSH(BOOL_VALUE(a != b));
 			continue;
 		}
 
@@ -462,9 +474,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue value;
 
 			if (!lit_table_get(&vm->globals, name, &value)) {
-				lit_push(vm, NULL_VALUE);
+				PUSH(NULL_VALUE);
 			} else {
-				lit_push(vm, value);
+				PUSH(value);
 			}
 
 			continue;
@@ -478,7 +490,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(GET_LOCAL) {
-			lit_push(vm, slots[READ_BYTE()]);
+			PUSH(slots[READ_BYTE()]);
 			continue;
 		}
 
@@ -490,7 +502,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(GET_LOCAL_LONG) {
-			lit_push(vm, slots[READ_SHORT()]);
+			PUSH(slots[READ_SHORT()]);
 			continue;
 		}
 
@@ -502,7 +514,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(GET_PRIVATE) {
-			lit_push(vm, privates[READ_BYTE()]);
+			PUSH(privates[READ_BYTE()]);
 			continue;
 		}
 
@@ -514,7 +526,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(GET_PRIVATE_LONG) {
-			lit_push(vm, privates[READ_SHORT()]);
+			PUSH(privates[READ_SHORT()]);
 			continue;
 		}
 
@@ -526,7 +538,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(GET_UPVALUE) {
-			lit_push(vm, *upvalues[READ_BYTE()]->location);
+			PUSH(*upvalues[READ_BYTE()]->location);
 			continue;
 		}
 
@@ -569,12 +581,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			}
 
 			READ_FRAME()
-
 			continue;
 		}
 
 		CASE_CODE(REQUIRE) {
-			LitValue name = lit_pop(vm);
+			LitValue name = POP();
 
 			if (!IS_STRING(name)) {
 				runtime_error(vm, "require() argument must be a string");
@@ -598,7 +609,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue existing_module;
 
 			if (lit_table_get(&vm->modules, module_name, &existing_module)) {
-				lit_push(vm, AS_MODULE(existing_module)->return_value);
+				PUSH(AS_MODULE(existing_module)->return_value);
 				continue;
 			}
 
@@ -609,7 +620,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				RETURN_ERROR()
 			}
 
-			lit_push(vm, lit_internal_interpret(state, module_name, source).result);
+			PUSH(lit_internal_interpret(state, module_name, source).result);
 
 			#ifdef LIT_TRACE_EXECUTION
 				printf("== %s ==\n", frame->function->name->chars);
@@ -622,7 +633,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitFunction* function = AS_FUNCTION(READ_CONSTANT());
 			LitClosure* closure = lit_create_closure(state, function);
 
-			lit_push(vm, OBJECT_VALUE(closure));
+			PUSH(OBJECT_VALUE(closure));
 
 			for (uint i = 0; i < closure->upvalue_count; i++) {
 				uint8_t is_local = READ_BYTE();
@@ -640,7 +651,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(CLOSE_UPVALUE) {
 			close_upvalues(vm, fiber->stack_top - 1);
-			lit_pop(vm);
+			DROP();
 
 			continue;
 		}
@@ -648,13 +659,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(CLASS) {
 			LitString* name = AS_STRING(PEEK(0));
 			LitClass* klass = lit_create_class(state, name);
-			lit_pop(vm); // Pop the class name
+			DROP(); // Pop the class name
 
 			lit_push_root(state, (LitObject *) klass);
 			lit_table_set(state, &vm->globals, name, OBJECT_VALUE(klass));
 			lit_pop_root(state);
-
-			// lit_push(vm, OBJECT_VALUE(klass));
 
 			continue;
 		}
@@ -671,7 +680,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				value = NULL_VALUE;
 			}
 
-			lit_pop(vm); // Pop field name
+			DROP(); // Pop field name
 			fiber->stack_top[-1] = value;
 
 			continue;
@@ -685,16 +694,72 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			LitValue value = PEEK(1);
 
-			if (value == NULL_VALUE) {
+			if (IS_NULL(value)) {
 				lit_table_delete(&AS_INSTANCE(PEEK(2))->fields, AS_STRING(PEEK(0)));
 			} else {
 				lit_table_set(state, &AS_INSTANCE(PEEK(2))->fields, AS_STRING(PEEK(0)), value);
 			}
 
-			lit_pop(vm); // Pop field name
-			lit_pop(vm); // Pop the value
+			DROP_MULTIPLE(2); // Pop field name and the value
 			fiber->stack_top[-1] = value;
 
+			continue;
+		}
+
+		CASE_CODE(SUBSCRIPT_GET) {
+			if (!IS_ARRAY(PEEK(1))) {
+				runtime_error(vm, "Only arrays can be indexed");
+				RETURN_ERROR()
+			}
+
+			if (!IS_NUMBER(PEEK(0))) {
+				runtime_error(vm, "Array index must be a number");
+				RETURN_ERROR()
+			}
+
+			LitValues *values = &AS_ARRAY(PEEK(1))->values;
+			int index = AS_NUMBER(PEEK(0));
+
+			if (index < 0) {
+				runtime_error(vm, "Array index must be a positive number");
+				RETURN_ERROR()
+			}
+
+			DROP_MULTIPLE(2);
+
+			if (values->capacity <= index) {
+				PUSH(NULL_VALUE);
+			} else {
+				PUSH(values->values[index]);
+			}
+
+			continue;
+		}
+
+		CASE_CODE(SUBSCRIPT_SET) {
+			if (!IS_ARRAY(PEEK(2))) {
+				runtime_error(vm, "Only arrays can be indexed");
+				RETURN_ERROR()
+			}
+
+			if (!IS_NUMBER(PEEK(1))) {
+				runtime_error(vm, "Array index must be a number");
+				RETURN_ERROR()
+			}
+
+			LitValues *values = &AS_ARRAY(PEEK(2))->values;
+			int index = AS_NUMBER(PEEK(1));
+
+			if (index < 0) {
+				runtime_error(vm, "Array index must be a positive number");
+				RETURN_ERROR()
+			}
+
+			lit_values_ensure_size(state, values, index + 1);
+			LitValue value = values->values[index] = PEEK(0);
+			DROP_MULTIPLE(2);
+
+			*fiber->stack_top = value;
 			continue;
 		}
 
@@ -702,6 +767,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		break;
 	}
 
+#undef POP_MULTIPLE
+#undef PUSH
+#undef POP
 #undef WRITE_FRAME
 #undef READ_FRAME
 #undef PEEK

@@ -16,7 +16,9 @@ typedef enum {
 	REQUIRE_EXPRESSION,
 	SET_EXPRESSION,
 	GET_EXPRESSION,
-	LAMBDA_EXPRESSION
+	LAMBDA_EXPRESSION,
+	ARRAY_EXPRESSION,
+	SUBSCRIPT_EXPRESSION
 } LitExpressionType;
 
 typedef struct LitExpression {
@@ -155,6 +157,22 @@ typedef struct {
 } LitLambdaExpression;
 
 LitLambdaExpression *lit_create_lambda_expression(LitState* state, uint line);
+
+typedef struct {
+	LitExpression expression;
+	LitExpressions values;
+} LitArrayExpression;
+
+LitArrayExpression *lit_create_array_expression(LitState* state, uint line);
+
+typedef struct {
+	LitExpression expression;
+
+	LitExpression* array;
+	LitExpression* index;
+} LitSubscriptExpression;
+
+LitSubscriptExpression *lit_create_subscript_expression(LitState* state, uint line, LitExpression* array, LitExpression* index);
 
 /*
  * Statements

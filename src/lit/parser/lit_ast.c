@@ -100,10 +100,27 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 		case LAMBDA_EXPRESSION: {
 			LitLambdaExpression* expr = (LitLambdaExpression*) expression;
 
-			lit_free_parameters(state,&expr->parameters);
+			lit_free_parameters(state, &expr->parameters);
 			lit_free_statement(state, expr->body);
 
 			FREE_EXPRESSION(LitLambdaExpression)
+			break;
+		}
+
+		case ARRAY_EXPRESSION: {
+			lit_free_expressions(state, &((LitArrayExpression*) expression)->values);
+			FREE_EXPRESSION(LitArrayExpression)
+
+			break;
+		}
+
+		case SUBSCRIPT_EXPRESSION: {
+			LitSubscriptExpression* expr = (LitSubscriptExpression*) expression;
+
+			lit_free_expression(state, expr->array);
+			lit_free_expression(state, expr->index);
+
+			FREE_EXPRESSION(LitSubscriptExpression)
 			break;
 		}
 
@@ -218,6 +235,21 @@ LitLambdaExpression *lit_create_lambda_expression(LitState* state, uint line) {
 
 	expression->body = NULL;
 	lit_init_parameters(&expression->parameters);
+
+	return expression;
+}
+
+LitArrayExpression *lit_create_array_expression(LitState* state, uint line) {
+	LitArrayExpression* expression = ALLOCATE_EXPRESSION(state, LitArrayExpression, ARRAY_EXPRESSION);
+	lit_init_expressions(&expression->values);
+	return expression;
+}
+
+LitSubscriptExpression *lit_create_subscript_expression(LitState* state, uint line, LitExpression* array, LitExpression* index) {
+	LitSubscriptExpression* expression = ALLOCATE_EXPRESSION(state, LitSubscriptExpression, SUBSCRIPT_EXPRESSION);
+
+	expression->array = array;
+	expression->index = index;
 
 	return expression;
 }

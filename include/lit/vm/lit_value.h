@@ -6,12 +6,12 @@
 #include <lit/state/lit_state.h>
 #include <lit/util/lit_array.h>
 
-#define SIGN_BIT ((uint64_t) 1 << 63)
-#define QNAN ((uint64_t) 0x7ffc000000000000)
+#define SIGN_BIT ((uint64_t) 1 << 63u)
+#define QNAN ((uint64_t) 0x7ffc000000000000u)
 
-#define TAG_NULL 1
-#define TAG_FALSE 2
-#define TAG_TRUE 3
+#define TAG_NULL 1u
+#define TAG_FALSE 2u
+#define TAG_TRUE 3u
 
 #define IS_BOOL(v) (((v) & FALSE_VALUE) == FALSE_VALUE)
 #define IS_NULL(v) ((v) == NULL_VALUE)
@@ -48,7 +48,9 @@ static inline LitValue lit_number_to_value(double num) {
 	return data.bits64;
 }
 
-DECLARE_ARRAY(LitValues, LitValue, values)
 void lit_print_value(LitValue value);
+
+DECLARE_ARRAY(LitValues, LitValue, values)
+void lit_values_ensure_size(LitState* state, LitValues* values, uint size);
 
 #endif

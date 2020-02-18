@@ -28,6 +28,7 @@ static void end_scope(LitParser* parser) {
 static LitExpression* parse_expression(LitParser* parser);
 static LitStatement* parse_statement(LitParser* parser);
 static LitStatement* parse_declaration(LitParser* parser);
+static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous, bool can_assign);
 
 static LitParseRule rules[TOKEN_EOF + 1];
 static bool did_setup_rules;
@@ -361,6 +362,10 @@ static LitExpression* parse_variable_expression_base(LitParser* parser, bool can
 		return expression;
 	}
 
+	if (match(parser, TOKEN_LEFT_BRACKET)) {
+		return parse_subscript(parser, expression, can_assign);
+	}
+
 	if (can_assign && match(parser, TOKEN_EQUAL)) {
 		return (LitExpression*) lit_create_assign_expression(parser->state, parser->previous.line, expression, parse_expression(parser));
 	}
@@ -394,6 +399,28 @@ static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool
 	} else {
 		return (LitExpression*) lit_create_get_expression(parser->state, line, previous, name, length);
 	}
+}
+
+static LitExpression* parse_array(LitParser* parser, bool can_assign) {
+	uint line = parser->previous.line;
+	consume(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after array");
+
+	return (LitExpression*) lit_create_array_expression(parser->state, line);
+}
+
+static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous, bool can_assign) {
+	uint line = parser->previous.line;
+
+	LitExpression* index = parse_expression(parser);
+	consume(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after subscript");
+
+	LitExpression* expression = (LitExpression*) lit_create_subscript_expression(parser->state, line, previous, index);
+
+	if (can_assign && match(parser, TOKEN_EQUAL)) {
+		return (LitExpression*) lit_create_assign_expression(parser->state, parser->previous.line, expression, parse_expression(parser));
+	}
+
+	return expression;
 }
 
 static LitExpression* parse_expression(LitParser* parser) {
@@ -704,4 +731,5 @@ static void setup_rules() {
 	rules[TOKEN_QUESTION_QUESTION] = (LitParseRule) { NULL, parse_null_filter, PREC_NULL };
 	rules[TOKEN_REQUIRE] = (LitParseRule) { parse_require, NULL, PREC_NONE };
 	rules[TOKEN_DOT] = (LitParseRule) { NULL, parse_dot, PREC_CALL };
+	rules[TOKEN_LEFT_BRACKET] = (LitParseRule) { parse_array, parse_subscript, PREC_NONE };
 }

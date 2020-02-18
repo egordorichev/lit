@@ -244,3 +244,9 @@ LitInstance* lit_create_instance(LitState* state, LitClass* klass) {
 
 	return instance;
 }
+
+LitArray* lit_create_array(LitState* state) {
+	LitArray* array = ALLOCATE_OBJECT(state, LitArray, OBJECT_ARRAY);
+	lit_init_values(&array->values);
+	return array;
+}

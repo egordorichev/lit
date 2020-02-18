@@ -89,6 +89,7 @@ static void free_object(LitState* state, LitObject* object) {
 
 			LIT_FREE_ARRAY(state, LitUpvalue*, closure->upvalues, closure->upvalue_count);
 			LIT_FREE(state, LitClosure, object);
+
 			break;
 		}
 
@@ -105,6 +106,14 @@ static void free_object(LitState* state, LitObject* object) {
 		case OBJECT_INSTANCE: {
 			lit_free_table(state, &((LitInstance*) object)->fields);
 			LIT_FREE(state, LitInstance, object);
+
+			break;
+		}
+
+		case OBJECT_ARRAY: {
+			lit_free_values(state, &((LitArray*) object)->values);
+			LIT_FREE(state, LitArray, object);
+
 			break;
 		}
 
@@ -272,6 +281,11 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 			lit_mark_object(vm, (LitObject *) instance->klass);
 			lit_mark_table(vm, &instance->fields);
 
+			break;
+		}
+
+		case OBJECT_ARRAY: {
+			mark_array(vm, &((LitArray*) object)->values);
 			break;
 		}
 	}
