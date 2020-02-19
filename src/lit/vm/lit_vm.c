@@ -721,8 +721,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			int index = AS_NUMBER(PEEK(0));
 
 			if (index < 0) {
-				runtime_error(vm, "Array index must be a positive number");
-				RETURN_ERROR()
+				index = fmax(0, values->count + index - 1);
 			}
 
 			DROP_MULTIPLE(2);
@@ -751,8 +750,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			int index = AS_NUMBER(PEEK(1));
 
 			if (index < 0) {
-				runtime_error(vm, "Array index must be a positive number");
-				RETURN_ERROR()
+				index = fmax(0, values->count + index + 1);
 			}
 
 			lit_values_ensure_size(state, values, index + 1);

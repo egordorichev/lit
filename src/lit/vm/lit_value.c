@@ -98,7 +98,15 @@ void lit_print_value(LitValue value) {
 void lit_values_ensure_size(LitState* state, LitValues* values, uint size) {
 	if (values->capacity < size) {
 		uint old_capacity = values->capacity;
-		values->capacity = LIT_GROW_CAPACITY(old_capacity);
-		values->values = LIT_GROW_ARRAY(state, values->values, LitValue, old_capacity, values->capacity);
+		values->capacity = size;
+		values->values = LIT_GROW_ARRAY(state, values->values, LitValue, old_capacity, size);
+
+		for (uint i = old_capacity; i < size; i++) {
+			values->values[i] = NULL_VALUE;
+		}
+	}
+
+	if (values->count <= size) {
+		values->count = size + 1;
 	}
 }
