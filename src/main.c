@@ -2,6 +2,7 @@
 #include <lit/vm/lit_vm.h>
 #include <lit/util/lit_fs.h>
 #include <lit/scanner/lit_scanner.h>
+#include <lit/api/lit_api.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -29,23 +30,23 @@ static int run_repl() {
 }
 
 static int run_file(const char* file) {
-	const char* source = lit_read_file(file);
+	LitState* state = lit_new_state();
+	// lit_init_api(state);
+	lit_interpret_file(state, file);
 
-	if (source == NULL) {
-		printf("Failed top open file '%s'\n", file);
-		return 1;
+	/*LitValue global = lit_get_global(state, CONST_STRING(state, "printTest"));
+
+	if (IS_FUNCTION(global)) {
+		LitValue arg = NUMBER_VALUE(10);
+		lit_print_value(lit_call(state, global, &arg, 1).result);
 	}
 
-	LitState* state = lit_new_state();
-
-	lit_interpret(state, file, source);
+	lit_free_api(state);*/
 	int64_t amount = lit_free_state(state);
 
 	if (amount != 0) {
 		fprintf(stderr, "Error: memory leak of %ld bytes!\n", amount);
 	}
-
-	free((void*) source);
 }
 
 int main(int argc, char* argv[]) {

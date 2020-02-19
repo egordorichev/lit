@@ -1,7 +1,7 @@
 #ifndef LIT_MEM_H
 #define LIT_MEM_H
 
-#include <lit/state/lit_state.h>
+#include <lit/lit_predefines.h>
 #include <lit/vm/lit_value.h>
 #include <lit/lit_common.h>
 

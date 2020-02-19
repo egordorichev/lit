@@ -2,7 +2,7 @@
 #define LIT_CHUNK_H
 
 #include <lit/lit_common.h>
-#include <lit/state/lit_state.h>
+#include <lit/lit_predefines.h>
 #include <lit/vm/lit_value.h>
 
 #include <stdio.h>

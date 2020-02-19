@@ -3,6 +3,7 @@
 
 #include <lit/lit_common.h>
 #include <lit/lit_predefines.h>
+#include <lit/vm/lit_object.h>
 #include <lit/lit.h>
 
 #include <stdarg.h>
@@ -32,6 +33,10 @@ typedef struct sLitState {
 	struct sLitVm* vm;
 
 	bool had_error;
+
+	LitModule* api_module;
+	LitFunction* api_function;
+	LitFiber* api_fiber;
 } sLitState;
 
 typedef enum {
@@ -51,6 +56,7 @@ void lit_pop_roots(LitState* state, uint8_t amount);
 
 LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code);
 LitInterpretResult lit_interpret(LitState* state, const char* module_name, const char* code);
+LitInterpretResult lit_interpret_file(LitState* state, const char* file_name);
 
 void lit_error(LitState* state, LitErrorType type, uint line, const char* message, ...);
 void lit_printf(LitState* state, const char* message, ...);

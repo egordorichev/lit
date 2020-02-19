@@ -260,6 +260,8 @@ typedef struct {
 
 	LitParameters parameters;
 	LitStatement* body;
+
+	bool export;
 } LitFunctionStatement;
 
 LitFunctionStatement *lit_create_function_statement(LitState* state, uint line, const char* name, uint length);

@@ -3,7 +3,6 @@
 
 #include <lit/lit_common.h>
 #include <lit/lit_predefines.h>
-#include <lit/state/lit_state.h>
 #include <lit/util/lit_array.h>
 
 #define SIGN_BIT ((uint64_t) 1 << 63u)

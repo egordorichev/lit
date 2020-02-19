@@ -547,10 +547,17 @@ static LitStatement* parse_while(LitParser* parser) {
 }
 
 static LitStatement* parse_function(LitParser* parser) {
+	bool export = parser->previous.type == TOKEN_EXPORT;
+
+	if (export) {
+		consume(parser, TOKEN_FUNCTION, "'function' after 'export'");
+	}
+
 	uint line = parser->previous.line;
 	consume(parser, TOKEN_IDENTIFIER, "Expected function name");
 
 	LitFunctionStatement* function = lit_create_function_statement(parser->state, line, parser->previous.start, parser->previous.length);
+	function->export = export;
 
 	LitCompiler compiler;
 	init_compiler(parser, &compiler);
@@ -622,7 +629,7 @@ static LitStatement* parse_statement(LitParser* parser) {
 		return (LitStatement*) lit_create_continue_statement(parser->state, parser->previous.line);
 	} else if (match(parser, TOKEN_BREAK)) {
 		return (LitStatement*) lit_create_break_statement(parser->state, parser->previous.line);
-	} else if (match(parser, TOKEN_FUNCTION)) {
+	} else if (match(parser, TOKEN_FUNCTION) || match(parser, TOKEN_EXPORT)) {
 		return parse_function(parser);
 	} else if (match(parser, TOKEN_RETURN)) {
 		return parse_return(parser);

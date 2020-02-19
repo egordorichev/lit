@@ -3,10 +3,10 @@
 
 #include <lit/lit_common.h>
 #include <lit/lit_predefines.h>
-#include <lit/vm/lit_value.h>
 #include <lit/mem/lit_mem.h>
 #include <lit/vm/lit_chunk.h>
 #include <lit/util/lit_table.h>
+#include <lit/vm/lit_value.h>
 #include <lit/lit.h>
 
 #define OBJECT_TYPE(value) (AS_OBJECT(value)->type)
@@ -35,7 +35,8 @@
 #define AS_ARRAY(value) ((LitArray*) AS_OBJECT(value))
 
 #define ALLOCATE_OBJECT(state, type, objectType) (type*) lit_allocate_object(state, sizeof(type), objectType)
-#define CONST_STRING(state, text) OBJECT_VALUE(lit_copy_string((state), (text), sizeof(text) - 1))
+#define OBJECT_CONST_STRING(state, text) OBJECT_VALUE(lit_copy_string((state), (text), sizeof(text) - 1))
+#define CONST_STRING(state, text) lit_copy_string((state), (text), sizeof(text) - 1)
 
 typedef enum {
 	OBJECT_STRING,

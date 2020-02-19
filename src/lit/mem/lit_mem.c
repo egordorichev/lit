@@ -193,6 +193,7 @@ static void mark_roots(LitVm* vm) {
 		lit_mark_value(vm, vm->state->roots[i]);
 	}
 
+	lit_mark_object(vm, (LitObject *) vm->state->api_fiber);
 	lit_mark_table(vm, &vm->globals);
 	lit_mark_table(vm, &vm->modules);
 }

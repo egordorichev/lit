@@ -4,6 +4,7 @@
 #include <lit/emitter/lit_emitter.h>
 #include <lit/parser/lit_parser.h>
 #include <lit/scanner/lit_scanner.h>
+#include <lit/util/lit_fs.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +33,10 @@ LitState* lit_new_state() {
 	state->printFn = default_printf;
 	state->had_error = false;
 	state->root_count = 0;
+
+	state->api_fiber = NULL;
+	state->api_function = NULL;
+	state->api_module = NULL;
 
 	state->scanner = (LitScanner*) malloc(sizeof(LitScanner));
 
@@ -138,6 +143,20 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 
 		state->vm->fiber = state->vm->fiber->parent;
 	}
+
+	return result;
+}
+
+LitInterpretResult lit_interpret_file(LitState* state, const char* file_name) {
+	const char* source = lit_read_file(file_name);
+
+	if (source == NULL) {
+		lit_error(state, RUNTIME_ERROR, 0, "Failed top open file '%s'", file_name);
+		return INTERPRET_RUNTIME_FAIL;
+	}
+
+	LitInterpretResult result = lit_interpret(state, file_name, source);
+	free((void*) source);
 
 	return result;
 }

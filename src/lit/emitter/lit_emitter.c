@@ -826,11 +826,22 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case FUNCTION_STATEMENT: {
 			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
+
+			bool export = stmt->export;
 			bool private = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
-			int index = private ? add_private(emitter, stmt->name, stmt->length, statement->line) : add_local(emitter, stmt->name, stmt->length, statement->line);
+			bool local = !export && !private;
+
+			int index;
+
+			if (!export) {
+				index = private ? add_private(emitter, stmt->name, stmt->length, statement->line) : add_local(emitter, stmt->name,
+				                                                                                        stmt->length,
+				                                                                                        statement->line);
+			}
+
 			LitString* name = lit_copy_string(emitter->state, stmt->name, stmt->length);
 
-			if (!private) {
+			if (local) {
 				mark_initialized(emitter, index);
 			}
 
@@ -859,7 +870,13 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
 			}
 
-			emit_byte_or_short(emitter, statement->line, private ? OP_SET_PRIVATE : OP_SET_LOCAL, private ? OP_SET_PRIVATE_LONG : OP_SET_LOCAL_LONG, index);
+			if (export) {
+				emit_bytes(emitter, emitter->last_line, OP_SET_GLOBAL, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, stmt->name, stmt->length))));
+			} else if (private) {
+				emit_byte_or_short(emitter, emitter->last_line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
+			} else {
+				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, index);
+			}
 
 			emit_byte(emitter, emitter->last_line, OP_POP);
 			end_scope(emitter, emitter->last_line);

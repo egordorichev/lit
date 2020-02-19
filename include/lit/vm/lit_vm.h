@@ -9,6 +9,8 @@
 
 #include <lit/lit.h>
 
+#define INTERPRET_RUNTIME_FAIL ((LitInterpretResult) {INTERPRET_RUNTIME_ERROR, NULL_VALUE})
+
 typedef struct sLitVm {
 	LitState* state;
 

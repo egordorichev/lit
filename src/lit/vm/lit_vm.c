@@ -251,6 +251,8 @@ LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 
 LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber) {
 	register LitVm *vm = state->vm;
+	vm->fiber = fiber;
+
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
 	register LitChunk* current_chunk = &frame->function->chunk;
 	register uint8_t* ip = frame->ip = current_chunk->code;

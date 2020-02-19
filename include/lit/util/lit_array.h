@@ -2,7 +2,7 @@
 #define LIT_ARRAY_H
 
 #include <lit/lit_common.h>
-#include <lit/state/lit_state.h>
+#include <lit/lit_predefines.h>
 
 #define DECLARE_ARRAY(name, type, shr) \
 	typedef struct { \

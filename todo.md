@@ -2,6 +2,7 @@
 
 * static fields
 * methods and super classes
+* maps
 * Prevent users from using break / continue outside of loops
 * fix line info being corrupted if chunk is too small
 * resizeable stack

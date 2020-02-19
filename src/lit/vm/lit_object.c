@@ -57,14 +57,14 @@ LitString* lit_copy_string(LitState* state, const char* chars, uint length) {
 
 LitValue lit_number_to_string(LitState* state, double value) {
 	if (isnan(value)) {
-		return CONST_STRING(state, "nan");
+		return OBJECT_CONST_STRING(state, "nan");
 	}
 
 	if (isinf(value)) {
 		if (value > 0.0) {
-			return CONST_STRING(state, "infinity");
+			return OBJECT_CONST_STRING(state, "infinity");
 		} else {
-			return CONST_STRING(state, "-infinity");
+			return OBJECT_CONST_STRING(state, "-infinity");
 		}
 	}
 
