@@ -616,6 +616,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitArrayExpression* expr = (LitArrayExpression*) expression;
 			emit_byte(emitter, expression->line, OP_ARRAY);
 
+			for (uint i = 0; i < expr->values.count; i++) {
+				emit_expression(emitter, expr->values.values[i]);
+				emit_byte(emitter, emitter->last_line, OP_PUSH_ELEMENT);
+			}
+
 			break;
 		}
 

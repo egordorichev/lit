@@ -71,7 +71,29 @@ static void print_object(LitValue value) {
 		}
 
 		case OBJECT_ARRAY: {
-			printf("array");
+			LitArray* array = AS_ARRAY(value);
+			uint size = array->values.count;
+
+			printf("(%u) [", size);
+
+			if (size > 32) {
+				printf(" (too big to be displayed) ");
+			} else if (size > 0) {
+				printf(" ");
+
+				for (uint i = 0; i < size; i++) {
+					lit_print_value(array->values.values[i]);
+
+					if (i + 1 < size) {
+						printf(", ");
+					} else {
+						printf(" ");
+					}
+				}
+			}
+
+			printf("]");
+
 			break;
 		}
 
@@ -106,7 +128,7 @@ void lit_values_ensure_size(LitState* state, LitValues* values, uint size) {
 		}
 	}
 
-	if (values->count <= size) {
-		values->count = size + 1;
+	if (values->count < size) {
+		values->count = size;
 	}
 }

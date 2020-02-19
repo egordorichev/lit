@@ -402,10 +402,18 @@ static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool
 }
 
 static LitExpression* parse_array(LitParser* parser, bool can_assign) {
-	uint line = parser->previous.line;
-	consume(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after array");
+	LitArrayExpression* array = lit_create_array_expression(parser->state, parser->previous.line);
 
-	return (LitExpression*) lit_create_array_expression(parser->state, line);
+	while (!check(parser, TOKEN_RIGHT_BRACE)) {
+		lit_expressions_write(parser->state, &array->values, parse_expression(parser));
+
+		if (!match(parser,  TOKEN_COMMA)) {
+			break;
+		}
+	}
+
+	consume(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after array");
+	return (LitExpression*) array;
 }
 
 static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous, bool can_assign) {

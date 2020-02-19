@@ -1,4 +1,5 @@
-var a = []
-a[10] = 10
+function test(a, b) {
+	print(a, b)
+}
 
-print(a[-2], a[-1])
+test([awesome], [awesome])

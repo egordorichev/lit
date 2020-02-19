@@ -53,5 +53,11 @@ OPCODE(CLOSE_UPVALUE, -1)
 OPCODE(CLASS, -1)
 OPCODE(GET_FIELD, 0)
 OPCODE(SET_FIELD, -1)
-OPCODE(SUBSCRIPT_GET, 0)
-OPCODE(SUBSCRIPT_SET, 0)
+
+
+// [array] [index] -> [value]
+OPCODE(SUBSCRIPT_GET, -1)
+// [array] [index] [value] -> [value]
+OPCODE(SUBSCRIPT_SET, -2)
+// [array] [value] -> [array]
+OPCODE(PUSH_ELEMENT, -1)

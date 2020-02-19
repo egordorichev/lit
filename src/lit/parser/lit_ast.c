@@ -8,6 +8,18 @@ DEFINE_ARRAY(LitParameters, LitParameter, parameters);
 
 #define FREE_EXPRESSION(type) lit_reallocate(state, expression, sizeof(type), 0);
 
+void free_expressions(LitState* state, LitExpressions* expressions) {
+	if (expressions == NULL) {
+		return;
+	}
+
+	for (uint i = 0; i < expressions->count; i++) {
+		lit_free_expression(state, expressions->values[i]);
+	}
+
+	lit_free_expressions(state, expressions);
+}
+
 void lit_free_expression(LitState* state, LitExpression* expression) {
 	if (expression == NULL) {
 		return;
@@ -64,12 +76,7 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 		case CALL_EXPRESSION: {
 			LitCallExpression* expr = (LitCallExpression*) expression;
 			lit_free_expression(state, expr->callee);
-
-			for (uint i = 0; i < expr->args.count; i++) {
-				lit_free_expression(state, expr->args.values[i]);
-			}
-
-			lit_free_expressions(state, &expr->args);
+			free_expressions(state, &expr->args);
 
 			FREE_EXPRESSION(LitCallExpression)
 			break;
@@ -108,7 +115,7 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 		}
 
 		case ARRAY_EXPRESSION: {
-			lit_free_expressions(state, &((LitArrayExpression*) expression)->values);
+			free_expressions(state, &((LitArrayExpression*) expression)->values);
 			FREE_EXPRESSION(LitArrayExpression)
 
 			break;

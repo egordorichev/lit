@@ -761,6 +761,22 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(PUSH_ELEMENT) {
+			if (!IS_ARRAY(PEEK(1))) {
+				runtime_error(vm, "Only arrays can be indexed");
+				RETURN_ERROR()
+			}
+
+			LitValues *values = &AS_ARRAY(PEEK(1))->values;
+			int index = values->count;
+
+			lit_values_ensure_size(state, values, index + 1);
+			LitValue value = values->values[index] = PEEK(0);
+			DROP();
+
+			continue;
+		}
+
 		printf("Unknown op code!");
 		break;
 	}
