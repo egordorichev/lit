@@ -404,7 +404,7 @@ static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool
 static LitExpression* parse_array(LitParser* parser, bool can_assign) {
 	LitArrayExpression* array = lit_create_array_expression(parser->state, parser->previous.line);
 
-	while (!check(parser, TOKEN_RIGHT_BRACE)) {
+	while (!check(parser, TOKEN_RIGHT_BRACKET)) {
 		lit_expressions_write(parser->state, &array->values, parse_expression(parser));
 
 		if (!match(parser,  TOKEN_COMMA)) {
