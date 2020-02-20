@@ -1,6 +1,30 @@
 class Awesome {
+	constructor() {
+		this.prop = "good"
+	}
 
+	test() {
+		return this.prop
+	}
 }
 
 print(Awesome) // Expected: class Awesome
-print(new Awesome()) // Expected: Awesome instance
+var a = new Awesome()
+
+print(a) // Expected: Awesome instance
+
+print(a.prop) // Expected: good
+print(a.test()) // Expected: good
+
+a.prop = "awesome"
+
+print(a.test()) // Expected: awesome
+
+class Best : Awesome {
+	printTest() {
+		print(this.test())
+	}
+}
+
+var b = new Best()
+b.printTest() // Expected: good

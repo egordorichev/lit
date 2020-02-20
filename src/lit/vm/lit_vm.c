@@ -862,7 +862,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			}
 
 			LitClass* klass = AS_CLASS(PEEK(1));
-			lit_table_add_all(state, &AS_CLASS(super)->methods, &klass->methods);
+			LitClass* super_klass = AS_CLASS(super);
+
+			klass->init_method = super_klass->init_method;
+
+			lit_table_add_all(state, &super_klass->methods, &klass->methods);
 
 			DROP();
 			continue;
