@@ -298,10 +298,11 @@ typedef struct {
 	LitStatement statement;
 
 	LitString* name;
+	LitString* parent;
 	LitStatements methods;
 } LitClassStatement;
 
-LitClassStatement *lit_create_class_statement(LitState* state, uint line, LitString* name);
+LitClassStatement *lit_create_class_statement(LitState* state, uint line, LitString* name, LitString* parent);
 
 LitExpressions* lit_allocate_expressions(LitState* state);
 void lit_free_allocated_expressions(LitState* state, LitExpressions* expressions);

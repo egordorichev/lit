@@ -853,6 +853,21 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(INHERIT) {
+			LitValue super = PEEK(0);
+
+			if (!IS_CLASS(super)) {
+				runtime_error(vm, "Superclass must be a class");
+				RETURN_ERROR()
+			}
+
+			LitClass* klass = AS_CLASS(PEEK(1));
+			lit_table_add_all(state, &AS_CLASS(super)->methods, &klass->methods);
+
+			DROP();
+			continue;
+		}
+
 		runtime_error(vm, "Unknown op code '%d'", *ip);
 		break;
 	}

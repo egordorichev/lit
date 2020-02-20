@@ -162,6 +162,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 
 		case OP_METHOD: return print_constant_op("OP_METHOD", chunk, offset, true);
 		case OP_INVOKE: return print_invoke_op("OP_INVOKE", chunk, offset);
+		case OP_INHERIT: return print_simple_op("OP_INHERIT", offset);
 
 		default: {
 			printf("Unknown opcode %d\n", instruction);

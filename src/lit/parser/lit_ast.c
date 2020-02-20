@@ -509,10 +509,12 @@ LitMethodStatement *lit_create_method_statement(LitState* state, uint line, LitS
 	return statement;
 }
 
-LitClassStatement *lit_create_class_statement(LitState* state, uint line, LitString* name) {
+LitClassStatement *lit_create_class_statement(LitState* state, uint line, LitString* name, LitString* parent) {
 	LitClassStatement* statement = ALLOCATE_STATEMENT(state, LitClassStatement, CLASS_STATEMENT);
 
 	statement->name = name;
+	statement->parent = parent;
+
 	lit_init_stataments(&statement->methods);
 
 	return statement;

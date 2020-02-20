@@ -645,9 +645,20 @@ static LitStatement* parse_method(LitParser* parser) {
 static LitStatement* parse_class(LitParser* parser) {
 	uint line = parser->previous.line;
 
-	consume(parser, TOKEN_IDENTIFIER, "Expected variable name");
+	consume(parser, TOKEN_IDENTIFIER, "Expected class name");
 	LitString* name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
-	LitClassStatement* klass = lit_create_class_statement(parser->state, line, name);
+	LitString* super = NULL;
+
+	if (match(parser, TOKEN_COLON)) {
+		consume(parser, TOKEN_IDENTIFIER, "Expected super class name");
+		super = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
+
+		if (super == name) {
+			error(parser, "Class can't inherit itself");
+		}
+	}
+
+	LitClassStatement* klass = lit_create_class_statement(parser->state, line, name, super);
 
 	ignore_new_lines(parser);
 	consume(parser, TOKEN_LEFT_BRACE, "Expected '{' before class body");

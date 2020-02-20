@@ -978,11 +978,17 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_constant(emitter, statement->line, OBJECT_VALUE(stmt->name));
 			emit_byte(emitter, statement->line, OP_CLASS);
 
+			if (stmt->parent != NULL) {
+				emit_byte(emitter, emitter->last_line, OP_GET_GLOBAL);
+				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->parent)));
+				emit_byte(emitter, emitter->last_line, OP_INHERIT);
+			}
+
 			for (uint i = 0; i < stmt->methods.count; i++) {
 				emit_statement(emitter, stmt->methods.values[i]);
 			}
 
-			emit_byte(emitter, statement->line, OP_POP);
+			emit_byte(emitter, emitter->last_line, OP_POP);
 			emitter->in_class = false;
 
 			break;
