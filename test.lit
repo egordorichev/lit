@@ -5,4 +5,5 @@ class Awesome {
 }
 
 var a = Awesome()
-a.test()
+a.z = a.test
+a.z()

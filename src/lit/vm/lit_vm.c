@@ -819,7 +819,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(INVOKE) {
-			LitString* method = READ_STRING_LONG();
+			LitString* method_name = READ_STRING_LONG();
 			uint8_t arg_count = READ_BYTE();
 
 			WRITE_FRAME()
@@ -831,7 +831,21 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				RETURN_ERROR()
 			}
 
-			if (!invoke_from_class(vm, AS_INSTANCE(receiver)->klass, method, arg_count)) {
+			LitInstance* instance = AS_INSTANCE(receiver);
+			LitValue value;
+
+			if (lit_table_get(&instance->fields, method_name, &value)) {
+				fiber->stack_top[-arg_count - 1] = value;
+
+				if (!call_value(vm, value, arg_count)) {
+					RETURN_ERROR()
+				}
+
+				READ_FRAME()
+				continue;
+			}
+
+			if (!invoke_from_class(vm, instance->klass, method_name, arg_count)) {
 				RETURN_ERROR()
 			}
 
