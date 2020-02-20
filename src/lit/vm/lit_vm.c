@@ -167,7 +167,19 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 			}
 
 			case OBJECT_CLASS: {
-				vm->fiber->stack_top[-arg_count - 1] = OBJECT_VALUE(lit_create_instance(vm->state, AS_CLASS(callee)));
+				LitClass* klass = AS_CLASS(callee);
+				vm->fiber->stack_top[-arg_count - 1] = OBJECT_VALUE(lit_create_instance(vm->state, klass));
+
+				if (klass->init_method != NULL) {
+					return call(vm, klass->init_method, NULL, arg_count);
+				}
+
+				// Remove the arguments, so that they don't mess up the stack
+				// (default constructor has no arguments)
+				for (uint i = 0; i < arg_count; i++) {
+					lit_pop(vm);
+				}
+
 				return true;
 			}
 
@@ -782,10 +794,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(METHOD) {
-			LitValue method = PEEK(0);
 			LitClass* klass = AS_CLASS(PEEK(1));
+			LitString* name = READ_STRING_LONG();
 
-			lit_table_set(state, &klass->methods, READ_STRING_LONG(), method);
+			if (klass->init_method == NULL && name->length == 11 && memcmp(name->chars, "constructor", 11) == 0) {
+				klass->init_method = AS_FUNCTION(PEEK(0));
+			}
+
+			lit_table_set(state, &klass->methods, name, PEEK(0));
 			DROP();
 
 			continue;

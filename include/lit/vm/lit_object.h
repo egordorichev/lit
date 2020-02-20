@@ -89,7 +89,8 @@ LitValue lit_number_to_string(LitState* state, double value);
 typedef enum {
 	FUNCTION_REGULAR,
 	FUNCTION_SCRIPT,
-	FUNCTION_METHOD
+	FUNCTION_METHOD,
+	FUNCTION_CONSTRUCTOR
 } LitFunctionType;
 
 typedef struct {

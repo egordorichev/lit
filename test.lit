@@ -1,12 +1,12 @@
 class Awesome {
+	constructor() {
+		this.prop = 32
+	}
+
 	test() {
 		print(this.prop)
 	}
 }
 
 var a = Awesome()
-var t = a.test
-
-a.prop = "AMAZING"
-t()
-// a.test()
+a.test()
