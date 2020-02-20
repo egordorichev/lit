@@ -573,10 +573,16 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case GET_EXPRESSION: {
 			LitGetExpression* expr = (LitGetExpression*) expression;
-
 			emit_expression(emitter, expr->where);
 
-			if (!expr->ignore_emit) {
+			if (expr->questionable) {
+				uint end_jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
+
+				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+				emit_byte(emitter, emitter->last_line, OP_GET_FIELD);
+
+				patch_jump(emitter, end_jump, emitter->last_line);
+			} else if (!expr->ignore_emit) {
 				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 				emit_byte(emitter, emitter->last_line, OP_GET_FIELD);
 			}

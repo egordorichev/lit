@@ -10,3 +10,13 @@ print(instance.test) // Expected: 32
 
 print(instance.test = 48) // Expected: 48
 print(instance.test) // Expected: 48
+
+var a = null
+print(a?.prop) // Expected: null
+a = instance
+
+print(a?.prop) // Expected: null
+print(a?.prop?.test) // Expected: null
+
+a.prop = 32
+print(a?.prop) // Expected: 32

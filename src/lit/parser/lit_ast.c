@@ -234,13 +234,14 @@ LitRequireExpression *lit_create_require_expression(LitState* state, uint line, 
 	return statement;
 }
 
-LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length) {
+LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length, bool questionable) {
 	LitGetExpression* expression = ALLOCATE_EXPRESSION(state, LitGetExpression, GET_EXPRESSION);
 
 	expression->where = where;
 	expression->name = name;
 	expression->length = length;
 	expression->ignore_emit = false;
+	expression->questionable = questionable;
 
 	return expression;
 }

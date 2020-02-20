@@ -1,12 +1,11 @@
 class Cool {
-	test() {
-		print(32)
-	}
-}
-
-class Awesome : Cool {
 
 }
 
-var a = Awesome()
-a.test()
+var a = null
+
+print(a?.prop)
+a = new Cool()
+print(a?.prop)
+a.prop = "awesome"
+print(a?.prop)

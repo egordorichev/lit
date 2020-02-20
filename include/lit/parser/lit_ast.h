@@ -130,9 +130,10 @@ typedef struct {
 	uint length;
 
 	bool ignore_emit;
+	bool questionable;
 } LitGetExpression;
 
-LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length);
+LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length, bool questionable);
 
 typedef struct {
 	LitExpression expression;

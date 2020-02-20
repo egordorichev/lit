@@ -389,7 +389,7 @@ static LitExpression* parse_require(LitParser* parser, bool can_assign) {
 
 static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool can_assign) {
 	uint line = parser->previous.line;
-	consume(parser, TOKEN_IDENTIFIER, "Expect property name after '.'");
+	consume(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
 
 	const char* name = parser->previous.start;
 	uint length = parser->previous.length;
@@ -397,8 +397,18 @@ static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool
 	if (can_assign && match(parser, TOKEN_EQUAL)) {
 		return (LitExpression *) lit_create_set_expression(parser->state, line, previous, name, length, parse_expression(parser));
 	} else {
-		return (LitExpression*) lit_create_get_expression(parser->state, line, previous, name, length);
+		return (LitExpression*) lit_create_get_expression(parser->state, line, previous, name, length, false);
 	}
+}
+
+
+static LitExpression* parse_question(LitParser* parser, LitExpression* previous, bool can_assign) {
+	uint line = parser->previous.line;
+
+	consume(parser, TOKEN_DOT, "Expected '.' after '?' operator");
+	consume(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
+
+	return (LitExpression*) lit_create_get_expression(parser->state, line, previous, parser->previous.start, parser->previous.length, true);
 }
 
 static LitExpression* parse_array(LitParser* parser, bool can_assign) {
@@ -811,4 +821,5 @@ static void setup_rules() {
 	rules[TOKEN_DOT] = (LitParseRule) { NULL, parse_dot, PREC_CALL };
 	rules[TOKEN_LEFT_BRACKET] = (LitParseRule) { parse_array, parse_subscript, PREC_NONE };
 	rules[TOKEN_THIS] = (LitParseRule) { parse_this, NULL, PREC_NONE };
+	rules[TOKEN_QUESTION] = (LitParseRule) { NULL, parse_question, PREC_CALL };
 }
