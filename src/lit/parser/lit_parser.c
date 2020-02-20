@@ -395,7 +395,7 @@ static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool
 	uint length = parser->previous.length;
 
 	if (can_assign && match(parser, TOKEN_EQUAL)) {
-		return (LitExpression*) lit_create_set_expression(parser->state, line, previous, name, length, parse_expression(parser));
+		return (LitExpression *) lit_create_set_expression(parser->state, line, previous, name, length, parse_expression(parser));
 	} else {
 		return (LitExpression*) lit_create_get_expression(parser->state, line, previous, name, length);
 	}

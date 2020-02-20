@@ -1,10 +1,6 @@
 class Awesome {
-	constructor() {
-		this.prop = 32
-	}
-
 	test() {
-		print(this.prop)
+		print(32)
 	}
 }
 

@@ -55,6 +55,19 @@ static uint print_jump_op(const char* name, int sign, LitChunk* chunk, uint offs
 	return offset + 3;
 }
 
+static uint print_invoke_op(const char* name, LitChunk* chunk, uint offset) {
+	uint8_t constant = chunk->code[offset + 1];
+	constant |= chunk->code[offset + 2];
+
+	uint8_t arg_count = chunk->code[offset + 3];
+
+	printf("%-16s (%d args) %4d '", name, arg_count, constant);
+	lit_print_value(chunk->constants.values[constant]);
+	printf("'\n");
+
+	return offset + 3;
+}
+
 uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 	printf("%04d ", offset);
 	uint line = lit_chunk_get_line(chunk, offset);
@@ -148,6 +161,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_PUSH_ELEMENT: return print_simple_op("OP_PUSH_ELEMENT", offset);
 
 		case OP_METHOD: return print_constant_op("OP_METHOD", chunk, offset, true);
+		case OP_INVOKE: return print_invoke_op("OP_INVOKE", chunk, offset);
 
 		default: {
 			printf("Unknown opcode %d\n", instruction);

@@ -240,6 +240,7 @@ LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpre
 	expression->where = where;
 	expression->name = name;
 	expression->length = length;
+	expression->ignore_emit = false;
 
 	return expression;
 }

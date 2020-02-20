@@ -241,6 +241,17 @@ static void close_upvalues(LitVm* vm, const LitValue* last) {
 	}
 }
 
+static bool invoke_from_class(LitVm* vm, LitClass* klass, LitString* method_name, uint8_t arg_count) {
+	LitValue method;
+
+	if (!lit_table_get(&klass->methods, method_name, &method)) {
+		runtime_error(vm, "Attempt to call undefined method '%s'", method_name->chars);
+		return false;
+	}
+
+	return call(vm, AS_FUNCTION(method), NULL, arg_count);
+}
+
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 	register LitVm *vm = state->vm;
 
@@ -807,7 +818,28 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
-		printf("Unknown op code!");
+		CASE_CODE(INVOKE) {
+			LitString* method = READ_STRING_LONG();
+			uint8_t arg_count = READ_BYTE();
+
+			WRITE_FRAME()
+
+			LitValue receiver = PEEK(arg_count);
+
+			if (!IS_INSTANCE(receiver)) {
+				runtime_error(vm, "Only instances have methods");
+				RETURN_ERROR()
+			}
+
+			if (!invoke_from_class(vm, AS_INSTANCE(receiver)->klass, method, arg_count)) {
+				RETURN_ERROR()
+			}
+
+			READ_FRAME()
+			continue;
+		}
+
+		runtime_error(vm, "Unknown op code '%d'", *ip);
 		break;
 	}
 

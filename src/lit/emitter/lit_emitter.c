@@ -539,6 +539,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case CALL_EXPRESSION: {
 			LitCallExpression* expr = (LitCallExpression*) expression;
+			bool method = expr->callee->type == GET_EXPRESSION;
+
+			if (method) {
+				((LitGetExpression*) expr->callee)->ignore_emit = true;
+			}
 
 			emit_expression(emitter, expr->callee);
 
@@ -546,7 +551,15 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				emit_expression(emitter, expr->args.values[i]);
 			}
 
-			emit_bytes(emitter, expression->line, OP_CALL, (uint8_t) expr->args.count);
+			if (method) {
+				LitGetExpression* e = (LitGetExpression*) expr->callee;
+
+				emit_byte(emitter, expression->line, OP_INVOKE);
+				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
+				emit_byte(emitter, expression->line, (uint8_t) expr->args.count);
+			} else {
+				emit_bytes(emitter, expression->line, OP_CALL, (uint8_t) expr->args.count);
+			}
 
 			break;
 		}
@@ -562,8 +575,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitGetExpression* expr = (LitGetExpression*) expression;
 
 			emit_expression(emitter, expr->where);
-			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
-			emit_byte(emitter, emitter->last_line, OP_GET_FIELD);
+
+			if (!expr->ignore_emit) {
+				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+				emit_byte(emitter, emitter->last_line, OP_GET_FIELD);
+			}
 
 			break;
 		}
@@ -909,6 +925,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 		}
 
 		case RETURN_STATEMENT: {
+			if (emitter->compiler->type == FUNCTION_CONSTRUCTOR) {
+				lit_error(emitter->state, COMPILE_ERROR, statement->line, "Can't use 'return' in constructors");
+			}
+
 			LitExpression* expression = ((LitReturnStatement*) statement)->expression;
 
 			if (expression == NULL) {
