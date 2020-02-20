@@ -18,7 +18,8 @@ typedef enum {
 	GET_EXPRESSION,
 	LAMBDA_EXPRESSION,
 	ARRAY_EXPRESSION,
-	SUBSCRIPT_EXPRESSION
+	SUBSCRIPT_EXPRESSION,
+	THIS_EXPRESSION
 } LitExpressionType;
 
 typedef struct LitExpression {
@@ -37,6 +38,7 @@ typedef enum {
 	BREAK_STATEMENT,
 	FUNCTION_STATEMENT,
 	RETURN_STATEMENT,
+	METHOD_STATEMENT,
 	CLASS_STATEMENT
 } LitStatementType;
 
@@ -174,6 +176,13 @@ typedef struct {
 
 LitSubscriptExpression *lit_create_subscript_expression(LitState* state, uint line, LitExpression* array, LitExpression* index);
 
+
+typedef struct {
+	LitExpression expression;
+} LitThisExpression;
+
+LitThisExpression *lit_create_this_expression(LitState* state, uint line);
+
 /*
  * Statements
  */
@@ -275,7 +284,19 @@ LitReturnStatement *lit_create_return_statement(LitState* state, uint line, LitE
 
 typedef struct {
 	LitStatement statement;
+
 	LitString* name;
+	LitParameters parameters;
+	LitStatement* body;
+} LitMethodStatement;
+
+LitMethodStatement *lit_create_method_statement(LitState* state, uint line, LitString* name);
+
+typedef struct {
+	LitStatement statement;
+
+	LitString* name;
+	LitStatements methods;
 } LitClassStatement;
 
 LitClassStatement *lit_create_class_statement(LitState* state, uint line, LitString* name);

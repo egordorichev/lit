@@ -1,6 +1,12 @@
-export function printTest(a, b) {
-	print(a)
-	return 32
+class Awesome {
+	test() {
+		print(this.prop)
+	}
 }
 
-printTest("test", 10)
+var a = Awesome()
+var t = a.test
+
+a.prop = "AMAZING"
+t()
+// a.test()

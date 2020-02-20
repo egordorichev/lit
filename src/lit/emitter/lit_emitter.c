@@ -66,9 +66,15 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 
 	emitter->chunk = &compiler->function->chunk;
 
-	lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
-		"", 0, -1, false
-	});
+	if (type == FUNCTION_METHOD) {
+		lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
+			"this", 4, -1, false
+		});
+	} else {
+		lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
+			"", 0, -1, false
+		});
+	}
 }
 
 static void emit_return(LitEmitter* emitter, uint line) {
@@ -458,8 +464,8 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					index = resolve_private(emitter, expr->name, expr->length, expression->line);
 
 					if (index == -1) {
-						emit_bytes(emitter, expression->line, OP_GET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(
-							lit_copy_string(emitter->state, expr->name, expr->length))));
+						emit_byte(emitter, expression->line, OP_GET_GLOBAL);
+						emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length))));
 					} else {
 						emit_byte_or_short(emitter, expression->line, OP_GET_PRIVATE, OP_GET_PRIVATE_LONG, index);
 					}
@@ -488,8 +494,8 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 						index = resolve_private(emitter, e->name, e->length, expr->to->line);
 
 						if (index == -1) {
-							emit_bytes(emitter, expression->line, OP_SET_GLOBAL, add_constant(emitter, expression->line, OBJECT_VALUE(
-								lit_copy_string(emitter->state, e->name, e->length))));
+							emit_byte(emitter, expression->line, OP_SET_GLOBAL);
+							emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
 						} else {
 							emit_byte_or_short(emitter, expression->line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
 						}
@@ -599,7 +605,8 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			function->arg_count = expr->parameters.count;
 
 			if (function->upvalue_count > 0) {
-				emit_bytes(emitter, emitter->last_line, OP_CLOSURE, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
+				emit_byte(emitter, emitter->last_line, OP_CLOSURE);
+				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
 
 				for (uint i = 0; i < function->upvalue_count; i++) {
 					emit_bytes(emitter, emitter->last_line, compiler.upvalues[i].isLocal ? 1 : 0, compiler.upvalues[i].index);
@@ -632,6 +639,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 			emit_byte(emitter, expression->line, OP_SUBSCRIPT_GET);
 
+			break;
+		}
+
+		case THIS_EXPRESSION: {
+			emit_bytes(emitter, expression->line, OP_GET_LOCAL, 0);
 			break;
 		}
 
@@ -861,7 +873,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			function->arg_count = stmt->parameters.count;
 
 			if (function->upvalue_count > 0) {
-				emit_bytes(emitter, emitter->last_line, OP_CLOSURE, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
+				emit_byte(emitter, emitter->last_line, OP_CLOSURE);
+				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
 
 				for (uint i = 0; i < function->upvalue_count; i++) {
 					emit_bytes(emitter, emitter->last_line, compiler.upvalues[i].isLocal ? 1 : 0, compiler.upvalues[i].index);
@@ -871,7 +884,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			if (export) {
-				emit_bytes(emitter, emitter->last_line, OP_SET_GLOBAL, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, stmt->name, stmt->length))));
+				emit_byte(emitter, emitter->last_line, OP_SET_GLOBAL);
+				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, stmt->name, stmt->length))));
 			} else if (private) {
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
 			} else {
@@ -899,11 +913,44 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			return true;
 		}
 
+		case METHOD_STATEMENT: {
+			LitMethodStatement* stmt = (LitMethodStatement*) statement;
+			begin_scope(emitter);
+
+			LitCompiler compiler;
+			init_compiler(emitter, &compiler, FUNCTION_METHOD);
+
+			for (uint i = 0; i < stmt->parameters.count; i++) {
+				LitParameter parameter = stmt->parameters.values[i];
+				mark_initialized(emitter, add_local(emitter, parameter.name, parameter.length, statement->line));
+			}
+
+			emit_statement(emitter, stmt->body);
+
+			LitFunction* function = end_compiler(emitter, stmt->name);
+			function->arg_count = stmt->parameters.count;
+
+			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
+
+			emit_byte(emitter, statement->line, OP_METHOD);
+			emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
+
+			end_scope(emitter, emitter->last_line);
+
+			break;
+		}
+
 		case CLASS_STATEMENT: {
 			LitClassStatement* stmt = (LitClassStatement*) statement;
 
 			emit_constant(emitter, statement->line, OBJECT_VALUE(stmt->name));
 			emit_byte(emitter, statement->line, OP_CLASS);
+
+			for (uint i = 0; i < stmt->methods.count; i++) {
+				emit_statement(emitter, stmt->methods.values[i]);
+			}
+
+			emit_byte(emitter, statement->line, OP_POP);
 
 			break;
 		}

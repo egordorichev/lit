@@ -231,7 +231,11 @@ LitModule* lit_create_module(LitState* state, LitString* name) {
 
 LitClass* lit_create_class(LitState* state, LitString* name) {
 	LitClass* klass = ALLOCATE_OBJECT(state, LitClass, OBJECT_CLASS);
+
 	klass->name = name;
+	klass->init_method = NULL;
+
+	lit_init_table(&klass->methods);
 
 	return klass;
 }
@@ -243,6 +247,15 @@ LitInstance* lit_create_instance(LitState* state, LitClass* klass) {
 	lit_init_table(&instance->fields);
 
 	return instance;
+}
+
+LitBoundMethod* lit_create_bound_method(LitState* state, LitValue receiver, LitFunction* method) {
+	LitBoundMethod* bound_method = ALLOCATE_OBJECT(state, LitBoundMethod, OBJECT_BOUND_METHOD);
+
+	bound_method->receiver = receiver;
+	bound_method->method = method;
+
+	return bound_method;
 }
 
 LitArray* lit_create_array(LitState* state) {

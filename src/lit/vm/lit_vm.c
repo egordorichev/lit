@@ -3,6 +3,7 @@
 #include <lit/debug/lit_debug.h>
 #include <lit/mem/lit_mem.h>
 #include <lit/util/lit_fs.h>
+#include <lit/api/lit_api.h>
 
 #include <stdio.h>
 #include <math.h>
@@ -15,31 +16,22 @@ static void reset_stack(LitVm* vm) {
 	}
 }
 
-static void define_native(LitVm* vm, const char* name, LitNativeFn function) {
-	LitState* state = vm->state;
-
-	lit_push_root(state, (LitObject *) lit_create_native(state, function));
-	lit_push_root(state, (LitObject *) lit_copy_string(state, name, (uint) strlen(name)));
-	lit_table_set(state, &vm->globals, AS_STRING(lit_peek_root(state, 0)), lit_peek_root(state, 1));
-	lit_pop_roots(state, 2);
-}
-
-static LitValue time_native(LitVm* vm, uint arg_count, LitValue* args) {
+LIT_NATIVE(time) {
 	return NUMBER_VALUE((double) clock() / CLOCKS_PER_SEC);
 }
 
-static LitValue gc_native(LitVm* vm, uint arg_count, LitValue* args) {
-	lit_collect_garbage(vm);
-	return NULL_VALUE;
-}
-
-static LitValue print_native(LitVm* vm, uint arg_count, LitValue* args) {
+LIT_NATIVE(print) {
 	for (uint i = 0; i < arg_count; i++) {
 		lit_print_value(args[i]);
 		printf("\n");
 	}
 
 	return NULL_VALUE;
+}
+
+void lit_define_std(LitState* state) {
+	lit_define_native(state, "time", time_native);
+	lit_define_native(state, "print", print_native);
 }
 
 void lit_init_vm(LitState* state, LitVm* vm) {
@@ -55,12 +47,6 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 	lit_init_table(&vm->strings);
 	lit_init_table(&vm->globals);
 	lit_init_table(&vm->modules);
-}
-
-void lit_define_std(LitVm* vm) {
-	define_native(vm, "time", time_native);
-	define_native(vm, "gc", gc_native);
-	define_native(vm, "print", print_native);
 }
 
 void lit_free_vm(LitVm* vm) {
@@ -185,6 +171,13 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				return true;
 			}
 
+			case OBJECT_BOUND_METHOD: {
+				LitBoundMethod* bound_method = AS_BOUND_METHOD(callee);
+				vm->fiber->stack_top[-arg_count - 1] = bound_method->receiver;
+
+				return call(vm, bound_method->method, NULL, arg_count);
+			}
+
 			default: {
 				break;
 			}
@@ -278,6 +271,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #define READ_CONSTANT() (current_chunk->constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() (current_chunk->constants.values[READ_SHORT()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
+#define READ_STRING_LONG() AS_STRING(READ_CONSTANT_LONG())
 #define PEEK(distance) fiber->stack_top[-1 - distance]
 #define READ_FRAME() frame = &fiber->frames[fiber->frame_count - 1]; \
 	current_chunk = &frame->function->chunk; \
@@ -465,14 +459,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(SET_GLOBAL) {
-			LitString* name = READ_STRING();
+			LitString* name = READ_STRING_LONG();
 			lit_table_set(state, &vm->globals, name, PEEK(0));
 
 			continue;
 		}
 
 		CASE_CODE(GET_GLOBAL) {
-			LitString* name = READ_STRING();
+			LitString* name = READ_STRING_LONG();
 			LitValue value;
 
 			if (!lit_table_get(&vm->globals, name, &value)) {
@@ -632,7 +626,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(CLOSURE) {
-			LitFunction* function = AS_FUNCTION(READ_CONSTANT());
+			LitFunction* function = AS_FUNCTION(READ_CONSTANT_LONG());
 			LitClosure* closure = lit_create_closure(state, function);
 
 			PUSH(OBJECT_VALUE(closure));
@@ -667,6 +661,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			lit_table_set(state, &vm->globals, name, OBJECT_VALUE(klass));
 			lit_pop_root(state);
 
+			PUSH(OBJECT_VALUE(klass));
+
 			continue;
 		}
 
@@ -677,9 +673,15 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			}
 
 			LitValue value;
+			LitInstance* instance = AS_INSTANCE(PEEK(1));
+			LitString* name = AS_STRING(PEEK(0));
 
-			if (!lit_table_get(&AS_INSTANCE(PEEK(1))->fields, AS_STRING(PEEK(0)), &value)) {
-				value = NULL_VALUE;
+			if (!lit_table_get(&instance->fields, name, &value)) {
+				if (lit_table_get(&instance->klass->methods, name, &value)) {
+					value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(instance), AS_FUNCTION(value)));
+				} else {
+					value = NULL_VALUE;
+				}
 			}
 
 			DROP(); // Pop field name
@@ -774,6 +776,16 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			lit_values_ensure_size(state, values, index + 1);
 			LitValue value = values->values[index] = PEEK(0);
+			DROP();
+
+			continue;
+		}
+
+		CASE_CODE(METHOD) {
+			LitValue method = PEEK(0);
+			LitClass* klass = AS_CLASS(PEEK(1));
+
+			lit_table_set(state, &klass->methods, READ_STRING_LONG(), method);
 			DROP();
 
 			continue;

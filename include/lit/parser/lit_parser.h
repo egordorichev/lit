@@ -5,7 +5,7 @@
 #include <lit/lit_predefines.h>
 #include <lit/parser/lit_ast.h>
 #include <lit/emitter/lit_emitter.h>
-#include <lit/lit.h>
+#include <lit/lit_config.h>
 
 typedef enum {
 	PREC_NONE,

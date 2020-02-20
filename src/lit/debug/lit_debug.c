@@ -16,7 +16,14 @@ static uint print_simple_op(const char* name, uint offset) {
 }
 
 static uint print_constant_op(const char* name, LitChunk* chunk, uint offset, bool big) {
-	uint8_t constant = chunk->code[offset + 1];
+	uint8_t constant;
+
+	if (big) {
+		constant = (uint16_t) (chunk->code[offset + 1] << 8);
+		constant |= chunk->code[offset + 2];
+	} else {
+		constant = chunk->code[offset + 1];
+	}
 
 	printf("%-16s %4d '", name, constant);
 	lit_print_value(chunk->constants.values[constant]);
@@ -83,8 +90,8 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_LESS: return print_simple_op("OP_LESS", offset);
 		case OP_LESS_EQUAL: return print_simple_op("OP_LESS_EQUAL", offset);
 
-		case OP_SET_GLOBAL: return print_constant_op("OP_SET_GLOBAL", chunk, offset, false);
-		case OP_GET_GLOBAL: return print_constant_op("OP_GET_GLOBAL", chunk, offset, false);
+		case OP_SET_GLOBAL: return print_constant_op("OP_SET_GLOBAL", chunk, offset, true);
+		case OP_GET_GLOBAL: return print_constant_op("OP_GET_GLOBAL", chunk, offset, true);
 
 		case OP_SET_LOCAL: return print_byte_op("OP_SET_LOCAL", chunk, offset);
 		case OP_GET_LOCAL: return print_byte_op("OP_GET_LOCAL", chunk, offset);
@@ -109,8 +116,10 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 
 		case OP_CLOSURE: {
 			offset++;
+			int16_t constant = (uint16_t) (chunk->code[offset] << 8);
+			offset++;
+			constant |= chunk->code[offset];
 
-			uint8_t constant = chunk->code[offset++];
 			printf("%-16s %4d ", "OP_CLOSURE", constant);
 			lit_print_value(chunk->constants.values[constant]);
 			printf("\n");
@@ -137,6 +146,8 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_SUBSCRIPT_SET: return print_simple_op("OP_SUBSCRIPT_SET", offset);
 		case OP_ARRAY: return print_simple_op("OP_ARRAY", offset);
 		case OP_PUSH_ELEMENT: return print_simple_op("OP_PUSH_ELEMENT", offset);
+
+		case OP_METHOD: return print_constant_op("OP_METHOD", chunk, offset, true);
 
 		default: {
 			printf("Unknown opcode %d\n", instruction);

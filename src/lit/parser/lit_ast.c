@@ -21,6 +21,18 @@ void free_expressions(LitState* state, LitExpressions* expressions) {
 	lit_free_expressions(state, expressions);
 }
 
+void free_statements(LitState* state, LitStatements* statements) {
+	if (statements == NULL) {
+		return;
+	}
+
+	for (uint i = 0; i < statements->count; i++) {
+		lit_free_statement(state, statements->values[i]);
+	}
+
+	lit_free_stataments(state, statements);
+}
+
 void lit_free_expression(LitState* state, LitExpression* expression) {
 	if (expression == NULL) {
 		return;
@@ -129,6 +141,11 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			lit_free_expression(state, expr->index);
 
 			FREE_EXPRESSION(LitSubscriptExpression)
+			break;
+		}
+
+		case THIS_EXPRESSION: {
+			FREE_EXPRESSION(LitThisExpression)
 			break;
 		}
 
@@ -262,6 +279,11 @@ LitSubscriptExpression *lit_create_subscript_expression(LitState* state, uint li
 	return expression;
 }
 
+
+LitThisExpression *lit_create_this_expression(LitState* state, uint line) {
+	return ALLOCATE_EXPRESSION(state, LitThisExpression, THIS_EXPRESSION);
+}
+
 #define FREE_STATEMENT(type) lit_reallocate(state, statement, sizeof(type), 0);
 
 void lit_free_statement(LitState* state, LitStatement* statement) {
@@ -277,15 +299,8 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 		}
 
 		case BLOCK_STATEMENT: {
-			LitStatements statements = ((LitBlockStatement*) statement)->statements;
-
-			for (uint i = 0; i < statements.count; i++) {
-				lit_free_statement(state, statements.values[i]);
-			}
-
-			lit_free_stataments(state, &statements);
+			free_statements(state, &((LitBlockStatement*) statement)->statements);
 			FREE_STATEMENT(LitBlockStatement)
-
 			break;
 		}
 
@@ -357,10 +372,23 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 		case RETURN_STATEMENT: {
 			lit_free_expression(state, ((LitReturnStatement*) statement)->expression);
 			FREE_STATEMENT(LitReturnStatement)
+
+			break;
+		}
+
+		case METHOD_STATEMENT: {
+			LitMethodStatement* stmt = (LitMethodStatement*) statement;
+
+			lit_free_parameters(state, &stmt->parameters);
+			lit_free_statement(state, stmt->body);
+
+			FREE_STATEMENT(LitMethodStatement)
+
 			break;
 		}
 
 		case CLASS_STATEMENT: {
+			free_statements(state, &((LitClassStatement*) statement)->methods);
 			FREE_STATEMENT(LitClassStatement)
 			break;
 		}
@@ -469,9 +497,22 @@ LitReturnStatement *lit_create_return_statement(LitState* state, uint line, LitE
 	return statement;
 }
 
+LitMethodStatement *lit_create_method_statement(LitState* state, uint line, LitString* name) {
+	LitMethodStatement* statement = ALLOCATE_STATEMENT(state, LitMethodStatement, METHOD_STATEMENT);
+
+	statement->name = name;
+	statement->body = NULL;
+
+	lit_init_parameters(&statement->parameters);
+
+	return statement;
+}
+
 LitClassStatement *lit_create_class_statement(LitState* state, uint line, LitString* name) {
 	LitClassStatement* statement = ALLOCATE_STATEMENT(state, LitClassStatement, CLASS_STATEMENT);
+
 	statement->name = name;
+	lit_init_stataments(&statement->methods);
 
 	return statement;
 }

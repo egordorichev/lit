@@ -7,7 +7,7 @@
 #include <lit/vm/lit_chunk.h>
 #include <lit/util/lit_table.h>
 #include <lit/vm/lit_value.h>
-#include <lit/lit.h>
+#include <lit/lit_config.h>
 
 #define OBJECT_TYPE(value) (AS_OBJECT(value)->type)
 
@@ -22,6 +22,7 @@
 #define IS_INSTANCE(value) IS_OBJECTS_TYPE(value, OBJECT_INSTANCE)
 #define IS_ARRAY(value) IS_OBJECTS_TYPE(value, OBJECT_ARRAY)
 #define IS_MAP(value) IS_OBJECTS_TYPE(value, OBJECT_MAP)
+#define IS_BOUND_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_BOUND_METHOD)
 
 #define AS_STRING(value) ((LitString*) AS_OBJECT(value))
 #define AS_CSTRING(value) (((LitString*) AS_OBJECT(value))->chars)
@@ -33,10 +34,11 @@
 #define AS_CLASS(value) ((LitClass*) AS_OBJECT(value))
 #define AS_INSTANCE(value) ((LitInstance*) AS_OBJECT(value))
 #define AS_ARRAY(value) ((LitArray*) AS_OBJECT(value))
+#define AS_BOUND_METHOD(value) ((LitBoundMethod*) AS_OBJECT(value))
 
 #define ALLOCATE_OBJECT(state, type, objectType) (type*) lit_allocate_object(state, sizeof(type), objectType)
-#define OBJECT_CONST_STRING(state, text) OBJECT_VALUE(lit_copy_string((state), (text), sizeof(text) - 1))
-#define CONST_STRING(state, text) lit_copy_string((state), (text), sizeof(text) - 1)
+#define OBJECT_CONST_STRING(state, text) OBJECT_VALUE(lit_copy_string((state), (text), strlen(text)))
+#define CONST_STRING(state, text) lit_copy_string((state), (text), strlen(text))
 
 typedef enum {
 	OBJECT_STRING,
@@ -48,8 +50,9 @@ typedef enum {
 	OBJECT_UPVALUE,
 	OBJECT_CLASS,
 	OBJECT_INSTANCE,
+	OBJECT_BOUND_METHOD,
 	OBJECT_ARRAY,
-	OBJECT_MAP
+	OBJECT_MAP,
 } LitObjectType;
 
 static const char* lit_object_type_names[] = {
@@ -85,7 +88,8 @@ LitValue lit_number_to_string(LitState* state, double value);
 
 typedef enum {
 	FUNCTION_REGULAR,
-	FUNCTION_SCRIPT
+	FUNCTION_SCRIPT,
+	FUNCTION_METHOD
 } LitFunctionType;
 
 typedef struct {
@@ -170,7 +174,10 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 
 typedef struct {
 	LitObject object;
+
 	LitString* name;
+	LitFunction* init_method;
+	LitTable methods;
 } LitClass;
 
 LitClass* lit_create_class(LitState* state, LitString* name);
@@ -183,6 +190,15 @@ typedef struct {
 } LitInstance;
 
 LitInstance* lit_create_instance(LitState* state, LitClass* klass);
+
+typedef struct {
+	LitObject object;
+
+	LitValue receiver;
+	LitFunction* method;
+} LitBoundMethod;
+
+LitBoundMethod* lit_create_bound_method(LitState* state, LitValue receiver, LitFunction* method);
 
 typedef struct {
 	LitObject object;

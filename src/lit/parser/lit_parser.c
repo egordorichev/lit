@@ -431,6 +431,10 @@ static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous
 	return expression;
 }
 
+static LitExpression* parse_this(LitParser* parser, bool can_assign) {
+	return (LitExpression*) lit_create_this_expression(parser->state, parser->previous.line);
+}
+
 static LitExpression* parse_expression(LitParser* parser) {
 	ignore_new_lines(parser);
 	return parse_precedence(parser, PREC_ASSIGNMENT);
@@ -578,7 +582,7 @@ static LitStatement* parse_function(LitParser* parser) {
 	}
 
 	if (function->parameters.count > 255) {
-		error(parser, "Function can't have more than 255 arguments");
+		error(parser, "Functions can't have more than 255 arguments");
 	}
 
 	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after function arguments");
@@ -602,18 +606,66 @@ static LitStatement* parse_return(LitParser* parser) {
 	return (LitStatement*) lit_create_return_statement(parser->state, line, expression);
 }
 
+static LitStatement* parse_method(LitParser* parser) {
+	consume(parser, TOKEN_IDENTIFIER, "Expected method name");
+	LitMethodStatement* method = lit_create_method_statement(parser->state, parser->previous.line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length));
+
+	LitCompiler compiler;
+	init_compiler(parser, &compiler);
+	begin_scope(parser);
+
+	consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after method name");
+
+	while (!check(parser, TOKEN_RIGHT_PAREN)) {
+		consume(parser, TOKEN_IDENTIFIER, "Expected argument name");
+
+		lit_parameters_write(parser->state, &method->parameters, (LitParameter) {
+			parser->previous.start, parser->previous.length
+		});
+
+		if (!match(parser, TOKEN_COMMA)) {
+			break;
+		}
+	}
+
+	if (method->parameters.count > 255) {
+		error(parser, "Methods can't have more than 255 arguments");
+	}
+
+	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after method arguments");
+
+	method->body = parse_statement(parser);
+
+	end_scope(parser);
+	end_compiler(parser, &compiler);
+
+	return (LitStatement*) method;
+}
+
 static LitStatement* parse_class(LitParser* parser) {
 	uint line = parser->previous.line;
 
 	consume(parser, TOKEN_IDENTIFIER, "Expected variable name");
 	LitString* name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
+	LitClassStatement* klass = lit_create_class_statement(parser->state, line, name);
 
 	ignore_new_lines(parser);
 	consume(parser, TOKEN_LEFT_BRACE, "Expected '{' before class body");
 	ignore_new_lines(parser);
+
+	while (!check(parser, TOKEN_RIGHT_BRACE)) {
+		LitStatement* method = parse_method(parser);
+
+		if (method != NULL) {
+			lit_stataments_write(parser->state, &klass->methods, method);
+		}
+
+		ignore_new_lines(parser);
+	}
+
 	consume(parser, TOKEN_RIGHT_BRACE, "Expected '}' after class body");
 
-	return (LitStatement*) lit_create_class_statement(parser->state, line, name);
+	return (LitStatement*) klass;
 }
 
 static LitStatement* parse_statement(LitParser* parser) {
@@ -747,4 +799,5 @@ static void setup_rules() {
 	rules[TOKEN_REQUIRE] = (LitParseRule) { parse_require, NULL, PREC_NONE };
 	rules[TOKEN_DOT] = (LitParseRule) { NULL, parse_dot, PREC_CALL };
 	rules[TOKEN_LEFT_BRACKET] = (LitParseRule) { parse_array, parse_subscript, PREC_NONE };
+	rules[TOKEN_THIS] = (LitParseRule) { parse_this, NULL, PREC_NONE };
 }

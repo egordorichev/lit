@@ -7,7 +7,7 @@
 #include <lit/lit_predefines.h>
 #include <lit/util/lit_table.h>
 
-#include <lit/lit.h>
+#include <lit/lit_config.h>
 
 #define INTERPRET_RUNTIME_FAIL ((LitInterpretResult) {INTERPRET_RUNTIME_ERROR, NULL_VALUE})
 
@@ -35,7 +35,7 @@ typedef struct sLitInterpretResult {
 } LitInterpretResult;
 
 void lit_init_vm(LitState* state, LitVm* vm);
-void lit_define_std(LitVm* vm);
+void lit_define_std(LitState* state);
 void lit_free_vm(LitVm* vm);
 
 void lit_push(LitVm* vm, LitValue value);

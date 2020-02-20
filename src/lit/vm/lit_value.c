@@ -21,22 +21,6 @@ static void print_object(LitValue value) {
 
 		case OBJECT_CLOSURE: {
 			printf("function %s", AS_CLOSURE(value)->function->name->chars);
-			LitClosure* closure = AS_CLOSURE(value);
-
-			for (uint i = 0; i < closure->upvalue_count; i++) {
-				if (closure->upvalues[i] == NULL) {
-					printf(" ()");
-					continue;
-				} else if (AS_OBJECT(*closure->upvalues[i]->location) == (LitObject*) closure) {
-					printf(" (self)");
-					continue;
-				}
-
-				printf(" ( ");
-				lit_print_value(*closure->upvalues[i]->location);
-				printf(" )");
-			}
-
 			break;
 		}
 
@@ -67,6 +51,11 @@ static void print_object(LitValue value) {
 
 		case OBJECT_INSTANCE: {
 			printf("%s instance", AS_INSTANCE(value)->klass->name->chars);
+			break;
+		}
+
+		case OBJECT_BOUND_METHOD: {
+			printf("method %s", AS_BOUND_METHOD(value)->method->name->chars);
 			break;
 		}
 

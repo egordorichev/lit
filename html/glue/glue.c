@@ -1,4 +1,4 @@
-#include <lit/lit.h>
+#include <lit/lit_config.h>
 #include <lit/vm/lit_vm.h>
 #include <lit/vm/lit_chunk.h>
 

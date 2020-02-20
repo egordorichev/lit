@@ -4,7 +4,7 @@
 #include <lit/lit_common.h>
 #include <lit/lit_predefines.h>
 #include <lit/vm/lit_object.h>
-#include <lit/lit.h>
+#include <lit/lit_config.h>
 
 #include <stdarg.h>
 

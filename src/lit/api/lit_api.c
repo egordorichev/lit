@@ -3,6 +3,8 @@
 #include <lit/vm/lit_chunk.h>
 #include <lit/vm/lit_object.h>
 
+#include <string.h>
+
 void lit_init_api(LitState* state) {
 	state->api_module = lit_create_module(state, lit_copy_string(state, "%c%", 3));
 
@@ -29,12 +31,22 @@ LitValue lit_get_global(LitState* state, LitString* name) {
 }
 
 void lit_set_global(LitState* state, LitString* name, LitValue value) {
+	lit_push_root(state, (LitObject *) name);
+	lit_push_value_root(state, value);
 	lit_table_set(state, &state->vm->globals, name, value);
+	lit_pop_roots(state, 2);
 }
 
 bool lit_global_exists(LitState* state, LitString* name) {
 	LitValue global;
 	return lit_table_get(&state->vm->globals, name, &global);
+}
+
+void lit_define_native(LitState* state, const char* name, LitNativeFn native) {
+	lit_push_root(state, (LitObject *) lit_create_native(state, native));
+	lit_push_root(state, (LitObject *) CONST_STRING(state, name));
+	lit_table_set(state, &state->vm->globals, AS_STRING(lit_peek_root(state, 0)), lit_peek_root(state, 1));
+	lit_pop_roots(state, 2);
 }
 
 LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count) {

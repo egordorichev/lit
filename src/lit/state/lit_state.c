@@ -49,7 +49,7 @@ LitState* lit_new_state() {
 	state->vm = (LitVm*) malloc(sizeof(LitVm));
 
 	lit_init_vm(state, state->vm);
-	lit_define_std(state->vm);
+	lit_define_std(state);
 
 	return state;
 }
