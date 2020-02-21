@@ -146,6 +146,16 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				return true;
 			}
 
+			case OBJECT_NATIVE_METHOD: {
+				LitNativeMethod* method = AS_NATIVE_METHOD(callee);
+
+				LitValue result = method->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count);
+				vm->fiber->stack_top -= arg_count + 1;
+				lit_push(vm, result);
+
+				return true;
+			}
+
 			case OBJECT_CLASS: {
 				LitClass* klass = AS_CLASS(callee);
 				vm->fiber->stack_top[-arg_count - 1] = OBJECT_VALUE(lit_create_instance(vm->state, klass));
@@ -237,6 +247,10 @@ static bool invoke_from_class(LitVm* vm, LitClass* klass, LitString* method_name
 	if (!lit_table_get(&klass->methods, method_name, &method)) {
 		runtime_error(vm, "Attempt to call undefined method '%s'", method_name->chars);
 		return false;
+	}
+
+	if (IS_NATIVE_METHOD(method)) {
+		return call_value(vm, method, arg_count);
 	}
 
 	return call(vm, AS_FUNCTION(method), NULL, arg_count);
@@ -855,10 +869,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(INVOKE) {
 			LitString* method_name = READ_STRING_LONG();
 			uint8_t arg_count = READ_BYTE();
+			LitValue receiver = PEEK(arg_count);
+
+			if (IS_NULL(receiver)) {
+				runtime_error(vm, "Attempt to index a null value");
+				RETURN_ERROR()
+			}
 
 			WRITE_FRAME()
-
-			LitValue receiver = PEEK(arg_count);
 
 			if (IS_CLASS(receiver)) {
 				if (!invoke_static_from_class(vm, AS_CLASS(receiver), method_name, arg_count)) {
@@ -867,32 +885,41 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 				READ_FRAME()
 				continue;
-			}
+			} else if (IS_INSTANCE(receiver)) {
+				LitInstance* instance = AS_INSTANCE(receiver);
+				LitValue value;
 
-			if (!IS_INSTANCE(receiver)) {
-				runtime_error(vm, "Only instances and classes have methods");
-				RETURN_ERROR()
-			}
+				if (lit_table_get(&instance->fields, method_name, &value)) {
+					fiber->stack_top[-arg_count - 1] = value;
 
-			LitInstance* instance = AS_INSTANCE(receiver);
-			LitValue value;
+					if (!call_value(vm, value, arg_count)) {
+						RETURN_ERROR()
+					}
 
-			if (lit_table_get(&instance->fields, method_name, &value)) {
-				fiber->stack_top[-arg_count - 1] = value;
+					READ_FRAME()
+					continue;
+				}
 
-				if (!call_value(vm, value, arg_count)) {
+				if (!invoke_from_class(vm, instance->klass, method_name, arg_count)) {
 					RETURN_ERROR()
 				}
 
 				READ_FRAME()
-				continue;
+			} else {
+				LitClass* type = lit_get_class_for(state, receiver);
+
+				if (type == NULL) {
+					runtime_error(vm, "Only instances and classes have methods");
+					RETURN_ERROR()
+				}
+
+				if (!invoke_from_class(vm, type, method_name, arg_count)) {
+					RETURN_ERROR()
+				}
+
+				READ_FRAME()
 			}
 
-			if (!invoke_from_class(vm, instance->klass, method_name, arg_count)) {
-				RETURN_ERROR()
-			}
-
-			READ_FRAME()
 			continue;
 		}
 
