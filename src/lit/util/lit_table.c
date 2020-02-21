@@ -59,7 +59,7 @@ static void adjust_capacity(LitState* state, LitTable* table, int capacity) {
 		LitTableEntry* destination = find_entry(entries, capacity, entry->key);
 
 		destination->key = entry->key;
-		destination->value = entries->value;
+		destination->value = entry->value;
 
 		table->count++;
 	}
