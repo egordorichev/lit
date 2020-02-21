@@ -28,3 +28,13 @@ class Best : Awesome {
 
 var b = new Best()
 b.printTest() // Expected: good
+
+print(b is Awesome) // Expected: true
+print(b is Best) // Expected: true
+print(a is Awesome) // Expected: true
+print(a is Best) // Expected: false
+
+print(b !is Awesome) // Expected: false
+print(b !is Best) // Expected: false
+print(a !is Awesome) // Expected: false
+print(a !is Best) // Expected: true

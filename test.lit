@@ -16,5 +16,5 @@ var n = new New()
 
 print(c is Cool)
 print(a is Cool)
-print(a is Awesome)
-print(n is Cool)
+print(a !is Awesome)
+print(n !is Cool)
