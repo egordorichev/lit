@@ -19,3 +19,30 @@ print(false && false) // Expected: false
 print(null ?? true) // Expected: true
 print(10 ?? true) // Expected: 10
 print(null ?? null) // Expected: null
+
+print("test" is String) // Expected: true
+print("test" is Object) // Expected: true
+print("test" is Number) // Expected: false
+
+print(32 is Number) // Expected: true
+print(32 is Object) // Expected: true
+
+print(true is Bool) // Expected: true
+print(true is Object) // Expected: true
+
+print(() => {} is Function) // Expected: true
+
+function a() {}
+
+print(a is Function) // Expected: true
+print(a is Object) // Expected: true
+
+class Test {
+
+}
+
+print(Test is Class) // Expected: true
+print(Test is Object) // Expected: false
+
+print([] is Array) // Expected: true
+print([] is Object) // Expected: true
