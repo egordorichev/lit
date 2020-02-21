@@ -65,3 +65,5 @@ OPCODE(PUSH_ELEMENT, -1)
 OPCODE(METHOD, -1)
 OPCODE(INVOKE, 0) // Varying stack effect
 OPCODE(INHERIT, -1)
+// [instance] [class] -> [bool]
+OPCODE(IS, -1)

@@ -864,11 +864,40 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitClass* klass = AS_CLASS(PEEK(1));
 			LitClass* super_klass = AS_CLASS(super);
 
+			klass->super = (struct LitClass *) super_klass;
 			klass->init_method = super_klass->init_method;
 
 			lit_table_add_all(state, &super_klass->methods, &klass->methods);
 
 			DROP();
+			continue;
+		}
+
+		CASE_CODE(IS) {
+			LitValue instance = PEEK(1);
+			LitValue klass = PEEK(0);
+
+			if (!IS_INSTANCE(instance) || !IS_CLASS(klass)) {
+				runtime_error(vm, "Operands must be an instance and a class");
+				RETURN_ERROR()
+			}
+
+			LitClass* type = AS_CLASS(klass);
+			LitClass* instance_type = AS_INSTANCE(instance)->klass;
+			bool found = false;
+
+			while (instance_type != NULL) {
+				if (instance_type == type) {
+					found = true;
+					break;
+				}
+
+				instance_type = (LitClass *) instance_type->super;
+			}
+
+			DROP_MULTIPLE(2); // Drop the instance and class
+			PUSH(BOOL_VALUE(found));
+
 			continue;
 		}
 

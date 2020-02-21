@@ -280,6 +280,7 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 			LitClass* klass = (LitClass*) object;
 
 			lit_mark_object(vm, (LitObject *) klass->name);
+			lit_mark_object(vm, (LitObject *) klass->super);
 			lit_mark_table(vm, &klass->methods);
 
 			break;

@@ -393,6 +393,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					break;
 				}
 
+				case TOKEN_IS: {
+					emit_byte(emitter, expression->line, OP_IS);
+					break;
+				}
+
 				case TOKEN_EQUAL_EQUAL: {
 					emit_byte(emitter, expression->line, OP_EQUAL);
 					break;

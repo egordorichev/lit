@@ -2,10 +2,19 @@ class Cool {
 
 }
 
-var a = null
+class Awesome : Cool {
 
-print(a?.prop)
-a = new Cool()
-print(a?.prop)
-a.prop = "awesome"
-print(a?.prop)
+}
+
+class New {
+
+}
+
+var c = new Cool()
+var a = new Awesome()
+var n = new New()
+
+print(c is Cool)
+print(a is Cool)
+print(a is Awesome)
+print(n is Cool)

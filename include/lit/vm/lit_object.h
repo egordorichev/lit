@@ -173,12 +173,14 @@ typedef struct LitFiber {
 
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function);
 
-typedef struct {
+typedef struct sLitClass {
 	LitObject object;
 
 	LitString* name;
 	LitFunction* init_method;
 	LitTable methods;
+
+	struct LitClass* super;
 } LitClass;
 
 LitClass* lit_create_class(LitState* state, LitString* name);

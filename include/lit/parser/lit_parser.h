@@ -17,6 +17,7 @@ typedef enum {
 	PREC_COMPOUND,    // += -= *= /= ++ --
 	PREC_TERM,        // + -
 	PREC_FACTOR,      // * /
+	PREC_IS,          // is
 	PREC_UNARY,       // ! -
 	PREC_NULL,        // ??
 	PREC_CALL,        // . ()

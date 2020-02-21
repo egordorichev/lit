@@ -261,13 +261,25 @@ static LitExpression* parse_unary(LitParser* parser, bool can_assign) {
 }
 
 static LitExpression* parse_binary(LitParser* parser, LitExpression* prev, bool can_assign) {
+	bool invert = parser->previous.type == TOKEN_BANG;
+
+	if (invert) {
+		consume(parser, TOKEN_IS, "Expected 'is' after '!'");
+	}
+
 	LitTokenType operator = parser->previous.type;
 	uint line = parser->previous.line;
 
 	LitParseRule* rule = get_rule(operator);
 	LitExpression* expression = parse_precedence(parser, (LitPrecedence) (rule->precedence + 1));
 
-	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, expression, operator);
+	expression = (LitExpression*) lit_create_binary_expression(parser->state, line, prev, expression, operator);
+
+	if (invert) {
+		expression = (LitExpression*) lit_create_unary_expression(parser->state, line, expression, TOKEN_BANG);
+	}
+
+	return expression;
 }
 
 static LitExpression* parse_and(LitParser* parser, LitExpression* prev, bool can_assign) {
@@ -790,10 +802,11 @@ static void setup_rules() {
 	rules[TOKEN_LEFT_PAREN] = (LitParseRule) { parse_grouping_or_lambda, parse_call, PREC_CALL };
 	rules[TOKEN_PLUS] = (LitParseRule) { NULL, parse_binary, PREC_TERM };
 	rules[TOKEN_MINUS] = (LitParseRule) { parse_unary, parse_binary, PREC_TERM };
-	rules[TOKEN_BANG] = (LitParseRule) { parse_unary, NULL, PREC_TERM };
+	rules[TOKEN_BANG] = (LitParseRule) { parse_unary, parse_binary, PREC_TERM };
 	rules[TOKEN_STAR] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_SLASH] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_PERCENT] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
+	rules[TOKEN_IS] = (LitParseRule) { NULL, parse_binary, PREC_IS };
 	rules[TOKEN_NUMBER] = (LitParseRule) { parse_number, NULL, PREC_NONE };
 	rules[TOKEN_TRUE] = (LitParseRule) { parse_literal, NULL, PREC_NONE };
 	rules[TOKEN_FALSE] = (LitParseRule) { parse_literal, NULL, PREC_NONE };

@@ -1,9 +1,11 @@
 # todo
 
+* a way to define methods and classes from c
+
+* toString, and overall string addition (finally)
 * static fields
-* super classes
+* super expression
 * maps
-* instance?.field
 * Prevent users from using break / continue outside of loops
 * fix line info being corrupted if chunk is too small
 * resizeable stack
