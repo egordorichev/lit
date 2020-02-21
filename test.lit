@@ -1,20 +1,8 @@
-class Cool {
-
+static class Math {
+	sin(x) {
+		return x * -1
+	}
 }
 
-class Awesome : Cool {
-
-}
-
-class New {
-
-}
-
-var c = new Cool()
-var a = new Awesome()
-var n = new New()
-
-print(c is Cool)
-print(a is Cool)
-print(a !is Awesome)
-print(n !is Cool)
+var method = Math.sin
+print(method(10))

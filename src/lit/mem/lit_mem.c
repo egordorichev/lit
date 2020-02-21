@@ -99,7 +99,11 @@ static void free_object(LitState* state, LitObject* object) {
 		}
 
 		case OBJECT_CLASS: {
-			lit_free_table(state, &((LitClass*) object)->methods);
+			LitClass* klass = (LitClass*) object;
+
+			lit_free_table(state, &klass->methods);
+			lit_free_table(state, &klass->static_methods);
+
 			LIT_FREE(state, LitClass, object);
 
 			break;
@@ -281,7 +285,9 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 
 			lit_mark_object(vm, (LitObject *) klass->name);
 			lit_mark_object(vm, (LitObject *) klass->super);
+
 			lit_mark_table(vm, &klass->methods);
+			lit_mark_table(vm, &klass->static_methods);
 
 			break;
 		}

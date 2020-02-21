@@ -67,7 +67,7 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 
 	emitter->chunk = &compiler->function->chunk;
 
-	if (type == FUNCTION_METHOD || type == FUNCTION_CONSTRUCTOR) {
+	if (type == FUNCTION_METHOD || type == FUNCTION_STATIC_METHOD || type == FUNCTION_CONSTRUCTOR) {
 		lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
 			"this", 4, -1, false
 		});
@@ -678,6 +678,8 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		case THIS_EXPRESSION: {
 			if (!emitter->in_class) {
 				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Can't use 'this' outside of methods");
+			} else if (emitter->compiler->type == FUNCTION_STATIC_METHOD) {
+				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Can't use 'this' in static methods");
 			}
 
 			emit_bytes(emitter, expression->line, OP_GET_LOCAL, 0);
@@ -957,10 +959,15 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 		case METHOD_STATEMENT: {
 			LitMethodStatement* stmt = (LitMethodStatement*) statement;
 			bool constructor = stmt->name->length == 11 && memcmp(stmt->name->chars, "constructor", 11) == 0;
+
+			if (constructor && stmt->is_static) {
+				lit_error(emitter->state, COMPILE_ERROR, statement->line, "Constructors can't be static (at least for now)");
+			}
+
 			begin_scope(emitter);
 
 			LitCompiler compiler;
-			init_compiler(emitter, &compiler, constructor ? FUNCTION_CONSTRUCTOR : FUNCTION_METHOD);
+			init_compiler(emitter, &compiler, constructor ? FUNCTION_CONSTRUCTOR : (stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD));
 
 			for (uint i = 0; i < stmt->parameters.count; i++) {
 				LitParameter parameter = stmt->parameters.values[i];
@@ -974,7 +981,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
 
-			emit_byte(emitter, statement->line, OP_METHOD);
+			emit_byte(emitter, statement->line, stmt->is_static ? OP_STATIC_METHOD : OP_METHOD);
 			emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
 
 			end_scope(emitter, emitter->last_line);

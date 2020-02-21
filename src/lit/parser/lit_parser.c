@@ -628,9 +628,13 @@ static LitStatement* parse_return(LitParser* parser) {
 	return (LitStatement*) lit_create_return_statement(parser->state, line, expression);
 }
 
-static LitStatement* parse_method(LitParser* parser) {
+static LitStatement* parse_method(LitParser* parser, bool is_static) {
+	if (match(parser, TOKEN_STATIC)) {
+		is_static = true;
+	}
+
 	consume(parser, TOKEN_IDENTIFIER, "Expected method name");
-	LitMethodStatement* method = lit_create_method_statement(parser->state, parser->previous.line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length));
+	LitMethodStatement* method = lit_create_method_statement(parser->state, parser->previous.line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length), is_static);
 
 	LitCompiler compiler;
 	init_compiler(parser, &compiler);
@@ -667,16 +671,22 @@ static LitStatement* parse_method(LitParser* parser) {
 static LitStatement* parse_class(LitParser* parser) {
 	uint line = parser->previous.line;
 
-	consume(parser, TOKEN_IDENTIFIER, "Expected class name");
+	bool is_static = parser->previous.type == TOKEN_STATIC;
+
+	if (is_static) {
+		consume(parser, TOKEN_CLASS, "Expected 'class' after 'static'");
+	}
+
+	consume(parser, TOKEN_IDENTIFIER, "Expected class name after 'class'");
 	LitString* name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
 	LitString* super = NULL;
 
 	if (match(parser, TOKEN_COLON)) {
-		consume(parser, TOKEN_IDENTIFIER, "Expected super class name");
+		consume(parser, TOKEN_IDENTIFIER, "Expected super class name after ':'");
 		super = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
 
 		if (super == name) {
-			error(parser, "Class can't inherit itself");
+			error(parser, "Classes can't inherit itselfes");
 		}
 	}
 
@@ -687,7 +697,7 @@ static LitStatement* parse_class(LitParser* parser) {
 	ignore_new_lines(parser);
 
 	while (!check(parser, TOKEN_RIGHT_BRACE)) {
-		LitStatement* method = parse_method(parser);
+		LitStatement* method = parse_method(parser, is_static);
 
 		if (method != NULL) {
 			lit_stataments_write(parser->state, &klass->methods, method);
@@ -739,6 +749,7 @@ static void sync(LitParser* parser) {
 			case TOKEN_FUNCTION:
 			case TOKEN_VAR:
 			case TOKEN_FOR:
+			case TOKEN_STATIC:
 			case TOKEN_IF:
 			case TOKEN_WHILE:
 			case TOKEN_RETURN: {
@@ -753,7 +764,7 @@ static void sync(LitParser* parser) {
 }
 
 static LitStatement* parse_declaration(LitParser* parser) {
-	if (match(parser, TOKEN_CLASS)) {
+	if (match(parser, TOKEN_CLASS) || match(parser, TOKEN_STATIC)) {
 		return parse_class(parser);
 	}
 

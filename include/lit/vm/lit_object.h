@@ -90,6 +90,7 @@ typedef enum {
 	FUNCTION_REGULAR,
 	FUNCTION_SCRIPT,
 	FUNCTION_METHOD,
+	FUNCTION_STATIC_METHOD,
 	FUNCTION_CONSTRUCTOR
 } LitFunctionType;
 
@@ -179,6 +180,7 @@ typedef struct sLitClass {
 	LitString* name;
 	LitFunction* init_method;
 	LitTable methods;
+	LitTable static_methods;
 
 	struct LitClass* super;
 } LitClass;

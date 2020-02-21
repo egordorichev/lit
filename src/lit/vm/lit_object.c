@@ -237,6 +237,7 @@ LitClass* lit_create_class(LitState* state, LitString* name) {
 	klass->super = NULL;
 
 	lit_init_table(&klass->methods);
+	lit_init_table(&klass->static_methods);
 
 	return klass;
 }

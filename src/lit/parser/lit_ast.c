@@ -499,11 +499,12 @@ LitReturnStatement *lit_create_return_statement(LitState* state, uint line, LitE
 	return statement;
 }
 
-LitMethodStatement *lit_create_method_statement(LitState* state, uint line, LitString* name) {
+LitMethodStatement *lit_create_method_statement(LitState* state, uint line, LitString* name, bool is_static) {
 	LitMethodStatement* statement = ALLOCATE_STATEMENT(state, LitMethodStatement, METHOD_STATEMENT);
 
 	statement->name = name;
 	statement->body = NULL;
+	statement->is_static = is_static;
 
 	lit_init_parameters(&statement->parameters);
 

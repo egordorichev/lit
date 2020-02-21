@@ -252,6 +252,17 @@ static bool invoke_from_class(LitVm* vm, LitClass* klass, LitString* method_name
 	return call(vm, AS_FUNCTION(method), NULL, arg_count);
 }
 
+static bool invoke_static_from_class(LitVm* vm, LitClass* klass, LitString* method_name, uint8_t arg_count) {
+	LitValue method;
+
+	if (!lit_table_get(&klass->static_methods, method_name, &method)) {
+		runtime_error(vm, "Attempt to call undefined static method '%s'", method_name->chars);
+		return false;
+	}
+
+	return call(vm, AS_FUNCTION(method), NULL, arg_count);
+}
+
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 	register LitVm *vm = state->vm;
 
@@ -690,18 +701,31 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(GET_FIELD) {
-			if (!IS_INSTANCE(PEEK(1))) {
-				runtime_error(vm, "Only instances have fields");
+			LitValue object = PEEK(1);
+
+			if (!IS_INSTANCE(object) && !IS_CLASS(object)) {
+				runtime_error(vm, "Only instances and classes have fields");
 				RETURN_ERROR()
 			}
 
 			LitValue value;
-			LitInstance* instance = AS_INSTANCE(PEEK(1));
 			LitString* name = AS_STRING(PEEK(0));
 
-			if (!lit_table_get(&instance->fields, name, &value)) {
-				if (lit_table_get(&instance->klass->methods, name, &value)) {
-					value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(instance), AS_FUNCTION(value)));
+			if (IS_INSTANCE(object)) {
+				LitInstance *instance = AS_INSTANCE(object);
+
+				if (!lit_table_get(&instance->fields, name, &value)) {
+					if (lit_table_get(&instance->klass->methods, name, &value)) {
+						value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(instance), AS_FUNCTION(value)));
+					} else {
+						value = NULL_VALUE;
+					}
+				}
+			} else {
+				LitClass* klass = AS_CLASS(object);
+
+				if (lit_table_get(&klass->static_methods, name, &value)) {
+					value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klass), AS_FUNCTION(value)));
 				} else {
 					value = NULL_VALUE;
 				}
@@ -804,6 +828,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(STATIC_METHOD) {
+			lit_table_set(state, &AS_CLASS(PEEK(1))->static_methods, READ_STRING_LONG(), PEEK(0));
+			DROP();
+
+			continue;
+		}
+
 		CASE_CODE(METHOD) {
 			LitClass* klass = AS_CLASS(PEEK(1));
 			LitString* name = READ_STRING_LONG();
@@ -826,8 +857,17 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			LitValue receiver = PEEK(arg_count);
 
+			if (IS_CLASS(receiver)) {
+				if (!invoke_static_from_class(vm, AS_CLASS(receiver), method_name, arg_count)) {
+					RETURN_ERROR()
+				}
+
+				READ_FRAME()
+				continue;
+			}
+
 			if (!IS_INSTANCE(receiver)) {
-				runtime_error(vm, "Only instances have methods");
+				runtime_error(vm, "Only instances and classes have methods");
 				RETURN_ERROR()
 			}
 

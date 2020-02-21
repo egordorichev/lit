@@ -291,9 +291,11 @@ typedef struct {
 	LitString* name;
 	LitParameters parameters;
 	LitStatement* body;
+
+	bool is_static;
 } LitMethodStatement;
 
-LitMethodStatement *lit_create_method_statement(LitState* state, uint line, LitString* name);
+LitMethodStatement *lit_create_method_statement(LitState* state, uint line, LitString* name, bool is_static);
 
 typedef struct {
 	LitStatement statement;
