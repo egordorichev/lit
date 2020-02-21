@@ -42,8 +42,8 @@ bool lit_global_exists(LitState* state, LitString* name) {
 	return lit_table_get(&state->vm->globals, name, &global);
 }
 
-void lit_define_native(LitState* state, const char* name, LitNativeFn native) {
-	lit_push_root(state, (LitObject *) lit_create_native(state, native));
+void lit_define_native(LitState* state, const char* name, LitNativeFunctionFn native) {
+	lit_push_root(state, (LitObject *) lit_create_native_function(state, native));
 	lit_push_root(state, (LitObject *) CONST_STRING(state, name));
 	lit_table_set(state, &state->vm->globals, AS_STRING(lit_peek_root(state, 0)), lit_peek_root(state, 1));
 	lit_pop_roots(state, 2);

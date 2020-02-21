@@ -60,8 +60,13 @@ static void free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
-		case OBJECT_NATIVE: {
-			LIT_FREE(state, LitNative, object);
+		case OBJECT_NATIVE_FUNCTION: {
+			LIT_FREE(state, LitNativeFunction, object);
+			break;
+		}
+
+		case OBJECT_NATIVE_METHOD: {
+			LIT_FREE(state, LitNativeMethod, object);
 			break;
 		}
 
@@ -121,6 +126,11 @@ static void free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_NATIVE_BOUND_METHOD: {
+			LIT_FREE(state, LitNativeBoundMethod, object);
+			break;
+		}
+
 		case OBJECT_ARRAY: {
 			lit_free_values(state, &((LitArray*) object)->values);
 			LIT_FREE(state, LitArray, object);
@@ -177,6 +187,7 @@ void lit_mark_value(LitVm* vm, LitValue value) {
 
 static void mark_roots(LitVm* vm) {
 	LitFiber* fiber = vm->fiber;
+	LitState* state = vm->state;
 
 	if (fiber != NULL) {
 		lit_mark_object(vm, (LitObject *) fiber);
@@ -200,11 +211,25 @@ static void mark_roots(LitVm* vm) {
 		lit_mark_object(vm, (LitObject*) upvalue);
 	}
 
-	for (uint i = 0; i < vm->state->root_count; i++) {
-		lit_mark_value(vm, vm->state->roots[i]);
+	for (uint i = 0; i < state->root_count; i++) {
+		lit_mark_value(vm, state->roots[i]);
 	}
 
-	lit_mark_object(vm, (LitObject *) vm->state->api_fiber);
+	lit_mark_object(vm, (LitObject *) state->api_fiber);
+	lit_mark_object(vm, (LitObject *) state->api_module);
+	lit_mark_object(vm, (LitObject *) state->api_function);
+
+	lit_mark_object(vm, (LitObject *) state->class_class);
+	lit_mark_object(vm, (LitObject *) state->object_class);
+	lit_mark_object(vm, (LitObject *) state->number_class);
+	lit_mark_object(vm, (LitObject *) state->string_class);
+	lit_mark_object(vm, (LitObject *) state->bool_class);
+	lit_mark_object(vm, (LitObject *) state->function_class);
+	lit_mark_object(vm, (LitObject *) state->fiber_class);
+	lit_mark_object(vm, (LitObject *) state->module_class);
+	lit_mark_object(vm, (LitObject *) state->array_class);
+	lit_mark_object(vm, (LitObject *) state->map_class);
+
 	lit_mark_table(vm, &vm->globals);
 	lit_mark_table(vm, &vm->modules);
 }
@@ -223,7 +248,8 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 #endif
 
 	switch (object->type) {
-		case OBJECT_NATIVE:
+		case OBJECT_NATIVE_FUNCTION:
+		case OBJECT_NATIVE_METHOD:
 		case OBJECT_STRING: {
 			break;
 		}
@@ -303,6 +329,15 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 
 		case OBJECT_BOUND_METHOD: {
 			LitBoundMethod* bound_method = (LitBoundMethod*) object;
+
+			lit_mark_value(vm, bound_method->receiver);
+			lit_mark_object(vm, (LitObject *) bound_method->method);
+
+			break;
+		}
+
+		case OBJECT_NATIVE_BOUND_METHOD: {
+			LitNativeBoundMethod* bound_method = (LitNativeBoundMethod*) object;
 
 			lit_mark_value(vm, bound_method->receiver);
 			lit_mark_object(vm, (LitObject *) bound_method->method);

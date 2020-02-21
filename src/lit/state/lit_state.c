@@ -5,6 +5,7 @@
 #include <lit/parser/lit_parser.h>
 #include <lit/scanner/lit_scanner.h>
 #include <lit/util/lit_fs.h>
+#include <lit/std/lit_core.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,17 @@ static void default_printf(const char* message, va_list args) {
 
 LitState* lit_new_state() {
 	LitState* state = (LitState*) malloc(sizeof(LitState));
+
+	state->class_class = NULL;
+	state->object_class = NULL;
+	state->number_class = NULL;
+	state->string_class = NULL;
+	state->bool_class = NULL;
+	state->function_class = NULL;
+	state->fiber_class = NULL;
+	state->module_class = NULL;
+	state->array_class = NULL;
+	state->map_class = NULL;
 
 	state->bytes_allocated = 0;
 	state->next_gc = 1024 * 1024;
@@ -49,7 +61,7 @@ LitState* lit_new_state() {
 	state->vm = (LitVm*) malloc(sizeof(LitVm));
 
 	lit_init_vm(state, state->vm);
-	lit_define_std(state);
+	lit_open_core_library(state);
 
 	return state;
 }
@@ -95,6 +107,46 @@ void lit_pop_root(LitState* state) {
 void lit_pop_roots(LitState* state, uint8_t amount) {
 	assert(state->root_count - amount >= 0);
 	state->root_count -= amount;
+}
+
+
+LitClass* lit_get_class_for(LitState* state, LitValue value) {
+	if (IS_OBJECT(value)) {
+		switch (OBJECT_TYPE(value)) {
+			case OBJECT_STRING: return state->string_class;
+
+			case OBJECT_FUNCTION:
+			case OBJECT_CLOSURE:
+			case OBJECT_NATIVE_FUNCTION:
+			case OBJECT_BOUND_METHOD:
+			case OBJECT_NATIVE_METHOD: {
+				return state->function_class;
+			}
+
+			case OBJECT_FIBER: return state->fiber_class;
+			case OBJECT_MODULE: return state->module_class;
+			case OBJECT_UPVALUE: {
+				LitUpvalue* upvalue = AS_UPVALUE(value);
+
+				if (upvalue->location == NULL) {
+					return lit_get_class_for(state, upvalue->closed);
+				}
+
+				return lit_get_class_for(state, *upvalue->location);
+			}
+
+			case OBJECT_CLASS: return state->class_class;
+			case OBJECT_INSTANCE: return AS_INSTANCE(value)->klass;
+			case OBJECT_ARRAY: return state->array_class;
+			case OBJECT_MAP: return state->map_class;
+		}
+	} else if (IS_NUMBER(value)) {
+		return state->number_class;
+	} else if (IS_BOOL(value)) {
+		return state->bool_class;
+	}
+
+	return NULL;
 }
 
 static void free_statements(LitState* state, LitStatements* statements) {

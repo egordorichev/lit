@@ -3,35 +3,15 @@
 #include <lit/debug/lit_debug.h>
 #include <lit/mem/lit_mem.h>
 #include <lit/util/lit_fs.h>
-#include <lit/api/lit_api.h>
 
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
-#include <time.h>
 
 static void reset_stack(LitVm* vm) {
 	if (vm->fiber != NULL) {
 		vm->fiber->stack_top = vm->fiber->stack;
 	}
-}
-
-LIT_NATIVE(time) {
-	return NUMBER_VALUE((double) clock() / CLOCKS_PER_SEC);
-}
-
-LIT_NATIVE(print) {
-	for (uint i = 0; i < arg_count; i++) {
-		lit_print_value(args[i]);
-		printf("\n");
-	}
-
-	return NULL_VALUE;
-}
-
-void lit_define_std(LitState* state) {
-	lit_define_native(state, "time", time_native);
-	lit_define_native(state, "print", print_native);
 }
 
 void lit_init_vm(LitState* state, LitVm* vm) {
@@ -157,8 +137,8 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				return call(vm, closure->function, closure, arg_count);
 			}
 
-			case OBJECT_NATIVE: {
-				LitNativeFn native = AS_NATIVE(callee);
+			case OBJECT_NATIVE_FUNCTION: {
+				LitNativeFunctionFn native = AS_NATIVE_FUNCTION(callee)->function;
 				LitValue result = native(vm, arg_count, vm->fiber->stack_top - arg_count);
 				vm->fiber->stack_top -= arg_count + 1;
 				lit_push(vm, result);
@@ -188,6 +168,16 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				vm->fiber->stack_top[-arg_count - 1] = bound_method->receiver;
 
 				return call(vm, bound_method->method, NULL, arg_count);
+			}
+
+			case OBJECT_NATIVE_BOUND_METHOD: {
+				LitNativeBoundMethod* bound_method = AS_NATIVE_BOUND_METHOD(callee);
+
+				LitValue result = bound_method->method->method(vm, bound_method->receiver, arg_count, vm->fiber->stack_top - arg_count);
+				vm->fiber->stack_top -= arg_count + 1;
+				lit_push(vm, result);
+
+				return true;
 			}
 
 			default: {
@@ -703,8 +693,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(GET_FIELD) {
 			LitValue object = PEEK(1);
 
-			if (!IS_INSTANCE(object) && !IS_CLASS(object)) {
-				runtime_error(vm, "Only instances and classes have fields");
+			if (IS_NULL(object)) {
+				runtime_error(vm, "Attempt to index a null value");
 				RETURN_ERROR()
 			}
 
@@ -721,11 +711,24 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 						value = NULL_VALUE;
 					}
 				}
-			} else {
-				LitClass* klass = AS_CLASS(object);
+			} else if (IS_CLASS(object)) {
+				LitClass *klass = AS_CLASS(object);
 
 				if (lit_table_get(&klass->static_methods, name, &value)) {
 					value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klass), AS_FUNCTION(value)));
+				} else {
+					value = NULL_VALUE;
+				}
+			} else {
+				LitClass* klass = lit_get_class_for(state, object);
+
+				if (klass == NULL) {
+					runtime_error(vm, "Only instances and classes have fields");
+					RETURN_ERROR()
+				}
+
+				if (lit_table_get(&klass->methods, name, &value)) {
+					value = OBJECT_VALUE(lit_create_native_bound_method(state, object, AS_NATIVE_METHOD(value)));
 				} else {
 					value = NULL_VALUE;
 				}

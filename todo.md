@@ -1,6 +1,7 @@
 # todo
 
 * a way to define methods and classes from c
+* userdata
 
 * toString, and overall string addition (finally)
 * static fields

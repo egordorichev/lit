@@ -194,9 +194,15 @@ LitClosure* lit_create_closure(LitState* state, LitFunction* function) {
 	return closure;
 }
 
-LitNative* lit_create_native(LitState* state, LitNativeFn function) {
-	LitNative* native = ALLOCATE_OBJECT(state, LitNative, OBJECT_NATIVE);
+LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunctionFn function) {
+	LitNativeFunction* native = ALLOCATE_OBJECT(state, LitNativeFunction, OBJECT_NATIVE_FUNCTION);
 	native->function = function;
+	return native;
+}
+
+LitNativeMethod* lit_create_native_method(LitState* state, LitNativeMethodFn method) {
+	LitNativeMethod* native = ALLOCATE_OBJECT(state, LitNativeMethod, OBJECT_NATIVE_METHOD);
+	native->method = method;
 	return native;
 }
 
@@ -253,6 +259,15 @@ LitInstance* lit_create_instance(LitState* state, LitClass* klass) {
 
 LitBoundMethod* lit_create_bound_method(LitState* state, LitValue receiver, LitFunction* method) {
 	LitBoundMethod* bound_method = ALLOCATE_OBJECT(state, LitBoundMethod, OBJECT_BOUND_METHOD);
+
+	bound_method->receiver = receiver;
+	bound_method->method = method;
+
+	return bound_method;
+}
+
+LitNativeBoundMethod* lit_create_native_bound_method(LitState* state, LitValue receiver, LitNativeMethod* method) {
+	LitNativeBoundMethod* bound_method = ALLOCATE_OBJECT(state, LitNativeBoundMethod, OBJECT_NATIVE_BOUND_METHOD);
 
 	bound_method->receiver = receiver;
 	bound_method->method = method;

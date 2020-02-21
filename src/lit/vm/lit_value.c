@@ -24,8 +24,13 @@ static void print_object(LitValue value) {
 			break;
 		}
 
-		case OBJECT_NATIVE: {
+		case OBJECT_NATIVE_FUNCTION: {
 			printf("native function");
+			break;
+		}
+
+		case OBJECT_NATIVE_METHOD: {
+			printf("native method");
 			break;
 		}
 
@@ -40,7 +45,14 @@ static void print_object(LitValue value) {
 		}
 
 		case OBJECT_UPVALUE: {
-			print_object(*AS_UPVALUE(value)->location);
+			LitUpvalue* upvalue = AS_UPVALUE(value);
+
+			if (upvalue->location == NULL) {
+				lit_print_value(upvalue->closed);
+			} else {
+				print_object(*upvalue->location);
+			}
+
 			break;
 		}
 
@@ -56,6 +68,11 @@ static void print_object(LitValue value) {
 
 		case OBJECT_BOUND_METHOD: {
 			printf("method %s", AS_BOUND_METHOD(value)->method->name->chars);
+			break;
+		}
+
+		case OBJECT_NATIVE_BOUND_METHOD: {
+			printf("native method");
 			break;
 		}
 

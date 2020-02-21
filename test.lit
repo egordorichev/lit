@@ -1,8 +1,2 @@
-static class Math {
-	sin(x) {
-		return x * -1
-	}
-}
-
-var method = Math.sin
-print(method(10))
+var m = "Hello, World".toString
+print(m())

@@ -37,6 +37,17 @@ typedef struct sLitState {
 	LitModule* api_module;
 	LitFunction* api_function;
 	LitFiber* api_fiber;
+
+	LitClass* class_class;
+	LitClass* object_class;
+	LitClass* number_class;
+	LitClass* string_class;
+	LitClass* bool_class;
+	LitClass* function_class;
+	LitClass* fiber_class;
+	LitClass* module_class;
+	LitClass* array_class;
+	LitClass* map_class;
 } sLitState;
 
 typedef enum {
@@ -53,6 +64,8 @@ void lit_push_value_root(LitState* state, LitValue value);
 LitValue lit_peek_root(LitState* state, uint8_t distance);
 void lit_pop_root(LitState* state);
 void lit_pop_roots(LitState* state, uint8_t amount);
+
+LitClass* lit_get_class_for(LitState* state, LitValue value);
 
 LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code);
 LitInterpretResult lit_interpret(LitState* state, const char* module_name, const char* code);

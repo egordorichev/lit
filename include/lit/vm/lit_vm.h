@@ -35,7 +35,6 @@ typedef struct sLitInterpretResult {
 } LitInterpretResult;
 
 void lit_init_vm(LitState* state, LitVm* vm);
-void lit_define_std(LitState* state);
 void lit_free_vm(LitVm* vm);
 
 void lit_push(LitVm* vm, LitValue value);
