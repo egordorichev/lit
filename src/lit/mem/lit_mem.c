@@ -138,6 +138,13 @@ static void free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_MAP: {
+			lit_free_table(state, &((LitMap*) object)->values);
+			LIT_FREE(state, LitMap, object);
+
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}
@@ -347,6 +354,11 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 
 		case OBJECT_ARRAY: {
 			mark_array(vm, &((LitArray*) object)->values);
+			break;
+		}
+
+		case OBJECT_MAP: {
+			lit_mark_table(vm, &((LitMap*) object)->values);
 			break;
 		}
 	}

@@ -99,6 +99,40 @@ static void print_object(LitValue value) {
 			}
 
 			printf("]");
+			break;
+		}
+
+		case OBJECT_MAP: {
+			LitMap* map = AS_MAP(value);
+			uint size = map->values.count;
+			printf("(%u) {", size);
+			bool had_before = false;
+
+			if (size > 16) {
+				printf(" (too big to be displayed) ");
+			} else if (size > 0) {
+				for (uint i = 0; i < map->values.capacity; i++) {
+					LitTableEntry* entry = &map->values.entries[i];
+
+					if (entry->key != NULL) {
+						if (had_before) {
+							printf(", ");
+						} else {
+							printf(" ");
+						}
+
+						printf("\"%s\" : ", entry->key->chars);
+						lit_print_value(entry->value);
+						had_before = true;
+					}
+				}
+			}
+
+			if (had_before) {
+				printf(" }");
+			} else {
+				printf("}");
+			}
 
 			break;
 		}

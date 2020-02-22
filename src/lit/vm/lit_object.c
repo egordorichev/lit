@@ -296,3 +296,9 @@ LitArray* lit_create_array(LitState* state) {
 	lit_init_values(&array->values);
 	return array;
 }
+
+LitMap* lit_create_map(LitState* state) {
+	LitMap* map = ALLOCATE_OBJECT(state, LitMap, OBJECT_MAP);
+	lit_init_table(&map->values);
+	return map;
+}

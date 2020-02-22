@@ -658,7 +658,20 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 			for (uint i = 0; i < expr->values.count; i++) {
 				emit_expression(emitter, expr->values.values[i]);
-				emit_byte(emitter, emitter->last_line, OP_PUSH_ELEMENT);
+				emit_byte(emitter, emitter->last_line, OP_PUSH_ARRAY_ELEMENT);
+			}
+
+			break;
+		}
+
+		case MAP_EXPRESSION: {
+			LitMapExpression* expr = (LitMapExpression*) expression;
+			emit_byte(emitter, expression->line, OP_MAP);
+
+			for (uint i = 0; i < expr->values.count; i++) {
+				emit_constant(emitter, emitter->last_line, expr->keys.values[i]);
+				emit_expression(emitter, expr->values.values[i]);
+				emit_byte(emitter, emitter->last_line, OP_PUSH_MAP_ELEMENT);
 			}
 
 			break;

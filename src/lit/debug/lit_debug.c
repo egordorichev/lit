@@ -157,7 +157,9 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_SUBSCRIPT_GET: return print_simple_op("OP_SUBSCRIPT_GET", offset);
 		case OP_SUBSCRIPT_SET: return print_simple_op("OP_SUBSCRIPT_SET", offset);
 		case OP_ARRAY: return print_simple_op("OP_ARRAY", offset);
-		case OP_PUSH_ELEMENT: return print_simple_op("OP_PUSH_ELEMENT", offset);
+		case OP_PUSH_ARRAY_ELEMENT: return print_simple_op("OP_PUSH_ARRAY_ELEMENT", offset);
+		case OP_MAP: return print_simple_op("OP_MAP", offset);
+		case OP_PUSH_MAP_ELEMENT: return print_simple_op("OP_PUSH_MAP_ELEMENT", offset);
 
 		case OP_METHOD: return print_constant_op("OP_METHOD", chunk, offset, true);
 		case OP_STATIC_METHOD: return print_constant_op("OP_STATIC_METHOD", chunk, offset, true);

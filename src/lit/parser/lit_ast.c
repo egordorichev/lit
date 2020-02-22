@@ -134,6 +134,16 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
+		case MAP_EXPRESSION: {
+			LitMapExpression* map = (LitMapExpression*) expression;
+
+			lit_free_values(state, &map->keys);
+			free_expressions(state, &map->values);
+
+			FREE_EXPRESSION(LitMapExpression)
+			break;
+		}
+
 		case SUBSCRIPT_EXPRESSION: {
 			LitSubscriptExpression* expr = (LitSubscriptExpression*) expression;
 
@@ -269,6 +279,15 @@ LitLambdaExpression *lit_create_lambda_expression(LitState* state, uint line) {
 LitArrayExpression *lit_create_array_expression(LitState* state, uint line) {
 	LitArrayExpression* expression = ALLOCATE_EXPRESSION(state, LitArrayExpression, ARRAY_EXPRESSION);
 	lit_init_expressions(&expression->values);
+	return expression;
+}
+
+LitMapExpression *lit_create_map_expression(LitState* state, uint line) {
+	LitMapExpression* expression = ALLOCATE_EXPRESSION(state, LitMapExpression, MAP_EXPRESSION);
+
+	lit_init_values(&expression->keys);
+	lit_init_expressions(&expression->values);
+
 	return expression;
 }
 

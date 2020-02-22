@@ -426,6 +426,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(MAP) {
+			PUSH(OBJECT_VALUE(lit_create_map(state)));
+			continue;
+		}
+
 		CASE_CODE(NEGATE) {
 			if (!IS_NUMBER(PEEK(0))) {
 				runtime_error(vm, "Operand must be a number");
@@ -800,72 +805,110 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(SUBSCRIPT_GET) {
-			if (!IS_ARRAY(PEEK(1))) {
-				INVOKE_METHOD(PEEK(1), "[]", 1);
-				continue;
-			}
+			LitValue instance = PEEK(1);
 
-			if (!IS_NUMBER(PEEK(0))) {
-				runtime_error(vm, "Array index must be a number");
-				RETURN_ERROR()
-			}
+			if (IS_ARRAY(instance)) {
+				if (!IS_NUMBER(PEEK(0))) {
+					runtime_error(vm, "Array index must be a number");
+					RETURN_ERROR()
+				}
 
-			LitValues *values = &AS_ARRAY(PEEK(1))->values;
-			int index = AS_NUMBER(PEEK(0));
+				LitValues* values = &AS_ARRAY(instance)->values;
+				int index = AS_NUMBER(PEEK(0));
 
-			if (index < 0) {
-				index = fmax(0, values->count + index);
-			}
+				if (index < 0) {
+					index = fmax(0, values->count + index);
+				}
 
-			DROP_MULTIPLE(2);
+				DROP_MULTIPLE(2);
 
-			if (values->capacity <= index) {
-				PUSH(NULL_VALUE);
+				if (values->capacity <= index) {
+					PUSH(NULL_VALUE);
+				} else {
+					PUSH(values->values[index]);
+				}
+			} else if (IS_MAP(instance)) {
+				if (!IS_STRING(PEEK(0))) {
+					runtime_error(vm, "Map index must be a string");
+					RETURN_ERROR()
+				}
+
+				LitTable* values = &AS_MAP(instance)->values;
+				LitString* index = AS_STRING(PEEK(0));
+
+				DROP_MULTIPLE(2);
+
+				LitValue value;
+
+				if (!lit_table_get(values, index, &value)) {
+					value = NULL_VALUE;
+				}
+
+				PUSH(value);
 			} else {
-				PUSH(values->values[index]);
+				INVOKE_METHOD(instance, "[]", 1);
 			}
 
 			continue;
 		}
 
 		CASE_CODE(SUBSCRIPT_SET) {
-			if (!IS_ARRAY(PEEK(2))) {
-				INVOKE_METHOD(PEEK(2), "[]", 2);
-				continue;
+			LitValue instance = PEEK(2);
+
+			if (IS_ARRAY(instance)) {
+				if (!IS_NUMBER(PEEK(1))) {
+					runtime_error(vm, "Array index must be a number");
+					RETURN_ERROR()
+				}
+
+				LitValues* values = &AS_ARRAY(instance)->values;
+				int index = AS_NUMBER(PEEK(1));
+
+				if (index < 0) {
+					index = fmax(0, values->count + index);
+				}
+
+				lit_values_ensure_size(state, values, index + 1);
+				LitValue value = values->values[index] = PEEK(0);
+				DROP_MULTIPLE(2);
+
+				*fiber->stack_top = value;
+			} else if (IS_MAP(instance)) {
+				if (!IS_STRING(PEEK(1))) {
+					runtime_error(vm, "Map index must be a string");
+					RETURN_ERROR()
+				}
+
+				LitTable* values = &AS_MAP(instance)->values;
+				LitValue value = PEEK(0);
+
+				lit_table_set(state, values, AS_STRING(PEEK(1)), value);
+
+				DROP_MULTIPLE(2);
+				*fiber->stack_top = value;
+			} else {
+				INVOKE_METHOD(instance, "[]", 2);
 			}
 
-			if (!IS_NUMBER(PEEK(1))) {
-				runtime_error(vm, "Array index must be a number");
-				RETURN_ERROR()
-			}
-
-			LitValues *values = &AS_ARRAY(PEEK(2))->values;
-			int index = AS_NUMBER(PEEK(1));
-
-			if (index < 0) {
-				index = fmax(0, values->count + index);
-			}
-
-			lit_values_ensure_size(state, values, index + 1);
-			LitValue value = values->values[index] = PEEK(0);
-			DROP_MULTIPLE(2);
-
-			*fiber->stack_top = value;
 			continue;
 		}
 
-		CASE_CODE(PUSH_ELEMENT) {
-			if (!IS_ARRAY(PEEK(1))) {
-				runtime_error(vm, "Only arrays can be indexed");
-				RETURN_ERROR()
-			}
-
-			LitValues *values = &AS_ARRAY(PEEK(1))->values;
+		CASE_CODE(PUSH_ARRAY_ELEMENT) {
+			LitValues* values = &AS_ARRAY(PEEK(1))->values;
 			int index = values->count;
 
 			lit_values_ensure_size(state, values, index + 1);
 			LitValue value = values->values[index] = PEEK(0);
 			DROP();
+
+			continue;
+		}
+
+		CASE_CODE(PUSH_MAP_ELEMENT) {
+			LitMap* map = AS_MAP(PEEK(2));
+
+			lit_table_set(state, &map->values, AS_STRING(PEEK(1)), PEEK(0));
+			DROP_MULTIPLE(2);
 
 			continue;
 		}

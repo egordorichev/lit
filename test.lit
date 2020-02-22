@@ -1,48 +1,10 @@
-class Test {
-	constructor() {
-		this.base = 1
-		this.array = [ 1, 2, 3 ]
-	}
-
-	operator + (value) {
-		return this.base + value
-	}
-
-	operator - (value) {
-		return this.base - value
-	}
-
-	operator * (value) {
-		return this.base * value
-	}
-
-	operator / (value) {
-		return this.base / value
-	}
-
-	operator % (value) {
-		return this.base % value
-	}
-
-	operator ! () {
-		return true
-	}
-
-	operator [] (index, value) {
-		if (value != null) {
-			this.array[index] = value
-		} else {
-			return this.array[index]
-		}
-	}
-
-	operator == (value) {
-		return this.base == value
-	}
+var map = {
+	"test" : 48,
+	"name" : "Egor",
+	"array" : [
+		32, 48
+	]
 }
 
-var t = new Test()
-
-print(t == 1) // Expected: true
-print(t == 2) // Expected: false
-print(!t) // Expected: true
+map["name"] = "Maanex inc."
+print(map["name"])

@@ -430,8 +430,10 @@ static LitExpression* parse_question(LitParser* parser, LitExpression* previous,
 
 static LitExpression* parse_array(LitParser* parser, bool can_assign) {
 	LitArrayExpression* array = lit_create_array_expression(parser->state, parser->previous.line);
+	ignore_new_lines(parser);
 
 	while (!check(parser, TOKEN_RIGHT_BRACKET)) {
+		ignore_new_lines(parser);
 		lit_expressions_write(parser->state, &array->values, parse_expression(parser));
 
 		if (!match(parser,  TOKEN_COMMA)) {
@@ -439,8 +441,36 @@ static LitExpression* parse_array(LitParser* parser, bool can_assign) {
 		}
 	}
 
+	ignore_new_lines(parser);
 	consume(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after array");
+
 	return (LitExpression*) array;
+}
+
+static LitExpression* parse_map(LitParser* parser, bool can_assign) {
+	LitMapExpression* map = lit_create_map_expression(parser->state, parser->previous.line);
+	ignore_new_lines(parser);
+
+	while (!check(parser, TOKEN_RIGHT_BRACE)) {
+		ignore_new_lines(parser);
+		consume(parser, TOKEN_STRING, "Expected key string after '{'");
+		lit_values_write(parser->state, &map->keys, OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start + 1, parser->previous.length - 2)));
+
+		ignore_new_lines(parser);
+		consume(parser, TOKEN_COLON, "Expected ':' after key string");
+
+		ignore_new_lines(parser);
+		lit_expressions_write(parser->state, &map->values, parse_expression(parser));
+
+		if (!match(parser,  TOKEN_COMMA)) {
+			break;
+		}
+	}
+
+	ignore_new_lines(parser);
+	consume(parser, TOKEN_RIGHT_BRACE, "Expected '}' after map");
+
+	return (LitExpression*) map;
 }
 
 static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous, bool can_assign) {
@@ -895,6 +925,7 @@ static void setup_rules() {
 	rules[TOKEN_REQUIRE] = (LitParseRule) { parse_require, NULL, PREC_NONE };
 	rules[TOKEN_DOT] = (LitParseRule) { NULL, parse_dot, PREC_CALL };
 	rules[TOKEN_LEFT_BRACKET] = (LitParseRule) { parse_array, parse_subscript, PREC_NONE };
+	rules[TOKEN_LEFT_BRACE] = (LitParseRule) { parse_map, NULL, PREC_NONE };
 	rules[TOKEN_THIS] = (LitParseRule) { parse_this, NULL, PREC_NONE };
 	rules[TOKEN_QUESTION] = (LitParseRule) { NULL, parse_question, PREC_CALL };
 }

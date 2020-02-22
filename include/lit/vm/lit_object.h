@@ -37,6 +37,7 @@
 #define AS_CLASS(value) ((LitClass*) AS_OBJECT(value))
 #define AS_INSTANCE(value) ((LitInstance*) AS_OBJECT(value))
 #define AS_ARRAY(value) ((LitArray*) AS_OBJECT(value))
+#define AS_MAP(value) ((LitMap*) AS_OBJECT(value))
 #define AS_BOUND_METHOD(value) ((LitBoundMethod*) AS_OBJECT(value))
 #define AS_NATIVE_BOUND_METHOD(value) ((LitNativeBoundMethod*) AS_OBJECT(value))
 
@@ -243,5 +244,12 @@ typedef struct {
 } LitArray;
 
 LitArray* lit_create_array(LitState* state);
+
+typedef struct {
+	LitObject object;
+	LitTable values;
+} LitMap;
+
+LitMap* lit_create_map(LitState* state);
 
 #endif
