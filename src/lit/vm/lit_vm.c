@@ -241,11 +241,14 @@ static void close_upvalues(LitVm* vm, const LitValue* last) {
 	}
 }
 
-static bool invoke_from_class(LitVm* vm, LitClass* klass, LitString* method_name, uint8_t arg_count) {
+static bool invoke_from_class(LitVm* vm, LitClass* klass, LitString* method_name, uint8_t arg_count, bool error) {
 	LitValue method;
 
 	if (!lit_table_get(&klass->methods, method_name, &method)) {
-		runtime_error(vm, "Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars);
+		if (error) {
+			runtime_error(vm, "Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars);
+		}
+
 		return false;
 	}
 
@@ -322,22 +325,25 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 #define INVOKE_METHOD(instance, method_name, arg_count) \
 	LitClass* klass = lit_get_class_for(state, instance); \
+	if (klass == NULL) { \
+		runtime_error(vm, "Only instances and classes have methods"); \
+		RETURN_ERROR() \
+	} \
 	WRITE_FRAME(); \
-	if (!invoke_from_class(vm, klass, CONST_STRING(state, method_name), arg_count)) { \
+	if (!invoke_from_class(vm, klass, CONST_STRING(state, method_name), arg_count, true)) { \
 		RETURN_ERROR() \
 	} \
 	READ_FRAME();
 
-#define BINARY_OP(type, op) \
-    do { \
-			if (!IS_NUMBER(PEEK(0)) || !IS_NUMBER(PEEK(1))) { \
-				runtime_error(vm, "Operands must be numbers"); \
-				RETURN_ERROR() \
-			} \
-      double b = AS_NUMBER(POP()); \
-      double a = AS_NUMBER(POP()); \
-      PUSH(type(a op b)); \
-    } while (false);
+#define BINARY_OP(type, op, op_string) \
+	LitValue a = PEEK(1); \
+	LitValue b = PEEK(0); \
+	if (IS_NUMBER(a) && IS_NUMBER(b)) { \
+		DROP(); \
+		*(fiber->stack_top - 1) = (type(AS_NUMBER(a) op AS_NUMBER(b))); \
+		continue; \
+	} \
+	INVOKE_METHOD(a, op_string, 1);
 
 #ifdef LIT_TRACE_EXECUTION
 	printf("== %s ==\n", frame->function->name->chars);
@@ -431,59 +437,63 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(NOT) {
+			if (IS_INSTANCE(PEEK(0))) {
+				WRITE_FRAME()
+
+				if (invoke_from_class(vm, AS_INSTANCE(PEEK(0))->klass, CONST_STRING(state, "!"), 0, false)) {
+					READ_FRAME()
+					continue;
+				}
+			}
+
 			PUSH(BOOL_VALUE(is_falsey(POP())));
 			continue;
 		}
 
 		CASE_CODE(ADD) {
-			LitValue a = PEEK(1);
-			LitValue b = PEEK(0);
-
-			if (IS_NUMBER(a) && IS_NUMBER(b)) {
-				DROP(); // Drop one
-				*fiber->stack_top = NUMBER_VALUE(a + b);
-
-				continue;
-			}
-
-			if (IS_NULL(a) || IS_NULL(b)) {
-				runtime_error(vm, "+ operator operands must be non-nulls");
-				RETURN_ERROR()
-			}
-
-			INVOKE_METHOD(a, "+", 1);
+			BINARY_OP(NUMBER_VALUE, +, "+")
 			continue;
 		}
 
 		CASE_CODE(SUBTRACT) {
-			BINARY_OP(NUMBER_VALUE, -)
+			BINARY_OP(NUMBER_VALUE, -, "-")
 			continue;
 		}
 
 		CASE_CODE(MULTIPLY) {
-			BINARY_OP(NUMBER_VALUE, *)
+			BINARY_OP(NUMBER_VALUE, *, "*")
 			continue;
 		}
 
 		CASE_CODE(DIVIDE) {
-			BINARY_OP(NUMBER_VALUE, /)
+			BINARY_OP(NUMBER_VALUE, /, "/")
 			continue;
 		}
 
 		CASE_CODE(MOD) {
-			if (!IS_NUMBER(PEEK(0)) || !IS_NUMBER(PEEK(1))) {
-				runtime_error(vm, "Operands must be numbers");
-				RETURN_ERROR()
+			LitValue a = PEEK(1);
+			LitValue b = PEEK(0);
+
+			if (IS_NUMBER(a) && IS_NUMBER(b)) {
+				DROP();
+				*(fiber->stack_top - 1) = NUMBER_VALUE(fmod(AS_NUMBER(a), AS_NUMBER(b)));
+				continue;
 			}
 
-      double b = AS_NUMBER(POP());
-      double a = AS_NUMBER(POP());
-
-      PUSH(NUMBER_VALUE(fmod(a, b)));
-      continue;
+			INVOKE_METHOD(a, "%", 1);
+			continue;
 		}
 
 		CASE_CODE(EQUAL) {
+			if (IS_INSTANCE(PEEK(1))) {
+				WRITE_FRAME()
+
+				if (invoke_from_class(vm, AS_INSTANCE(PEEK(1))->klass, CONST_STRING(state, "=="), 1, false)) {
+					READ_FRAME()
+					continue;
+				}
+			}
+
 			LitValue a = POP();
 			LitValue b = POP();
 
@@ -491,31 +501,23 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
-		CASE_CODE(NOT_EQUAL) {
-			LitValue a = POP();
-			LitValue b = POP();
-
-			PUSH(BOOL_VALUE(a != b));
-			continue;
-		}
-
 		CASE_CODE(GREATER) {
-			BINARY_OP(BOOL_VALUE, >)
+			BINARY_OP(BOOL_VALUE, >, ">")
 			continue;
 		}
 
 		CASE_CODE(GREATER_EQUAL) {
-			BINARY_OP(BOOL_VALUE, >=)
+			BINARY_OP(BOOL_VALUE, >=, ">=")
 			continue;
 		}
 
 		CASE_CODE(LESS) {
-			BINARY_OP(BOOL_VALUE, <)
+			BINARY_OP(BOOL_VALUE, <, "<")
 			continue;
 		}
 
 		CASE_CODE(LESS_EQUAL) {
-			BINARY_OP(BOOL_VALUE, <=)
+			BINARY_OP(BOOL_VALUE, <=, "<=")
 			continue;
 		}
 
@@ -923,7 +925,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					continue;
 				}
 
-				if (!invoke_from_class(vm, instance->klass, method_name, arg_count)) {
+				if (!invoke_from_class(vm, instance->klass, method_name, arg_count, true)) {
 					RETURN_ERROR()
 				}
 
@@ -936,7 +938,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					RETURN_ERROR()
 				}
 
-				if (!invoke_from_class(vm, type, method_name, arg_count)) {
+				if (!invoke_from_class(vm, type, method_name, arg_count, true)) {
 					RETURN_ERROR()
 				}
 
@@ -1006,8 +1008,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		break;
 	}
 
-#undef POP_MULTIPLE
+#undef INVOKE_METHOD
+#undef DROP_MULTIPLE
 #undef PUSH
+#undef DROP
 #undef POP
 #undef WRITE_FRAME
 #undef READ_FRAME

@@ -24,7 +24,23 @@ class Test {
 		return this.base % value
 	}
 
-	operator ! () {
+	operator > (value) {
+		return this.base > value
+	}
+
+	operator >= (value) {
+		return this.base >= value
+	}
+
+	operator < (value) {
+		return this.base < value
+	}
+
+	operator <= (value) {
+		return this.base <= value
+	}
+
+	operator ! (value) {
 		return true
 	}
 
@@ -43,6 +59,18 @@ class Test {
 
 var t = new Test()
 
+print(t + 3) // Expected: 4
+print(t - 3) // Expected: -2
+print(t * 3) // Expected: 3
+print(t / 2) // Expected: 0.5
+print(t % 2) // Expected: 1
+print(t > 1) // Expected: false
+print(t >= 1) // Expected: true
+print(t < 1) // Expected: false
+print(t <= 1) // Expected: true
+print(t[2]) // Expected: 3
+t[2] = 4
+print(t[2]) // Expected: 4
 print(t == 1) // Expected: true
 print(t == 2) // Expected: false
 print(!t) // Expected: true

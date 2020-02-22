@@ -409,10 +409,15 @@ static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool
 	if (can_assign && match(parser, TOKEN_EQUAL)) {
 		return (LitExpression *) lit_create_set_expression(parser->state, line, previous, name, length, parse_expression(parser));
 	} else {
-		return (LitExpression*) lit_create_get_expression(parser->state, line, previous, name, length, false);
+		LitExpression* expression = (LitExpression*) lit_create_get_expression(parser->state, line, previous, name, length, false);
+
+		if (match(parser, TOKEN_LEFT_BRACKET)) {
+			return parse_subscript(parser, expression, can_assign);
+		}
+
+		return expression;
 	}
 }
-
 
 static LitExpression* parse_question(LitParser* parser, LitExpression* previous, bool can_assign) {
 	uint line = parser->previous.line;
@@ -637,7 +642,10 @@ static LitTokenType operators[] = {
 
 	TOKEN_BANG,
 	TOKEN_LESS,
+	TOKEN_LESS_EQUAL,
 	TOKEN_GREATER,
+	TOKEN_GREATER_EQUAL,
+	TOKEN_EQUAL_EQUAL,
 
 	TOKEN_LEFT_BRACKET,
 

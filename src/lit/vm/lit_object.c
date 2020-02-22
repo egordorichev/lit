@@ -226,6 +226,10 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	fiber->frame_count = 1;
 	fiber->module = module;
 
+	for (uint i = 0; i < LIT_CALL_FRAMES_MAX; i++) {
+		fiber->frames[i].closure = NULL;
+	}
+
 	LitCallFrame* frame = &fiber->frames[0];
 
 	frame->function = function;

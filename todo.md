@@ -7,6 +7,7 @@
 * static fields
 * super expression
 * maps
+* try/catch/exception
 * Prevent users from using break / continue outside of loops
 * fix line info being corrupted if chunk is too small
 * resizeable stack

@@ -404,7 +404,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				}
 
 				case TOKEN_BANG_EQUAL: {
-					emit_byte(emitter, expression->line, OP_NOT_EQUAL);
+					emit_bytes(emitter, expression->line, OP_EQUAL, OP_NOT);
 					break;
 				}
 
@@ -528,7 +528,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 				emit_bytes(emitter, emitter->last_line, OP_SET_FIELD, OP_POP);
 			} else if (expr->to->type == SUBSCRIPT_EXPRESSION) {
-				LitSubscriptExpression* e = (LitSubscriptExpression*) expr->to;
+				LitSubscriptExpression *e = (LitSubscriptExpression *) expr->to;
 
 				emit_expression(emitter, e->array);
 				emit_expression(emitter, e->index);
@@ -951,7 +951,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			emit_byte(emitter, emitter->last_line, OP_RETURN);
-			emitter->compiler->skip_return = true;
+
+			if (emitter->compiler->scope_depth == 0) {
+				emitter->compiler->skip_return = true;
+			}
 
 			return true;
 		}
