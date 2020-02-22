@@ -1,7 +1,6 @@
 # todo
 
 * std
-* userdata
 
 * toString, and overall string addition (finally)
 * static fields
@@ -9,7 +8,6 @@
 
 * find an operator for floor division
 * ~~a to floor?
-* 3 ** 2
 
 * try/catch/exception
 * Prevent users from using break / continue outside of loops

@@ -39,7 +39,6 @@ static uint32_t hash_string(const char* key, uint length) {
 	return hash;
 }
 
-
 LitString* lit_take_string(LitState* state, const char* chars, uint length) {
 	uint32_t hash = hash_string(chars, length);
 	LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
@@ -301,4 +300,13 @@ LitMap* lit_create_map(LitState* state) {
 	LitMap* map = ALLOCATE_OBJECT(state, LitMap, OBJECT_MAP);
 	lit_init_table(&map->values);
 	return map;
+}
+
+LitUserdata* lit_create_userdata(LitState* state, size_t size) {
+	LitUserdata* userdata = ALLOCATE_OBJECT(state, LitUserdata, OBJECT_USERDATA);
+
+	userdata->data = lit_reallocate(state, NULL, 0, size);
+	userdata->size = size;
+
+	return userdata;
 }

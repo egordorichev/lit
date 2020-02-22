@@ -145,6 +145,15 @@ static void free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_USERDATA: {
+			LitUserdata* data = (LitUserdata*) object;
+
+			lit_reallocate(state, data->data, data->size, 0);
+			LIT_FREE(state, LitUserdata, object);
+
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}
@@ -257,6 +266,7 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 	switch (object->type) {
 		case OBJECT_NATIVE_FUNCTION:
 		case OBJECT_NATIVE_METHOD:
+		case OBJECT_USERDATA:
 		case OBJECT_STRING: {
 			break;
 		}

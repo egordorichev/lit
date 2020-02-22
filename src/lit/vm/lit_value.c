@@ -137,6 +137,11 @@ static void print_object(LitValue value) {
 			break;
 		}
 
+		case OBJECT_USERDATA: {
+			printf("userdata");
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}
