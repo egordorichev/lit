@@ -1,9 +1,1 @@
-var map = {
-	"test" : 48,
-	"name" : "Egor",
-	"array" : [
-		32, 48
-	]
-}
-
-print(map["array"][1])
+print(3 ** 2)

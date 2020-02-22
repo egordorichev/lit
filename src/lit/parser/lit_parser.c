@@ -898,6 +898,7 @@ static void setup_rules() {
 	rules[TOKEN_MINUS] = (LitParseRule) { parse_unary, parse_binary, PREC_TERM };
 	rules[TOKEN_BANG] = (LitParseRule) { parse_unary, parse_binary, PREC_TERM };
 	rules[TOKEN_STAR] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
+	rules[TOKEN_STAR_STAR] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_SLASH] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_PERCENT] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_IS] = (LitParseRule) { NULL, parse_binary, PREC_IS };

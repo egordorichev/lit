@@ -383,6 +383,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					break;
 				}
 
+				case TOKEN_STAR_STAR: {
+					emit_byte(emitter, expression->line, OP_POWER);
+					break;
+				}
+
 				case TOKEN_SLASH: {
 					emit_byte(emitter, expression->line, OP_DIVIDE);
 					break;
