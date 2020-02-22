@@ -5,6 +5,9 @@
 * toString, and overall string addition (finally)
 * static fields
 * super expression
+* range
+* better for loops's (map iteration, array iteration, range iteration)
+* setters/getters
 
 * find an operator for floor division
 * ~~a to floor?
@@ -16,5 +19,4 @@
 * /* */ (block comments)
 * switch statement
 * if expression (? :)
-* multi-line strings
 * string interpolation

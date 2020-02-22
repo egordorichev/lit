@@ -128,6 +128,24 @@ static LitToken parse_string(LitScanner* scanner) {
 	return make_token(scanner, TOKEN_STRING);
 }
 
+static LitToken parse_multiline_string(LitScanner* scanner) {
+	while (peek(scanner) != '`' && !is_at_end(scanner)) {
+		if (peek(scanner) == '\n') {
+			scanner->line++;
+		}
+
+		advance(scanner);
+	}
+
+	if (is_at_end(scanner)) {
+		return make_error_token(scanner, "Unterminated string");
+	}
+
+	// Closing `
+	advance(scanner);
+	return make_token(scanner, TOKEN_STRING);
+}
+
 static bool is_digit(char c) {
 	return c >= '0' && c <= '9';
 }
@@ -324,6 +342,7 @@ LitToken lit_scan_token(LitScanner* scanner) {
 		case '&': return match_tokens(scanner, '=', '&', TOKEN_AMPERSAND_EQUAL, TOKEN_AMPERSAND_AMPERSAND, TOKEN_AMPERSAND);
 
 		case '"': return parse_string(scanner);
+		case '`': return parse_multiline_string(scanner);
 	}
 
 	return make_error_token(scanner, "Unexpected character");
