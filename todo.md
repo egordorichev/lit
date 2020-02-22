@@ -10,7 +10,6 @@
 * ~~a to floor?
 
 * try/catch/exception
-* Prevent users from using break / continue outside of loops
 * fix line info being corrupted if chunk is too small
 * resizeable stack
 * allow to require modules using local path from the module path (module path + require_path)

@@ -57,6 +57,8 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 	compiler->enclosing = (struct LitCompiler *) emitter->compiler;
 	compiler->skip_return = false;
 	compiler->function = lit_create_function(emitter->state);
+	compiler->loop_depth = 0;
+
 	emitter->compiler = compiler;
 
 	const char* name = emitter->state->scanner->file_name;
@@ -822,6 +824,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			uint start = emitter->chunk->count;
 			emitter->loop_start = start;
+			emitter->compiler->loop_depth++;
 
 			emit_expression(emitter, stmt->condition);
 
@@ -833,6 +836,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			patch_jump(emitter, exit_jump, emitter->last_line);
 			emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
 			patch_breaks(emitter, emitter->last_line);
+			emitter->compiler->loop_depth--;
 
 			break;
 		}
@@ -840,6 +844,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 		case FOR_STATEMENT: {
 			LitForStatement* stmt = (LitForStatement*) statement;
 			begin_scope(emitter);
+			emitter->compiler->loop_depth++;
 
 			if (stmt->var != NULL) {
 				emit_statement(emitter, stmt->var);
@@ -879,16 +884,25 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			patch_breaks(emitter, emitter->last_line);
 			end_scope(emitter, emitter->last_line);
+			emitter->compiler->loop_depth--;
 
 			break;
 		}
 
 		case CONTINUE_STATEMENT: {
+			if (emitter->compiler->loop_depth == 0) {
+				lit_error(emitter->state, COMPILE_ERROR, statement->line, "Can't use 'continue' outside of loops");
+			}
+
 			emit_loop(emitter, emitter->loop_start, statement->line);
 			break;
 		}
 
 		case BREAK_STATEMENT: {
+			if (emitter->compiler->loop_depth == 0) {
+				lit_error(emitter->state, COMPILE_ERROR, statement->line, "Can't use 'break' outside of loops");
+			}
+
 			lit_uints_write(emitter->state, &emitter->breaks, emit_jump(emitter, OP_JUMP, statement->line));
 			break;
 		}

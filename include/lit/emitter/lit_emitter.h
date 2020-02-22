@@ -41,6 +41,7 @@ typedef struct {
 	struct LitCompiler* enclosing;
 
 	bool skip_return;
+	uint loop_depth;
 } LitCompiler;
 
 typedef struct sLitEmitter {
