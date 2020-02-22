@@ -55,7 +55,7 @@ typedef struct sLitEmitter {
 	LitUInts breaks;
 
 	LitString* module_name;
-	bool in_class;
+	LitString* class_name;
 } sLitEmitter;
 
 void lit_init_emitter(LitState* state, LitEmitter* emitter);

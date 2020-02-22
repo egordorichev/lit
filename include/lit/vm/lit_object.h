@@ -96,6 +96,7 @@ typedef struct sLitString {
 } sLitString;
 
 LitString* lit_copy_string(LitState* state, const char* chars, uint length);
+LitString* lit_take_string(LitState* state, const char* chars, uint length);
 LitValue lit_string_format(LitState* state, const char* format, ...);
 LitValue lit_number_to_string(LitState* state, double value);
 

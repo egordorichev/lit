@@ -13,6 +13,22 @@ LIT_METHOD(object_toString) {
 	return OBJECT_VALUE(lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_get_class_for(vm->state, instance)->name)));
 }
 
+LIT_METHOD(number_toString) {
+	return OBJECT_VALUE(lit_number_to_string(vm->state, AS_NUMBER(instance)));
+}
+
+LIT_METHOD(bool_toString) {
+	if (AS_BOOL(instance)) {
+		return OBJECT_CONST_STRING(vm->state, "true");
+	}
+
+	return OBJECT_CONST_STRING(vm->state, "false");
+}
+
+LIT_METHOD(string_toString) {
+	return instance;
+}
+
 LIT_NATIVE(time) {
 	return NUMBER_VALUE((double) clock() / CLOCKS_PER_SEC);
 }
@@ -39,16 +55,19 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Number")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_METHOD("toString", number_toString)
 		state->number_class = klass;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("String")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_METHOD("toString", string_toString)
 		state->string_class = klass;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("Bool")
 		LIT_INHERIT_CLASS(state->object_class)state->bool_class = klass;
+		LIT_BIND_METHOD("toString", bool_toString)
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("Function")

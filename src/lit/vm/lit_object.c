@@ -39,6 +39,18 @@ static uint32_t hash_string(const char* key, uint length) {
 	return hash;
 }
 
+
+LitString* lit_take_string(LitState* state, const char* chars, uint length) {
+	uint32_t hash = hash_string(chars, length);
+	LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
+
+	if (interned != NULL) {
+		return interned;
+	}
+
+	return allocate_string(state, (char*) chars, length, hash);
+}
+
 LitString* lit_copy_string(LitState* state, const char* chars, uint length) {
 	uint32_t hash = hash_string(chars, length);
 	LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);

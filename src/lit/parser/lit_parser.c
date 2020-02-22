@@ -628,13 +628,56 @@ static LitStatement* parse_return(LitParser* parser) {
 	return (LitStatement*) lit_create_return_statement(parser->state, line, expression);
 }
 
+static LitTokenType operators[] = {
+	TOKEN_PLUS,
+	TOKEN_MINUS,
+	TOKEN_STAR,
+	TOKEN_PERCENT,
+	TOKEN_SLASH,
+
+	TOKEN_BANG,
+	TOKEN_LESS,
+	TOKEN_GREATER,
+
+	TOKEN_LEFT_BRACKET,
+
+	TOKEN_EOF
+};
+
 static LitStatement* parse_method(LitParser* parser, bool is_static) {
 	if (match(parser, TOKEN_STATIC)) {
 		is_static = true;
 	}
 
-	consume(parser, TOKEN_IDENTIFIER, "Expected method name");
-	LitMethodStatement* method = lit_create_method_statement(parser->state, parser->previous.line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length), is_static);
+	LitString* name = NULL;
+
+	if (match(parser, TOKEN_OPERATOR)) {
+		if (is_static) {
+			error(parser, "Operator methods can't be static or defined in static classes");
+		}
+
+		uint i = 0;
+
+		while (operators[i] != TOKEN_EOF) {
+			if (match(parser, operators[i])) {
+				break;
+			}
+
+			i++;
+		}
+
+		if (parser->previous.type == TOKEN_LEFT_BRACKET) {
+			consume(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after '[' in operator method declaration");
+			name = lit_copy_string(parser->state, "[]", 2);
+		} else {
+			name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
+		}
+	} else {
+		consume(parser, TOKEN_IDENTIFIER, "Expected method name");
+		name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
+	}
+
+	LitMethodStatement* method = lit_create_method_statement(parser->state, parser->previous.line, name, is_static);
 
 	LitCompiler compiler;
 	init_compiler(parser, &compiler);

@@ -1,1 +1,17 @@
-print("test".toString())
+class Awesome {
+	operator [] (index, value) {
+		if (value != null) {
+			return value
+		}
+
+		return index
+	}
+
+	toString() {
+		return "mesa awesome"
+	}
+}
+
+var a = new Awesome()
+print(a[32])
+a[48] = 3

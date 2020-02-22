@@ -16,7 +16,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement);
 void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->state = state;
 	emitter->loop_start = 0;
-	emitter->in_class = false;
+	emitter->class_name = NULL;
 
 	lit_init_privates(&emitter->privates);
 	lit_init_uints(&emitter->breaks);
@@ -676,7 +676,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		}
 
 		case THIS_EXPRESSION: {
-			if (!emitter->in_class) {
+			if (emitter->class_name == NULL) {
 				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Can't use 'this' outside of methods");
 			} else if (emitter->compiler->type == FUNCTION_STATIC_METHOD) {
 				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Can't use 'this' in static methods");
@@ -976,7 +976,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			emit_statement(emitter, stmt->body);
 
-			LitFunction* function = end_compiler(emitter, stmt->name);
+			LitFunction* function = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:@", emitter->class_name, stmt->name)));
 			function->arg_count = stmt->parameters.count;
 
 			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
@@ -991,7 +991,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case CLASS_STATEMENT: {
 			LitClassStatement* stmt = (LitClassStatement*) statement;
-			emitter->in_class = true;
+			emitter->class_name = stmt->name;
 
 			emit_constant(emitter, statement->line, OBJECT_VALUE(stmt->name));
 			emit_byte(emitter, statement->line, OP_CLASS);
@@ -1007,7 +1007,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			emit_byte(emitter, emitter->last_line, OP_POP);
-			emitter->in_class = false;
+			emitter->class_name = NULL;
 
 			break;
 		}

@@ -245,7 +245,7 @@ static bool invoke_from_class(LitVm* vm, LitClass* klass, LitString* method_name
 	LitValue method;
 
 	if (!lit_table_get(&klass->methods, method_name, &method)) {
-		runtime_error(vm, "Attempt to call undefined method '%s'", method_name->chars);
+		runtime_error(vm, "Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars);
 		return false;
 	}
 
@@ -319,6 +319,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 #define WRITE_FRAME() frame->ip = ip;
 #define RETURN_ERROR() return (LitInterpretResult) {INTERPRET_RUNTIME_ERROR, NULL_VALUE};
+
+#define INVOKE_METHOD(instance, method_name, arg_count) \
+	LitClass* klass = lit_get_class_for(state, instance); \
+	WRITE_FRAME(); \
+	if (!invoke_from_class(vm, klass, CONST_STRING(state, method_name), arg_count)) { \
+		RETURN_ERROR() \
+	} \
+	READ_FRAME();
 
 #define BINARY_OP(type, op) \
     do { \
@@ -428,7 +436,22 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(ADD) {
-			BINARY_OP(NUMBER_VALUE, +)
+			LitValue a = PEEK(1);
+			LitValue b = PEEK(0);
+
+			if (IS_NUMBER(a) && IS_NUMBER(b)) {
+				DROP(); // Drop one
+				*fiber->stack_top = NUMBER_VALUE(a + b);
+
+				continue;
+			}
+
+			if (IS_NULL(a) || IS_NULL(b)) {
+				runtime_error(vm, "+ operator operands must be non-nulls");
+				RETURN_ERROR()
+			}
+
+			INVOKE_METHOD(a, "+", 1);
 			continue;
 		}
 
@@ -776,8 +799,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(SUBSCRIPT_GET) {
 			if (!IS_ARRAY(PEEK(1))) {
-				runtime_error(vm, "Only arrays can be indexed");
-				RETURN_ERROR()
+				INVOKE_METHOD(PEEK(1), "[]", 1);
+				continue;
 			}
 
 			if (!IS_NUMBER(PEEK(0))) {
@@ -805,8 +828,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(SUBSCRIPT_SET) {
 			if (!IS_ARRAY(PEEK(2))) {
-				runtime_error(vm, "Only arrays can be indexed");
-				RETURN_ERROR()
+				INVOKE_METHOD(PEEK(2), "[]", 2);
+				continue;
 			}
 
 			if (!IS_NUMBER(PEEK(1))) {
