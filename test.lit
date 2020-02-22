@@ -6,5 +6,4 @@ var map = {
 	]
 }
 
-map["name"] = "Maanex inc."
-print(map["name"])
+print(map["array"][1])

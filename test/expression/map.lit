@@ -1,0 +1,14 @@
+var map = {
+	"test" : 48,
+	"name" : "Egor",
+	"array" : [
+		32, 48
+	]
+}
+
+print(map["test"]) // Expected: 48
+print(map["name"]) // Expected: Egor
+print(map["array"][1]) // Expected: 48
+
+map["name"] = "Maanex inc."
+print(map["name"]) // Expected: Maanex inc.

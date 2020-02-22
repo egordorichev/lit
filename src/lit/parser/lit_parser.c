@@ -481,7 +481,9 @@ static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous
 
 	LitExpression* expression = (LitExpression*) lit_create_subscript_expression(parser->state, line, previous, index);
 
-	if (can_assign && match(parser, TOKEN_EQUAL)) {
+	if (match(parser, TOKEN_LEFT_BRACKET)) {
+		return parse_subscript(parser, expression, can_assign);
+	} else if (can_assign && match(parser, TOKEN_EQUAL)) {
 		return (LitExpression*) lit_create_assign_expression(parser->state, parser->previous.line, expression, parse_expression(parser));
 	}
 
