@@ -939,7 +939,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitClass* klass = AS_CLASS(PEEK(1));
 			LitString* name = READ_STRING_LONG();
 
-			if ((klass->init_method == NULL || klass->init_method == ((LitClass*) klass->super)->init_method) && name->length == 11 && memcmp(name->chars, "constructor", 11) == 0) {
+			if ((klass->init_method == NULL || (klass->super != NULL && klass->init_method == ((LitClass*) klass->super)->init_method)) && name->length == 11 && memcmp(name->chars, "constructor", 11) == 0) {
 				klass->init_method = AS_FUNCTION(PEEK(0));
 			}
 

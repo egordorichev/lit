@@ -4,7 +4,6 @@
 
 * toString, and overall string addition (finally)
 * static fields
-* super expression
 * range
 * better for loops's (map iteration, array iteration, range iteration)
 * setters/getters
