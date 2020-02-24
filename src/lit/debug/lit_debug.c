@@ -164,7 +164,8 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_RANGE: return print_simple_op("OP_RANGE", offset);
 
 		case OP_METHOD: return print_constant_op("OP_METHOD", chunk, offset, true);
-		case OP_STATIC_METHOD: return print_constant_op("OP_STATIC_METHOD", chunk, offset, true);
+		case OP_STATIC_FIELD: return print_constant_op("OP_STATIC_FIELD", chunk, offset, true);
+
 		case OP_INVOKE: return print_invoke_op("OP_INVOKE", chunk, offset);
 		case OP_INVOKE_SUPER: return print_invoke_op("OP_INVOKE_SUPER", chunk, offset);
 		case OP_INHERIT: return print_simple_op("OP_INHERIT", offset);

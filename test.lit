@@ -1,3 +1,1 @@
-export function printTest() {
-	print("HI")
-}
+print(Math.Pi, Math.Tau)

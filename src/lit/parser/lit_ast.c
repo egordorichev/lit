@@ -441,7 +441,7 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 		}
 
 		case CLASS_STATEMENT: {
-			free_statements(state, &((LitClassStatement*) statement)->methods);
+			free_statements(state, &((LitClassStatement*) statement)->fields);
 			FREE_STATEMENT(LitClassStatement)
 			break;
 		}
@@ -568,7 +568,7 @@ LitClassStatement *lit_create_class_statement(LitState* state, uint line, LitStr
 	statement->name = name;
 	statement->parent = parent;
 
-	lit_init_stataments(&statement->methods);
+	lit_init_stataments(&statement->fields);
 
 	return statement;
 }

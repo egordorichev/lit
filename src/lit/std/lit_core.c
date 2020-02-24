@@ -1,4 +1,5 @@
 #include <lit/std/lit_core.h>
+#include <lit/std/lit_math.h>
 #include <lit/api/lit_api.h>
 #include <lit/vm/lit_vm.h>
 #include <lit/vm/lit_object.h>
@@ -6,7 +7,7 @@
 #include <time.h>
 
 void lit_open_libraries(LitState* state) {
-
+	lit_open_math_library(state);
 }
 
 LIT_METHOD(object_toString) {

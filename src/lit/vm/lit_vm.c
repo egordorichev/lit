@@ -265,9 +265,13 @@ static bool invoke_from_class(LitVm* vm, LitClass* klass, LitString* method_name
 static bool invoke_static_from_class(LitVm* vm, LitClass* klass, LitString* method_name, uint8_t arg_count) {
 	LitValue method;
 
-	if (!lit_table_get(&klass->static_methods, method_name, &method)) {
+	if (!lit_table_get(&klass->static_fields, method_name, &method)) {
 		lit_runtime_error(vm, "Attempt to call undefined static method '%s'", method_name->chars);
 		return false;
+	}
+
+	if (IS_NATIVE_METHOD(method)) {
+		return call_value(vm, method, arg_count);
 	}
 
 	return call(vm, AS_FUNCTION(method), NULL, arg_count);
@@ -791,8 +795,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			} else if (IS_CLASS(object)) {
 				LitClass *klass = AS_CLASS(object);
 
-				if (lit_table_get(&klass->static_methods, name, &value)) {
-					value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klass), AS_FUNCTION(value)));
+				if (lit_table_get(&klass->static_fields, name, &value)) {
+					if (IS_NATIVE_METHOD(value)) {
+						value = OBJECT_VALUE(lit_create_native_bound_method(state, OBJECT_VALUE(klass), AS_NATIVE_METHOD(value)));
+					} else if (IS_FUNCTION(value)) {
+						value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klass), AS_FUNCTION(value)));
+					}
 				} else {
 					value = NULL_VALUE;
 				}
@@ -805,7 +813,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				}
 
 				if (lit_table_get(&klass->methods, name, &value)) {
-					value = OBJECT_VALUE(lit_create_native_bound_method(state, object, AS_NATIVE_METHOD(value)));
+					if (IS_NATIVE_METHOD(value)) {
+						value = OBJECT_VALUE(lit_create_native_bound_method(state, object, AS_NATIVE_METHOD(value)));
+					} else {
+						value = OBJECT_VALUE(lit_create_bound_method(state, object, AS_FUNCTION(value)));
+					}
 				} else {
 					value = NULL_VALUE;
 				}
@@ -818,21 +830,32 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(SET_FIELD) {
-			if (!IS_INSTANCE(PEEK(2))) {
-				lit_runtime_error(vm, "Only instances have fields");
+			LitValue instance = PEEK(2);
+			LitValue value = PEEK(1);
+			LitString* field_name = AS_STRING(PEEK(0));
+
+			if (IS_CLASS(instance)) {
+				if (IS_NULL(value)) {
+					lit_table_delete(&AS_CLASS(instance)->static_fields, field_name);
+				} else {
+					lit_table_set(state, &AS_CLASS(instance)->static_fields, field_name, value);
+				}
+
+				DROP_MULTIPLE(2); // Pop field name and the value
+				fiber->stack_top[-1] = value;
+			} else if (IS_INSTANCE(instance)) {
+				if (IS_NULL(value)) {
+					lit_table_delete(&AS_INSTANCE(instance)->fields, field_name);
+				} else {
+					lit_table_set(state, &AS_INSTANCE(instance)->fields, field_name, value);
+				}
+
+				DROP_MULTIPLE(2); // Pop field name and the value
+				fiber->stack_top[-1] = value;
+			} else {
+				lit_runtime_error(vm, "Only instances and classes have fields");
 				RETURN_ERROR()
 			}
-
-			LitValue value = PEEK(1);
-
-			if (IS_NULL(value)) {
-				lit_table_delete(&AS_INSTANCE(PEEK(2))->fields, AS_STRING(PEEK(0)));
-			} else {
-				lit_table_set(state, &AS_INSTANCE(PEEK(2))->fields, AS_STRING(PEEK(0)), value);
-			}
-
-			DROP_MULTIPLE(2); // Pop field name and the value
-			fiber->stack_top[-1] = value;
 
 			continue;
 		}
@@ -946,8 +969,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
-		CASE_CODE(STATIC_METHOD) {
-			lit_table_set(state, &AS_CLASS(PEEK(1))->static_methods, READ_STRING_LONG(), PEEK(0));
+		CASE_CODE(STATIC_FIELD) {
+			lit_table_set(state, &AS_CLASS(PEEK(1))->static_fields, READ_STRING_LONG(), PEEK(0));
 			DROP();
 
 			continue;

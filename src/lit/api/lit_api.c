@@ -98,7 +98,7 @@ LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitVa
 
 double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_NUMBER(args[id])) {
-		lit_runtime_error(vm, "Expected a number as argument #%g", id);
+		lit_runtime_error(vm, "Expected a number as argument #%x", id);
 		return 0;
 	}
 
@@ -115,8 +115,8 @@ double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, 
 
 bool lit_check_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_BOOL(args[id])) {
-		lit_runtime_error(vm, "Expected a boolean as argument #%g", id);
-		return 0;
+		lit_runtime_error(vm, "Expected a boolean as argument #%x", id);
+		return false;
 	}
 
 	return AS_BOOL(args[id]);
@@ -132,8 +132,8 @@ bool lit_get_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool
 
 const char* lit_check_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_STRING(args[id])) {
-		lit_runtime_error(vm, "Expected a string as argument #%g", id);
-		return 0;
+		lit_runtime_error(vm, "Expected a string as argument #%x", id);
+		return NULL;
 	}
 
 	return AS_STRING(args[id])->chars;

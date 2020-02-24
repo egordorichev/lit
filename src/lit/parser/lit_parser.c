@@ -805,11 +805,36 @@ static LitStatement* parse_class(LitParser* parser) {
 	consume(parser, TOKEN_LEFT_BRACE, "Expected '{' before class body");
 	ignore_new_lines(parser);
 
+	bool finished_parsing_fields = false;
+
 	while (!check(parser, TOKEN_RIGHT_BRACE)) {
-		LitStatement* method = parse_method(parser, is_static);
+		bool field_is_static = false;
+
+		if (match(parser, TOKEN_STATIC)) {
+			field_is_static = true;
+
+			if (match(parser, TOKEN_VAR)) {
+				if (finished_parsing_fields) {
+					error(parser, "All static fields must be defined before the methods");
+				}
+
+				LitStatement* var = parse_var_declaration(parser);
+
+				if (var != NULL) {
+					lit_stataments_write(parser->state, &klass->fields, var);
+				}
+
+				ignore_new_lines(parser);
+				continue;
+			} else {
+				finished_parsing_fields = true;
+			}
+		}
+
+		LitStatement* method = parse_method(parser, is_static || field_is_static);
 
 		if (method != NULL) {
-			lit_stataments_write(parser->state, &klass->methods, method);
+			lit_stataments_write(parser->state, &klass->fields, method);
 		}
 
 		ignore_new_lines(parser);

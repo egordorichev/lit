@@ -1,14 +1,13 @@
-#include <lit/vm/lit_chunk.h>
 #include <lit/vm/lit_vm.h>
-#include <lit/util/lit_fs.h>
 #include <lit/scanner/lit_scanner.h>
-#include <lit/api/lit_api.h>
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <lit/std/lit_core.h>
 
 static int run_repl() {
 	LitState* state = lit_new_state();
+	lit_open_libraries(state);
+
 	char line[1024];
 
 	while (true) {
@@ -31,17 +30,10 @@ static int run_repl() {
 
 static int run_file(const char* file) {
 	LitState* state = lit_new_state();
-	lit_init_api(state);
+
+	lit_open_libraries(state);
 	lit_interpret_file(state, file);
 
-	LitValue global = lit_get_global(state, CONST_STRING(state, "printTest"));
-
-	if (IS_FUNCTION(global)) {
-		lit_call(state, global, NULL, 0);
-		lit_call(state, global, NULL, 0);
-	}
-
-	lit_free_api(state);
 	int64_t amount = lit_free_state(state);
 
 	if (amount != 0) {

@@ -331,7 +331,8 @@ typedef struct {
 
 	LitString* name;
 	LitString* parent;
-	LitStatements methods;
+
+	LitStatements fields;
 } LitClassStatement;
 
 LitClassStatement *lit_create_class_statement(LitState* state, uint line, LitString* name, LitString* parent);

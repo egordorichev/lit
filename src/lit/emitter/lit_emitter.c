@@ -1059,7 +1059,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
 
-			emit_byte(emitter, statement->line, stmt->is_static ? OP_STATIC_METHOD : OP_METHOD);
+			emit_byte(emitter, statement->line, stmt->is_static ? OP_STATIC_FIELD : OP_METHOD);
 			emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
 
 			end_scope(emitter, emitter->last_line);
@@ -1082,8 +1082,19 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emitter->class_has_super = true;
 			}
 
-			for (uint i = 0; i < stmt->methods.count; i++) {
-				emit_statement(emitter, stmt->methods.values[i]);
+			for (uint i = 0; i < stmt->fields.count; i++) {
+				LitStatement* s = stmt->fields.values[i];
+
+				if (s->type == VAR_STATEMENT) {
+					LitVarStatement* var = (LitVarStatement*) s;
+
+					emit_expression(emitter, var->init);
+
+					emit_byte(emitter, statement->line, OP_STATIC_FIELD);
+					emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(lit_copy_string(emitter->state, var->name, var->length))));
+				} else {
+					emit_statement(emitter, statement);
+				}
 			}
 
 			emit_byte(emitter, emitter->last_line, OP_POP);
