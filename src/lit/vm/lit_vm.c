@@ -65,7 +65,9 @@ static void trace_stack(LitVm* vm) {
 	printf("\n");
 }
 
-static void runtime_error(LitVm* vm, const char* format, ...) {
+void lit_runtime_error(LitVm* vm, const char* format, ...) {
+	vm->fiber->abort = true;
+
 	va_list args;
 	va_start(args, format);
 	vfprintf(stderr, format, args);
@@ -95,7 +97,7 @@ static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t 
 	LitFiber* fiber = vm->fiber;
 
 	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
-		runtime_error(vm, "Stack overflow");
+		lit_runtime_error(vm, "Stack overflow");
 		return false;
 	}
 
@@ -143,7 +145,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				vm->fiber->stack_top -= arg_count + 1;
 				lit_push(vm, result);
 
-				return true;
+				return !vm->fiber->abort;
 			}
 
 			case OBJECT_NATIVE_METHOD: {
@@ -153,7 +155,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				vm->fiber->stack_top -= arg_count + 1;
 				lit_push(vm, result);
 
-				return true;
+				return !vm->fiber->abort;
 			}
 
 			case OBJECT_CLASS: {
@@ -187,7 +189,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				vm->fiber->stack_top -= arg_count + 1;
 				lit_push(vm, result);
 
-				return true;
+				return !vm->fiber->abort;
 			}
 
 			default: {
@@ -197,9 +199,9 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 	}
 
 	if (IS_NULL(callee)) {
-		runtime_error(vm, "Attempt to call a null value");
+		lit_runtime_error(vm, "Attempt to call a null value");
 	} else {
-		runtime_error(vm, "Can only call functions and classes");
+		lit_runtime_error(vm, "Can only call functions and classes");
 	}
 
 	return false;
@@ -246,7 +248,8 @@ static bool invoke_from_class(LitVm* vm, LitClass* klass, LitString* method_name
 
 	if (!lit_table_get(&klass->methods, method_name, &method)) {
 		if (error) {
-			runtime_error(vm, "Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars);
+			lit_runtime_error(vm, "Attempt to call method '%s', that is not defined in class %s", method_name->chars,
+			                  klass->name->chars);
 		}
 
 		return false;
@@ -263,7 +266,7 @@ static bool invoke_static_from_class(LitVm* vm, LitClass* klass, LitString* meth
 	LitValue method;
 
 	if (!lit_table_get(&klass->static_methods, method_name, &method)) {
-		runtime_error(vm, "Attempt to call undefined static method '%s'", method_name->chars);
+		lit_runtime_error(vm, "Attempt to call undefined static method '%s'", method_name->chars);
 		return false;
 	}
 
@@ -285,7 +288,9 @@ LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 
 LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber) {
 	register LitVm *vm = state->vm;
+
 	vm->fiber = fiber;
+	fiber->abort = false;
 
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
 	register LitChunk* current_chunk = &frame->function->chunk;
@@ -326,7 +331,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #define INVOKE_METHOD(instance, method_name, arg_count) \
 	LitClass* klass = lit_get_class_for(state, instance); \
 	if (klass == NULL) { \
-		runtime_error(vm, "Only instances and classes have methods"); \
+		lit_runtime_error(vm, "Only instances and classes have methods"); \
 		RETURN_ERROR() \
 	} \
 	WRITE_FRAME(); \
@@ -343,7 +348,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		*(fiber->stack_top - 1) = (type(AS_NUMBER(a) op AS_NUMBER(b))); \
 		continue; \
 	} \
-	INVOKE_METHOD(a, op_string, 1);
+	INVOKE_METHOD(a, op_string, 1)
 
 #ifdef LIT_TRACE_EXECUTION
 	printf("== %s ==\n", frame->function->name->chars);
@@ -436,7 +441,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue b = POP();
 
 			if (!IS_NUMBER(a) || !IS_NUMBER(b)) {
-				runtime_error(vm, "Range operands must be number");
+				lit_runtime_error(vm, "Range operands must be number");
 				RETURN_ERROR()
 			}
 
@@ -446,7 +451,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(NEGATE) {
 			if (!IS_NUMBER(PEEK(0))) {
-				runtime_error(vm, "Operand must be a number");
+				lit_runtime_error(vm, "Operand must be a number");
 				RETURN_ERROR()
 			}
 
@@ -494,7 +499,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				continue;
 			}
 
-			INVOKE_METHOD(a, "**", 1);
+			INVOKE_METHOD(a, "**", 1)
 			continue;
 		}
 
@@ -513,7 +518,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				continue;
 			}
 
-			INVOKE_METHOD(a, "%", 1);
+			INVOKE_METHOD(a, "%", 1)
 			continue;
 		}
 
@@ -680,7 +685,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue name = POP();
 
 			if (!IS_STRING(name)) {
-				runtime_error(vm, "require() argument must be a string");
+				lit_runtime_error(vm, "require() argument must be a string");
 				RETURN_ERROR()
 			}
 
@@ -708,7 +713,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			const char* source = lit_read_file(full_path);
 
 			if (source == NULL) {
-				runtime_error(vm, "Failed to open '%s'", full_path);
+				lit_runtime_error(vm, "Failed to open '%s'", full_path);
 				RETURN_ERROR()
 			}
 
@@ -766,7 +771,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue object = PEEK(1);
 
 			if (IS_NULL(object)) {
-				runtime_error(vm, "Attempt to index a null value");
+				lit_runtime_error(vm, "Attempt to index a null value");
 				RETURN_ERROR()
 			}
 
@@ -795,7 +800,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				LitClass* klass = lit_get_class_for(state, object);
 
 				if (klass == NULL) {
-					runtime_error(vm, "Only instances and classes have fields");
+					lit_runtime_error(vm, "Only instances and classes have fields");
 					RETURN_ERROR()
 				}
 
@@ -814,7 +819,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(SET_FIELD) {
 			if (!IS_INSTANCE(PEEK(2))) {
-				runtime_error(vm, "Only instances have fields");
+				lit_runtime_error(vm, "Only instances have fields");
 				RETURN_ERROR()
 			}
 
@@ -837,7 +842,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			if (IS_ARRAY(instance)) {
 				if (!IS_NUMBER(PEEK(0))) {
-					runtime_error(vm, "Array index must be a number");
+					lit_runtime_error(vm, "Array index must be a number");
 					RETURN_ERROR()
 				}
 
@@ -857,7 +862,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				}
 			} else if (IS_MAP(instance)) {
 				if (!IS_STRING(PEEK(0))) {
-					runtime_error(vm, "Map index must be a string");
+					lit_runtime_error(vm, "Map index must be a string");
 					RETURN_ERROR()
 				}
 
@@ -874,7 +879,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 				PUSH(value);
 			} else {
-				INVOKE_METHOD(instance, "[]", 1);
+				INVOKE_METHOD(instance, "[]", 1)
 			}
 
 			continue;
@@ -885,7 +890,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			if (IS_ARRAY(instance)) {
 				if (!IS_NUMBER(PEEK(1))) {
-					runtime_error(vm, "Array index must be a number");
+					lit_runtime_error(vm, "Array index must be a number");
 					RETURN_ERROR()
 				}
 
@@ -903,7 +908,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				*fiber->stack_top = value;
 			} else if (IS_MAP(instance)) {
 				if (!IS_STRING(PEEK(1))) {
-					runtime_error(vm, "Map index must be a string");
+					lit_runtime_error(vm, "Map index must be a string");
 					RETURN_ERROR()
 				}
 
@@ -915,7 +920,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				DROP_MULTIPLE(2);
 				*fiber->stack_top = value;
 			} else {
-				INVOKE_METHOD(instance, "[]", 2);
+				INVOKE_METHOD(instance, "[]", 2)
 			}
 
 			continue;
@@ -926,7 +931,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			int index = values->count;
 
 			lit_values_ensure_size(state, values, index + 1);
-			LitValue value = values->values[index] = PEEK(0);
+			values->values[index] = PEEK(0);
 			DROP();
 
 			continue;
@@ -968,7 +973,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue receiver = PEEK(arg_count);
 
 			if (IS_NULL(receiver)) {
-				runtime_error(vm, "Attempt to index a null value");
+				lit_runtime_error(vm, "Attempt to index a null value");
 				RETURN_ERROR()
 			}
 
@@ -1005,7 +1010,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				LitClass* type = lit_get_class_for(state, receiver);
 
 				if (type == NULL) {
-					runtime_error(vm, "Only instances and classes have methods");
+					lit_runtime_error(vm, "Only instances and classes have methods");
 					RETURN_ERROR()
 				}
 
@@ -1054,14 +1059,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue super = PEEK(0);
 
 			if (!IS_CLASS(super)) {
-				runtime_error(vm, "Superclass must be a class");
+				lit_runtime_error(vm, "Superclass must be a class");
 				RETURN_ERROR()
 			}
 
 			LitClass* klass = AS_CLASS(PEEK(1));
 			LitClass* super_klass = AS_CLASS(super);
 
-			klass->super = (struct LitClass *) super_klass;
+			klass->super = super_klass;
 			klass->init_method = super_klass->init_method;
 
 			lit_table_add_all(state, &super_klass->methods, &klass->methods);
@@ -1084,7 +1089,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue klass = PEEK(0);
 
 			if (instance_klass == NULL || !IS_CLASS(klass)) {
-				runtime_error(vm, "Operands must be an instance and a class");
+				lit_runtime_error(vm, "Operands must be an instance and a class");
 				RETURN_ERROR()
 			}
 
@@ -1106,7 +1111,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
-		runtime_error(vm, "Unknown op code '%d'", *ip);
+		lit_runtime_error(vm, "Unknown op code '%d'", *ip);
 		break;
 	}
 

@@ -30,6 +30,16 @@ LitValue lit_get_global(LitState* state, LitString* name) {
 	return global;
 }
 
+LitFunction* lit_get_global_function(LitState* state, LitString* name) {
+	LitValue function = lit_get_global(state, name);
+
+	if (IS_FUNCTION(function)) {
+		return AS_FUNCTION(function);
+	}
+
+	return NULL;
+}
+
 void lit_set_global(LitState* state, LitString* name, LitValue value) {
 	lit_push_root(state, (LitObject *) name);
 	lit_push_value_root(state, value);
@@ -54,6 +64,8 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 	LitFunction* function = fiber->frames[0].function;
 	LitChunk* chunk = &function->chunk;
 
+	fiber->frame_count = 1;
+
 #define PUSH(value) (*fiber->stack_top++ = value)
 
 	PUSH(OBJECT_VALUE(function));
@@ -73,4 +85,64 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 	lit_free_chunk(state, chunk);
 
 	return result;
+}
+
+LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count) {
+	if (callee == NULL) {
+		return (LitInterpretResult) {};
+	}
+
+	return lit_call(state, OBJECT_VALUE(callee), arguments, argument_count);
+}
+
+
+double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
+	if (arg_count <= id || !IS_NUMBER(args[id])) {
+		lit_runtime_error(vm, "Expected a number as argument #%g", id);
+		return 0;
+	}
+
+	return AS_NUMBER(args[id]);
+}
+
+double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def) {
+	if (arg_count <= id || !IS_NUMBER(args[id])) {
+		return def;
+	}
+
+	return AS_NUMBER(args[id]);
+}
+
+bool lit_check_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
+	if (arg_count <= id || !IS_BOOL(args[id])) {
+		lit_runtime_error(vm, "Expected a boolean as argument #%g", id);
+		return 0;
+	}
+
+	return AS_BOOL(args[id]);
+}
+
+bool lit_get_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool def) {
+	if (arg_count <= id || !IS_BOOL(args[id])) {
+		return def;
+	}
+
+	return AS_BOOL(args[id]);
+}
+
+const char* lit_check_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
+	if (arg_count <= id || !IS_STRING(args[id])) {
+		lit_runtime_error(vm, "Expected a string as argument #%g", id);
+		return 0;
+	}
+
+	return AS_STRING(args[id])->chars;
+}
+
+const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def) {
+	if (arg_count <= id || !IS_STRING(args[id])) {
+		return def;
+	}
+
+	return AS_STRING(args[id])->chars;
 }

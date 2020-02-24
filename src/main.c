@@ -31,17 +31,17 @@ static int run_repl() {
 
 static int run_file(const char* file) {
 	LitState* state = lit_new_state();
-	// lit_init_api(state);
+	lit_init_api(state);
 	lit_interpret_file(state, file);
 
-	/*LitValue global = lit_get_global(state, CONST_STRING(state, "printTest"));
+	LitValue global = lit_get_global(state, CONST_STRING(state, "printTest"));
 
 	if (IS_FUNCTION(global)) {
-		LitValue arg = NUMBER_VALUE(10);
-		lit_print_value(lit_call(state, global, &arg, 1).result);
+		lit_call(state, global, NULL, 0);
+		lit_call(state, global, NULL, 0);
 	}
 
-	lit_free_api(state);*/
+	lit_free_api(state);
 	int64_t amount = lit_free_state(state);
 
 	if (amount != 0) {

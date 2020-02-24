@@ -201,6 +201,7 @@ typedef struct LitFiber {
 	uint frame_count;
 
 	LitModule* module;
+	bool abort;
 } LitFiber;
 
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function);

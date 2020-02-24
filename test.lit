@@ -1,1 +1,3 @@
-0 .. 32
+export function printTest() {
+	print("HI")
+}

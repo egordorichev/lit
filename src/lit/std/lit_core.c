@@ -50,7 +50,7 @@ void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Object")
 		LIT_BIND_METHOD("toString", object_toString)
 		state->object_class = klass;
-		state->object_class->super = (struct LitClass *) state->class_class;
+		state->object_class->super = state->class_class;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("Number")
