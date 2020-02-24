@@ -497,7 +497,13 @@ static LitExpression* parse_this(LitParser* parser, bool can_assign) {
 static LitExpression* parse_super(LitParser* parser, bool can_assign) {
 	uint line = parser->previous.line;
 
-	consume(parser, TOKEN_DOT, "Expected '.' after 'super'");
+	if (!match(parser, TOKEN_DOT)) {
+		LitExpression* expression = (LitExpression*) lit_create_super_expression(parser->state, line, lit_copy_string(parser->state, "constructor", 11));
+		consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after 'super'");
+
+		return parse_call(parser, expression, false);
+	}
+
 	consume(parser, TOKEN_IDENTIFIER, "Expected super method name after '.'");
 
 	LitExpression* expression = (LitExpression*) lit_create_super_expression(parser->state, line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length));
