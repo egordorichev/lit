@@ -1093,7 +1093,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 					emit_byte(emitter, statement->line, OP_STATIC_FIELD);
 					emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(lit_copy_string(emitter->state, var->name, var->length))));
 				} else {
-					emit_statement(emitter, statement);
+					emit_statement(emitter, s);
 				}
 			}
 
