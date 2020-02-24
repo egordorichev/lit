@@ -310,3 +310,12 @@ LitUserdata* lit_create_userdata(LitState* state, size_t size) {
 
 	return userdata;
 }
+
+LitRange* lit_create_range(LitState* state, double from, double to) {
+	LitRange* range = ALLOCATE_OBJECT(state, LitRange, OBJECT_RANGE);
+
+	range->from = from;
+	range->to = to;
+
+	return range;
+}

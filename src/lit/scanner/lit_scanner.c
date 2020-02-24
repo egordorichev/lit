@@ -324,7 +324,6 @@ LitToken lit_scan_token(LitScanner* scanner) {
 		case ']': return make_token(scanner, TOKEN_RIGHT_BRACKET);
 		case ';': return make_token(scanner, TOKEN_SEMICOLON);
 		case ',': return make_token(scanner, TOKEN_COMMA);
-		case '.': return make_token(scanner, TOKEN_DOT);
 		case ':': return make_token(scanner, TOKEN_COLON);
 
 		case '+': return match_tokens(scanner, '=', '+', TOKEN_PLUS_EQUAL, TOKEN_PLUS_PLUS, TOKEN_PLUS);
@@ -335,6 +334,7 @@ LitToken lit_scan_token(LitScanner* scanner) {
 		case '<': return match_token(scanner, '=', TOKEN_LESS_EQUAL, TOKEN_LESS);
 		case '?': return match_token(scanner, '?', TOKEN_QUESTION_QUESTION, TOKEN_QUESTION);
 		case '%': return match_token(scanner, '=', TOKEN_PERCENT_EQUAL, TOKEN_PERCENT);
+		case '.': return match_token(scanner, '.', TOKEN_DOT_DOT, TOKEN_DOT);
 
 		case '*': return match_tokens(scanner, '=', '*', TOKEN_STAR_EQUAL, TOKEN_STAR_STAR, TOKEN_STAR);
 		case '=': return match_tokens(scanner, '=', '>', TOKEN_EQUAL_EQUAL, TOKEN_ARROW, TOKEN_EQUAL);

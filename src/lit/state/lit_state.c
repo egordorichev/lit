@@ -36,6 +36,7 @@ LitState* lit_new_state() {
 	state->module_class = NULL;
 	state->array_class = NULL;
 	state->map_class = NULL;
+	state->range_class = NULL;
 
 	state->bytes_allocated = 0;
 	state->next_gc = 1024 * 1024;
@@ -114,11 +115,13 @@ LitClass* lit_get_class_for(LitState* state, LitValue value) {
 	if (IS_OBJECT(value)) {
 		switch (OBJECT_TYPE(value)) {
 			case OBJECT_STRING: return state->string_class;
+			case OBJECT_USERDATA: return state->object_class;
 
 			case OBJECT_FUNCTION:
 			case OBJECT_CLOSURE:
 			case OBJECT_NATIVE_FUNCTION:
 			case OBJECT_BOUND_METHOD:
+			case OBJECT_NATIVE_BOUND_METHOD:
 			case OBJECT_NATIVE_METHOD: {
 				return state->function_class;
 			}
@@ -139,6 +142,7 @@ LitClass* lit_get_class_for(LitState* state, LitValue value) {
 			case OBJECT_INSTANCE: return AS_INSTANCE(value)->klass;
 			case OBJECT_ARRAY: return state->array_class;
 			case OBJECT_MAP: return state->map_class;
+			case OBJECT_RANGE: return state->range_class;
 		}
 	} else if (IS_NUMBER(value)) {
 		return state->number_class;

@@ -95,6 +95,11 @@ void lit_open_core_library(LitState* state) {
 		state->map_class = klass;
 	LIT_END_CLASS()
 
+	LIT_BEGIN_CLASS("Range")
+		LIT_INHERIT_CLASS(state->object_class)
+		state->range_class = klass;
+	LIT_END_CLASS()
+
 	lit_define_native(state, "time", time_native);
 	lit_define_native(state, "print", print_native);
 }

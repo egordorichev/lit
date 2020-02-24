@@ -164,6 +164,16 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
+		case RANGE_EXPRESSION: {
+			LitRangeExpression* expr = (LitRangeExpression*) expression;
+
+			lit_free_expression(state, expr->from);
+			lit_free_expression(state, expr->to);
+
+			FREE_EXPRESSION(LitRangeExpression)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -305,7 +315,6 @@ LitSubscriptExpression *lit_create_subscript_expression(LitState* state, uint li
 	return expression;
 }
 
-
 LitThisExpression *lit_create_this_expression(LitState* state, uint line) {
 	return ALLOCATE_EXPRESSION(state, LitThisExpression, THIS_EXPRESSION);
 }
@@ -315,6 +324,15 @@ LitSuperExpression *lit_create_super_expression(LitState* state, uint line, LitS
 
 	expression->method = method;
 	expression->ignore_emit = false;
+
+	return expression;
+}
+
+LitRangeExpression *lit_create_range_expression(LitState* state, uint line, LitExpression* from, LitExpression* to) {
+	LitRangeExpression* expression = ALLOCATE_EXPRESSION(state, LitRangeExpression, RANGE_EXPRESSION);
+
+	expression->from = from;
+	expression->to = to;
 
 	return expression;
 }

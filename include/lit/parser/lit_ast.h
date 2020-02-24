@@ -21,7 +21,8 @@ typedef enum {
 	MAP_EXPRESSION,
 	SUBSCRIPT_EXPRESSION,
 	THIS_EXPRESSION,
-	SUPER_EXPRESSION
+	SUPER_EXPRESSION,
+	RANGE_EXPRESSION
 } LitExpressionType;
 
 typedef struct LitExpression {
@@ -204,6 +205,15 @@ typedef struct {
 } LitSuperExpression;
 
 LitSuperExpression *lit_create_super_expression(LitState* state, uint line, LitString* method);
+
+typedef struct {
+	LitExpression expression;
+
+	LitExpression* from;
+	LitExpression* to;
+} LitRangeExpression;
+
+LitRangeExpression *lit_create_range_expression(LitState* state, uint line, LitExpression* from, LitExpression* to);
 
 /*
  * Statements

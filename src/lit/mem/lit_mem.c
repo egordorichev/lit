@@ -154,6 +154,11 @@ static void free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_RANGE: {
+			LIT_FREE(state, LitRange, object);
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}
@@ -267,6 +272,7 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		case OBJECT_NATIVE_FUNCTION:
 		case OBJECT_NATIVE_METHOD:
 		case OBJECT_USERDATA:
+		case OBJECT_RANGE:
 		case OBJECT_STRING: {
 			break;
 		}

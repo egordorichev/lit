@@ -21,6 +21,7 @@ typedef enum {
 	PREC_UNARY,       // ! -
 	PREC_NULL,        // ??
 	PREC_CALL,        // . ()
+	PREC_RANGE,       // ..
 	PREC_PRIMARY
 } LitPrecedence;
 

@@ -431,6 +431,19 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(RANGE) {
+			LitValue a = POP();
+			LitValue b = POP();
+
+			if (!IS_NUMBER(a) || !IS_NUMBER(b)) {
+				runtime_error(vm, "Range operands must be number");
+				RETURN_ERROR()
+			}
+
+			PUSH(OBJECT_VALUE(lit_create_range(state, AS_NUMBER(a), AS_NUMBER(b))));
+			continue;
+		}
+
 		CASE_CODE(NEGATE) {
 			if (!IS_NUMBER(PEEK(0))) {
 				runtime_error(vm, "Operand must be a number");

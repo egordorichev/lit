@@ -728,13 +728,21 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitSuperExpression* expr = (LitSuperExpression*) expression;
 
 			if (!expr->ignore_emit) {
-				LitString *method = expr->method;
-
 				emit_bytes(emitter, expression->line, OP_GET_LOCAL, 0);
 				emit_byte(emitter, expression->line, OP_GET_SUPER_METHOD);
 				emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(expr->method)));
 			}
 
+			break;
+		}
+
+		case RANGE_EXPRESSION: {
+			LitRangeExpression* expr = (LitRangeExpression*) expression;
+
+			emit_expression(emitter, expr->from);
+			emit_expression(emitter, expr->to);
+
+			emit_byte(emitter, expression->line, OP_RANGE);
 			break;
 		}
 

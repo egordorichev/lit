@@ -142,6 +142,13 @@ static void print_object(LitValue value) {
 			break;
 		}
 
+		case OBJECT_RANGE: {
+			LitRange* range = AS_RANGE(value);
+			printf("%g .. %g", range->from, range->to);
+
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}

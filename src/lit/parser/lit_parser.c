@@ -419,6 +419,11 @@ static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool
 	}
 }
 
+static LitExpression* parse_range(LitParser* parser, LitExpression* previous, bool can_assign) {
+	uint line = parser->previous.line;
+	return (LitExpression*) lit_create_range_expression(parser->state, line, previous, parse_expression(parser));
+}
+
 static LitExpression* parse_question(LitParser* parser, LitExpression* previous, bool can_assign) {
 	uint line = parser->previous.line;
 
@@ -948,6 +953,7 @@ static void setup_rules() {
 	rules[TOKEN_QUESTION_QUESTION] = (LitParseRule) { NULL, parse_null_filter, PREC_NULL };
 	rules[TOKEN_REQUIRE] = (LitParseRule) { parse_require, NULL, PREC_NONE };
 	rules[TOKEN_DOT] = (LitParseRule) { NULL, parse_dot, PREC_CALL };
+	rules[TOKEN_DOT_DOT] = (LitParseRule) { NULL, parse_range, PREC_RANGE };
 	rules[TOKEN_LEFT_BRACKET] = (LitParseRule) { parse_array, parse_subscript, PREC_NONE };
 	rules[TOKEN_LEFT_BRACE] = (LitParseRule) { parse_map, NULL, PREC_NONE };
 	rules[TOKEN_THIS] = (LitParseRule) { parse_this, NULL, PREC_NONE };
