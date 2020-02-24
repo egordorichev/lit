@@ -20,7 +20,8 @@ typedef enum {
 	ARRAY_EXPRESSION,
 	MAP_EXPRESSION,
 	SUBSCRIPT_EXPRESSION,
-	THIS_EXPRESSION
+	THIS_EXPRESSION,
+	SUPER_EXPRESSION
 } LitExpressionType;
 
 typedef struct LitExpression {
@@ -194,6 +195,15 @@ typedef struct {
 } LitThisExpression;
 
 LitThisExpression *lit_create_this_expression(LitState* state, uint line);
+
+typedef struct {
+	LitExpression expression;
+
+	LitString* method;
+	bool ignore_emit;
+} LitSuperExpression;
+
+LitSuperExpression *lit_create_super_expression(LitState* state, uint line, LitString* method);
 
 /*
  * Statements

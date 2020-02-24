@@ -494,6 +494,21 @@ static LitExpression* parse_this(LitParser* parser, bool can_assign) {
 	return (LitExpression*) lit_create_this_expression(parser->state, parser->previous.line);
 }
 
+static LitExpression* parse_super(LitParser* parser, bool can_assign) {
+	uint line = parser->previous.line;
+
+	consume(parser, TOKEN_DOT, "Expected '.' after 'super'");
+	consume(parser, TOKEN_IDENTIFIER, "Expected super method name after '.'");
+
+	LitExpression* expression = (LitExpression*) lit_create_super_expression(parser->state, line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length));
+
+	if (match(parser, TOKEN_LEFT_PAREN)) {
+		return parse_call(parser, expression, false);
+	}
+
+	return expression;
+}
+
 static LitExpression* parse_expression(LitParser* parser) {
 	ignore_new_lines(parser);
 	return parse_precedence(parser, PREC_ASSIGNMENT);
@@ -930,5 +945,6 @@ static void setup_rules() {
 	rules[TOKEN_LEFT_BRACKET] = (LitParseRule) { parse_array, parse_subscript, PREC_NONE };
 	rules[TOKEN_LEFT_BRACE] = (LitParseRule) { parse_map, NULL, PREC_NONE };
 	rules[TOKEN_THIS] = (LitParseRule) { parse_this, NULL, PREC_NONE };
+	rules[TOKEN_SUPER] = (LitParseRule) { parse_super, NULL, PREC_NONE };
 	rules[TOKEN_QUESTION] = (LitParseRule) { NULL, parse_question, PREC_CALL };
 }

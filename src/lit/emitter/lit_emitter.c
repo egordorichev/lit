@@ -17,6 +17,7 @@ void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->state = state;
 	emitter->loop_start = 0;
 	emitter->class_name = NULL;
+	emitter->class_has_super = false;
 
 	lit_init_privates(&emitter->privates);
 	lit_init_uints(&emitter->breaks);
@@ -706,6 +707,28 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
+		case SUPER_EXPRESSION: {
+			if (emitter->class_name == NULL) {
+				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Can't use 'super' outside of methods");
+			} else if (emitter->compiler->type == FUNCTION_STATIC_METHOD) {
+				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Can't use 'super' in static methods");
+			} else if (!emitter->class_has_super) {
+				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Can't use 'super', class %s has no super class", emitter->class_name->chars);
+			}
+
+			LitSuperExpression* expr = (LitSuperExpression*) expression;
+
+			if (!expr->ignore_emit) {
+				LitString *method = expr->method;
+
+				emit_bytes(emitter, expression->line, OP_GET_LOCAL, 0);
+				emit_byte(emitter, expression->line, OP_GET_SUPER_METHOD);
+				emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(expr->method)));
+			}
+
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -1035,6 +1058,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_byte(emitter, emitter->last_line, OP_GET_GLOBAL);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->parent)));
 				emit_byte(emitter, emitter->last_line, OP_INHERIT);
+
+				emitter->class_has_super = true;
+
+				// mark_initialized(emitter, add_local(emitter, "super", 5, emitter->last_line));
 			}
 
 			for (uint i = 0; i < stmt->methods.count; i++) {
@@ -1043,6 +1070,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			emit_byte(emitter, emitter->last_line, OP_POP);
 			emitter->class_name = NULL;
+			emitter->class_has_super = false;
 
 			break;
 		}

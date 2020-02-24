@@ -159,6 +159,11 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
+		case SUPER_EXPRESSION: {
+			FREE_EXPRESSION(LitSuperExpression)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -303,6 +308,15 @@ LitSubscriptExpression *lit_create_subscript_expression(LitState* state, uint li
 
 LitThisExpression *lit_create_this_expression(LitState* state, uint line) {
 	return ALLOCATE_EXPRESSION(state, LitThisExpression, THIS_EXPRESSION);
+}
+
+LitSuperExpression *lit_create_super_expression(LitState* state, uint line, LitString* method) {
+	LitSuperExpression* expression = ALLOCATE_EXPRESSION(state, LitSuperExpression, SUPER_EXPRESSION);
+
+	expression->method = method;
+	expression->ignore_emit = false;
+
+	return expression;
 }
 
 #define FREE_STATEMENT(type) lit_reallocate(state, statement, sizeof(type), 0);

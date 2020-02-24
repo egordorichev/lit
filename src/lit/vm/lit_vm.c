@@ -1006,6 +1006,37 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(INVOKE_SUPER) {
+			LitString* method_name = READ_STRING_LONG();
+			uint8_t arg_count = READ_BYTE();
+			LitClass* klass = AS_CLASS(POP());
+
+			WRITE_FRAME()
+
+			if (!invoke_from_class(vm, klass, method_name, arg_count, true)) {
+				RETURN_ERROR()
+			}
+
+			READ_FRAME()
+			continue;
+		}
+
+		CASE_CODE(GET_SUPER_METHOD) {
+			LitString* method_name = READ_STRING_LONG();
+			LitValue instance = POP();
+
+			LitValue value;
+
+			if (lit_table_get(&((LitClass*) AS_INSTANCE(instance)->klass->super)->methods, method_name, &value)) {
+				value = OBJECT_VALUE(lit_create_bound_method(state, instance, AS_FUNCTION(value)));
+			} else {
+				value = NULL_VALUE;
+			}
+
+			PUSH(value);
+			continue;
+		}
+
 		CASE_CODE(INHERIT) {
 			LitValue super = PEEK(0);
 

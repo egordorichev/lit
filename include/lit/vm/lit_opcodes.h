@@ -68,7 +68,9 @@ OPCODE(PUSH_MAP_ELEMENT, -2)
 OPCODE(METHOD, -1)
 // [class] [method] -> [class]
 OPCODE(STATIC_METHOD, -1)
-OPCODE(INVOKE, 0) // Varying stack effect
 OPCODE(INHERIT, -1)
 // [instance] [class] -> [bool]
 OPCODE(IS, -1)
+OPCODE(GET_SUPER_METHOD, 0)
+OPCODE(INVOKE, 0) // Varying stack effect
+OPCODE(INVOKE_SUPER, 0) // Varying stack effect

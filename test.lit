@@ -1,3 +1,20 @@
-print(`this
- is a new line
-how cool is that`)
+class Awesome {
+	test() {
+		print("Awesome test")
+	}
+}
+
+class Test : Awesome {
+	test() {
+		return super.test
+		// super.test()
+		// print("Test test")
+		// return super.test
+	}
+}
+
+var t = new Test()
+var m = t.test()
+
+print(m)
+m()
