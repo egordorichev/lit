@@ -95,3 +95,6 @@ if (false) {
 if !(true && true) {
     print("oops")
 }
+
+print(true ? 32 : 10) // Expected: 32
+print(10 > 40 ? 59 : 9) // Expected: 9

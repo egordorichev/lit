@@ -1,6 +1,5 @@
 # todo
 
-* if expression (? :)
 * fix me: var t = 0 on top of tsab script crashes it
 
 * std {

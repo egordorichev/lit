@@ -1,1 +1,1 @@
-print(false ? 10 : 20)
+print(10 > 40 ? 59 : 9) // Expected: 9

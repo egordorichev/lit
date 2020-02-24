@@ -989,5 +989,5 @@ static void setup_rules() {
 	rules[TOKEN_LEFT_BRACE] = (LitParseRule) { parse_map, NULL, PREC_NONE };
 	rules[TOKEN_THIS] = (LitParseRule) { parse_this, NULL, PREC_NONE };
 	rules[TOKEN_SUPER] = (LitParseRule) { parse_super, NULL, PREC_NONE };
-	rules[TOKEN_QUESTION] = (LitParseRule) { NULL, parse_ternary_or_question, PREC_CALL };
+	rules[TOKEN_QUESTION] = (LitParseRule) { NULL, parse_ternary_or_question, PREC_EQUALITY };
 }
