@@ -6,5 +6,6 @@
 #include <lit/vm/lit_value.h>
 #include <lit/vm/lit_object.h>
 #include <lit/api/lit_api.h>
+#include <lit/std/lit_core.h>
 
 #endif

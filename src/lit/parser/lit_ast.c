@@ -174,6 +174,17 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
+		case IF_EXPRESSION: {
+			LitIfExpression* expr = (LitIfExpression*) expression;
+
+			lit_free_expression(state, expr->condition);
+			lit_free_expression(state, expr->if_branch);
+			lit_free_expression(state, expr->else_branch);
+
+			FREE_EXPRESSION(LitIfExpression)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -333,6 +344,16 @@ LitRangeExpression *lit_create_range_expression(LitState* state, uint line, LitE
 
 	expression->from = from;
 	expression->to = to;
+
+	return expression;
+}
+
+LitIfExpression *lit_create_if_experssion(LitState* state, uint line, LitExpression* condition, LitExpression* if_branch, LitExpression* else_branch) {
+	LitIfExpression* expression = ALLOCATE_EXPRESSION(state, LitIfExpression, IF_EXPRESSION);
+
+	expression->condition = condition;
+	expression->if_branch = if_branch;
+	expression->else_branch = else_branch;
 
 	return expression;
 }

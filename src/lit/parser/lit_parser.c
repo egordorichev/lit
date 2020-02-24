@@ -424,13 +424,19 @@ static LitExpression* parse_range(LitParser* parser, LitExpression* previous, bo
 	return (LitExpression*) lit_create_range_expression(parser->state, line, previous, parse_expression(parser));
 }
 
-static LitExpression* parse_question(LitParser* parser, LitExpression* previous, bool can_assign) {
+static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression* previous, bool can_assign) {
 	uint line = parser->previous.line;
 
-	consume(parser, TOKEN_DOT, "Expected '.' after '?' operator");
-	consume(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
+	if (match(parser, TOKEN_DOT)) {
+		consume(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
+		return (LitExpression*) lit_create_get_expression(parser->state, line, previous, parser->previous.start, parser->previous.length, true);
+	}
 
-	return (LitExpression*) lit_create_get_expression(parser->state, line, previous, parser->previous.start, parser->previous.length, true);
+	LitExpression* if_branch = parse_expression(parser);
+	consume(parser, TOKEN_COLON, "Expected ':' after expression");
+	LitExpression* else_branch = parse_expression(parser);
+
+	return (LitExpression *) lit_create_if_experssion(parser->state, line, previous, if_branch, else_branch);
 }
 
 static LitExpression* parse_array(LitParser* parser, bool can_assign) {
@@ -983,5 +989,5 @@ static void setup_rules() {
 	rules[TOKEN_LEFT_BRACE] = (LitParseRule) { parse_map, NULL, PREC_NONE };
 	rules[TOKEN_THIS] = (LitParseRule) { parse_this, NULL, PREC_NONE };
 	rules[TOKEN_SUPER] = (LitParseRule) { parse_super, NULL, PREC_NONE };
-	rules[TOKEN_QUESTION] = (LitParseRule) { NULL, parse_question, PREC_CALL };
+	rules[TOKEN_QUESTION] = (LitParseRule) { NULL, parse_ternary_or_question, PREC_CALL };
 }

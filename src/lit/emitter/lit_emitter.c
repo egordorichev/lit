@@ -749,6 +749,24 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
+		case IF_EXPRESSION: {
+			LitIfExpression* expr = (LitIfExpression*) expression;
+			emit_expression(emitter, expr->condition);
+
+			uint64_t else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, expression->line);
+			emit_byte(emitter, expression->line, OP_POP); // Pop the condition
+			emit_expression(emitter, expr->if_branch);
+
+			uint64_t end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
+
+			patch_jump(emitter, else_jump, expr->else_branch->line);
+			emit_byte(emitter, expr->else_branch->line, OP_POP); // Pop the old condition
+			emit_expression(emitter, expr->else_branch);
+
+			patch_jump(emitter, end_jump, emitter->last_line);
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown expression type %d", (int) expression->type);
 			break;
