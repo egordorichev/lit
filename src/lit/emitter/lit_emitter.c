@@ -553,9 +553,12 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		case CALL_EXPRESSION: {
 			LitCallExpression* expr = (LitCallExpression*) expression;
 			bool method = expr->callee->type == GET_EXPRESSION;
+			bool super = expr->callee->type == GET_EXPRESSION;
 
 			if (method) {
 				((LitGetExpression*) expr->callee)->ignore_emit = true;
+			} else if (super) {
+				((LitSuperExpression*) expr->callee)->ignore_emit = true;
 			}
 
 			emit_expression(emitter, expr->callee);
@@ -565,10 +568,16 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			}
 
 			if (method) {
-				LitGetExpression* e = (LitGetExpression*) expr->callee;
+				LitGetExpression *e = (LitGetExpression *) expr->callee;
 
 				emit_byte(emitter, expression->line, OP_INVOKE);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
+				emit_byte(emitter, expression->line, (uint8_t) expr->args.count);
+			} else if (super) {
+				LitSuperExpression *e = (LitSuperExpression *) expr->callee;
+
+				emit_byte(emitter, expression->line, OP_INVOKE_SUPER);
+				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(e->method)));
 				emit_byte(emitter, expression->line, (uint8_t) expr->args.count);
 			} else {
 				emit_bytes(emitter, expression->line, OP_CALL, (uint8_t) expr->args.count);
