@@ -1069,8 +1069,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_byte(emitter, emitter->last_line, OP_INHERIT);
 
 				emitter->class_has_super = true;
-
-				// mark_initialized(emitter, add_local(emitter, "super", 5, emitter->last_line));
 			}
 
 			for (uint i = 0; i < stmt->methods.count; i++) {

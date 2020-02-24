@@ -1,15 +1,31 @@
 class Awesome {
+	constructor() {
+		this.prop = "good"
+	}
+
 	test() {
-		print("Awesome test")
+		return this.prop
 	}
 }
 
-class Test : Awesome {
+class Best : Awesome {
+	printTest() {
+		print(this.test())
+	}
+
 	test() {
-		super.test()
-		print("Test test")
+		this.prop = "bad"
+		return super.test()
+	}
+
+	getTest() {
+		return super.test
 	}
 }
 
-var t = new Test()
-t.test()
+var b = new Best()
+b.printTest() // Expected: bad
+var z = b.getTest()
+z() // Expected: bad
+
+print(b is Awesome) // Expected: true

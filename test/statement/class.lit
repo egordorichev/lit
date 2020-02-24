@@ -24,10 +24,21 @@ class Best : Awesome {
 	printTest() {
 		print(this.test())
 	}
+
+	test() {
+		this.prop = "bad"
+		return super.test()
+	}
+
+	getTest() {
+		return super.test
+	}
 }
 
 var b = new Best()
-b.printTest() // Expected: good
+b.printTest() // Expected: bad
+var z = b.getTest()
+print(z()) // Expected: bad
 
 print(b is Awesome) // Expected: true
 print(b is Best) // Expected: true
