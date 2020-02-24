@@ -18,6 +18,9 @@ void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->loop_start = 0;
 	emitter->class_name = NULL;
 	emitter->class_has_super = false;
+	emitter->compiler = NULL;
+	emitter->chunk = NULL;
+	emitter->module_name = NULL;
 
 	lit_init_privates(&emitter->privates);
 	lit_init_uints(&emitter->breaks);

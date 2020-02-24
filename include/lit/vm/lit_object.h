@@ -213,7 +213,7 @@ typedef struct sLitClass {
 	LitTable methods;
 	LitTable static_methods;
 
-	struct LitClass* super;
+	struct sLitClass* super;
 } LitClass;
 
 LitClass* lit_create_class(LitState* state, LitString* name);
