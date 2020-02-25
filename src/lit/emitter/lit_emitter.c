@@ -20,7 +20,7 @@ void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->class_has_super = false;
 	emitter->compiler = NULL;
 	emitter->chunk = NULL;
-	emitter->module_name = NULL;
+	emitter->module = NULL;
 
 	lit_init_privates(&emitter->privates);
 	lit_init_uints(&emitter->breaks);
@@ -60,7 +60,7 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 	compiler->scope_depth = 0;
 	compiler->enclosing = (struct LitCompiler *) emitter->compiler;
 	compiler->skip_return = false;
-	compiler->function = lit_create_function(emitter->state);
+	compiler->function = lit_create_function(emitter->state, emitter->module);
 	compiler->loop_depth = 0;
 
 	emitter->compiler = compiler;
@@ -629,7 +629,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case LAMBDA_EXPRESSION: {
 			LitLambdaExpression* expr = (LitLambdaExpression*) expression;
-			LitString* name = AS_STRING(lit_string_format(emitter->state, "lambda @:@", OBJECT_VALUE(emitter->module_name), lit_number_to_string(emitter->state, expression->line)));
+			LitString* name = AS_STRING(lit_string_format(emitter->state, "lambda @:@", OBJECT_VALUE(emitter->module->name), lit_number_to_string(emitter->state, expression->line)));
 
 			begin_scope(emitter);
 
@@ -1132,11 +1132,13 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 }
 
 LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* module_name) {
+	LitModule* module = lit_create_module(emitter->state, module_name);
+	emitter->module = module;
+
 	LitCompiler compiler;
 	init_compiler(emitter, &compiler, FUNCTION_SCRIPT);
 
 	emitter->chunk = &compiler.function->chunk;
-	emitter->module_name = module_name;
 
 	for (uint i = 0; i < statements->count; i++) {
 		LitStatement* stmt = statements->values[i];
@@ -1150,10 +1152,6 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 
 	LitState* state = emitter->state;
 	LitFunction* function = end_compiler(emitter, module_name);
-	lit_push_root(state, (LitObject *) function);
-
-	LitModule* module = lit_create_module(emitter->state, module_name);
-	lit_push_root(state, (LitObject *) module);
 
 	module->main_function = function;
 	module->privates = LIT_ALLOCATE(emitter->state, LitValue, emitter->privates.count);
@@ -1162,7 +1160,6 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 
 	lit_free_privates(emitter->state, &emitter->privates);
 	lit_table_set(state, &state->vm->modules, module_name, OBJECT_VALUE(module));
-	lit_pop_roots(state, 2);
 
 	return module;
 }

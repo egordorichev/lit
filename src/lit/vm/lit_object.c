@@ -166,13 +166,14 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type)
 	return object;
 }
 
-LitFunction* lit_create_function(LitState* state) {
+LitFunction* lit_create_function(LitState* state, LitModule* module) {
 	LitFunction* function = ALLOCATE_OBJECT(state, LitFunction, OBJECT_FUNCTION);
 	lit_init_chunk(&function->chunk);
 
 	function->name = NULL;
 	function->arg_count = 0;
 	function->upvalue_count = 0;
+	function->module = module;
 
 	return function;
 }

@@ -6,10 +6,11 @@
 #include <string.h>
 
 void lit_init_api(LitState* state) {
-	state->api_module = lit_create_module(state, lit_copy_string(state, "%c%", 3));
+	LitString* name = lit_copy_string(state, "c", 1);
+	state->api_module = lit_create_module(state, name);
 
-	state->api_function = lit_create_function(state);
-	state->api_function->name = lit_copy_string(state, "%c api%", 7);
+	state->api_function = lit_create_function(state, state->api_module);
+	state->api_function->name = name;
 
 	state->api_fiber = lit_create_fiber(state, state->api_module, state->api_function);
 }

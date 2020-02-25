@@ -125,9 +125,11 @@ typedef struct {
 
 	uint arg_count;
 	uint upvalue_count;
+
+	struct sLitModule* module;
 } LitFunction;
 
-LitFunction* lit_create_function(LitState* state);
+LitFunction* lit_create_function(LitState* state, LitModule* module);
 
 typedef struct sLitUpvalue {
 	LitObject object;
@@ -176,7 +178,7 @@ typedef struct {
 	LitValue* slots;
 } LitCallFrame;
 
-typedef struct {
+typedef struct sLitModule {
 	LitObject object;
 
 	LitValue return_value;

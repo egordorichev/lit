@@ -1,6 +1,6 @@
 # todo
 
-* fix me: var t = 0 on top of tsab script crashes it
+* multiple var declaration in a single var statement
 
 * std {
  + Random

@@ -55,7 +55,7 @@ typedef struct sLitEmitter {
 	LitPrivates privates;
 	LitUInts breaks;
 
-	LitString* module_name;
+	LitModule* module;
 	LitString* class_name;
 
 	bool class_has_super;
