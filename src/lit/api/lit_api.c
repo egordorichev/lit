@@ -147,3 +147,13 @@ const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t
 
 	return AS_STRING(args[id])->chars;
 }
+
+static LitValue value;
+
+LitValue* lit_get_field(LitState* state, LitMap* map, const char* name) {
+	if (!lit_table_get(&map->values, CONST_STRING(state, name), &value)) {
+		value = NULL_VALUE;
+	}
+
+	return &value;
+}

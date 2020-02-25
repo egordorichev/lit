@@ -55,4 +55,6 @@ bool lit_get_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool
 const char* lit_check_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def);
 
+LitValue* lit_get_field(LitState* state, LitMap* map, const char* name);
+
 #endif

@@ -1,7 +1,1 @@
-var a = 32
-
-function test() {
-	print(a)
-}
-
-test()
+return 0..32

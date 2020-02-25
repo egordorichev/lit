@@ -79,10 +79,6 @@ static void free_object(LitState* state, LitObject* object) {
 			LitModule* module = (LitModule*) object;
 			LitValue value = module->return_value;
 
-			if (IS_OBJECT(value) && !IS_STRING(value)) {
-				free_object(state, AS_OBJECT(value));
-			}
-
 			LIT_FREE_ARRAY(state, LitValue, module->privates, module->privates_count);
 			LIT_FREE(state, LitModule, object);
 
