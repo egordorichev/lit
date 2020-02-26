@@ -321,7 +321,7 @@ LitRange* lit_create_range(LitState* state, double from, double to) {
 	return range;
 }
 
-LitField* lit_create_field(LitState* state, LitFunction* getter, LitFunction* setter) {
+LitField* lit_create_field(LitState* state, LitObject* getter, LitObject* setter) {
 	LitField* field = ALLOCATE_OBJECT(state, LitField, OBJECT_FIELD);
 
 	field->getter = getter;

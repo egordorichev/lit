@@ -1,15 +1,1 @@
-class Awesome {
-	static thing {
-		get {
-			return 32
-		}
-
-		set {
-			Awesome.nothing = value
-		}
-	}
-}
-
-print(Awesome.thing)
-Awesome.thing = "test"
-print(Awesome.nothing)
+print("test".length = 4)

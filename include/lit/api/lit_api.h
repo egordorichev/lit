@@ -24,6 +24,10 @@
 #define LIT_BIND_STATIC_METHOD(name, method) lit_table_set(state, &klass->static_fields, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_native_method(state, method)));
 #define LIT_BIND_STATIC_FIELD(name, field) lit_table_set(state, &klass->static_fields, lit_copy_string(state, name, strlen(name)), field);
 
+#define LIT_BIND_SETTER(name, setter) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, NULL, (LitObject*) lit_create_native_method(state, setter))));
+#define LIT_BIND_GETTER(name, getter) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, (LitObject*) lit_create_native_method(state, getter), NULL)));
+#define LIT_BIND_FIELD(name, getter, setter) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, (LitObject*) lit_create_native_method(state, getter), (LitObject*) lit_create_native_method(state, setter))));
+
 void lit_init_api(LitState* state);
 void lit_free_api(LitState* state);
 

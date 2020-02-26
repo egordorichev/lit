@@ -289,10 +289,10 @@ LitRange* lit_create_range(LitState* state, double from, double to);
 typedef struct {
 	LitObject object;
 
-	LitFunction* getter;
-	LitFunction* setter;
+	LitObject* getter;
+	LitObject* setter;
 } LitField;
 
-LitField* lit_create_field(LitState* state, LitFunction* getter, LitFunction* setter);
+LitField* lit_create_field(LitState* state, LitObject* getter, LitObject* setter);
 
 #endif

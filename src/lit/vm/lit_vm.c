@@ -794,14 +794,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 							LitField* field = AS_FIELD(value);
 
 							if (field->getter == NULL) {
-								lit_runtime_error(vm, "Class %s does not have a getter for the field %s", instance->klass->name->chars, name);
+								lit_runtime_error(vm, "Class %s does not have a getter for the field %s", instance->klass->name->chars, name->chars);
 								RETURN_ERROR()
 							}
 
 							DROP();
 							WRITE_FRAME()
 
-							if (!call(vm, AS_FIELD(value)->getter, NULL, 0)) {
+							if (!call_value(vm, OBJECT_VALUE(AS_FIELD(value)->getter), 0)) {
 								RETURN_ERROR()
 							}
 
@@ -826,14 +826,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 						LitField* field = AS_FIELD(value);
 
 						if (field->getter == NULL) {
-							lit_runtime_error(vm, "Class %s does not have a getter for the field %s", klass->name->chars, name);
+							lit_runtime_error(vm, "Class %s does not have a getter for the field %s", klass->name->chars, name->chars);
 							RETURN_ERROR()
 						}
 
 						DROP();
 						WRITE_FRAME()
 
-						if (!call(vm, field->getter, NULL, 0)) {
+						if (!call_value(vm, OBJECT_VALUE(field->getter), 0)) {
 							RETURN_ERROR()
 						}
 
@@ -852,7 +852,24 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				}
 
 				if (lit_table_get(&klass->methods, name, &value)) {
-					if (IS_NATIVE_METHOD(value)) {
+					if (IS_FIELD(value)) {
+						LitField *field = AS_FIELD(value);
+
+						if (field->getter == NULL) {
+							lit_runtime_error(vm, "Class %s does not have a getter for the field %s", klass->name->chars, name->chars);
+							RETURN_ERROR()
+						}
+
+						DROP();
+						WRITE_FRAME()
+
+						if (!call_value(vm, OBJECT_VALUE(AS_FIELD(value)->getter), 0)) {
+							RETURN_ERROR()
+						}
+
+						READ_FRAME()
+						continue;
+					} else if (IS_NATIVE_METHOD(value)) {
 						value = OBJECT_VALUE(lit_create_native_bound_method(state, object, AS_NATIVE_METHOD(value)));
 					} else {
 						value = OBJECT_VALUE(lit_create_bound_method(state, object, AS_FUNCTION(value)));
@@ -870,6 +887,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(SET_FIELD) {
 			LitValue instance = PEEK(2);
+
+			if (IS_NULL(instance)) {
+				lit_runtime_error(vm, "Attempt to index a null value");
+				RETURN_ERROR()
+			}
+
 			LitValue value = PEEK(1);
 			LitString* field_name = AS_STRING(PEEK(0));
 
@@ -881,7 +904,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					LitField* field = AS_FIELD(setter);
 
 					if (field->setter == NULL) {
-						lit_runtime_error(vm, "Class %s does not have a setter for the field %s", klass->name->chars, field_name);
+						lit_runtime_error(vm, "Class %s does not have a setter for the field %s", klass->name->chars, field_name->chars);
 						RETURN_ERROR()
 					}
 
@@ -889,7 +912,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					PUSH(value);
 					WRITE_FRAME()
 
-					if (!call(vm, field->setter, NULL, 1)) {
+					if (!call_value(vm, OBJECT_VALUE(field->setter), 1)) {
 						RETURN_ERROR()
 					}
 
@@ -913,7 +936,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					LitField* field = AS_FIELD(setter);
 
 					if (field->setter == NULL) {
-						lit_runtime_error(vm, "Class %s does not have a setter for the field %s", inst->klass->name->chars, field_name);
+						lit_runtime_error(vm, "Class %s does not have a setter for the field %s", inst->klass->name->chars, field_name->chars);
 						RETURN_ERROR()
 					}
 
@@ -921,7 +944,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					PUSH(value);
 					WRITE_FRAME()
 
-					if (!call(vm, field->setter, NULL, 1)) {
+					if (!call_value(vm, OBJECT_VALUE(field->setter), 1)) {
 						RETURN_ERROR()
 					}
 
@@ -938,8 +961,37 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				DROP_MULTIPLE(2); // Pop field name and the value
 				fiber->stack_top[-1] = value;
 			} else {
-				lit_runtime_error(vm, "Only instances and classes have fields");
-				RETURN_ERROR()
+				LitClass* klass = lit_get_class_for(state, instance);
+
+				if (klass == NULL) {
+					lit_runtime_error(vm, "Only instances and classes have fields");
+					RETURN_ERROR()
+				}
+
+				LitValue setter;
+
+				if (lit_table_get(&klass->methods, field_name, &setter) && IS_FIELD(setter)) {
+					LitField* field = AS_FIELD(setter);
+
+					if (field->setter == NULL) {
+						lit_runtime_error(vm, "Class %s does not have a setter for the field %s", klass->name->chars, field_name->chars);
+						RETURN_ERROR()
+					}
+
+					DROP_MULTIPLE(2);
+					PUSH(value);
+					WRITE_FRAME()
+
+					if (!call_value(vm, OBJECT_VALUE(field->setter), 1)) {
+						RETURN_ERROR()
+					}
+
+					READ_FRAME()
+					continue;
+				} else {
+					lit_runtime_error(vm, "Class %s does not contain field %s", klass->name->chars, field_name->chars);
+					RETURN_ERROR()
+				}
 			}
 
 			continue;

@@ -142,6 +142,15 @@ LIT_METHOD(string_subscript) {
 	return OBJECT_VALUE(lit_copy_string(vm->state, &string->chars[index], 1));
 }
 
+LIT_METHOD(string_length) {
+	return NUMBER_VALUE(AS_STRING(instance)->length);
+}
+
+LIT_METHOD(string_set_length) {
+	lit_print_value(args[0]);
+	return NULL_VALUE;
+}
+
 /*
  * Natives
  */
@@ -190,6 +199,8 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("startsWith", string_startsWith)
 		LIT_BIND_METHOD("endsWith", string_endsWith)
 		LIT_BIND_METHOD("[]", string_subscript)
+
+		LIT_BIND_FIELD("length", string_length, string_set_length);
 
 		state->string_class = klass;
 	LIT_END_CLASS()
