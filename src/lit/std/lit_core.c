@@ -43,6 +43,11 @@ LIT_NATIVE(print) {
 	return NULL_VALUE;
 }
 
+LIT_NATIVE(eval) {
+	const char* code = LIT_CHECK_STRING(0);
+	return lit_interpret(vm->state, "eval", code).result;
+}
+
 void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Class")
 		state->class_class = klass;
@@ -102,5 +107,6 @@ void lit_open_core_library(LitState* state) {
 	LIT_END_CLASS()
 
 	lit_define_native(state, "time", time_native);
+	lit_define_native(state, "eval", eval_native);
 	lit_define_native(state, "print", print_native);
 }

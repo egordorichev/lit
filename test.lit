@@ -1,1 +1,1 @@
-return 0..32
+eval("print(32 + 48)")
