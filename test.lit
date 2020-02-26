@@ -1,1 +1,2 @@
-print("test".length = 4)
+print(10.class.name)
+// print(Number.super)

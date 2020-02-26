@@ -407,7 +407,10 @@ static LitExpression* parse_require(LitParser* parser, bool can_assign) {
 
 static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool can_assign) {
 	uint line = parser->previous.line;
-	consume(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
+
+	if (!(match(parser, TOKEN_CLASS) || match(parser, TOKEN_SUPER))) { // class and super are allowed field names
+		consume(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
+	}
 
 	const char* name = parser->previous.start;
 	uint length = parser->previous.length;

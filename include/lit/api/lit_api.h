@@ -15,7 +15,8 @@
 
 #define LIT_INHERIT_CLASS(super_klass) klass->super = (LitClass *) super_klass; \
 	klass->init_method = super_klass->init_method; \
-	lit_table_add_all(state, &super_klass->methods, &klass->methods);
+	lit_table_add_all(state, &super_klass->methods, &klass->methods); \
+	lit_table_add_all(state, &super_klass->static_fields, &klass->static_fields);
 
 #define LIT_END_CLASS() lit_set_global(state, klass_name, OBJECT_VALUE(klass)); \
 	}
@@ -27,6 +28,9 @@
 #define LIT_BIND_SETTER(name, setter) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, NULL, (LitObject*) lit_create_native_method(state, setter))));
 #define LIT_BIND_GETTER(name, getter) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, (LitObject*) lit_create_native_method(state, getter), NULL)));
 #define LIT_BIND_FIELD(name, getter, setter) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, (LitObject*) lit_create_native_method(state, getter), (LitObject*) lit_create_native_method(state, setter))));
+
+#define LIT_BIND_STATIC_SETTER(name, setter) lit_table_set(state, &klass->static_fields, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, NULL, (LitObject*) lit_create_native_method(state, setter))));
+#define LIT_BIND_STATIC_GETTER(name, getter) lit_table_set(state, &klass->static_fields, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, (LitObject*) lit_create_native_method(state, getter), NULL)));
 
 void lit_init_api(LitState* state);
 void lit_free_api(LitState* state);
@@ -64,5 +68,11 @@ const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t
 LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 
 LitValue* lit_get_field(LitState* state, LitMap* map, const char* name);
+
+#define LIT_ENSURE_ARGS(count) \
+	if (arg_count != count) { \
+		lit_runtime_error(vm, "Expected %i argument, got %i", count, arg_count); \
+		return NULL_VALUE; \
+	}
 
 #endif

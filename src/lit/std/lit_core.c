@@ -14,8 +14,30 @@ void lit_open_libraries(LitState* state) {
 }
 
 /*
+ * Class
+ */
+
+LIT_METHOD(class_super) {
+	LitClass* super = AS_CLASS(instance)->super;
+
+	if (super == NULL) {
+		return NULL_VALUE;
+	}
+
+	return OBJECT_VALUE(super);
+}
+
+LIT_METHOD(class_name) {
+	return OBJECT_VALUE(AS_CLASS(instance)->name);
+}
+
+/*
  * Object
  */
+
+LIT_METHOD(object_class) {
+	return OBJECT_VALUE(lit_get_class_for(vm->state, instance));
+}
 
 LIT_METHOD(object_toString) {
 	return OBJECT_VALUE(lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_get_class_for(vm->state, instance)->name)));
@@ -146,9 +168,136 @@ LIT_METHOD(string_length) {
 	return NUMBER_VALUE(AS_STRING(instance)->length);
 }
 
-LIT_METHOD(string_set_length) {
-	lit_print_value(args[0]);
+/*
+ * Array
+ */
+
+LIT_METHOD(array_add) {
+	LIT_ENSURE_ARGS(1)
+
+	LitArray* array = AS_ARRAY(instance);
+	lit_values_write(vm->state, &array->values, args[0]);
+
 	return NULL_VALUE;
+}
+
+LIT_METHOD(array_addAll) {
+	LIT_ENSURE_ARGS(1)
+
+	if (!IS_ARRAY(args[0])) {
+		lit_runtime_error(vm, "Expected array as the argument");
+		return NULL_VALUE;
+	}
+
+	LitArray* array = AS_ARRAY(instance);
+	LitArray* toAdd = AS_ARRAY(args[0]);
+
+	for (uint i = 0; i < toAdd->values.count; i++) {
+		lit_values_write(vm->state, &array->values, toAdd->values.values[i]);
+	}
+
+	return NULL_VALUE;
+}
+
+static int indexOf(LitArray* array, LitValue value) {
+	for (uint i = 0; i < array->values.count; i++) {
+		if (array->values.values[i] == value) {
+			return (int) i;
+		}
+	}
+
+	return -1;
+}
+
+LIT_METHOD(array_indexOf) {
+	LIT_ENSURE_ARGS(1)
+	return NUMBER_VALUE(indexOf(AS_ARRAY(instance), args[0]));
+}
+
+static void removeAt(LitArray* array, uint index) {
+	LitValues* values = &array->values;
+	uint count = values->count;
+
+	if (index >= count) {
+		return;
+	} else if (index == count - 1) {
+		values->values[count - 1] = NULL_VALUE;
+		values->count--;
+	} else {
+		for (uint i = count - 2; i <= index; i++) {
+			values->values[i] = values->values[i + 1];
+		}
+
+		values->count--;
+	}
+}
+
+LIT_METHOD(array_remove) {
+	LIT_ENSURE_ARGS(1)
+
+	LitArray* array = AS_ARRAY(instance);
+	int index = indexOf(array, args[0]);
+
+	if (index != -1) {
+		removeAt(array, (uint) index);
+	}
+
+	return NULL_VALUE;
+}
+
+LIT_METHOD(array_removeAt) {
+	int index = LIT_CHECK_NUMBER(0);
+
+	if (index < 0) {
+		return NULL_VALUE;
+	}
+
+	removeAt(AS_ARRAY(instance), (uint) index);
+	return NULL_VALUE;
+}
+
+LIT_METHOD(array_contains) {
+	LIT_ENSURE_ARGS(1)
+	return BOOL_VALUE(indexOf(AS_ARRAY(instance), args[0]) != -1);
+}
+
+LIT_METHOD(array_length) {
+	return NUMBER_VALUE(AS_ARRAY(instance)->values.count);
+}
+
+/*
+ * Map
+ */
+
+LIT_METHOD(map_length) {
+	return NUMBER_VALUE(AS_MAP(instance)->values.count);
+}
+
+/*
+ * Range
+ */
+
+LIT_METHOD(range_from) {
+	return NUMBER_VALUE(AS_RANGE(instance)->from);
+}
+
+LIT_METHOD(range_set_from) {
+	AS_RANGE(instance)->from = AS_NUMBER(args[0]);
+	return args[0];
+}
+
+LIT_METHOD(range_to) {
+	return NUMBER_VALUE(AS_RANGE(instance)->to);
+}
+
+LIT_METHOD(range_set_to) {
+	AS_RANGE(instance)->to = AS_NUMBER(args[0]);
+	return args[0];
+}
+
+LIT_METHOD(range_length) {
+	LitRange* range = AS_RANGE(instance);
+	return NUMBER_VALUE(range->to - range->from);
 }
 
 /*
@@ -175,11 +324,18 @@ LIT_NATIVE(eval) {
 
 void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Class")
+		LIT_BIND_STATIC_GETTER("super", class_super)
+		LIT_BIND_GETTER("name", class_name)
+
 		state->class_class = klass;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("Object")
+		LIT_INHERIT_CLASS(state->class_class)
+
 		LIT_BIND_METHOD("toString", object_toString)
+		LIT_BIND_GETTER("class", object_class)
+
 		state->object_class = klass;
 		state->object_class->super = state->class_class;
 	LIT_END_CLASS()
@@ -200,14 +356,15 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("endsWith", string_endsWith)
 		LIT_BIND_METHOD("[]", string_subscript)
 
-		LIT_BIND_FIELD("length", string_length, string_set_length);
+		LIT_BIND_GETTER("length", string_length);
 
 		state->string_class = klass;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("Bool")
-		LIT_INHERIT_CLASS(state->object_class)state->bool_class = klass;
+		LIT_INHERIT_CLASS(state->object_class)
 		LIT_BIND_METHOD("toString", bool_toString)
+		state->bool_class = klass;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("Function")
@@ -227,16 +384,35 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Array")
 		LIT_INHERIT_CLASS(state->object_class)
+
+		LIT_BIND_METHOD("add", array_add)
+		LIT_BIND_METHOD("addAll", array_addAll)
+		LIT_BIND_METHOD("remove", array_remove)
+		LIT_BIND_METHOD("removeAt", array_removeAt)
+		LIT_BIND_METHOD("indexOf", array_indexOf)
+		LIT_BIND_METHOD("contains", array_contains)
+
+		LIT_BIND_GETTER("length", array_length)
+
 		state->array_class = klass;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("Map")
 		LIT_INHERIT_CLASS(state->object_class)
+
+		// todo: add all method
+		LIT_BIND_GETTER("length", map_length)
+
 		state->map_class = klass;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("Range")
 		LIT_INHERIT_CLASS(state->object_class)
+
+		LIT_BIND_FIELD("from", range_from, range_set_from)
+		LIT_BIND_FIELD("to", range_to, range_set_to)
+		LIT_BIND_GETTER("length", range_length)
+
 		state->range_class = klass;
 	LIT_END_CLASS()
 
