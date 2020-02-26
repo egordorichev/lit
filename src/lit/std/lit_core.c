@@ -148,6 +148,47 @@ LIT_METHOD(string_endsWith) {
 	return TRUE_VALUE;
 }
 
+LIT_METHOD(string_replace) {
+	LIT_ENSURE_ARGS(2)
+
+	if (!IS_STRING(args[0]) || !IS_STRING(args[1])) {
+		lit_runtime_error(vm, "Expected 2 string arguments");
+		return NULL_VALUE;
+	}
+
+	LitString* string = AS_STRING(instance);
+	LitString* what = AS_STRING(args[0]);
+	LitString* with = AS_STRING(args[1]);
+
+	uint buffer_length = 0;
+
+	for (uint i = 0; i < string->length; i++) {
+		if (strncmp(string->chars + i, what->chars, what->length) == 0) {
+			i += what->length - 1;
+			buffer_length += with->length;
+		} else {
+			buffer_length++;
+		}
+	}
+
+	uint buffer_index = 0;
+	char buffer[buffer_length];
+
+	for (uint i = 0; i < string->length; i++) {
+		if (strncmp(string->chars + i, what->chars, what->length) == 0) {
+			memcpy(buffer + buffer_index, with->chars, with->length);
+
+			buffer_index += with->length;
+			i += what->length - 1;
+		} else {
+			buffer[buffer_index] = string->chars[i];
+			buffer_index++;
+		}
+	}
+
+	return OBJECT_VALUE(lit_copy_string(vm->state, buffer, buffer_length));
+}
+
 LIT_METHOD(string_subscript) {
 	LitString* string = AS_STRING(instance);
 	int index = LIT_CHECK_NUMBER(0);
@@ -166,6 +207,26 @@ LIT_METHOD(string_subscript) {
 
 LIT_METHOD(string_length) {
 	return NUMBER_VALUE(AS_STRING(instance)->length);
+}
+
+/*
+ * Function
+ */
+
+LIT_METHOD(function_name) {
+	if (!IS_FUNCTION(instance)) {
+		return NULL_VALUE;
+	}
+
+	return OBJECT_VALUE(AS_FUNCTION(instance)->name);
+}
+
+/*
+ * Module
+ */
+
+LIT_METHOD(module_name) {
+	return OBJECT_VALUE(AS_MODULE(instance)->name);
 }
 
 /*
@@ -269,6 +330,18 @@ LIT_METHOD(array_length) {
  * Map
  */
 
+LIT_METHOD(map_addAll) {
+	LIT_ENSURE_ARGS(1)
+
+	if (!IS_MAP(args[0])) {
+		lit_runtime_error(vm, "Expected map as the argument");
+		return NULL_VALUE;
+	}
+
+	lit_table_add_all(vm->state, &AS_MAP(args[0])->values, &AS_MAP(instance)->values);
+	return NULL_VALUE;
+}
+
 LIT_METHOD(map_length) {
 	return NUMBER_VALUE(AS_MAP(instance)->values.count);
 }
@@ -325,7 +398,7 @@ LIT_NATIVE(eval) {
 void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Class")
 		LIT_BIND_STATIC_GETTER("super", class_super)
-		LIT_BIND_GETTER("name", class_name)
+		LIT_BIND_STATIC_GETTER("name", class_name)
 
 		state->class_class = klass;
 	LIT_END_CLASS()
@@ -354,9 +427,10 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("contains", string_contains)
 		LIT_BIND_METHOD("startsWith", string_startsWith)
 		LIT_BIND_METHOD("endsWith", string_endsWith)
+		LIT_BIND_METHOD("replace", string_replace)
 		LIT_BIND_METHOD("[]", string_subscript)
 
-		LIT_BIND_GETTER("length", string_length);
+		LIT_BIND_GETTER("length", string_length)
 
 		state->string_class = klass;
 	LIT_END_CLASS()
@@ -369,6 +443,8 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Function")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_GETTER("name", function_name)
+
 		state->function_class = klass;
 	LIT_END_CLASS()
 
@@ -379,6 +455,8 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Module")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_GETTER("name", module_name)
+
 		state->module_class = klass;
 	LIT_END_CLASS()
 
@@ -400,7 +478,7 @@ void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Map")
 		LIT_INHERIT_CLASS(state->object_class)
 
-		// todo: add all method
+		LIT_BIND_METHOD("addAll", map_addAll)
 		LIT_BIND_GETTER("length", map_length)
 
 		state->map_class = klass;

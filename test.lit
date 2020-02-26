@@ -1,2 +1,1 @@
-print(10.class.name)
-// print(Number.super)
+print("hello egor you are egor iegor test".replace("egor", "maanex"))
