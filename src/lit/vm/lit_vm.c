@@ -791,6 +791,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				if (!lit_table_get(&instance->fields, name, &value)) {
 					if (lit_table_get(&instance->klass->methods, name, &value)) {
 						if (IS_FIELD(value)) {
+							LitField* field = AS_FIELD(value);
+
+							if (field->getter == NULL) {
+								lit_runtime_error(vm, "Class %s does not have a getter for the field %s", instance->klass->name->chars, name);
+								RETURN_ERROR()
+							}
+
 							DROP();
 							WRITE_FRAME()
 
@@ -816,10 +823,17 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					} else if (IS_FUNCTION(value)) {
 						value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klass), AS_FUNCTION(value)));
 					} else if (IS_FIELD(value)) {
+						LitField* field = AS_FIELD(value);
+
+						if (field->getter == NULL) {
+							lit_runtime_error(vm, "Class %s does not have a getter for the field %s", klass->name->chars, name);
+							RETURN_ERROR()
+						}
+
 						DROP();
 						WRITE_FRAME()
 
-						if (!call(vm, AS_FIELD(value)->getter, NULL, 0)) {
+						if (!call(vm, field->getter, NULL, 0)) {
 							RETURN_ERROR()
 						}
 
@@ -860,19 +874,65 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitString* field_name = AS_STRING(PEEK(0));
 
 			if (IS_CLASS(instance)) {
+				LitClass* klass = AS_CLASS(instance);
+				LitValue setter;
+
+				if (lit_table_get(&klass->static_fields, field_name, &setter) && IS_FIELD(setter)) {
+					LitField* field = AS_FIELD(setter);
+
+					if (field->setter == NULL) {
+						lit_runtime_error(vm, "Class %s does not have a setter for the field %s", klass->name->chars, field_name);
+						RETURN_ERROR()
+					}
+
+					DROP_MULTIPLE(2);
+					PUSH(value);
+					WRITE_FRAME()
+
+					if (!call(vm, field->setter, NULL, 1)) {
+						RETURN_ERROR()
+					}
+
+					READ_FRAME()
+					continue;
+				}
+
 				if (IS_NULL(value)) {
-					lit_table_delete(&AS_CLASS(instance)->static_fields, field_name);
+					lit_table_delete(&klass->static_fields, field_name);
 				} else {
-					lit_table_set(state, &AS_CLASS(instance)->static_fields, field_name, value);
+					lit_table_set(state, &klass->static_fields, field_name, value);
 				}
 
 				DROP_MULTIPLE(2); // Pop field name and the value
 				fiber->stack_top[-1] = value;
 			} else if (IS_INSTANCE(instance)) {
+				LitInstance* inst = AS_INSTANCE(instance);
+				LitValue setter;
+
+				if (lit_table_get(&inst->klass->methods, field_name, &setter) && IS_FIELD(setter)) {
+					LitField* field = AS_FIELD(setter);
+
+					if (field->setter == NULL) {
+						lit_runtime_error(vm, "Class %s does not have a setter for the field %s", inst->klass->name->chars, field_name);
+						RETURN_ERROR()
+					}
+
+					DROP_MULTIPLE(2);
+					PUSH(value);
+					WRITE_FRAME()
+
+					if (!call(vm, field->setter, NULL, 1)) {
+						RETURN_ERROR()
+					}
+
+					READ_FRAME()
+					continue;
+				}
+
 				if (IS_NULL(value)) {
-					lit_table_delete(&AS_INSTANCE(instance)->fields, field_name);
+					lit_table_delete(&inst->fields, field_name);
 				} else {
-					lit_table_set(state, &AS_INSTANCE(instance)->fields, field_name, value);
+					lit_table_set(state, &inst->fields, field_name, value);
 				}
 
 				DROP_MULTIPLE(2); // Pop field name and the value

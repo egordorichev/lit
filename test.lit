@@ -1,20 +1,15 @@
 class Awesome {
-	/*area {
-		get => 32
-		set => this.test = value
-	}
-
-	thing {
+	static thing {
 		get {
 			return 32
 		}
 
 		set {
-			this.nothing = value
+			Awesome.nothing = value
 		}
-	}*/
-
-	static radius => 32 * 2
+	}
 }
 
-print(Awesome.radius)
+print(Awesome.thing)
+Awesome.thing = "test"
+print(Awesome.nothing)
