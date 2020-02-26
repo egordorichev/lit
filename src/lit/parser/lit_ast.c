@@ -467,6 +467,16 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 			break;
 		}
 
+		case FIELD_STATEMENT: {
+			LitFieldStatement* stmt = (LitFieldStatement*) statement;
+
+			lit_free_statement(state, stmt->getter);
+			lit_free_statement(state, stmt->setter);
+
+			FREE_STATEMENT(LitFieldStatement)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown statement type %d", (int) statement->type);
 			break;
@@ -590,6 +600,17 @@ LitClassStatement *lit_create_class_statement(LitState* state, uint line, LitStr
 	statement->parent = parent;
 
 	lit_init_stataments(&statement->fields);
+
+	return statement;
+}
+
+LitFieldStatement *lit_create_field_statement(LitState* state, uint line, LitString* name, LitStatement* getter, LitStatement* setter, bool is_static) {
+	LitFieldStatement* statement = ALLOCATE_STATEMENT(state, LitFieldStatement, FIELD_STATEMENT);
+
+	statement->name = name;
+	statement->getter = getter;
+	statement->setter = setter;
+	statement->is_static = is_static;
 
 	return statement;
 }

@@ -278,6 +278,7 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 				switch (scanner->start[1]) {
 					case 'u': return check_keyword(scanner, 2, 3, "per", TOKEN_SUPER);
 					case 't': return check_keyword(scanner, 2, 4, "atic", TOKEN_STATIC);
+					case 'e': return check_keyword(scanner, 2, 1, "t", TOKEN_SET);
 				}
 			}
 
@@ -297,6 +298,7 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 
 		case 'v': return check_keyword(scanner, 1, 2, "ar", TOKEN_VAR);
 		case 'w': return check_keyword(scanner, 1, 4, "hile", TOKEN_WHILE);
+		case 'g': return check_keyword(scanner, 1, 2, "et", TOKEN_GET);
 	}
 
 	return TOKEN_IDENTIFIER;

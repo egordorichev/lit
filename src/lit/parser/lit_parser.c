@@ -703,6 +703,42 @@ static LitStatement* parse_return(LitParser* parser) {
 	return (LitStatement*) lit_create_return_statement(parser->state, line, expression);
 }
 
+
+static LitStatement* parse_field(LitParser* parser, LitString* name, bool is_static) {
+	uint line = parser->previous.line;
+
+	LitStatement* getter = NULL;
+	LitStatement* setter = NULL;
+
+	if (match(parser, TOKEN_ARROW)) {
+		getter = parse_statement(parser);
+	} else {
+		match(parser, TOKEN_LEFT_BRACE); // Will be TOKEN_LEFT_BRACE, otherwise this method won't be called
+		ignore_new_lines(parser);
+
+		if (match(parser, TOKEN_GET)) {
+			match(parser, TOKEN_ARROW); // Ignore it if it's present
+			getter = parse_statement(parser);
+		}
+
+		ignore_new_lines(parser);
+
+		if (match(parser, TOKEN_SET)) {
+			match(parser, TOKEN_ARROW); // Ignore it if it's present
+			setter = parse_statement(parser);
+		}
+
+		if (getter == NULL && setter == NULL) {
+			error(parser, "Expected declaration of either getter or setter, got none");
+		}
+
+		ignore_new_lines(parser);
+		consume(parser, TOKEN_RIGHT_BRACE, "Expected '}' after field declaration");
+	}
+
+	return (LitStatement *) lit_create_field_statement(parser->state, line, name, getter, setter, is_static);
+}
+
 static LitTokenType operators[] = {
 	TOKEN_PLUS,
 	TOKEN_MINUS,
@@ -753,6 +789,10 @@ static LitStatement* parse_method(LitParser* parser, bool is_static) {
 	} else {
 		consume(parser, TOKEN_IDENTIFIER, "Expected method name");
 		name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
+
+		if (check(parser, TOKEN_LEFT_BRACE) || check(parser, TOKEN_ARROW)) {
+			return parse_field(parser, name, is_static);
+		}
 	}
 
 	LitMethodStatement* method = lit_create_method_statement(parser->state, parser->previous.line, name, is_static);

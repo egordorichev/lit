@@ -43,7 +43,8 @@ typedef enum {
 	FUNCTION_STATEMENT,
 	RETURN_STATEMENT,
 	METHOD_STATEMENT,
-	CLASS_STATEMENT
+	CLASS_STATEMENT,
+	FIELD_STATEMENT
 } LitStatementType;
 
 typedef struct LitStatement {
@@ -347,6 +348,18 @@ typedef struct {
 } LitClassStatement;
 
 LitClassStatement *lit_create_class_statement(LitState* state, uint line, LitString* name, LitString* parent);
+
+typedef struct {
+	LitStatement statement;
+
+	LitString* name;
+	LitStatement* getter;
+	LitStatement* setter;
+
+	bool is_static;
+} LitFieldStatement;
+
+LitFieldStatement *lit_create_field_statement(LitState* state, uint line, LitString* name, LitStatement* getter, LitStatement* setter, bool is_static);
 
 LitExpressions* lit_allocate_expressions(LitState* state);
 void lit_free_allocated_expressions(LitState* state, LitExpressions* expressions);

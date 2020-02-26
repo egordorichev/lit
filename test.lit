@@ -1,26 +1,20 @@
-/*static class Timer {
-	constructor() {
-		this.tasks = []
+class Awesome {
+	/*area {
+		get => 32
+		set => this.test = value
 	}
 
-	static do(callback, time) {
-		this.tasks.add(new Object() {
-			callback = callback,
-			time = time
-		})
-	}
-
-	static update(dt) {
-		for (var task in tasks) {
-			task.time -= dt
+	thing {
+		get {
+			return 32
 		}
-	}
-}*/
-print(32)
-/*
-var a = new Object() {
-  callback = "test",
-  time = 32
+
+		set {
+			this.nothing = value
+		}
+	}*/
+
+	static radius => 32 * 2
 }
 
-print(a.time)*/
+print(Awesome.radius)

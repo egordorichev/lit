@@ -69,6 +69,7 @@ OPCODE(PUSH_MAP_ELEMENT, -2)
 OPCODE(METHOD, -1)
 // [class] [method] -> [class]
 OPCODE(STATIC_FIELD, -1)
+OPCODE(DEFINE_FIELD, -1)
 OPCODE(INHERIT, -1)
 // [instance] [class] -> [bool]
 OPCODE(IS, -1)

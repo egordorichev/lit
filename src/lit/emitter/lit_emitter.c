@@ -17,10 +17,11 @@ void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->state = state;
 	emitter->loop_start = 0;
 	emitter->class_name = NULL;
-	emitter->class_has_super = false;
 	emitter->compiler = NULL;
 	emitter->chunk = NULL;
 	emitter->module = NULL;
+	emitter->previous_was_expression_statement = false;
+	emitter->class_has_super = false;
 
 	lit_init_privates(&emitter->privates);
 	lit_init_uints(&emitter->breaks);
@@ -87,6 +88,9 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 static void emit_return(LitEmitter* emitter, uint line) {
 	if (emitter->compiler->type == FUNCTION_CONSTRUCTOR) {
 		emit_bytes(emitter, line, OP_GET_LOCAL, 0);
+		emit_byte(emitter, line, OP_RETURN);
+	} else if (emitter->previous_was_expression_statement && emitter->chunk->count > 0) {
+		emitter->chunk->count--; // Remove the OP_POP
 		emit_byte(emitter, line, OP_RETURN);
 	} else {
 		emit_bytes(emitter, line, OP_NULL, OP_RETURN);
@@ -775,6 +779,10 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 }
 
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
+	if (statement == NULL) {
+		return false;
+	}
+
 	switch (statement->type) {
 		case EXPRESSION_STATEMENT: {
 			LitExpressionStatement* expr = (LitExpressionStatement*) statement;
@@ -1122,12 +1130,51 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			break;
 		}
 
+		case FIELD_STATEMENT: {
+			LitFieldStatement* stmt = (LitFieldStatement*) statement;
+			LitFunction* getter = NULL;
+			LitFunction* setter = NULL;
+
+			{
+				begin_scope(emitter);
+
+				LitCompiler compiler;
+				init_compiler(emitter, &compiler, stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD);
+				emit_statement(emitter, stmt->getter);
+				getter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:get @", emitter->class_name, stmt->name)));
+
+				end_scope(emitter, emitter->last_line);
+			}
+
+			{
+				begin_scope(emitter);
+
+				LitCompiler compiler;
+				init_compiler(emitter, &compiler, stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD);
+				mark_initialized(emitter, add_local(emitter, "value", 5, statement->line));
+
+				emit_statement(emitter, stmt->setter);
+				setter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:set @", emitter->class_name, stmt->name)));
+				setter->arg_count = 1;
+
+				end_scope(emitter, emitter->last_line);
+			}
+
+			LitField* field = lit_create_field(emitter->state, getter, setter);
+			emit_constant(emitter, statement->line, OBJECT_VALUE(field));
+			emit_byte(emitter, statement->line, stmt->is_static ? OP_STATIC_FIELD : OP_DEFINE_FIELD);
+			emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
+
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, statement->line, "Unknown statement type %d", (int) statement->type);
 			break;
 		}
 	}
 
+	emitter->previous_was_expression_statement = statement->type == EXPRESSION_STATEMENT;
 	return false;
 }
 

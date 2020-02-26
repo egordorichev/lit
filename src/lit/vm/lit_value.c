@@ -149,6 +149,11 @@ static void print_object(LitValue value) {
 			break;
 		}
 
+		case OBJECT_FIELD: {
+			printf("field");
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}

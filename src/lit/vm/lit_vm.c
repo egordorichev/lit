@@ -790,7 +790,19 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 				if (!lit_table_get(&instance->fields, name, &value)) {
 					if (lit_table_get(&instance->klass->methods, name, &value)) {
-						value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(instance), AS_FUNCTION(value)));
+						if (IS_FIELD(value)) {
+							DROP();
+							WRITE_FRAME()
+
+							if (!call(vm, AS_FIELD(value)->getter, NULL, 0)) {
+								RETURN_ERROR()
+							}
+
+							READ_FRAME()
+							continue;
+						} else {
+							value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(instance), AS_FUNCTION(value)));
+						}
 					} else {
 						value = NULL_VALUE;
 					}
@@ -803,6 +815,16 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 						value = OBJECT_VALUE(lit_create_native_bound_method(state, OBJECT_VALUE(klass), AS_NATIVE_METHOD(value)));
 					} else if (IS_FUNCTION(value)) {
 						value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klass), AS_FUNCTION(value)));
+					} else if (IS_FIELD(value)) {
+						DROP();
+						WRITE_FRAME()
+
+						if (!call(vm, AS_FIELD(value)->getter, NULL, 0)) {
+							RETURN_ERROR()
+						}
+
+						READ_FRAME()
+						continue;
 					}
 				} else {
 					value = NULL_VALUE;
@@ -988,6 +1010,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			}
 
 			lit_table_set(state, &klass->methods, name, PEEK(0));
+			DROP();
+
+			continue;
+		}
+
+		CASE_CODE(DEFINE_FIELD) {
+			lit_table_set(state, &AS_CLASS(PEEK(1))->methods, READ_STRING_LONG(), PEEK(0));
 			DROP();
 
 			continue;

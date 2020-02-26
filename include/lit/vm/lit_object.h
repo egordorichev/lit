@@ -27,6 +27,7 @@
 #define IS_NATIVE_BOUND_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_NATIVE_BOUND_METHOD)
 #define IS_USERDATA(value) IS_OBJECTS_TYPE(value, OBJECT_USERDATA)
 #define IS_RANGE(value) IS_OBJECTS_TYPE(value, OBJECT_RANGE)
+#define IS_FIELD(value) IS_OBJECTS_TYPE(value, OBJECT_FIELD)
 
 #define AS_STRING(value) ((LitString*) AS_OBJECT(value))
 #define AS_CSTRING(value) (((LitString*) AS_OBJECT(value))->chars)
@@ -44,6 +45,7 @@
 #define AS_NATIVE_BOUND_METHOD(value) ((LitNativeBoundMethod*) AS_OBJECT(value))
 #define AS_USERDATA(value) ((LitUserdata*) AS_OBJECT(value))
 #define AS_RANGE(value) ((LitRange*) AS_OBJECT(value))
+#define AS_FIELD(value) ((LitField*) AS_OBJECT(value))
 
 #define ALLOCATE_OBJECT(state, type, objectType) (type*) lit_allocate_object(state, sizeof(type), objectType)
 #define OBJECT_CONST_STRING(state, text) OBJECT_VALUE(lit_copy_string((state), (text), strlen(text)))
@@ -65,7 +67,8 @@ typedef enum {
 	OBJECT_ARRAY,
 	OBJECT_MAP,
 	OBJECT_USERDATA,
-	OBJECT_RANGE
+	OBJECT_RANGE,
+	OBJECT_FIELD
 } LitObjectType;
 
 static const char* lit_object_type_names[] = {
@@ -84,7 +87,8 @@ static const char* lit_object_type_names[] = {
 	"array",
 	"map",
 	"userdata",
-	"range"
+	"range",
+	"field"
 };
 
 typedef struct sLitObject {
@@ -281,5 +285,14 @@ typedef struct {
 } LitRange;
 
 LitRange* lit_create_range(LitState* state, double from, double to);
+
+typedef struct {
+	LitObject object;
+
+	LitFunction* getter;
+	LitFunction* setter;
+} LitField;
+
+LitField* lit_create_field(LitState* state, LitFunction* getter, LitFunction* setter);
 
 #endif
