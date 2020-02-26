@@ -6,6 +6,7 @@
 
 #include <time.h>
 #include <ctype.h>
+#include <math.h>
 #include <string.h>
 
 void lit_open_libraries(LitState* state) {
@@ -125,6 +126,26 @@ LIT_METHOD(string_endsWith) {
 	return TRUE_VALUE;
 }
 
+LIT_METHOD(string_subscript) {
+	LitString* string = AS_STRING(instance);
+	int index = LIT_CHECK_NUMBER(0);
+
+	if (arg_count != 1) {
+		lit_runtime_error(vm, "Can't modify strings with the subscript operator");
+		return NULL_VALUE;
+	}
+
+	if (index < 0) {
+		index = fmax(0, string->length + index);
+	}
+
+	return OBJECT_VALUE(lit_copy_string(vm->state, &string->chars[index], 1));
+}
+
+/*
+ * Natives
+ */
+
 LIT_NATIVE(time) {
 	return NUMBER_VALUE((double) clock() / CLOCKS_PER_SEC);
 }
@@ -168,6 +189,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("contains", string_contains)
 		LIT_BIND_METHOD("startsWith", string_startsWith)
 		LIT_BIND_METHOD("endsWith", string_endsWith)
+		LIT_BIND_METHOD("[]", string_subscript)
 
 		state->string_class = klass;
 	LIT_END_CLASS()

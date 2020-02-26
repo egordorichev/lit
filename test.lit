@@ -1,1 +1,1 @@
-print("TEst32".endsWith("t32"))
+print("TEst32"[-2])

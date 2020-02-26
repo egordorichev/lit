@@ -356,7 +356,13 @@ static LitExpression* parse_literal(LitParser* parser, bool can_assign) {
 		}
 
 		case TOKEN_STRING: {
-			return (LitExpression*) lit_create_literal_expression(parser->state, line, OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start + 1, parser->previous.length - 2)));
+			LitExpression* expression = (LitExpression*) lit_create_literal_expression(parser->state, line, OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start + 1, parser->previous.length - 2)));
+
+			if (match(parser, TOKEN_LEFT_BRACKET)) {
+				return parse_subscript(parser, expression, can_assign);
+			}
+
+			return expression;
 		}
 
 		default: UNREACHABLE
