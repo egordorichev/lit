@@ -46,6 +46,8 @@ LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitVa
 #define LIT_CHECK_STRING(id) lit_check_string(vm, args, arg_count, id)
 #define LIT_GET_STRING(id, def) lit_get_string(vm, args, arg_count, id, def)
 
+#define LIT_CHECK_OBJECT_STRING(id) lit_check_object_string(vm, args, arg_count, id)
+
 double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def);
 
@@ -54,6 +56,8 @@ bool lit_get_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool
 
 const char* lit_check_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def);
+
+LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 
 LitValue* lit_get_field(LitState* state, LitMap* map, const char* name);
 

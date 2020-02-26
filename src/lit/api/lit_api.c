@@ -148,6 +148,15 @@ const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t
 	return AS_STRING(args[id])->chars;
 }
 
+LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
+	if (arg_count <= id || !IS_STRING(args[id])) {
+		lit_runtime_error(vm, "Expected a string as argument #%x", id);
+		return NULL;
+	}
+
+	return AS_STRING(args[id]);
+}
+
 static LitValue value;
 
 LitValue* lit_get_field(LitState* state, LitMap* map, const char* name) {
