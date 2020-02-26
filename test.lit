@@ -1,1 +1,26 @@
-print("TEst32"[-2])
+/*static class Timer {
+	constructor() {
+		this.tasks = []
+	}
+
+	static do(callback, time) {
+		this.tasks.add(new Object() {
+			callback = callback,
+			time = time
+		})
+	}
+
+	static update(dt) {
+		for (var task in tasks) {
+			task.time -= dt
+		}
+	}
+}*/
+print(32)
+/*
+var a = new Object() {
+  callback = "test",
+  time = 32
+}
+
+print(a.time)*/

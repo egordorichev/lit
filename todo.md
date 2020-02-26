@@ -18,6 +18,5 @@
 * fix line info being corrupted if chunk is too small
 * resizeable stack
 * allow to require modules using local path from the module path (module path + require_path)
-* /* */ (block comments)
 * switch statement
 * string interpolation
