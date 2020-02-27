@@ -1,1 +1,6 @@
-print("hello egor you are egor iegor test".replace("egor", "maanex"))
+var m = {
+	"test" : "no",
+	"banana" : "yes"
+}
+
+print(Random.pick(m))

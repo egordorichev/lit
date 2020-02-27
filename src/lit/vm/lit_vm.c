@@ -163,7 +163,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				vm->fiber->stack_top[-arg_count - 1] = OBJECT_VALUE(lit_create_instance(vm->state, klass));
 
 				if (klass->init_method != NULL) {
-					return call(vm, klass->init_method, NULL, arg_count);
+					return call_value(vm, OBJECT_VALUE(klass->init_method), arg_count);
 				}
 
 				// Remove the arguments, so that they don't mess up the stack
@@ -1072,10 +1072,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					RETURN_ERROR()
 				}
 
-				LitTable* values = &AS_MAP(instance)->values;
+				LitMap* map = AS_MAP(instance);
 				LitValue value = PEEK(0);
 
-				lit_table_set(state, values, AS_STRING(PEEK(1)), value);
+				lit_map_set(state, map, AS_STRING(PEEK(1)), value);
 
 				DROP_MULTIPLE(2);
 				*fiber->stack_top = value;
@@ -1098,9 +1098,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(PUSH_MAP_ELEMENT) {
-			LitMap* map = AS_MAP(PEEK(2));
-
-			lit_table_set(state, &map->values, AS_STRING(PEEK(1)), PEEK(0));
+			lit_map_set(state, AS_MAP(PEEK(2)), AS_STRING(PEEK(1)), PEEK(0));
 			DROP_MULTIPLE(2);
 
 			continue;
@@ -1118,7 +1116,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitString* name = READ_STRING_LONG();
 
 			if ((klass->init_method == NULL || (klass->super != NULL && klass->init_method == ((LitClass*) klass->super)->init_method)) && name->length == 11 && memcmp(name->chars, "constructor", 11) == 0) {
-				klass->init_method = AS_FUNCTION(PEEK(0));
+				klass->init_method = AS_OBJECT(PEEK(0));
 			}
 
 			lit_table_set(state, &klass->methods, name, PEEK(0));

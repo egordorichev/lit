@@ -375,7 +375,11 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		}
 
 		case OBJECT_MAP: {
-			lit_mark_table(vm, &((LitMap*) object)->values);
+			LitMap* map = (LitMap*) object;
+
+			lit_mark_object(vm, (LitObject *) map->key_list);
+			lit_mark_table(vm, &map->values);
+
 			break;
 		}
 

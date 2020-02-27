@@ -1,8 +1,10 @@
 #include <lit/std/lit_math.h>
 #include <lit/api/lit_api.h>
+#include <lit/vm/lit_vm.h>
 
 #include <math.h>
 #include <stdlib.h>
+#include <time.h>
 
 LIT_METHOD(math_abs) {
 	return NUMBER_VALUE(fabs(LIT_CHECK_NUMBER(0)));
@@ -88,6 +90,133 @@ LIT_METHOD(math_exp) {
 	return NUMBER_VALUE(exp(LIT_CHECK_NUMBER(0)));
 }
 
+/*
+ * Random
+ */
+
+static uint static_random_data;
+
+static uint* extractRandomData(LitState* state, LitValue instance) {
+	if (IS_CLASS(instance)) {
+		return &static_random_data;
+	}
+
+	LitValue data;
+
+	if (!lit_table_get(&AS_INSTANCE(instance)->fields, CONST_STRING(state, "_data"), &data)) {
+		return 0;
+	}
+
+	return (uint*) AS_USERDATA(data)->data;
+}
+
+LIT_METHOD(random_constructor) {
+	LitUserdata* userdata = lit_create_userdata(vm->state, sizeof(uint));
+	lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), OBJECT_VALUE(userdata));
+
+	uint* data = (uint*) userdata->data;
+
+	if (arg_count == 1) {
+		uint number = (uint) LIT_CHECK_NUMBER(0);
+		*data = number;
+	} else {
+		*data = time(NULL);
+	}
+
+	return OBJECT_VALUE(instance);
+}
+
+LIT_METHOD(random_setSeed) {
+	uint* data = extractRandomData(vm->state, instance);
+
+	if (arg_count == 1) {
+		uint number = (uint) LIT_CHECK_NUMBER(0);
+		*data = number;
+	} else {
+		*data = time(NULL);
+	}
+
+	return NULL_VALUE;
+}
+
+LIT_METHOD(random_int) {
+	uint* data = extractRandomData(vm->state, instance);
+
+	if (arg_count == 1) {
+		int bound = (int) LIT_GET_NUMBER(0, 0);
+		return NUMBER_VALUE(rand_r(data) % bound);
+	} else if (arg_count == 2) {
+		int min = (int) LIT_GET_NUMBER(0, 0);
+		int max = (int) LIT_GET_NUMBER(1, 1);
+
+		if (max - min == 0) {
+			return NUMBER_VALUE(0);
+		}
+
+		return NUMBER_VALUE(min + rand_r(data) % (max - min));
+	}
+
+	return NUMBER_VALUE(rand_r(data));
+}
+
+LIT_METHOD(random_float) {
+	uint* data = extractRandomData(vm->state, instance);
+	double value = (double) rand_r(data) / RAND_MAX;
+
+	if (arg_count == 1) {
+		int bound = (int) LIT_GET_NUMBER(0, 0);
+		return NUMBER_VALUE(value * bound);
+	} else if (arg_count == 2) {
+		int min = (int) LIT_GET_NUMBER(0, 0);
+		int max = (int) LIT_GET_NUMBER(1, 1);
+
+		if (max - min == 0) {
+			return NUMBER_VALUE(0);
+		}
+
+		return NUMBER_VALUE(min + value * (max - min));
+	}
+
+	return NUMBER_VALUE(value);
+}
+
+LIT_METHOD(random_bool) {
+	return BOOL_VALUE(rand_r(extractRandomData(vm->state, instance)) % 2);
+}
+
+LIT_METHOD(random_chance) {
+	return NUMBER_VALUE((double) rand_r(extractRandomData(vm->state, instance)) / RAND_MAX * 100);
+}
+
+LIT_METHOD(random_pick) {
+	int value = rand_r(extractRandomData(vm->state, instance));
+
+	if (arg_count == 1) {
+		if (IS_ARRAY(args[0])) {
+			LitArray* array = AS_ARRAY(args[0]);
+
+			if (array->values.count == 0) {
+				return NULL_VALUE;
+			}
+
+			return array->values.values[value % array->values.count];
+		} else if (IS_MAP(args[0])) {
+			LitMap* map = AS_MAP(args[0]);
+
+			if (map->key_list->values.count == 0) {
+				return NULL_VALUE;
+			}
+
+			return map->key_list->values.values[value % map->key_list->values.count];
+		} else {
+			lit_runtime_error(vm, "Expected map or array as the argument");
+			return NULL_VALUE;
+		}
+	} else {
+		return args[value % arg_count];
+	}
+}
+
 void lit_open_math_library(LitState* state) {
 	LIT_BEGIN_CLASS("Math")
 		LIT_BIND_STATIC_FIELD("Pi", NUMBER_VALUE(M_PI))
@@ -112,5 +241,25 @@ void lit_open_math_library(LitState* state) {
 		LIT_BIND_STATIC_METHOD("sqrt", math_sqrt)
 		LIT_BIND_STATIC_METHOD("log", math_log)
 		LIT_BIND_STATIC_METHOD("exp", math_exp)
+	LIT_END_CLASS()
+
+	srand(time(NULL));
+	static_random_data = time(NULL);
+
+	LIT_BEGIN_CLASS("Random")
+		LIT_BIND_CONSTRUCTOR("constructor", random_constructor)
+
+		LIT_BIND_METHOD("setSeed", random_setSeed)
+		LIT_BIND_METHOD("int", random_int)
+		LIT_BIND_METHOD("float", random_float)
+		LIT_BIND_METHOD("chance", random_chance)
+		LIT_BIND_METHOD("pick", random_pick)
+
+		LIT_BIND_STATIC_METHOD("setSeed", random_setSeed)
+		LIT_BIND_STATIC_METHOD("int", random_int)
+		LIT_BIND_STATIC_METHOD("float", random_float)
+		LIT_BIND_STATIC_METHOD("bool", random_bool)
+		LIT_BIND_STATIC_METHOD("chance", random_chance)
+		LIT_BIND_STATIC_METHOD("pick", random_pick)
 	LIT_END_CLASS()
 }

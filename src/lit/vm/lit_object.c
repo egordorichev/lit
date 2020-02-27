@@ -299,8 +299,66 @@ LitArray* lit_create_array(LitState* state) {
 
 LitMap* lit_create_map(LitState* state) {
 	LitMap* map = ALLOCATE_OBJECT(state, LitMap, OBJECT_MAP);
+
+	map->key_list = lit_create_array(state);
 	lit_init_table(&map->values);
+
 	return map;
+}
+
+
+bool lit_map_set(LitState* state, LitMap* map, LitString* key, LitValue value) {
+	if (value == NULL_VALUE) {
+		lit_map_delete(map, key);
+		return false;
+	}
+
+	if (lit_table_set(state, &map->values, key, value)) {
+		lit_values_write(state, &map->key_list->values, OBJECT_VALUE(key));
+		return true;
+	}
+
+	return false;
+}
+
+bool lit_map_get(LitMap* map, LitString* key, LitValue* value) {
+	return lit_table_get(&map->values, key, value);
+}
+
+bool lit_map_delete(LitMap* map, LitString* key) {
+	if (lit_table_delete(&map->values, key)) {
+		LitValues* values = &map->key_list->values;
+		LitValue key_value = OBJECT_VALUE(key);
+
+		for (uint i = 0; i < values->count; i++) {
+			if (values->values[i] == key_value) {
+				if (values->count == i + 1) {
+					values->values[i] = NULL_VALUE;
+				} else {
+					for (uint j = values->count - 2; j <= i; j++) {
+						values->values[j] = values->values[j + 1];
+					}
+				}
+
+				values->count--;
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+void lit_map_add_all(LitState* state, LitMap* from, LitMap* to) {
+	for (int i = 0; i <= from->values.capacity; i++) {
+		LitTableEntry* entry = &from->values.entries[i];
+
+		if (entry->key != NULL) {
+			if (lit_table_set(state, &to->values, entry->key, entry->value)) {
+				lit_values_write(state, &to->key_list->values, OBJECT_VALUE(entry->key));
+			}
+		}
+	}
 }
 
 LitUserdata* lit_create_userdata(LitState* state, size_t size) {

@@ -217,7 +217,7 @@ typedef struct sLitClass {
 	LitObject object;
 
 	LitString* name;
-	LitFunction* init_method;
+	LitObject* init_method;
 
 	LitTable methods;
 	LitTable static_fields;
@@ -264,9 +264,16 @@ LitArray* lit_create_array(LitState* state);
 typedef struct {
 	LitObject object;
 	LitTable values;
+
+	LitArray* key_list;
 } LitMap;
 
 LitMap* lit_create_map(LitState* state);
+
+bool lit_map_set(LitState* state, LitMap* map, LitString* key, LitValue value);
+bool lit_map_get(LitMap* map, LitString* key, LitValue* value);
+bool lit_map_delete(LitMap* map, LitString* key);
+void lit_map_add_all(LitState* state, LitMap* from, LitMap* to);
 
 typedef struct {
 	LitObject object;

@@ -1160,7 +1160,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				end_scope(emitter, emitter->last_line);
 			}
 
-			LitField* field = lit_create_field(emitter->state, getter, setter);
+			LitField* field = lit_create_field(emitter->state, (LitObject *) getter, (LitObject *) setter);
 			emit_constant(emitter, statement->line, OBJECT_VALUE(field));
 			emit_byte(emitter, statement->line, stmt->is_static ? OP_STATIC_FIELD : OP_DEFINE_FIELD);
 			emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
