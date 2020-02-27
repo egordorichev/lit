@@ -326,6 +326,30 @@ LIT_METHOD(array_clear) {
 	return NULL_VALUE;
 }
 
+LIT_METHOD(array_iterator) {
+	LIT_ENSURE_ARGS(1)
+
+	LitArray* array = AS_ARRAY(instance);
+	int number = 0;
+
+	if (IS_NUMBER(args[0])) {
+		number = AS_NUMBER(args[0]);
+
+		if (number >= array->values.count - 1) {
+			return NULL_VALUE;
+		}
+
+		number++;
+	}
+
+	return NUMBER_VALUE(number);
+}
+
+LIT_METHOD(array_iteratorValue) {
+	uint index = LIT_CHECK_NUMBER(0);
+	return AS_ARRAY(instance)->values.values[index];
+}
+
 LIT_METHOD(array_length) {
 	return NUMBER_VALUE(AS_ARRAY(instance)->values.count);
 }
@@ -353,6 +377,30 @@ LIT_METHOD(map_clear) {
 	map->key_list->values.count = 0;
 
 	return NULL_VALUE;
+}
+
+LIT_METHOD(map_iterator) {
+	LIT_ENSURE_ARGS(1)
+
+	LitMap* map = AS_MAP(instance);
+	int number = 0;
+
+	if (IS_NUMBER(args[0])) {
+		number = AS_NUMBER(args[0]);
+
+		if (number >= map->values.count - 1) {
+			return NULL_VALUE;
+		}
+
+		number++;
+	}
+
+	return NUMBER_VALUE(number);
+}
+
+LIT_METHOD(map_iteratorValue) {
+	uint index = LIT_CHECK_NUMBER(0);
+	return AS_MAP(instance)->key_list->values.values[index];
 }
 
 LIT_METHOD(map_length) {
@@ -511,6 +559,8 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("indexOf", array_indexOf)
 		LIT_BIND_METHOD("contains", array_contains)
 		LIT_BIND_METHOD("clear", array_clear)
+		LIT_BIND_METHOD("iterator", array_iterator)
+		LIT_BIND_METHOD("iteratorValue", array_iteratorValue)
 
 		LIT_BIND_GETTER("length", array_length)
 
@@ -522,6 +572,8 @@ void lit_open_core_library(LitState* state) {
 
 		LIT_BIND_METHOD("addAll", map_addAll)
 		LIT_BIND_METHOD("clear", map_clear)
+		LIT_BIND_METHOD("iterator", map_iterator)
+		LIT_BIND_METHOD("iteratorValue", map_iteratorValue)
 
 		LIT_BIND_GETTER("length", map_length)
 		LIT_BIND_GETTER("keys", map_keys)

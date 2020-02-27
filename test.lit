@@ -1,3 +1,5 @@
-for (var i in 0 .. 32) {
-	print(i)
+var m = { "awesome" : 32, "test" : 48 }
+
+for (var k in m) {
+	print(k, m[k])
 }
