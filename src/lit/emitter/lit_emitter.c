@@ -964,6 +964,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				uint start = emitter->chunk->count;
 
 				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
+				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
 				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, iterator);
 				emit_byte(emitter, emitter->last_line, OP_INVOKE);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iterator")));
@@ -981,6 +982,9 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				}
 
 				uint local = add_local(emitter, var->name, var->length, statement->line);
+				emit_byte(emitter, emitter->last_line, OP_INVOKE);
+				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iteratorValue")));
+				emit_byte(emitter, emitter->last_line, 1);
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, local);
 
 				mark_initialized(emitter, local);
@@ -999,7 +1003,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_byte(emitter, emitter->last_line, OP_POP);
 				emit_loop(emitter, start, emitter->last_line);
 				patch_jump(emitter, exit_jump, emitter->last_line);
-			// 	emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+				emit_byte(emitter, emitter->last_line, OP_POP);
 			}
 
 			patch_breaks(emitter, emitter->last_line);

@@ -386,6 +386,11 @@ LIT_METHOD(range_iterator) {
 	return NUMBER_VALUE(number);
 }
 
+LIT_METHOD(range_iteratorValue) {
+	LIT_ENSURE_ARGS(1)
+	return args[0];
+}
+
 LIT_METHOD(range_from) {
 	return NUMBER_VALUE(AS_RANGE(instance)->from);
 }
@@ -528,6 +533,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_INHERIT_CLASS(state->object_class)
 
 		LIT_BIND_METHOD("iterator", range_iterator)
+		LIT_BIND_METHOD("iteratorValue", range_iteratorValue)
 
 		LIT_BIND_FIELD("from", range_from, range_set_from)
 		LIT_BIND_FIELD("to", range_to, range_set_to)
