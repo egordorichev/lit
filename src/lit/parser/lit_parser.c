@@ -625,17 +625,27 @@ static LitStatement* parse_for(LitParser* parser) {
 		}
 	}
 
-	consume(parser, TOKEN_SEMICOLON, "Expected ';'");
-	LitExpression* condition = check(parser, TOKEN_SEMICOLON) ? NULL : parse_expression(parser);
+	bool c_style = !match(parser, TOKEN_IN);
+	LitExpression* condition = NULL;
+	LitExpression* increment = NULL;
 
-	consume(parser, TOKEN_SEMICOLON, "Expected ';'");
-	LitExpression* increment = check(parser, TOKEN_RIGHT_PAREN) ? NULL : parse_expression(parser);
+	if (c_style) {
+		consume(parser, TOKEN_SEMICOLON, "Expected ';'");
+		condition = check(parser, TOKEN_SEMICOLON) ? NULL : parse_expression(parser);
+
+		consume(parser, TOKEN_SEMICOLON, "Expected ';'");
+		increment = check(parser, TOKEN_RIGHT_PAREN) ? NULL : parse_expression(parser);
+	} else {
+		condition = parse_expression(parser);
+
+		if (var == NULL) {
+			error(parser, "For loops using in-iteration must declare a new variable");
+		}
+	}
 
 	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')'");
 
-	LitStatement* body = parse_statement(parser);
-
-	return (LitStatement*) lit_create_for_statement(parser->state, line, init, var, condition, increment, body);
+	return (LitStatement*) lit_create_for_statement(parser->state, line, init, var, condition, increment, parse_statement(parser), c_style);
 }
 
 static LitStatement* parse_while(LitParser* parser) {

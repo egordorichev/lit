@@ -289,9 +289,11 @@ typedef struct {
 	LitExpression* condition;
 	LitExpression* increment;
 	LitStatement* body;
+
+	bool c_style;
 } LitForStatement;
 
-LitForStatement *lit_create_for_statement(LitState* state, uint line, LitExpression* init, LitStatement* var, LitExpression* condition, LitExpression* increment, LitStatement* body);
+LitForStatement *lit_create_for_statement(LitState* state, uint line, LitExpression* init, LitStatement* var, LitExpression* condition, LitExpression* increment, LitStatement* body, bool c_style);
 
 typedef struct {
 	LitStatement statement;

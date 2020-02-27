@@ -542,7 +542,7 @@ LitWhileStatement *lit_create_while_statement(LitState* state, uint line, LitExp
 	return statement;
 }
 
-LitForStatement *lit_create_for_statement(LitState* state, uint line, LitExpression* init, LitStatement* var, LitExpression* condition, LitExpression* increment, LitStatement* body) {
+LitForStatement *lit_create_for_statement(LitState* state, uint line, LitExpression* init, LitStatement* var, LitExpression* condition, LitExpression* increment, LitStatement* body, bool c_style) {
 	LitForStatement* statement = ALLOCATE_STATEMENT(state, LitForStatement, FOR_STATEMENT);
 
 	statement->init = init;
@@ -550,6 +550,7 @@ LitForStatement *lit_create_for_statement(LitState* state, uint line, LitExpress
 	statement->condition = condition;
 	statement->increment = increment;
 	statement->body = body;
+	statement->c_style = c_style;
 
 	return statement;
 }

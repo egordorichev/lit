@@ -1,7 +1,3 @@
-var m = {
-	"test" : "no",
-	"banana" : "yes"
+for (var i in 0 .. 32) {
+	print(i)
 }
-
-m.clear()
-print(m)

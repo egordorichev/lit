@@ -7,9 +7,7 @@
 }
 
 * toString, and overall string addition (finally)
-* range
 * better for loops's (map iteration, array iteration, range iteration)
-* setters/getters
 
 * find an operator for floor division
 

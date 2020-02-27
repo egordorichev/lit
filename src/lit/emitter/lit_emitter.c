@@ -746,8 +746,8 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		case RANGE_EXPRESSION: {
 			LitRangeExpression* expr = (LitRangeExpression*) expression;
 
-			emit_expression(emitter, expr->from);
 			emit_expression(emitter, expr->to);
+			emit_expression(emitter, expr->from);
 
 			emit_byte(emitter, expression->line, OP_RANGE);
 			break;
@@ -915,46 +915,96 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			begin_scope(emitter);
 			emitter->compiler->loop_depth++;
 
-			if (stmt->var != NULL) {
-				emit_statement(emitter, stmt->var);
-			} else if (stmt->init != NULL) {
-				emit_expression(emitter, stmt->init);
-			}
+			if (stmt->c_style) {
+				if (stmt->var != NULL) {
+					emit_statement(emitter, stmt->var);
+				} else if (stmt->init != NULL) {
+					emit_expression(emitter, stmt->init);
+				}
 
-			uint start = emitter->chunk->count;
-			uint exit_jump;
+				uint start = emitter->chunk->count;
+				uint exit_jump;
 
-			if (stmt->condition != NULL) {
-				emit_expression(emitter, stmt->condition);
-				exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
-				emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
-			}
+				if (stmt->condition != NULL) {
+					emit_expression(emitter, stmt->condition);
+					exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
+					emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+				}
 
-			if (stmt->increment != NULL) {
-				uint body_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
-				uint increment_start = emitter->chunk->count;
+				if (stmt->increment != NULL) {
+					uint body_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
+					uint increment_start = emitter->chunk->count;
 
-				emit_expression(emitter, stmt->increment);
-				emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+					emit_expression(emitter, stmt->increment);
+					emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
 
+					emit_loop(emitter, start, emitter->last_line);
+					start = increment_start;
+					patch_jump(emitter, body_jump, emitter->last_line);
+				}
+
+				emitter->loop_start = start;
+				emit_statement(emitter, stmt->body);
 				emit_loop(emitter, start, emitter->last_line);
-				start = increment_start;
-				patch_jump(emitter, body_jump, emitter->last_line);
-			}
 
-			emitter->loop_start = start;
-			emit_statement(emitter, stmt->body);
-			emit_loop(emitter, start, emitter->last_line);
+				if (stmt->condition != NULL) {
+					patch_jump(emitter, exit_jump, emitter->last_line);
+					emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+				}
+			} else {
+				LitVarStatement* var = (LitVarStatement *) stmt->var;
+				uint sequence = add_local(emitter, "seq ", 4, statement->line);
+				emit_expression(emitter, stmt->condition);
+				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, sequence);
 
-			if (stmt->condition != NULL) {
+				uint iterator = add_local(emitter, "iter ", 5, statement->line);
+				emit_byte(emitter, emitter->last_line, OP_NULL);
+				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
+
+				uint start = emitter->chunk->count;
+
+				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
+				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, iterator);
+				emit_byte(emitter, emitter->last_line, OP_INVOKE);
+				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iterator")));
+				emit_byte(emitter, emitter->last_line, 1);
+				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
+
+				uint exit_jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
+
+				emitter->loop_start = start;
+
+				bool block = stmt->body->type == BLOCK_STATEMENT;
+
+				if (!block) {
+					begin_scope(emitter);
+				}
+
+				uint local = add_local(emitter, var->name, var->length, statement->line);
+				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, local);
+
+				mark_initialized(emitter, local);
+
+				if (block) {
+					LitBlockStatement* bl = (LitBlockStatement *) stmt->body;
+
+					for (uint i = 0; i < bl->statements.count; i++) {
+						emit_statement(emitter, bl->statements.values[i]);
+					}
+				} else {
+					emit_statement(emitter, stmt->body);
+					end_scope(emitter, emitter->last_line);
+				}
+
+				emit_byte(emitter, emitter->last_line, OP_POP);
+				emit_loop(emitter, start, emitter->last_line);
 				patch_jump(emitter, exit_jump, emitter->last_line);
-				emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+			// 	emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
 			}
 
 			patch_breaks(emitter, emitter->last_line);
 			end_scope(emitter, emitter->last_line);
 			emitter->compiler->loop_depth--;
-
 			break;
 		}
 

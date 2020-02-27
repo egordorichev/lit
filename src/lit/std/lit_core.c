@@ -367,6 +367,25 @@ LIT_METHOD(map_keys) {
  * Range
  */
 
+LIT_METHOD(range_iterator) {
+	LIT_ENSURE_ARGS(1)
+
+	LitRange* range = AS_RANGE(instance);
+	int number = range->from;
+
+	if (IS_NUMBER(args[0])) {
+		number = AS_NUMBER(args[0]);
+
+		if (range->to > range->from ? number >= range->to : number >= range->from) {
+			return NULL_VALUE;
+		}
+
+		number += (range->from - range->to) > 0 ? -1 : 1;
+	}
+
+	return NUMBER_VALUE(number);
+}
+
 LIT_METHOD(range_from) {
 	return NUMBER_VALUE(AS_RANGE(instance)->from);
 }
@@ -507,6 +526,8 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Range")
 		LIT_INHERIT_CLASS(state->object_class)
+
+		LIT_BIND_METHOD("iterator", range_iterator)
 
 		LIT_BIND_FIELD("from", range_from, range_set_from)
 		LIT_BIND_FIELD("to", range_to, range_set_to)
