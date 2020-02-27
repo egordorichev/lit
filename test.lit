@@ -3,4 +3,5 @@ var m = {
 	"banana" : "yes"
 }
 
-print(Random.pick(m))
+m.clear()
+print(m)

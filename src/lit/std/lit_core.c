@@ -321,6 +321,11 @@ LIT_METHOD(array_contains) {
 	return BOOL_VALUE(indexOf(AS_ARRAY(instance), args[0]) != -1);
 }
 
+LIT_METHOD(array_clear) {
+	AS_ARRAY(instance)->values.count = 0;
+	return NULL_VALUE;
+}
+
 LIT_METHOD(array_length) {
 	return NUMBER_VALUE(AS_ARRAY(instance)->values.count);
 }
@@ -338,6 +343,15 @@ LIT_METHOD(map_addAll) {
 	}
 
 	lit_map_add_all(vm->state, AS_MAP(args[0]), AS_MAP(instance));
+	return NULL_VALUE;
+}
+
+LIT_METHOD(map_clear) {
+	LitMap* map = AS_MAP(instance);
+
+	map->values.count = 0;
+	map->key_list->values.count = 0;
+
 	return NULL_VALUE;
 }
 
@@ -399,9 +413,6 @@ LIT_NATIVE(eval) {
 }
 
 void lit_open_core_library(LitState* state) {
-	// todo: array and map clear()
-	// map remove()
-
 	LIT_BEGIN_CLASS("Class")
 		LIT_BIND_STATIC_GETTER("super", class_super)
 		LIT_BIND_STATIC_GETTER("name", class_name)
@@ -475,6 +486,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("removeAt", array_removeAt)
 		LIT_BIND_METHOD("indexOf", array_indexOf)
 		LIT_BIND_METHOD("contains", array_contains)
+		LIT_BIND_METHOD("clear", array_clear)
 
 		LIT_BIND_GETTER("length", array_length)
 
@@ -485,6 +497,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_INHERIT_CLASS(state->object_class)
 
 		LIT_BIND_METHOD("addAll", map_addAll)
+		LIT_BIND_METHOD("clear", map_clear)
 
 		LIT_BIND_GETTER("length", map_length)
 		LIT_BIND_GETTER("keys", map_keys)

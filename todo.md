@@ -3,7 +3,6 @@
 * multiple var declaration in a single var statement
 
 * std {
- + Random
  + File
 }
 
