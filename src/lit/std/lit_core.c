@@ -552,6 +552,8 @@ void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Array")
 		LIT_INHERIT_CLASS(state->object_class)
 
+		// todo: join, insert
+
 		LIT_BIND_METHOD("add", array_add)
 		LIT_BIND_METHOD("addAll", array_addAll)
 		LIT_BIND_METHOD("remove", array_remove)

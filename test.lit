@@ -1,5 +1,2 @@
-var m = { "awesome" : 32, "test" : 48 }
-
-for (var k in m) {
-	print(k, m[k])
-}
+// print($"test {32}")
+print("test\rtest32")

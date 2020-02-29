@@ -32,7 +32,7 @@ typedef enum {
 	TOKEN_DOT, TOKEN_DOT_DOT,
 
 	// Literals.
-	TOKEN_IDENTIFIER, TOKEN_STRING, TOKEN_NUMBER,
+	TOKEN_IDENTIFIER, TOKEN_STRING, TOKEN_INTERPOLATION, TOKEN_NUMBER,
 
 	// Keywords.
 	TOKEN_CLASS, TOKEN_ELSE, TOKEN_FALSE,
@@ -54,6 +54,8 @@ typedef struct {
 	LitTokenType type;
 	uint length;
 	uint line;
+
+	LitValue value;
 } LitToken;
 
 #endif

@@ -1,13 +1,16 @@
 #include <lit/scanner/lit_scanner.h>
 
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 
-void lit_setup_scanner(LitScanner* scanner, const char* file_name, const char* source) {
+void lit_setup_scanner(LitState* state, LitScanner* scanner, const char* file_name, const char* source) {
 	scanner->line = 1;
 	scanner->start = source;
 	scanner->current = source;
 	scanner->file_name = file_name;
+	scanner->state = state;
 }
 
 static bool is_at_end(LitScanner* scanner) {
@@ -130,21 +133,58 @@ static bool skip_whitespace(LitScanner* scanner) {
 }
 
 static LitToken parse_string(LitScanner* scanner) {
-	while (peek(scanner) != '"' && !is_at_end(scanner)) {
-		if (peek(scanner) == '\n') {
-			scanner->line++;
+	LitState* state = scanner->state;
+	LitBytes bytes;
+	lit_init_bytes(&bytes);
+
+	while (true) {
+		char c = advance(scanner);
+
+		if (c == '\"') {
+			break;
 		}
 
-		advance(scanner);
+		switch (c) {
+			case '\0': return make_error_token(scanner, "Unterminated string");
+			case '\n': {
+				scanner->line++;
+				break;
+			}
+
+			case '\\': {
+				switch (advance(scanner)) {
+					case '\"': lit_bytes_write(state, &bytes, '\"'); break;
+					case '\\': lit_bytes_write(state, &bytes, '\\'); break;
+					case '0': lit_bytes_write(state, &bytes, '\0'); break;
+					case '{': lit_bytes_write(state, &bytes, '{'); break;
+					case 'a': lit_bytes_write(state, &bytes, '\a'); break;
+					case 'b': lit_bytes_write(state, &bytes, '\b'); break;
+					case 'f': lit_bytes_write(state, &bytes, '\f'); break;
+					case 'n': lit_bytes_write(state, &bytes, '\n'); break;
+					case 'r': lit_bytes_write(state, &bytes, '\r'); break;
+					case 't': lit_bytes_write(state, &bytes, '\t'); break;
+					case 'v': lit_bytes_write(state, &bytes, '\v'); break;
+
+					default: {
+						return make_error_token(scanner, "Invalid escape character");
+					}
+				}
+
+				break;
+			}
+
+			default: {
+				lit_bytes_write(state, &bytes, c);
+				break;
+			}
+		}
 	}
 
-	if (is_at_end(scanner)) {
-		return make_error_token(scanner, "Unterminated string");
-	}
+	LitToken token = make_token(scanner, TOKEN_STRING);
+	token.value = OBJECT_VALUE(lit_copy_string(state, (const char*) bytes.values, bytes.count));
+	lit_free_bytes(state, &bytes);
 
-	// Closing "
-	advance(scanner);
-	return make_token(scanner, TOKEN_STRING);
+	return token;
 }
 
 static LitToken parse_multiline_string(LitScanner* scanner) {
@@ -173,7 +213,53 @@ static bool is_alpha(char c) {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
+static int parse_hex_digit(LitScanner* scanner) {
+	char c = advance(scanner);
+
+	if (c >= '0' && c <= '9') {
+		return c - '0';
+	}
+
+	if (c >= 'a' && c <= 'f') {
+		return c - 'a' + 10;
+	}
+
+	if (c >= 'A' && c <= 'F') {
+		return c - 'A' + 10;
+	}
+
+	scanner->current--;
+	return -1;
+}
+
+static LitToken make_number_token(LitScanner* scanner, bool is_hex) {
+	errno = 0;
+	LitValue value;
+
+	if (is_hex) {
+		value = NUMBER_VALUE((double) strtoll(scanner->start, NULL, 16));
+	} else {
+		value = NUMBER_VALUE(strtod(scanner->start, NULL));
+	}
+
+	if (errno == ERANGE) {
+		return make_error_token(scanner, "Number literal was too large");
+	}
+
+	LitToken token = make_token(scanner, TOKEN_NUMBER);
+	token.value = value;
+	return token;
+}
+
 static LitToken parse_number(LitScanner* scanner) {
+	if (match(scanner, 'x')) {
+		while (parse_hex_digit(scanner) != -1) {
+			continue;
+		}
+
+		return make_number_token(scanner, true);
+	}
+
 	while (is_digit(peek(scanner))) {
 		advance(scanner);
 	}
@@ -188,7 +274,7 @@ static LitToken parse_number(LitScanner* scanner) {
 		}
 	}
 
-	return make_token(scanner, TOKEN_NUMBER);
+	return make_number_token(scanner, false);
 }
 
 static LitTokenType check_keyword(LitScanner* scanner, int start, int length, const char* rest, LitTokenType type) {
@@ -364,7 +450,6 @@ LitToken lit_scan_token(LitScanner* scanner) {
 		case '&': return match_tokens(scanner, '=', '&', TOKEN_AMPERSAND_EQUAL, TOKEN_AMPERSAND_AMPERSAND, TOKEN_AMPERSAND);
 
 		case '"': return parse_string(scanner);
-		case '`': return parse_multiline_string(scanner);
 	}
 
 	return make_error_token(scanner, "Unexpected character");

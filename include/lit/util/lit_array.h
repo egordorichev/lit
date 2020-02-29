@@ -38,5 +38,6 @@
 	}
 
 DECLARE_ARRAY(LitUInts, uint, uints)
+DECLARE_ARRAY(LitBytes, uint8_t, bytes)
 
 #endif

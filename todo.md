@@ -1,16 +1,14 @@
 # todo
 
-* multiple var declaration in a single var statement
-
 * std {
  + File
 }
 
+* getter/setter and iterator tests
+
+* error if any binary operation takes a null 
 * toString, and overall string addition (finally)
-* better for loops's (map iteration, array iteration, range iteration)
-
 * find an operator for floor division
-
 * try/catch/exception
 * fix line info being corrupted if chunk is too small
 * resizeable stack
