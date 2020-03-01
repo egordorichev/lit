@@ -6,7 +6,6 @@
 
 * error sync doesnt seem to work
 * error if any binary operation takes a null 
-* toString, and overall string addition (finally)
 * find an operator for floor division
 * try/catch/exception
 * fix line info being corrupted if chunk is too small

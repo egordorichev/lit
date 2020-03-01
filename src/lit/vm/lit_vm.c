@@ -350,10 +350,18 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #define BINARY_OP(type, op, op_string) \
 	LitValue a = PEEK(1); \
 	LitValue b = PEEK(0); \
-	if (IS_NUMBER(a) && IS_NUMBER(b)) { \
+	if (IS_NUMBER(a)) { \
+		if (!IS_NUMBER(b)) { \
+			lit_runtime_error(vm, "Attempt to use operator %s with a number and not a number", op_string); \
+			RETURN_ERROR() \
+		} \
 		DROP(); \
 		*(fiber->stack_top - 1) = (type(AS_NUMBER(a) op AS_NUMBER(b))); \
 		continue; \
+	} \
+	if (IS_NULL(a)) { \
+		lit_runtime_error(vm, "Attempt to use operator %s on a null value", op_string); \
+		RETURN_ERROR() \
 	} \
 	INVOKE_METHOD(a, op_string, 1)
 

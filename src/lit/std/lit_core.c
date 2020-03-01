@@ -77,6 +77,33 @@ LIT_METHOD(bool_toString) {
  * String
  */
 
+LIT_METHOD(string_plus) {
+	LitString* string = AS_STRING(instance);
+
+	LitValue value = args[0];
+	LitString* string_value = NULL;
+
+	if (IS_STRING(value)) {
+		string_value = AS_STRING(value);
+	} else {
+		string_value = lit_to_string(vm->state, value);
+	}
+
+	uint length = string->length + string_value->length;
+	LitString* result = lit_allocate_empty_string(vm->state, length);
+
+	result->chars = LIT_ALLOCATE(vm->state, char, length + 1);
+	result->chars[length] = '\0';
+
+	memcpy(result->chars, string->chars, string->length);
+	memcpy(result->chars + string->length, string_value->chars, string_value->length);
+
+	result->hash = lit_hash_string(result->chars, result->length);
+	lit_register_string(vm->state, result);
+
+	return OBJECT_VALUE(result);
+}
+
 LIT_METHOD(string_toString) {
 	return instance;
 }
@@ -594,6 +621,8 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("String")
 		LIT_INHERIT_CLASS(state->object_class)
+
+		LIT_BIND_METHOD("+", string_plus)
 		LIT_BIND_METHOD("toString", string_toString)
 		LIT_BIND_METHOD("toUpperCase", string_toUpperCase)
 		LIT_BIND_METHOD("toLowerCase", string_toLowerCase)

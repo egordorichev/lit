@@ -1,12 +1,1 @@
-var i = 0
-
-for (var z in 0 .. 100) {
-	if (z == 0) {
-		continue
-	}
-
-	i++
-}
-
-print(i)
-// fixme: stack trash
+print("test " + 32)
