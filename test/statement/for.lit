@@ -25,6 +25,10 @@ print(i) // Expected: 21
 i = 0
 
 for (var z in 0 .. 100) {
+	if (z == 0) {
+		continue
+	}
+
 	i++
 	break
 }

@@ -22,6 +22,7 @@ void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->module = NULL;
 	emitter->previous_was_expression_statement = false;
 	emitter->class_has_super = false;
+	emitter->emit_pop_continue = false;
 
 	lit_init_privates(&emitter->privates);
 	lit_init_uints(&emitter->breaks);
@@ -968,6 +969,9 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 					emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
 				}
 			} else {
+				bool old = emitter->emit_pop_continue;
+				emitter->emit_pop_continue = true;
+
 				LitVarStatement* var = (LitVarStatement *) stmt->var;
 				uint sequence = add_local(emitter, "seq ", 4, statement->line);
 				emit_expression(emitter, stmt->condition);
@@ -978,6 +982,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
 
 				uint start = emitter->chunk->count;
+				emitter->loop_start = emitter->chunk->count;
 
 				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
 				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
@@ -988,8 +993,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
 
 				uint exit_jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
-
-				emitter->loop_start = start;
 
 				bool block = stmt->body->type == BLOCK_STATEMENT;
 
@@ -1020,17 +1023,23 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_loop(emitter, start, emitter->last_line);
 				patch_jump(emitter, exit_jump, emitter->last_line);
 				emit_byte(emitter, emitter->last_line, OP_POP);
+				emitter->emit_pop_continue = old;
 			}
 
 			patch_breaks(emitter, emitter->last_line);
 			end_scope(emitter, emitter->last_line);
 			emitter->compiler->loop_depth--;
+
 			break;
 		}
 
 		case CONTINUE_STATEMENT: {
 			if (emitter->compiler->loop_depth == 0) {
 				lit_error(emitter->state, COMPILE_ERROR, statement->line, "Can't use 'continue' outside of loops");
+			}
+
+			if (emitter->emit_pop_continue) {
+				emit_byte(emitter, statement->line, OP_POP);
 			}
 
 			emit_loop(emitter, emitter->loop_start, statement->line);
