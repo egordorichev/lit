@@ -22,4 +22,14 @@
 #define LIT_STACK_MAX (LIT_CALL_FRAMES_MAX * 8)
 #define LIT_ROOT_MAX 10
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+#define LIT_OS_WINDOWS
+#elif __APPLE__
+#define LIT_OS_MAC
+#elif __linux__
+#define LIT_OS_LINUX
+#else
+#define LIT_OS_UNKNOWN
+#endif
+
 #endif

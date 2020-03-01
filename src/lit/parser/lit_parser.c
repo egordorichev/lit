@@ -989,11 +989,13 @@ static void sync(LitParser* parser) {
 }
 
 static LitStatement* parse_declaration(LitParser* parser) {
-	if (match(parser, TOKEN_CLASS) || match(parser, TOKEN_STATIC)) {
-		return parse_class(parser);
-	}
+	LitStatement* statement = NULL;
 
-	LitStatement* statement = parse_statement(parser);
+	if (match(parser, TOKEN_CLASS) || match(parser, TOKEN_STATIC)) {
+		statement = parse_class(parser);
+	} else {
+		statement = parse_statement(parser);
+	}
 
 	if (parser->panic_mode) {
 		sync(parser);

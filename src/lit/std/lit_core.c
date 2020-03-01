@@ -1,5 +1,6 @@
 #include <lit/std/lit_core.h>
 #include <lit/std/lit_math.h>
+#include <lit/std/lit_file.h>
 #include <lit/api/lit_api.h>
 #include <lit/vm/lit_vm.h>
 #include <lit/vm/lit_object.h>
@@ -11,6 +12,7 @@
 
 void lit_open_libraries(LitState* state) {
 	lit_open_math_library(state);
+	lit_open_file_library(state);
 }
 
 /*
