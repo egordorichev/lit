@@ -33,6 +33,16 @@ class Best : Awesome {
 	getTest() {
 		return super.test
 	}
+
+	z => 32
+
+	d {
+		get {
+			return this.prop
+		}
+
+		set => this.prop = value
+	}
 }
 
 var b = new Best()
@@ -49,3 +59,10 @@ print(b !is Awesome) // Expected: false
 print(b !is Best) // Expected: false
 print(a !is Awesome) // Expected: false
 print(a !is Best) // Expected: true
+
+print(b.z) // Expected: 32
+print(b.d) // Expected: bad
+
+b.d = "good"
+
+print(b.d) // Expected: good

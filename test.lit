@@ -1,5 +1,15 @@
-class Awesome {
+
+i = 0
+
+for (var z in 0 .. 100) {
+	if (z == 0) {
+		continue
+	}
+	
+	i++
+	break
 }
 
-var a = new Awesome()
-print(a.super.name)
+print(i) // Expected: 1
+
+// fixme: stack trash

@@ -1,0 +1,8 @@
+print($"{32}") // Expected: 32
+print($"{32 * 2}") // Expected: 64
+
+var a = "egor"
+var who = "me"
+
+print($"test {a} world") // Expected: test egor world
+print($"somebody {$"{"once"}"} told {who}") // Expected: somebody once told me

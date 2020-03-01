@@ -13,3 +13,20 @@ print(i) // Expected: 5
 for (var j = 0; j < 1; j++) {
 	print(j) // Expected: 0
 }
+
+i = 0
+
+for (var z in -10 .. 10) {
+	i++
+}
+
+print(i) // Expected: 21
+
+i = 0
+
+for (var z in 0 .. 100) {
+	i++
+	break
+}
+
+print(i) // Expected: 1

@@ -4,8 +4,6 @@
  + File
 }
 
-* getter/setter/string interpolation and iterator tests
-
 * error sync doesnt seem to work
 * error if any binary operation takes a null 
 * toString, and overall string addition (finally)
