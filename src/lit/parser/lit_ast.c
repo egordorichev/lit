@@ -185,6 +185,13 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
+		case INTERPOLATION_EXPRESSION: {
+			free_expressions(state, &((LitInterpolationExpression *) expression)->expressions);
+			FREE_EXPRESSION(LitInterpolationExpression)
+
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -355,6 +362,12 @@ LitIfExpression *lit_create_if_experssion(LitState* state, uint line, LitExpress
 	expression->if_branch = if_branch;
 	expression->else_branch = else_branch;
 
+	return expression;
+}
+
+LitInterpolationExpression *lit_create_interpolation_expression(LitState* state, uint line) {
+	LitInterpolationExpression* expression = ALLOCATE_EXPRESSION(state, LitInterpolationExpression, INTERPOLATION_EXPRESSION);
+	lit_init_expressions(&expression->expressions);
 	return expression;
 }
 

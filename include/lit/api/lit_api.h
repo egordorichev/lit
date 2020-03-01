@@ -76,4 +76,6 @@ LitValue* lit_get_field(LitState* state, LitMap* map, const char* name);
 		return NULL_VALUE; \
 	}
 
+LitString* lit_to_string(LitState* state, LitValue object);
+
 #endif

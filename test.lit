@@ -1,2 +1,1 @@
-// print($"test {32}")
-print("test\rtest32")
+print($"test {32} {$"{32} {"test"}"} a")

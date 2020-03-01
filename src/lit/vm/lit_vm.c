@@ -394,6 +394,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			if (fiber->frame_count == 0) {
 				DROP();
+
+				#ifdef LIT_TRACE_EXECUTION
+					printf("== ==\n");
+				#endif
+
 				return (LitInterpretResult) { INTERPRET_OK, result };
 			}
 

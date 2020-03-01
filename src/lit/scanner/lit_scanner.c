@@ -11,6 +11,7 @@ void lit_setup_scanner(LitState* state, LitScanner* scanner, const char* file_na
 	scanner->current = source;
 	scanner->file_name = file_name;
 	scanner->state = state;
+	scanner->num_braces = 0;
 }
 
 static bool is_at_end(LitScanner* scanner) {
@@ -132,8 +133,10 @@ static bool skip_whitespace(LitScanner* scanner) {
 	}
 }
 
-static LitToken parse_string(LitScanner* scanner) {
+static LitToken parse_string(LitScanner* scanner, bool interpolation) {
 	LitState* state = scanner->state;
+	LitTokenType string_type = TOKEN_STRING;
+
 	LitBytes bytes;
 	lit_init_bytes(&bytes);
 
@@ -142,10 +145,20 @@ static LitToken parse_string(LitScanner* scanner) {
 
 		if (c == '\"') {
 			break;
+		} else if (interpolation && c == '{') {
+			if (scanner->num_braces >= LIT_MAX_INTERPOLATION_NESTING) {
+				return make_error_token(scanner, "Interpolation is too deep");
+			}
+
+			string_type = TOKEN_INTERPOLATION;
+			scanner->braces[scanner->num_braces++] = 1;
+
+			break;
 		}
 
 		switch (c) {
 			case '\0': return make_error_token(scanner, "Unterminated string");
+
 			case '\n': {
 				scanner->line++;
 				break;
@@ -180,29 +193,11 @@ static LitToken parse_string(LitScanner* scanner) {
 		}
 	}
 
-	LitToken token = make_token(scanner, TOKEN_STRING);
+	LitToken token = make_token(scanner, string_type);
 	token.value = OBJECT_VALUE(lit_copy_string(state, (const char*) bytes.values, bytes.count));
 	lit_free_bytes(state, &bytes);
 
 	return token;
-}
-
-static LitToken parse_multiline_string(LitScanner* scanner) {
-	while (peek(scanner) != '`' && !is_at_end(scanner)) {
-		if (peek(scanner) == '\n') {
-			scanner->line++;
-		}
-
-		advance(scanner);
-	}
-
-	if (is_at_end(scanner)) {
-		return make_error_token(scanner, "Unterminated string");
-	}
-
-	// Closing `
-	advance(scanner);
-	return make_token(scanner, TOKEN_STRING);
 }
 
 static bool is_digit(char c) {
@@ -426,8 +421,24 @@ LitToken lit_scan_token(LitScanner* scanner) {
 	switch (c) {
 		case '(': return make_token(scanner, TOKEN_LEFT_PAREN);
 		case ')': return make_token(scanner, TOKEN_RIGHT_PAREN);
-		case '{': return make_token(scanner, TOKEN_LEFT_BRACE);
-		case '}': return make_token(scanner, TOKEN_RIGHT_BRACE);
+
+		case '{': {
+			if (scanner->num_braces > 0) {
+				scanner->braces[scanner->num_braces - 1]++;
+			}
+
+			return make_token(scanner, TOKEN_LEFT_BRACE);
+		}
+
+		case '}': {
+			if (scanner->num_braces > 0 && --scanner->braces[scanner->num_braces - 1] == 0) {
+				scanner->num_braces--;
+				return parse_string(scanner, true);
+			}
+
+			return make_token(scanner, TOKEN_RIGHT_BRACE);
+		}
+
 		case '[': return make_token(scanner, TOKEN_LEFT_BRACKET);
 		case ']': return make_token(scanner, TOKEN_RIGHT_BRACKET);
 		case ';': return make_token(scanner, TOKEN_SEMICOLON);
@@ -449,7 +460,15 @@ LitToken lit_scan_token(LitScanner* scanner) {
 		case '|': return match_tokens(scanner, '=', '|', TOKEN_BAR_EQUAL, TOKEN_BAR_BAR, TOKEN_BAR);
 		case '&': return match_tokens(scanner, '=', '&', TOKEN_AMPERSAND_EQUAL, TOKEN_AMPERSAND_AMPERSAND, TOKEN_AMPERSAND);
 
-		case '"': return parse_string(scanner);
+		case '$': {
+			if (!match(scanner, '\"')) {
+				return make_error_token(scanner, "Expected '\"' after '$'");
+			}
+
+			return parse_string(scanner, true);
+		}
+
+		case '"': return parse_string(scanner, false);
 	}
 
 	return make_error_token(scanner, "Unexpected character");

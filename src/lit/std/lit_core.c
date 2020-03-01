@@ -350,6 +350,38 @@ LIT_METHOD(array_iteratorValue) {
 	return AS_ARRAY(instance)->values.values[index];
 }
 
+LIT_METHOD(array_join) {
+	LitValues* values = &AS_ARRAY(instance)->values;
+	LitString* strings[values->count];
+
+	uint length = 0;
+
+	for (uint i = 0; i < values->count; i++) {
+		LitString* string = lit_to_string(vm->state, values->values[i]);
+
+		strings[i] = string;
+		length += string->length;
+	}
+
+	uint index = 0;
+	LitString* result = lit_allocate_empty_string(vm->state, length);
+
+	result->chars = LIT_ALLOCATE(vm->state, char, length + 1);
+	result->chars[length] = '\0';
+
+	for (uint i = 0; i < values->count; i++) {
+		LitString* string = strings[i];
+
+		memcpy(result->chars + index, string->chars, string->length);
+		index += string->length;
+	}
+
+	result->hash = lit_hash_string(result->chars, result->length);
+	lit_register_string(vm->state, result);
+
+	return OBJECT_VALUE(result);
+}
+
 LIT_METHOD(array_length) {
 	return NUMBER_VALUE(AS_ARRAY(instance)->values.count);
 }
@@ -563,6 +595,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("clear", array_clear)
 		LIT_BIND_METHOD("iterator", array_iterator)
 		LIT_BIND_METHOD("iteratorValue", array_iteratorValue)
+		LIT_BIND_METHOD("join", array_join)
 
 		LIT_BIND_GETTER("length", array_length)
 

@@ -112,6 +112,9 @@ LitString* lit_copy_string(LitState* state, const char* chars, uint length);
 LitString* lit_take_string(LitState* state, const char* chars, uint length);
 LitValue lit_string_format(LitState* state, const char* format, ...);
 LitValue lit_number_to_string(LitState* state, double value);
+void lit_register_string(LitState* state, LitString* string);
+uint32_t lit_hash_string(const char* key, uint length);
+LitString* lit_allocate_empty_string(LitState* state, uint length);
 
 typedef enum {
 	FUNCTION_REGULAR,

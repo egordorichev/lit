@@ -5,30 +5,30 @@
 #include <memory.h>
 #include <math.h>
 
-static LitString* allocate_empty_string(LitState* state, uint length) {
+LitString* lit_allocate_empty_string(LitState* state, uint length) {
 	LitString* string = ALLOCATE_OBJECT(state, LitString, OBJECT_STRING);
 	string->length = length;
 	return string;
 }
 
-static void register_string(LitState* state, LitString* string) {
+void lit_register_string(LitState* state, LitString* string) {
 	lit_push_root(state, (LitObject *) string);
 	lit_table_set(state, &state->vm->strings, string, NULL_VALUE);
 	lit_pop_root(state);
 }
 
 static LitString* allocate_string(LitState* state, char* chars, uint length, uint32_t hash) {
-	LitString* string = allocate_empty_string(state, length);
+	LitString* string = lit_allocate_empty_string(state, length);
 
 	string->chars = chars;
 	string->hash = hash;
 
-	register_string(state, string);
+	lit_register_string(state, string);
 
 	return string;
 }
 
-static uint32_t hash_string(const char* key, uint length) {
+uint32_t lit_hash_string(const char* key, uint length) {
 	uint32_t hash = 2166136261u;
 
 	for (uint i = 0; i < length; i++) {
@@ -40,7 +40,7 @@ static uint32_t hash_string(const char* key, uint length) {
 }
 
 LitString* lit_take_string(LitState* state, const char* chars, uint length) {
-	uint32_t hash = hash_string(chars, length);
+	uint32_t hash = lit_hash_string(chars, length);
 	LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
 
 	if (interned != NULL) {
@@ -51,7 +51,7 @@ LitString* lit_take_string(LitState* state, const char* chars, uint length) {
 }
 
 LitString* lit_copy_string(LitState* state, const char* chars, uint length) {
-	uint32_t hash = hash_string(chars, length);
+	uint32_t hash = lit_hash_string(chars, length);
 	LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
 
 	if (interned != NULL) {
@@ -110,7 +110,7 @@ LitValue lit_string_format(LitState* state, const char* format, ...) {
 	}
 
 	va_end(arg_list);
-	LitString* result = allocate_empty_string(state, total_length);
+	LitString* result = lit_allocate_empty_string(state, total_length);
 	result->chars = LIT_ALLOCATE(state, char, total_length + 1);
 	result->chars[total_length] = '\0';
 	va_start(arg_list, format);
@@ -144,8 +144,8 @@ LitValue lit_string_format(LitState* state, const char* format, ...) {
 
 	va_end(arg_list);
 
-	result->hash = hash_string(result->chars, result->length);
-	register_string(state, result);
+	result->hash = lit_hash_string(result->chars, result->length);
+	lit_register_string(state, result);
 
 	return OBJECT_VALUE(result);
 }

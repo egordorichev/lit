@@ -771,6 +771,22 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
+		case INTERPOLATION_EXPRESSION: {
+			LitInterpolationExpression* expr = (LitInterpolationExpression*) expression;
+			emit_byte(emitter, expression->line, OP_ARRAY);
+
+			for (uint i = 0; i < expr->expressions.count; i++) {
+				emit_expression(emitter, expr->expressions.values[i]);
+				emit_byte(emitter, emitter->last_line, OP_PUSH_ARRAY_ELEMENT);
+			}
+
+			emit_byte(emitter, emitter->last_line, OP_INVOKE);
+			emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "join")));
+			emit_byte(emitter, emitter->last_line, 0);
+
+			break;
+		}
+
 		default: {
 			lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown expression type %d", (int) expression->type);
 			break;

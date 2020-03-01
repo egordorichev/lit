@@ -369,6 +369,30 @@ static LitExpression* parse_string(LitParser* parser, bool can_assign) {
 	return expression;
 }
 
+static LitExpression* parse_interpolation(LitParser* parser, bool can_assign) {
+	LitInterpolationExpression* expression = lit_create_interpolation_expression(parser->state, parser->previous.line);
+
+	do {
+		if (AS_STRING(parser->previous.value)->length > 0) {
+			lit_expressions_write(parser->state, &expression->expressions, (LitExpression *) lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value));
+		}
+
+		lit_expressions_write(parser->state, &expression->expressions, parse_expression(parser));
+	} while (match(parser, TOKEN_INTERPOLATION));
+
+	consume(parser, TOKEN_STRING, "Expected end of interpolation");
+
+	if (AS_STRING(parser->previous.value)->length > 0) {
+		lit_expressions_write(parser->state, &expression->expressions, (LitExpression *) lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value));
+	}
+
+	if (match(parser, TOKEN_LEFT_BRACKET)) {
+		return parse_subscript(parser, (LitExpression*) expression, can_assign);
+	}
+
+	return (LitExpression*) expression;
+}
+
 static LitExpression* parse_variable_expression_base(LitParser* parser, bool can_assign, bool new) {
 	LitExpression* expression = (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, parser->previous);
 
@@ -1029,6 +1053,7 @@ static void setup_rules() {
 	rules[TOKEN_LESS] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_LESS_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_STRING] = (LitParseRule) { parse_string, NULL, PREC_NONE };
+	rules[TOKEN_INTERPOLATION] = (LitParseRule) { parse_interpolation, NULL, PREC_NONE };
 	rules[TOKEN_IDENTIFIER] = (LitParseRule) { parse_variable_expression, NULL, PREC_NONE };
 	rules[TOKEN_NEW] = (LitParseRule) { parse_new_expression, NULL, PREC_NONE };
 	rules[TOKEN_PLUS_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };

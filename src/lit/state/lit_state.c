@@ -6,6 +6,7 @@
 #include <lit/scanner/lit_scanner.h>
 #include <lit/util/lit_fs.h>
 #include <lit/std/lit_core.h>
+#include <lit/api/lit_api.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -62,12 +63,14 @@ LitState* lit_new_state() {
 	state->vm = (LitVm*) malloc(sizeof(LitVm));
 
 	lit_init_vm(state, state->vm);
+	lit_init_api(state);
 	lit_open_core_library(state);
 
 	return state;
 }
 
 int64_t lit_free_state(LitState* state) {
+	lit_free_api(state);
 	free(state->scanner);
 
 	lit_free_parser(state->parser);

@@ -23,7 +23,8 @@ typedef enum {
 	THIS_EXPRESSION,
 	SUPER_EXPRESSION,
 	RANGE_EXPRESSION,
-	IF_EXPRESSION
+	IF_EXPRESSION,
+	INTERPOLATION_EXPRESSION
 } LitExpressionType;
 
 typedef struct LitExpression {
@@ -226,6 +227,13 @@ typedef struct {
 } LitIfExpression;
 
 LitIfExpression *lit_create_if_experssion(LitState* state, uint line, LitExpression* condition, LitExpression* if_branch, LitExpression* else_branch);
+
+typedef struct {
+	LitExpression expression;
+	LitExpressions expressions;
+} LitInterpolationExpression;
+
+LitInterpolationExpression *lit_create_interpolation_expression(LitState* state, uint line);
 
 /*
  * Statements
