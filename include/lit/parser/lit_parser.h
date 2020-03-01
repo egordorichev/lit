@@ -18,10 +18,10 @@ typedef enum {
 	PREC_TERM,        // + -
 	PREC_FACTOR,      // * /
 	PREC_IS,          // is
+	PREC_RANGE,       // ..
 	PREC_UNARY,       // ! -
 	PREC_NULL,        // ??
 	PREC_CALL,        // . ()
-	PREC_RANGE,       // ..
 	PREC_PRIMARY
 } LitPrecedence;
 

@@ -1,1 +1,5 @@
-print($"test {32} {$"{32} {"test"}"} a")
+class Awesome {
+}
+
+var a = new Awesome()
+print(a.super.name)

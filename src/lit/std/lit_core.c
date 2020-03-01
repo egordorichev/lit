@@ -17,8 +17,18 @@ void lit_open_libraries(LitState* state) {
  * Class
  */
 
+LIT_METHOD(class_toString) {
+	return OBJECT_VALUE(lit_string_format(vm->state, "class @", AS_CLASS(instance)->name));
+}
+
 LIT_METHOD(class_super) {
-	LitClass* super = AS_CLASS(instance)->super;
+	LitClass* super = NULL;
+
+	if (IS_INSTANCE(instance)) {
+		super = AS_INSTANCE(instance)->klass->super;
+	} else {
+		super = AS_CLASS(instance)->super;
+	}
 
 	if (super == NULL) {
 		return NULL_VALUE;
@@ -213,17 +223,43 @@ LIT_METHOD(string_length) {
  * Function
  */
 
-LIT_METHOD(function_name) {
-	if (!IS_FUNCTION(instance)) {
-		return NULL_VALUE;
+static LitValue get_function_name(LitVm* vm, LitValue instance) {
+	LitString* name = NULL;
+
+	switch (OBJECT_TYPE(instance)) {
+		case OBJECT_FUNCTION: {
+			name = AS_FUNCTION(instance)->name;
+			break;
+		}
+
+		case OBJECT_CLOSURE: {
+			name = AS_CLOSURE(instance)->function->name;
+			break;
+		}
 	}
 
-	return OBJECT_VALUE(AS_FUNCTION(instance)->name);
+	if (name == NULL) {
+		return OBJECT_CONST_STRING(vm->state, "function");
+	} else {
+		return OBJECT_VALUE(lit_string_format(vm->state, "function @", name));
+	}
+}
+
+LIT_METHOD(function_toString) {
+	return get_function_name(vm, instance);
+}
+
+LIT_METHOD(function_name) {
+	return get_function_name(vm, instance);
 }
 
 /*
  * Module
  */
+
+LIT_METHOD(module_toString) {
+	return OBJECT_VALUE(lit_string_format(vm->state, "Module @", AS_MODULE(instance)->name));
+}
 
 LIT_METHOD(module_name) {
 	return OBJECT_VALUE(AS_MODULE(instance)->name);
@@ -382,6 +418,10 @@ LIT_METHOD(array_join) {
 	return OBJECT_VALUE(result);
 }
 
+LIT_METHOD(array_toString) {
+	return OBJECT_VALUE(lit_string_format(vm->state, "Array(#)", (double) AS_ARRAY(instance)->values.count));
+}
+
 LIT_METHOD(array_length) {
 	return NUMBER_VALUE(AS_ARRAY(instance)->values.count);
 }
@@ -435,6 +475,10 @@ LIT_METHOD(map_iteratorValue) {
 	return AS_MAP(instance)->key_list->values.values[index];
 }
 
+LIT_METHOD(map_toString) {
+	return OBJECT_VALUE(lit_string_format(vm->state, "Map(#)", (double) AS_MAP(instance)->values.count));
+}
+
 LIT_METHOD(map_length) {
 	return NUMBER_VALUE(AS_MAP(instance)->values.count);
 }
@@ -471,6 +515,11 @@ LIT_METHOD(range_iteratorValue) {
 	return args[0];
 }
 
+LIT_METHOD(range_toString) {
+	LitRange* range = AS_RANGE(instance);
+	return OBJECT_VALUE(lit_string_format(vm->state, "Range(#, #)", range->from, range->to));
+}
+
 LIT_METHOD(range_from) {
 	return NUMBER_VALUE(AS_RANGE(instance)->from);
 }
@@ -504,8 +553,7 @@ LIT_NATIVE(time) {
 
 LIT_NATIVE(print) {
 	for (uint i = 0; i < arg_count; i++) {
-		lit_print_value(args[i]);
-		printf("\n");
+		printf("%s\n", lit_to_string(vm->state, args[i])->chars);
 	}
 
 	return NULL_VALUE;
@@ -518,6 +566,10 @@ LIT_NATIVE(eval) {
 
 void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Class")
+		LIT_BIND_METHOD("toString", class_toString)
+		LIT_BIND_STATIC_METHOD("toString", class_toString)
+
+		LIT_BIND_GETTER("super", class_super)
 		LIT_BIND_STATIC_GETTER("super", class_super)
 		LIT_BIND_STATIC_GETTER("name", class_name)
 
@@ -564,6 +616,8 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Function")
 		LIT_INHERIT_CLASS(state->object_class)
+
+		LIT_BIND_METHOD("toString", function_toString)
 		LIT_BIND_GETTER("name", function_name)
 
 		state->function_class = klass;
@@ -576,6 +630,8 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Module")
 		LIT_INHERIT_CLASS(state->object_class)
+
+		LIT_BIND_METHOD("toString", module_toString)
 		LIT_BIND_GETTER("name", module_name)
 
 		state->module_class = klass;
@@ -584,7 +640,7 @@ void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Array")
 		LIT_INHERIT_CLASS(state->object_class)
 
-		// todo: join, insert
+		// todo: insert
 
 		LIT_BIND_METHOD("add", array_add)
 		LIT_BIND_METHOD("addAll", array_addAll)
@@ -596,6 +652,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("iterator", array_iterator)
 		LIT_BIND_METHOD("iteratorValue", array_iteratorValue)
 		LIT_BIND_METHOD("join", array_join)
+		LIT_BIND_METHOD("toString", array_toString)
 
 		LIT_BIND_GETTER("length", array_length)
 
@@ -609,6 +666,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("clear", map_clear)
 		LIT_BIND_METHOD("iterator", map_iterator)
 		LIT_BIND_METHOD("iteratorValue", map_iteratorValue)
+		LIT_BIND_METHOD("toString", map_toString)
 
 		LIT_BIND_GETTER("length", map_length)
 		LIT_BIND_GETTER("keys", map_keys)
@@ -621,6 +679,7 @@ void lit_open_core_library(LitState* state) {
 
 		LIT_BIND_METHOD("iterator", range_iterator)
 		LIT_BIND_METHOD("iteratorValue", range_iteratorValue)
+		LIT_BIND_METHOD("toString", range_toString)
 
 		LIT_BIND_FIELD("from", range_from, range_set_from)
 		LIT_BIND_FIELD("to", range_to, range_set_to)

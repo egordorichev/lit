@@ -103,6 +103,11 @@ LitValue lit_string_format(LitState* state, const char* format, ...) {
 				break;
 			}
 
+			case '#': {
+				total_length += AS_STRING(lit_number_to_string(state, va_arg(arg_list, double)))->length;
+				break;
+			}
+
 			default: {
 				total_length++;
 			}
@@ -130,6 +135,14 @@ LitValue lit_string_format(LitState* state, const char* format, ...) {
 
 			case '@': {
 				LitString* string = AS_STRING(va_arg(arg_list, LitValue));
+				memcpy(start, string->chars, string->length);
+				start += string->length;
+
+				break;
+			}
+
+			case '#': {
+				LitString* string = AS_STRING(lit_number_to_string(state, va_arg(arg_list, double)));
 				memcpy(start, string->chars, string->length);
 				start += string->length;
 

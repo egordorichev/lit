@@ -199,6 +199,10 @@ LitValue* lit_get_field(LitState* state, LitMap* map, const char* name) {
 }
 
 LitString* lit_to_string(LitState* state, LitValue object) {
+	if (IS_NULL(object)) {
+		return CONST_STRING(state, "null");
+	}
+
 	LitFiber* old = state->vm->fiber;
 
 	LitFiber* fiber = state->api_fiber;

@@ -768,6 +768,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(CLASS) {
 			LitString* name = AS_STRING(PEEK(0));
 			LitClass* klass = lit_create_class(state, name);
+
+			klass->super = state->object_class;
+			lit_table_add_all(state, &klass->super->methods, &klass->methods);
+			lit_table_add_all(state, &klass->super->static_fields, &klass->static_fields);
+
 			DROP(); // Pop the class name
 
 			lit_push_root(state, (LitObject *) klass);
@@ -1240,6 +1245,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			klass->init_method = super_klass->init_method;
 
 			lit_table_add_all(state, &super_klass->methods, &klass->methods);
+			lit_table_add_all(state, &klass->super->static_fields, &klass->static_fields);
 
 			DROP();
 			continue;
