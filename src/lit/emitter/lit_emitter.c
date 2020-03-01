@@ -404,6 +404,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					break;
 				}
 
+				case TOKEN_SHARP: {
+					emit_byte(emitter, expression->line, OP_FLOOR_DIVIDE);
+					break;
+				}
+
 				case TOKEN_PERCENT: {
 					emit_byte(emitter, expression->line, OP_MOD);
 					break;

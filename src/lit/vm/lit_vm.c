@@ -528,6 +528,21 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(FLOOR_DIVIDE) {
+			LitValue a = PEEK(1);
+			LitValue b = PEEK(0);
+
+			if (IS_NUMBER(a) && IS_NUMBER(b)) {
+				DROP();
+				*(fiber->stack_top - 1) = (NUMBER_VALUE(floor(AS_NUMBER(a) / AS_NUMBER(b))));
+
+				continue;
+			}
+
+			INVOKE_METHOD(a, "#", 1)
+			continue;
+		}
+
 		CASE_CODE(MOD) {
 			LitValue a = PEEK(1);
 			LitValue b = PEEK(0);

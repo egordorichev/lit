@@ -1,1 +1,1 @@
-print("test " + 32)
+print(32 # 3)

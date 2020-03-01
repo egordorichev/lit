@@ -6,7 +6,6 @@
 
 * error sync doesnt seem to work
 * error if any binary operation takes a null 
-* find an operator for floor division
 * try/catch/exception
 * fix line info being corrupted if chunk is too small
 * resizeable stack

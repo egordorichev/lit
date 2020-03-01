@@ -15,3 +15,4 @@ var test = new Test()
 test.a = 32
 
 print(test.a += 32) // Expected: 64
+print(test.a #= 3) // Expected: 21
