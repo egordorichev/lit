@@ -379,6 +379,7 @@ LitUserdata* lit_create_userdata(LitState* state, size_t size) {
 
 	userdata->data = lit_reallocate(state, NULL, 0, size);
 	userdata->size = size;
+	userdata->cleanup_fn = NULL;
 
 	return userdata;
 }

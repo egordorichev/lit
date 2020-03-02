@@ -77,7 +77,6 @@ static void free_object(LitState* state, LitObject* object) {
 
 		case OBJECT_MODULE: {
 			LitModule* module = (LitModule*) object;
-			LitValue value = module->return_value;
 
 			LIT_FREE_ARRAY(state, LitValue, module->privates, module->privates_count);
 			LIT_FREE(state, LitModule, object);
@@ -143,6 +142,10 @@ static void free_object(LitState* state, LitObject* object) {
 
 		case OBJECT_USERDATA: {
 			LitUserdata* data = (LitUserdata*) object;
+
+			if (data->cleanup_fn != NULL) {
+				data->cleanup_fn(state, data);
+			}
 
 			lit_reallocate(state, data->data, data->size, 0);
 			LIT_FREE(state, LitUserdata, object);
@@ -272,8 +275,8 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 	switch (object->type) {
 		case OBJECT_NATIVE_FUNCTION:
 		case OBJECT_NATIVE_METHOD:
-		case OBJECT_USERDATA:
 		case OBJECT_RANGE:
+		case OBJECT_USERDATA:
 		case OBJECT_STRING: {
 			break;
 		}
@@ -391,6 +394,10 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 
 			break;
 		}
+
+		default: {
+			UNREACHABLE;
+		}
 	}
 }
 
@@ -430,6 +437,8 @@ void lit_collect_garbage(LitVm* vm) {
 		return;
 	}
 
+	vm->state->allow_gc = false;
+
 #ifdef LIT_LOG_GC
 	printf("-- gc begin\n");
 	uint64_t before = vm->state->bytes_allocated;
@@ -441,6 +450,7 @@ void lit_collect_garbage(LitVm* vm) {
 	sweep(vm);
 
 	vm->state->next_gc = vm->state->bytes_allocated * LIT_GC_HEAP_GROW_FACTOR;
+	vm->state->allow_gc = true;
 
 #ifdef LIT_LOG_GC
 	printf("-- gc end\n");

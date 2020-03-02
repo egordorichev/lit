@@ -1,1 +1,16 @@
-print(File.exists("test.py"))
+var f = new File("test.txt", "w+")
+
+f.writeString("test")
+f.writeShort(64)
+f.writeShort(32)
+f.writeBool(true)
+f.writeNumber(2048)
+f.close()
+
+f = new File("test.txt", "r")
+
+print(f.readString())
+print(f.readShort())
+print(f.readShort())
+print(f.readBool())
+print(f.readNumber())

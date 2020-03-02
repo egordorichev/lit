@@ -96,7 +96,7 @@ LIT_METHOD(math_exp) {
 
 static uint static_random_data;
 
-static uint* extractRandomData(LitState* state, LitValue instance) {
+static uint* extract_random_data(LitState* state, LitValue instance) {
 	if (IS_CLASS(instance)) {
 		return &static_random_data;
 	}
@@ -127,7 +127,7 @@ LIT_METHOD(random_constructor) {
 }
 
 LIT_METHOD(random_setSeed) {
-	uint* data = extractRandomData(vm->state, instance);
+	uint* data = extract_random_data(vm->state, instance);
 
 	if (arg_count == 1) {
 		uint number = (uint) LIT_CHECK_NUMBER(0);
@@ -140,7 +140,7 @@ LIT_METHOD(random_setSeed) {
 }
 
 LIT_METHOD(random_int) {
-	uint* data = extractRandomData(vm->state, instance);
+	uint* data = extract_random_data(vm->state, instance);
 
 	if (arg_count == 1) {
 		int bound = (int) LIT_GET_NUMBER(0, 0);
@@ -160,7 +160,7 @@ LIT_METHOD(random_int) {
 }
 
 LIT_METHOD(random_float) {
-	uint* data = extractRandomData(vm->state, instance);
+	uint* data = extract_random_data(vm->state, instance);
 	double value = (double) rand_r(data) / RAND_MAX;
 
 	if (arg_count == 1) {
@@ -181,15 +181,15 @@ LIT_METHOD(random_float) {
 }
 
 LIT_METHOD(random_bool) {
-	return BOOL_VALUE(rand_r(extractRandomData(vm->state, instance)) % 2);
+	return BOOL_VALUE(rand_r(extract_random_data(vm->state, instance)) % 2);
 }
 
 LIT_METHOD(random_chance) {
-	return NUMBER_VALUE((double) rand_r(extractRandomData(vm->state, instance)) / RAND_MAX * 100);
+	return NUMBER_VALUE((double) rand_r(extract_random_data(vm->state, instance)) / RAND_MAX * 100);
 }
 
 LIT_METHOD(random_pick) {
-	int value = rand_r(extractRandomData(vm->state, instance));
+	int value = rand_r(extract_random_data(vm->state, instance));
 
 	if (arg_count == 1) {
 		if (IS_ARRAY(args[0])) {
@@ -247,7 +247,7 @@ void lit_open_math_library(LitState* state) {
 	static_random_data = time(NULL);
 
 	LIT_BEGIN_CLASS("Random")
-		LIT_BIND_CONSTRUCTOR("constructor", random_constructor)
+		LIT_BIND_CONSTRUCTOR(random_constructor)
 
 		LIT_BIND_METHOD("setSeed", random_setSeed)
 		LIT_BIND_METHOD("int", random_int)

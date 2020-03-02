@@ -278,11 +278,15 @@ bool lit_map_get(LitMap* map, LitString* key, LitValue* value);
 bool lit_map_delete(LitMap* map, LitString* key);
 void lit_map_add_all(LitState* state, LitMap* from, LitMap* to);
 
-typedef struct {
+typedef void (*LitCleanupFn)(LitState* state, LitUserdata* userdata);
+
+typedef struct sLitUserdata {
 	LitObject object;
 
 	void* data;
 	size_t size;
+
+	LitCleanupFn cleanup_fn;
 } LitUserdata;
 
 LitUserdata* lit_create_userdata(LitState* state, size_t size);
