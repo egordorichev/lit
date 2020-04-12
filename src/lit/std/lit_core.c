@@ -207,7 +207,7 @@ LIT_METHOD(string_replace) {
 	}
 
 	uint buffer_index = 0;
-	char buffer[buffer_length];
+	char buffer[buffer_length + 1];
 
 	for (uint i = 0; i < string->length; i++) {
 		if (strncmp(string->chars + i, what->chars, what->length) == 0) {
@@ -220,6 +220,8 @@ LIT_METHOD(string_replace) {
 			buffer_index++;
 		}
 	}
+
+	buffer[buffer_length] = '\0';
 
 	return OBJECT_VALUE(lit_copy_string(vm->state, buffer, buffer_length));
 }
@@ -432,7 +434,7 @@ LIT_METHOD(array_join) {
 
 	uint index = 0;
 
-	char *chars = LIT_ALLOCATE(vm->state, char, length);
+	char chars[length + 1];
 	chars[length] = '\0';
 
 	for (uint i = 0; i < values->count; i++) {
@@ -442,7 +444,7 @@ LIT_METHOD(array_join) {
 		index += string->length;
 	}
 
-	return OBJECT_VALUE(lit_take_string_or_free(vm->state, chars, length));
+	return OBJECT_VALUE(lit_take_string(vm->state, chars, length));
 }
 
 LIT_METHOD(array_toString) {

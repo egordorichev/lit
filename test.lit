@@ -1,3 +1,1 @@
-var a = $"test {32}"
-print(a.length)
-print(a == "test 32")
+print("maanex egor test".replace("egor", "maanex"))

@@ -749,10 +749,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitString* module_name = lit_copy_string(state, full_path, length);
 			LitValue existing_module;
 
-			if (lit_table_get(&vm->modules, module_name, &existing_module)) {
+			// fixme: find an elegant solution
+			/*if (lit_table_get(&vm->modules, module_name, &existing_module)) {
 				PUSH(AS_MODULE(existing_module)->return_value);
 				continue;
-			}
+			}*/
 
 			const char* source = lit_read_file(full_path);
 
