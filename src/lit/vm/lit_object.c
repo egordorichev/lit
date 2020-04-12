@@ -50,6 +50,18 @@ LitString* lit_take_string(LitState* state, const char* chars, uint length) {
 	return allocate_string(state, (char*) chars, length, hash);
 }
 
+LitString* lit_take_string_or_free(LitState* state, const char* chars, uint length) {
+	uint32_t hash = lit_hash_string(chars, length);
+	LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
+
+	if (interned != NULL) {
+		lit_reallocate(state, (void*) chars, length, 0);
+		return interned;
+	}
+
+	return allocate_string(state, (char*) chars, length, hash);
+}
+
 LitString* lit_copy_string(LitState* state, const char* chars, uint length) {
 	uint32_t hash = lit_hash_string(chars, length);
 	LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);

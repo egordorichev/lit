@@ -431,22 +431,18 @@ LIT_METHOD(array_join) {
 	}
 
 	uint index = 0;
-	LitString* result = lit_allocate_empty_string(vm->state, length);
 
-	result->chars = LIT_ALLOCATE(vm->state, char, length + 1);
-	result->chars[length] = '\0';
+	char *chars = LIT_ALLOCATE(vm->state, char, length);
+	chars[length] = '\0';
 
 	for (uint i = 0; i < values->count; i++) {
 		LitString* string = strings[i];
 
-		memcpy(result->chars + index, string->chars, string->length);
+		memcpy(chars + index, string->chars, string->length);
 		index += string->length;
 	}
 
-	result->hash = lit_hash_string(result->chars, result->length);
-	lit_register_string(vm->state, result);
-
-	return OBJECT_VALUE(result);
+	return OBJECT_VALUE(lit_take_string_or_free(vm->state, chars, length));
 }
 
 LIT_METHOD(array_toString) {

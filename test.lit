@@ -1,1 +1,3 @@
-print(File.getLastModified("test.lit"))
+var a = $"test {32}"
+print(a.length)
+print(a == "test 32")
