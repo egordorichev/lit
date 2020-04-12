@@ -4,6 +4,7 @@
 #include <lit/vm/lit_object.h>
 
 #include <string.h>
+#include <lit/debug/lit_debug.h>
 
 static void emit_byte(LitState* state, LitChunk* chunk, uint8_t byte) {
 	lit_write_chunk(state, chunk, byte, 1);
@@ -33,20 +34,15 @@ static uint emit_constant(LitState* state, LitChunk* chunk, LitValue value) {
 	return constant;
 }
 
+static LitString* api_name;
+
 void lit_init_api(LitState* state) {
-	LitString* name = lit_copy_string(state, "c", 1);
-	state->api_module = lit_create_module(state, name);
-
-	state->api_function = lit_create_function(state, state->api_module);
-	state->api_function->name = name;
-
-	state->api_fiber = lit_create_fiber(state, state->api_module, state->api_function);
+	api_name = lit_copy_string(state, "c", 1);
+	state->api_module = lit_create_module(state, api_name);
 }
 
 void lit_free_api(LitState* state) {
-	state->api_fiber = NULL;
-	state->api_function = NULL;
-	state->api_fiber = NULL;
+	state->api_module = NULL;
 }
 
 LitValue lit_get_global(LitState* state, LitString* name) {
@@ -89,12 +85,13 @@ void lit_define_native(LitState* state, const char* name, LitNativeFunctionFn na
 }
 
 LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count) {
-	LitFiber* old = state->vm->fiber;
+	LitFunction* function = lit_create_function(state, state->api_module);
+	function->name = api_name;
 
-	LitFiber* fiber = state->api_fiber;
-	LitFunction* function = fiber->frames[0].function;
+	LitFiber* fiber = lit_create_fiber(state, state->api_module, function);
 	LitChunk* chunk = &function->chunk;
 
+	fiber->parent = state->vm->fiber;
 	fiber->frame_count = 1;
 
 #define PUSH(value) (*fiber->stack_top++ = value)
@@ -113,7 +110,8 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 #undef PUSH
 
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
-	state->vm->fiber = old;
+	state->vm->fiber = fiber->parent;
+
 	lit_free_chunk(state, chunk);
 
 	return result;
@@ -199,16 +197,23 @@ LitValue* lit_get_field(LitState* state, LitMap* map, const char* name) {
 }
 
 LitString* lit_to_string(LitState* state, LitValue object) {
-	if (IS_NULL(object)) {
-		return CONST_STRING(state, "null");
+	if (!IS_OBJECT(object)) {
+		if (IS_NULL(object)) {
+			return CONST_STRING(state, "null");
+		} else if (IS_NUMBER(object)) {
+			return AS_STRING(lit_number_to_string(state, AS_NUMBER(object)));
+		} else if (IS_BOOL(object)) {
+			return CONST_STRING(state, AS_BOOL(object) ? "true" : "false");
+		}
 	} else if (IS_STRING(object)) {
 		return AS_STRING(object);
 	}
 
-	LitFiber* old = state->vm->fiber;
+	LitFunction* function = lit_create_function(state, state->api_module);
+	function->name = api_name;
 
-	LitFiber* fiber = state->api_fiber;
-	LitFunction* function = fiber->frames[0].function;
+	LitFiber* fiber = lit_create_fiber(state, state->api_module, function);
+	fiber->parent = state->vm->fiber;
 	LitChunk* chunk = &function->chunk;
 
 	fiber->frame_count = 1;
@@ -225,7 +230,8 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 #undef PUSH
 
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
-	state->vm->fiber = old;
+
+	state->vm->fiber = fiber->parent;
 	lit_free_chunk(state, chunk);
 
 	if (!IS_STRING(result.result)) {

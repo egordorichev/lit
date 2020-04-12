@@ -68,11 +68,7 @@ LIT_METHOD(number_toString) {
  */
 
 LIT_METHOD(bool_toString) {
-	if (AS_BOOL(instance)) {
-		return OBJECT_CONST_STRING(vm->state, "true");
-	}
-
-	return OBJECT_CONST_STRING(vm->state, "false");
+	return OBJECT_CONST_STRING(vm->state, AS_BOOL(instance) ? "true" : "false");
 }
 
 /*

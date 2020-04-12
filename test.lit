@@ -1,16 +1,17 @@
-var f = new File("test.txt", "w+")
+var d = 32
 
-f.writeString("test")
-f.writeShort(64)
-f.writeShort(32)
-f.writeBool(true)
-f.writeNumber(2048)
-f.close()
+require "test_module"
 
-f = new File("test.txt", "r")
+export function do() {
+ print("a")
+ test()
+ print("b")
+ bla()
+ print("c")
+ print(d)
+}
 
-print(f.readString())
-print(f.readShort())
-print(f.readShort())
-print(f.readBool())
-print(f.readNumber())
+do()
+print(32)
+a = 48
+do()

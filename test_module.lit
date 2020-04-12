@@ -1,0 +1,9 @@
+var a = 23
+
+export function test() {
+ print(a)
+}
+
+export function bla() {
+ print("bla")
+}

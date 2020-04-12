@@ -48,8 +48,6 @@ LitState* lit_new_state() {
 	state->had_error = false;
 	state->root_count = 0;
 
-	state->api_fiber = NULL;
-	state->api_function = NULL;
 	state->api_module = NULL;
 
 	state->scanner = (LitScanner*) malloc(sizeof(LitScanner));

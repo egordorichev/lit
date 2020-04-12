@@ -20,5 +20,6 @@ void lit_free_objects(LitState* state, LitObject* objects);
 void lit_collect_garbage(LitVm* vm);
 void lit_mark_object(LitVm* vm, LitObject* object);
 void lit_mark_value(LitVm* vm, LitValue value);
+void lit_free_object(LitState* state, LitObject* object);
 
 #endif

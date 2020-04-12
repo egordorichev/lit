@@ -201,6 +201,15 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 	if (IS_NULL(callee)) {
 		lit_runtime_error(vm, "Attempt to call a null value");
 	} else {
+		if (IS_OBJECT(callee)) {
+			LitObjectType type = OBJECT_TYPE(callee);
+			printf("object\n");
+		} else if (IS_NUMBER(callee)) {
+			printf("number\n");
+		} else if (IS_BOOL(callee)) {
+			printf("bool\n");
+		}
+
 		lit_runtime_error(vm, "Can only call functions and classes");
 	}
 

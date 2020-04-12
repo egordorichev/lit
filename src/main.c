@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <lit/std/lit_core.h>
+#include <lit/api/lit_api.h>
 
 static int run_repl() {
 	LitState* state = lit_new_state();
@@ -33,6 +34,12 @@ static int run_file(const char* file) {
 
 	lit_open_libraries(state);
 	lit_interpret_file(state, file);
+
+	LitValue f = lit_get_global(state, CONST_STRING(state, "do"));
+
+	lit_print_value(f);
+
+	lit_call(state, f, NULL, 0);
 
 	int64_t amount = lit_free_state(state);
 

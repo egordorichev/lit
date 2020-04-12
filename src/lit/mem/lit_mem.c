@@ -35,7 +35,7 @@ void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new
 	return ptr;
 }
 
-static void free_object(LitState* state, LitObject* object) {
+void lit_free_object(LitState* state, LitObject* object) {
 #ifdef LIT_LOG_GC
 	printf("(");
 	lit_print_value(OBJECT_VALUE(object));
@@ -174,7 +174,7 @@ void lit_free_objects(LitState* state, LitObject* objects) {
 
 	while (object != NULL) {
 		LitObject* next = object->next;
-		free_object(state, object);
+		lit_free_object(state, object);
 		object = next;
 	}
 
@@ -214,7 +214,7 @@ static void mark_roots(LitVm* vm) {
 	LitFiber* fiber = vm->fiber;
 	LitState* state = vm->state;
 
-	if (fiber != NULL) {
+	while (fiber != NULL) {
 		lit_mark_object(vm, (LitObject *) fiber);
 
 		for (LitValue *slot = fiber->stack; slot < fiber->stack_top; slot++) {
@@ -230,6 +230,8 @@ static void mark_roots(LitVm* vm) {
 				lit_mark_object(vm, (LitObject *) frame->function);
 			}
 		}
+
+		fiber = fiber->parent;
 	}
 
 	for (LitUpvalue* upvalue = vm->open_upvalues; upvalue != NULL; upvalue = upvalue->next) {
@@ -240,9 +242,7 @@ static void mark_roots(LitVm* vm) {
 		lit_mark_value(vm, state->roots[i]);
 	}
 
-	lit_mark_object(vm, (LitObject *) state->api_fiber);
 	lit_mark_object(vm, (LitObject *) state->api_module);
-	lit_mark_object(vm, (LitObject *) state->api_function);
 
 	lit_mark_object(vm, (LitObject *) state->class_class);
 	lit_mark_object(vm, (LitObject *) state->object_class);
@@ -427,7 +427,7 @@ static void sweep(LitVm* vm) {
 				vm->objects = object;
 			}
 
-			free_object(vm->state, unreached);
+			lit_free_object(vm->state, unreached);
 		}
 	}
 }
