@@ -1,17 +1,3 @@
-var d = 32
-
-require "test_module"
-
-export function do() {
- print("a")
- test()
- print("b")
- bla()
- print("c")
- print(d)
+for (var f in [ 32, 48 ]) {
+	print(f)
 }
-
-do()
-print(32)
-a = 48
-do()

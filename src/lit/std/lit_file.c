@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <dirent.h>
 
 #ifdef LIT_OS_WINDOWS
 #define stat _stat
@@ -236,6 +237,46 @@ LIT_METHOD(directory_exists) {
 	return BOOL_VALUE(stat(directory_name, &buffer) == 0 && S_ISDIR(buffer.st_mode));
 }
 
+LIT_METHOD(directory_listFiles) {
+	struct dirent* ep;
+
+	LitState* state = vm->state;
+	DIR* dir = opendir(LIT_CHECK_STRING(0));
+	LitArray* array = lit_create_array(state);
+
+	if (dir == NULL) {
+		return OBJECT_VALUE(array);
+	}
+
+	while ((ep = readdir(dir))) {
+		if (ep->d_type == DT_REG) {
+			lit_values_write(state, &array->values, OBJECT_CONST_STRING(state, ep->d_name));
+		}
+	}
+
+	return OBJECT_VALUE(array);
+}
+
+LIT_METHOD(directory_listDirectories) {
+	struct dirent* ep;
+
+	LitState* state = vm->state;
+	DIR* dir = opendir(LIT_CHECK_STRING(0));
+	LitArray* array = lit_create_array(state);
+
+	if (dir == NULL) {
+		return OBJECT_VALUE(array);
+	}
+
+	while ((ep = readdir(dir))) {
+		if (ep->d_type == DT_DIR && strcmp(ep->d_name, "..") != 0 && strcmp(ep->d_name, ".") != 0) {
+			lit_values_write(state, &array->values, OBJECT_CONST_STRING(state, ep->d_name));
+		}
+	}
+
+	return OBJECT_VALUE(array);
+}
+
 void lit_open_file_library(LitState* state) {
 	LIT_BEGIN_CLASS("File")
 		LIT_BIND_STATIC_METHOD("exists", file_exists)
@@ -264,5 +305,7 @@ void lit_open_file_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Directory")
 		LIT_BIND_STATIC_METHOD("exists", directory_exists)
+		LIT_BIND_STATIC_METHOD("listFiles", directory_listFiles)
+		LIT_BIND_STATIC_METHOD("listDirectories", directory_listDirectories)
 	LIT_END_CLASS()
 }

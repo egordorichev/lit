@@ -576,6 +576,10 @@ LIT_NATIVE(time) {
 	return NUMBER_VALUE((double) clock() / CLOCKS_PER_SEC);
 }
 
+LIT_NATIVE(systemTime) {
+	return NUMBER_VALUE(time(NULL));
+}
+
 LIT_NATIVE(print) {
 	for (uint i = 0; i < arg_count; i++) {
 		printf("%s\n", lit_to_string(vm->state, args[i])->chars);
@@ -716,6 +720,7 @@ void lit_open_core_library(LitState* state) {
 	LIT_END_CLASS()
 
 	lit_define_native(state, "time", time_native);
+	lit_define_native(state, "systemTime", systemTime_native);
 	lit_define_native(state, "eval", eval_native);
 	lit_define_native(state, "print", print_native);
 }

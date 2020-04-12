@@ -35,12 +35,6 @@ static int run_file(const char* file) {
 	lit_open_libraries(state);
 	lit_interpret_file(state, file);
 
-	LitValue f = lit_get_global(state, CONST_STRING(state, "do"));
-
-	lit_print_value(f);
-
-	lit_call(state, f, NULL, 0);
-
 	int64_t amount = lit_free_state(state);
 
 	if (amount != 0) {
