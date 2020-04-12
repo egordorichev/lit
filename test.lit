@@ -1,3 +1,1 @@
-for (var f in [ 32, 48 ]) {
-	print(f)
-}
+print(File.getLastModified("test.lit"))

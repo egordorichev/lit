@@ -1,5 +1,7 @@
 # todo
 
+* fixme: empty array should not iterate at all
+
 * command line args, command line input, color printing
 * make var statements into expressions to allow stuff like if (var a = test()) { print(a) }
 * fixmeee!! update the emit_pop_continue on regular for loops and in whiles'

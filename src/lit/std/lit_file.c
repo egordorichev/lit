@@ -226,6 +226,25 @@ LIT_METHOD(file_readString) {
 	return OBJECT_VALUE(lit_copy_string(vm->state, line, length));
 }
 
+
+LIT_METHOD(file_getLastModified) {
+	struct stat buffer;
+	char* file_name = NULL;
+
+	if (IS_INSTANCE(instance)) {
+		file_name = extract_file_data(vm->state, instance)->path;
+	} else {
+		file_name = (char*) LIT_CHECK_STRING(0);
+	}
+
+	if (stat(file_name, &buffer) != 0) {
+		return NUMBER_VALUE(0);
+	}
+
+	return NUMBER_VALUE( buffer.st_mtim.tv_sec);
+}
+
+
 /*
  * Directory
  */
@@ -280,6 +299,7 @@ LIT_METHOD(directory_listDirectories) {
 void lit_open_file_library(LitState* state) {
 	LIT_BEGIN_CLASS("File")
 		LIT_BIND_STATIC_METHOD("exists", file_exists)
+		LIT_BIND_STATIC_METHOD("getLastModified", file_getLastModified)
 
 		LIT_BIND_CONSTRUCTOR(file_constructor)
 		LIT_BIND_METHOD("close", file_close)
@@ -299,6 +319,8 @@ void lit_open_file_library(LitState* state) {
 		LIT_BIND_METHOD("readNumber", file_readNumber)
 		LIT_BIND_METHOD("readBool", file_readBool)
 		LIT_BIND_METHOD("readString", file_readString)
+
+		LIT_BIND_METHOD("getLastModified", file_getLastModified)
 
 		LIT_BIND_GETTER("exists", file_exists)
 	LIT_END_CLASS()

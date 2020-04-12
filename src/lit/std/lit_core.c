@@ -396,7 +396,7 @@ LIT_METHOD(array_iterator) {
 	if (IS_NUMBER(args[0])) {
 		number = AS_NUMBER(args[0]);
 
-		if (number >= array->values.count - 1) {
+		if (number >= (int) array->values.count - 1) {
 			return NULL_VALUE;
 		}
 
@@ -408,7 +408,13 @@ LIT_METHOD(array_iterator) {
 
 LIT_METHOD(array_iteratorValue) {
 	uint index = LIT_CHECK_NUMBER(0);
-	return AS_ARRAY(instance)->values.values[index];
+	LitValues* values = &AS_ARRAY(instance)->values;
+
+	if (values->count <= index) {
+		return NULL_VALUE;
+	}
+
+	return values->values[index];
 }
 
 LIT_METHOD(array_join) {
@@ -485,7 +491,7 @@ LIT_METHOD(map_iterator) {
 	if (IS_NUMBER(args[0])) {
 		number = AS_NUMBER(args[0]);
 
-		if (number >= map->values.count - 1) {
+		if (number >= (int) map->values.count - 1) {
 			return NULL_VALUE;
 		}
 
@@ -497,7 +503,14 @@ LIT_METHOD(map_iterator) {
 
 LIT_METHOD(map_iteratorValue) {
 	uint index = LIT_CHECK_NUMBER(0);
-	return AS_MAP(instance)->key_list->values.values[index];
+
+	LitValues* values = &AS_MAP(instance)->key_list->values;
+
+	if (values->count <= index) {
+		return NULL_VALUE;
+	}
+
+	return values->values[index];
 }
 
 LIT_METHOD(map_toString) {
