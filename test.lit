@@ -1,1 +1,1 @@
-print("12test34".substring(1, 1))
+print("12test34".substring(-48, 32))

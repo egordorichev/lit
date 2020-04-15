@@ -239,6 +239,9 @@ static LitValue string_splice(LitVm* vm, LitString* string, int from, int to) {
 		lit_runtime_error(vm, "String splice from bound is larger that to bound");
 	}
 
+	from = fmax(from, 0);
+	to = fmin(to, string->length - 1);
+
 	int length = fmin(string->length, to - from + 1);
 	char buffer[length + 1];
 
