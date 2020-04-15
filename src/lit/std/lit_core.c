@@ -240,7 +240,7 @@ static LitValue string_splice(LitVm* vm, LitString* string, int from, int to) {
 	}
 
 	from = fmax(from, 0);
-	to = fmin(to, string->length - 1);
+	to = fmin(to, (int) string->length - 1);
 
 	int length = fmin(string->length, to - from + 1);
 	char buffer[length + 1];
@@ -334,6 +334,41 @@ LIT_METHOD(module_name) {
 /*
  * Array
  */
+
+static LitValue array_splice(LitVm* vm, LitArray* array, int from, int to) {
+	uint length = array->values.count;
+
+	if (from < 0) {
+		from = (int) length + from;
+	}
+
+	if (to < 0) {
+		to = (int) length + to;
+	}
+
+	if (from > to) {
+		lit_runtime_error(vm, "String splice from bound is larger that to bound");
+	}
+
+	from = fmax(from, 0);
+	to = fmin(to, (int) length - 1);
+
+	length = fmin(length, to - from + 1);
+	LitArray* new_array = lit_create_array(vm->state);
+
+	for (int i = 0; i < length; i++) {
+		lit_values_write(vm->state, &new_array->values,  array->values.values[from + i]);
+	}
+
+	return OBJECT_VALUE(new_array);
+}
+
+LIT_METHOD(array_slice) {
+	int from = LIT_CHECK_NUMBER(0);
+	int to = LIT_CHECK_NUMBER(1);
+
+	return array_splice(vm, AS_ARRAY(instance), from, to);
+}
 
 LIT_METHOD(array_add) {
 	LIT_ENSURE_ARGS(1)
@@ -725,6 +760,7 @@ void lit_open_core_library(LitState* state) {
 		// todo: insert
 
 		LIT_BIND_METHOD("add", array_add)
+		LIT_BIND_METHOD("slice", array_slice)
 		LIT_BIND_METHOD("addAll", array_addAll)
 		LIT_BIND_METHOD("remove", array_remove)
 		LIT_BIND_METHOD("removeAt", array_removeAt)

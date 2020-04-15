@@ -1,1 +1,5 @@
-print("12test34".substring(-48, 32))
+var a = [ "a", "b", "c", "d" ].slice(1, 2)
+
+for (var f in a) {
+    print(f)
+}
