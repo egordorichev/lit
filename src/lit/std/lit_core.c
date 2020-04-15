@@ -226,7 +226,43 @@ LIT_METHOD(string_replace) {
 	return OBJECT_VALUE(lit_copy_string(vm->state, buffer, buffer_length));
 }
 
+static LitValue string_splice(LitVm* vm, LitString* string, int from, int to) {
+	if (from < 0) {
+		from = (int) string->length + from;
+	}
+
+	if (to < 0) {
+		to = (int) string->length + to;
+	}
+
+	if (from > to) {
+		lit_runtime_error(vm, "String splice from bound is larger that to bound");
+	}
+
+	int length = fmin(string->length, to - from + 1);
+	char buffer[length + 1];
+
+	for (int i = 0; i < length; i++) {
+		buffer[i] = string->chars[from + i];
+	}
+
+	buffer[length] = '\0';
+	return OBJECT_VALUE(lit_copy_string(vm->state, buffer, length));
+}
+
+LIT_METHOD(string_substring) {
+	int from = LIT_CHECK_NUMBER(0);
+	int to = LIT_CHECK_NUMBER(1);
+
+	return string_splice(vm, AS_STRING(instance), from, to);
+}
+
 LIT_METHOD(string_subscript) {
+	if (IS_RANGE(args[0])) {
+		LitRange* range = AS_RANGE(args[0]);
+		return string_splice(vm, AS_STRING(instance), range->from, range->to);
+	}
+
 	LitString* string = AS_STRING(instance);
 	int index = LIT_CHECK_NUMBER(0);
 
@@ -643,6 +679,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("startsWith", string_startsWith)
 		LIT_BIND_METHOD("endsWith", string_endsWith)
 		LIT_BIND_METHOD("replace", string_replace)
+		LIT_BIND_METHOD("substring", string_substring)
 		LIT_BIND_METHOD("[]", string_subscript)
 
 		LIT_BIND_GETTER("length", string_length)

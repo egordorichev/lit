@@ -1,1 +1,1 @@
-print("maanex egor test".replace("egor", "maanex"))
+print("12test34".substring(1, 1))
