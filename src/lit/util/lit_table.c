@@ -135,7 +135,7 @@ LitString* lit_table_find_string(LitTable* table, const char* chars, uint length
 			if (IS_NULL(entry->value)) {
 				return NULL;
 			}
-		} if (entry->key->length == length &&
+		} else if (entry->key->length == length &&
 				entry->key->hash == hash &&
 				memcmp(entry->key->chars, chars, length) == 0) {
 

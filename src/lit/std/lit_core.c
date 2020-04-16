@@ -687,7 +687,7 @@ LIT_NATIVE(require) {
 	char full_path[length + 5];
 
 	memcpy((void *) full_path, path, length);
-	memcpy((void *) (full_path + length), ".lit\0", length);
+	memcpy((void *) (full_path + length), ".lit\0", 5);
 
 	for (uint i = 0; i < length; i++) {
 		if (full_path[i] == '.' || full_path[i] == '\\') {

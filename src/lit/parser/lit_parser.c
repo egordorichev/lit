@@ -418,6 +418,10 @@ static LitExpression* parse_variable_expression_base(LitParser* parser, bool can
 		return parse_subscript(parser, expression, can_assign);
 	}
 
+	if (match(parser, TOKEN_STRING) || match(parser, TOKEN_INTERPOLATION)) {
+		return parse_call(parser, expression, can_assign);
+	}
+
 	if (can_assign && match(parser, TOKEN_EQUAL)) {
 		return (LitExpression*) lit_create_assign_expression(parser->state, parser->previous.line, expression, parse_expression(parser));
 	}
@@ -1031,8 +1035,9 @@ bool lit_parse(LitParser* parser, const char* file_name, const char* source, Lit
 			}
 
 			if (!match_new_line(parser)) {
-				consume(parser, TOKEN_EOF, "Expected end of file");
-				break;
+				if (match(parser, TOKEN_EOF)) {
+					break;
+				}
 			}
 		} while (!is_at_end(parser));
 	}
