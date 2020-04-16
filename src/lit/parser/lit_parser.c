@@ -418,10 +418,6 @@ static LitExpression* parse_variable_expression_base(LitParser* parser, bool can
 		return parse_subscript(parser, expression, can_assign);
 	}
 
-	if (match(parser, TOKEN_STRING) || match(parser, TOKEN_INTERPOLATION)) {
-		return parse_call(parser, expression, can_assign);
-	}
-
 	if (can_assign && match(parser, TOKEN_EQUAL)) {
 		return (LitExpression*) lit_create_assign_expression(parser->state, parser->previous.line, expression, parse_expression(parser));
 	}
@@ -1066,7 +1062,7 @@ static void setup_rules() {
 	rules[TOKEN_GREATER_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_LESS] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_LESS_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
-	rules[TOKEN_STRING] = (LitParseRule) { parse_string, parse_call, PREC_NONE };
+	rules[TOKEN_STRING] = (LitParseRule) { parse_string, NULL, PREC_NONE };
 	rules[TOKEN_INTERPOLATION] = (LitParseRule) { parse_interpolation, NULL, PREC_NONE };
 	rules[TOKEN_IDENTIFIER] = (LitParseRule) { parse_variable_expression, NULL, PREC_NONE };
 	rules[TOKEN_NEW] = (LitParseRule) { parse_new_expression, NULL, PREC_NONE };

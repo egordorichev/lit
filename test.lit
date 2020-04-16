@@ -1,7 +1,9 @@
-for (var f in []) {
-	print(f)
+function t(s) {
+	print(s)
 }
 
-for (var f in {}) {
-	print(f)
+var dir = "."
+
+for (var d in Directory.listDirectories(dir)) {
+	t($"{dir}/{d}")
 }
