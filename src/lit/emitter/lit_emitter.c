@@ -599,13 +599,6 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
-		case REQUIRE_EXPRESSION: {
-			emit_expression(emitter, ((LitRequireExpression*) expression)->argument);
-			emit_byte(emitter, emitter->last_line, OP_REQUIRE);
-
-			break;
-		}
-
 		case GET_EXPRESSION: {
 			LitGetExpression* expr = (LitGetExpression*) expression;
 			emit_expression(emitter, expr->where);

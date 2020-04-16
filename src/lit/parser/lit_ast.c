@@ -95,12 +95,6 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
-		case REQUIRE_EXPRESSION: {
-			lit_free_expression(state, ((LitRequireExpression*) expression)->argument);
-			FREE_EXPRESSION(LitRequireExpression)
-			break;
-		}
-
 		case GET_EXPRESSION: {
 			lit_free_expression(state, ((LitGetExpression*) expression)->where);
 			FREE_EXPRESSION(LitGetExpression)
@@ -268,13 +262,6 @@ LitCallExpression *lit_create_call_expression(LitState* state, uint line, LitExp
 	lit_init_expressions(&expression->args);
 
 	return expression;
-}
-
-LitRequireExpression *lit_create_require_expression(LitState* state, uint line, LitExpression* expression) {
-	LitRequireExpression* statement = ALLOCATE_EXPRESSION(state, LitRequireExpression, REQUIRE_EXPRESSION);
-	statement->argument = expression;
-
-	return statement;
 }
 
 LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length, bool questionable) {

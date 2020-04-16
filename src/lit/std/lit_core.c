@@ -4,6 +4,7 @@
 #include <lit/api/lit_api.h>
 #include <lit/vm/lit_vm.h>
 #include <lit/vm/lit_object.h>
+#include <lit/util/lit_fs.h>
 
 #include <time.h>
 #include <ctype.h>
@@ -678,6 +679,39 @@ LIT_NATIVE(eval) {
 	return lit_interpret(vm->state, "eval", code).result;
 }
 
+LIT_NATIVE(require) {
+	LitString* name = LIT_CHECK_OBJECT_STRING(0);
+
+	const char* path = name->chars;
+	size_t length = strlen(path);
+	char full_path[length + 5];
+
+	memcpy((void *) full_path, path, length);
+	memcpy((void *) (full_path + length), ".lit\0", length);
+
+	for (uint i = 0; i < length; i++) {
+		if (full_path[i] == '.' || full_path[i] == '\\') {
+			full_path[i] = '/';
+		}
+	}
+
+	LitString* module_name = lit_copy_string(vm->state, full_path, length);
+	LitValue existing_module;
+
+	if (!(arg_count > 1 && IS_BOOL(args[1]) && AS_BOOL(args[1])) && lit_table_get(&vm->modules, module_name, &existing_module)) {
+		return AS_MODULE(existing_module)->return_value;
+	}
+
+	const char* source = lit_read_file(full_path);
+
+	if (source == NULL) {
+		lit_runtime_error(vm, "Failed to open '%s'", full_path);
+		return NULL_VALUE;
+	}
+
+	return lit_internal_interpret(vm->state, module_name, source).result;
+}
+
 void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Class")
 		LIT_BIND_METHOD("toString", class_toString)
@@ -810,4 +844,5 @@ void lit_open_core_library(LitState* state) {
 	lit_define_native(state, "systemTime", systemTime_native);
 	lit_define_native(state, "eval", eval_native);
 	lit_define_native(state, "print", print_native);
+	lit_define_native(state, "require", require_native);
 }

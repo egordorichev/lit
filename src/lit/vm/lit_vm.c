@@ -725,52 +725,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
-		CASE_CODE(REQUIRE) {
-			LitValue name = POP();
-
-			if (!IS_STRING(name)) {
-				lit_runtime_error(vm, "require() argument must be a string");
-				RETURN_ERROR()
-			}
-
-			const char* path = AS_STRING(name)->chars;
-			size_t length = strlen(path);
-			char full_path[length + 5];
-
-			memcpy((void *) full_path, path, length);
-			memcpy((void *) (full_path + length), ".lit\0", length);
-
-			for (uint i = 0; i < length; i++) {
-				if (full_path[i] == '.' || full_path[i] == '\\') {
-					full_path[i] = '/';
-				}
-			}
-
-			LitString* module_name = lit_copy_string(state, full_path, length);
-			LitValue existing_module;
-
-			// fixme: find an elegant solution
-			/*if (lit_table_get(&vm->modules, module_name, &existing_module)) {
-				PUSH(AS_MODULE(existing_module)->return_value);
-				continue;
-			}*/
-
-			const char* source = lit_read_file(full_path);
-
-			if (source == NULL) {
-				lit_runtime_error(vm, "Failed to open '%s'", full_path);
-				RETURN_ERROR()
-			}
-
-			PUSH(lit_internal_interpret(state, module_name, source).result);
-
-			#ifdef LIT_TRACE_EXECUTION
-				printf("== %s ==\n", frame->function->name->chars);
-			#endif
-
-			continue;
-		}
-
 		CASE_CODE(CLOSURE) {
 			LitFunction* function = AS_FUNCTION(READ_CONSTANT_LONG());
 			LitClosure* closure = lit_create_closure(state, function);

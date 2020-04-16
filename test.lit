@@ -1,2 +1,8 @@
-require $"{"test"}_module"
+require("test_module")
+test()
+a = 48
+test()
+require("test_module")
+test()
+require("test_module", true)
 test()
