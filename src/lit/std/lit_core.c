@@ -480,7 +480,7 @@ LIT_METHOD(array_iterator) {
 		number++;
 	}
 
-	return NUMBER_VALUE(number);
+	return array->values.count == 0 ? NULL_VALUE : NUMBER_VALUE(number);
 }
 
 LIT_METHOD(array_iteratorValue) {
@@ -571,7 +571,7 @@ LIT_METHOD(map_iterator) {
 		number++;
 	}
 
-	return NUMBER_VALUE(number);
+	return map->values.count == 0 ? NULL_VALUE : NUMBER_VALUE(number);
 }
 
 LIT_METHOD(map_iteratorValue) {

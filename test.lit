@@ -1,2 +1,7 @@
-require "test_module"
-test()
+for (var f in []) {
+	print(f)
+}
+
+for (var f in {}) {
+	print(f)
+}
