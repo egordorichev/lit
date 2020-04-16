@@ -518,7 +518,7 @@ LIT_METHOD(array_join) {
 		index += string->length;
 	}
 
-	return OBJECT_VALUE(lit_take_string(vm->state, chars, length));
+	return OBJECT_VALUE(lit_copy_string(vm->state, chars, length));
 }
 
 LIT_METHOD(array_toString) {

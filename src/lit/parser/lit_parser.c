@@ -29,6 +29,8 @@ static LitExpression* parse_expression(LitParser* parser);
 static LitStatement* parse_statement(LitParser* parser);
 static LitStatement* parse_declaration(LitParser* parser);
 static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous, bool can_assign);
+static LitExpression* parse_interpolation(LitParser* parser, bool can_assign);
+static LitExpression* parse_string(LitParser* parser, bool can_assign);
 
 static LitParseRule rules[TOKEN_EOF + 1];
 static bool did_setup_rules;
@@ -236,19 +238,26 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool can_assign) {
 	LitCallExpression* expression = lit_create_call_expression(parser->state, parser->previous.line, prev);
 
-	while (!check(parser, TOKEN_RIGHT_PAREN)) {
-		lit_expressions_write(parser->state, &expression->args, parse_expression(parser));
+	if (parser->previous.type == TOKEN_STRING) {
+		lit_expressions_write(parser->state, &expression->args, parse_string(parser, false));
+	} else if (parser->previous.type == TOKEN_INTERPOLATION) {
+		lit_expressions_write(parser->state, &expression->args, parse_interpolation(parser, false));
+	} else {
+		while (!check(parser, TOKEN_RIGHT_PAREN)) {
+			lit_expressions_write(parser->state, &expression->args, parse_expression(parser));
 
-		if (!match(parser, TOKEN_COMMA)) {
-			break;
+			if (!match(parser, TOKEN_COMMA)) {
+				break;
+			}
 		}
+
+		if (expression->args.count > 255) {
+			error(parser, "Function can't be invoked with more than 255 arguments");
+		}
+
+		consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after arguments");
 	}
 
-	if (expression->args.count > 255) {
-		error(parser, "Function can't be invoked with more than 255 arguments");
-	}
-
-	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after arguments");
 	return (LitExpression*) expression;
 }
 
@@ -1057,7 +1066,7 @@ static void setup_rules() {
 	rules[TOKEN_GREATER_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_LESS] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
 	rules[TOKEN_LESS_EQUAL] = (LitParseRule) { NULL, parse_binary, PREC_COMPARISON };
-	rules[TOKEN_STRING] = (LitParseRule) { parse_string, NULL, PREC_NONE };
+	rules[TOKEN_STRING] = (LitParseRule) { parse_string, parse_call, PREC_NONE };
 	rules[TOKEN_INTERPOLATION] = (LitParseRule) { parse_interpolation, NULL, PREC_NONE };
 	rules[TOKEN_IDENTIFIER] = (LitParseRule) { parse_variable_expression, NULL, PREC_NONE };
 	rules[TOKEN_NEW] = (LitParseRule) { parse_new_expression, NULL, PREC_NONE };

@@ -1,5 +1,2 @@
-var a = [ "a", "b", "c", "d" ].slice(1, 2)
-
-for (var f in a) {
-    print(f)
-}
+require $"{"test"}_module"
+test()
