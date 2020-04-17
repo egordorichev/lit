@@ -32,19 +32,24 @@ void lit_write_chunk(LitState* state, LitChunk* chunk, uint8_t byte, uint16_t li
 	chunk->code[chunk->count] = byte;
 	chunk->count++;
 
-	if (chunk->line_capacity < chunk->line_count * 2 + 2) {
+	if (chunk->line_capacity < chunk->line_count + 2) {
 		uint old_capacity = chunk->line_capacity;
 
 		chunk->line_capacity = LIT_GROW_CAPACITY(chunk->line_capacity);
 		chunk->lines = LIT_GROW_ARRAY(state, chunk->lines, uint16_t, old_capacity, chunk->line_capacity);
+
+		if (old_capacity == 0) {
+			chunk->lines[0] = 0;
+			chunk->lines[1] = 0;
+		}
 	}
 
-	uint line_index = chunk->line_count * 2;
+	uint line_index = chunk->line_count;
 	uint value = chunk->lines[line_index];
 
 	if (value != 0 && value != line) {
-		chunk->line_count++;
-		line_index = chunk->line_count * 2;
+		chunk->line_count += 2;
+		line_index = chunk->line_count;
 	}
 
 	chunk->lines[line_index] = line;

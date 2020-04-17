@@ -1,9 +1,3 @@
-function t(s) {
-	print(s)
-}
-
-var dir = "."
-
-for (var d in Directory.listDirectories(dir)) {
-	t($"{dir}/{d}")
-}
+print("test")
+print(32)
+test()
