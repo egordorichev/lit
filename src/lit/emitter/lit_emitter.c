@@ -192,7 +192,7 @@ static int add_private(LitEmitter* emitter, const char* name, uint length, uint 
 	}
 
 	lit_privates_write(emitter->state, privates, (LitPrivate) {
-		name, length
+		name, length, false
 	});
 
 	return (int) privates->count - 1;
@@ -205,6 +205,10 @@ static int resolve_private(LitEmitter* emitter, const char* name, uint length, u
 		LitPrivate* private = &privates->values[i];
 
 		if (private->length == length && memcmp(private->name, name, length) == 0) {
+			if (!private->finished_declaration) {
+				error(emitter, line, ERROR_VARIABLE_USED_IN_INIT, length, name);
+			}
+
 			return i;
 		}
 	}
@@ -300,8 +304,12 @@ static int resolve_upvalue(LitEmitter* emitter, LitCompiler* compiler, const cha
 	return -1;
 }
 
-static void mark_initialized(LitEmitter* emitter, uint index) {
+static void mark_local_initialized(LitEmitter* emitter, uint index) {
 	emitter->compiler->locals.values[index].depth = emitter->compiler->scope_depth;
+}
+
+static void mark_private_initialized(LitEmitter* emitter, uint index) {
+	emitter->privates.values[index].finished_declaration = true;
 }
 
 static uint emit_jump(LitEmitter* emitter, LitOpCode code, uint line) {
@@ -649,7 +657,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 			for (uint i = 0; i < expr->parameters.count; i++) {
 				LitParameter parameter = expr->parameters.values[i];
-				mark_initialized(emitter, add_local(emitter, parameter.name, parameter.length, expression->line));
+				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, expression->line));
 			}
 
 			bool single_expression = expr->body->type == EXPRESSION_STATEMENT;
@@ -850,8 +858,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_expression(emitter, stmt->init);
 			}
 
-			if (!private) {
-				mark_initialized(emitter, index);
+			if (private) {
+				mark_private_initialized(emitter, index);
+			} else {
+				mark_local_initialized(emitter, index);
 			}
 
 			emit_byte_or_short(emitter, statement->line, private ? OP_SET_PRIVATE : OP_SET_LOCAL, private ? OP_SET_PRIVATE_LONG : OP_SET_LOCAL_LONG, index);
@@ -1012,7 +1022,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_byte(emitter, emitter->last_line, 1);
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, local);
 
-				mark_initialized(emitter, local);
+				mark_local_initialized(emitter, local);
 
 				if (block) {
 					LitBlockStatement* bl = (LitBlockStatement *) stmt->body;
@@ -1079,7 +1089,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitString* name = lit_copy_string(emitter->state, stmt->name, stmt->length);
 
 			if (local) {
-				mark_initialized(emitter, index);
+				mark_local_initialized(emitter, index);
 			}
 
 			begin_scope(emitter);
@@ -1089,7 +1099,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			for (uint i = 0; i < stmt->parameters.count; i++) {
 				LitParameter parameter = stmt->parameters.values[i];
-				mark_initialized(emitter, add_local(emitter, parameter.name, parameter.length, statement->line));
+				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, statement->line));
 			}
 
 			emit_statement(emitter, stmt->body);
@@ -1160,7 +1170,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			for (uint i = 0; i < stmt->parameters.count; i++) {
 				LitParameter parameter = stmt->parameters.values[i];
-				mark_initialized(emitter, add_local(emitter, parameter.name, parameter.length, statement->line));
+				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, statement->line));
 			}
 
 			emit_statement(emitter, stmt->body);
@@ -1236,7 +1246,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 				LitCompiler compiler;
 				init_compiler(emitter, &compiler, stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD);
-				mark_initialized(emitter, add_local(emitter, "value", 5, statement->line));
+				mark_local_initialized(emitter, add_local(emitter, "value", 5, statement->line));
 
 				emit_statement(emitter, stmt->setter);
 				setter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:set @", emitter->class_name, stmt->name)));

@@ -11,6 +11,7 @@
 typedef struct {
 	const char* name;
 	uint length;
+	bool finished_declaration;
 } LitPrivate;
 
 DECLARE_ARRAY(LitPrivates, LitPrivate, privates)

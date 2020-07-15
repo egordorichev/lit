@@ -1,2 +1,4 @@
-var a = 32
-var a = "test"
+function test() {
+	var a = a + 32
+	a = a + 32
+}
