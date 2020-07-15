@@ -1,4 +1,5 @@
 #include <lit/parser/lit_parser.h>
+#include <lit/parser/lit_error.h>
 #include <lit/scanner/lit_scanner.h>
 #include <lit/vm/lit_object.h>
 #include <lit/lit_predefines.h>
@@ -1038,7 +1039,7 @@ bool lit_parse(LitParser* parser, const char* file_name, const char* source, Lit
 		} while (!is_at_end(parser));
 	}
 
-	return parser->had_error;
+	return parser->had_error || parser->state->scanner->had_error;
 }
 
 static void setup_rules() {

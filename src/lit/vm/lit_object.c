@@ -106,13 +106,26 @@ LitValue lit_string_format(LitState* state, const char* format, ...) {
 	for (const char* c = format; *c != '\0'; c++) {
 		switch (*c) {
 			case '$': {
-				total_length += strlen(va_arg(arg_list, const char*));
-				break;
+				const char* cc = va_arg(arg_list, const char*);
+
+				if (cc != NULL) {
+					total_length += strlen(cc);
+					break;
+				}
+
+				goto default_ending;
 			}
 
 			case '@': {
-				total_length += AS_STRING(va_arg(arg_list, LitValue))->length;
-				break;
+				LitValue v = va_arg(arg_list, LitValue);
+				LitString* ss = AS_STRING(v);
+
+				if (ss != NULL) {
+					total_length += ss->length;
+					break;
+				}
+
+				goto default_ending;
 			}
 
 			case '#': {
@@ -121,7 +134,10 @@ LitValue lit_string_format(LitState* state, const char* format, ...) {
 			}
 
 			default: {
+				default_ending:
 				total_length++;
+
+				break;
 			}
 		}
 	}
@@ -138,19 +154,29 @@ LitValue lit_string_format(LitState* state, const char* format, ...) {
 		switch (*c) {
 			case '$': {
 				const char* string = va_arg(arg_list, const char*);
-				size_t length = strlen(string);
-				memcpy(start, string, length);
-				start += length;
 
-				break;
+				if (string != NULL) {
+					size_t length = strlen(string);
+					memcpy(start, string, length);
+					start += length;
+
+					break;
+				}
+
+				goto default_ending_copying;
 			}
 
 			case '@': {
 				LitString* string = AS_STRING(va_arg(arg_list, LitValue));
-				memcpy(start, string->chars, string->length);
-				start += string->length;
 
-				break;
+				if (string != NULL) {
+					memcpy(start, string->chars, string->length);
+					start += string->length;
+
+					break;
+				}
+
+				goto default_ending_copying;
 			}
 
 			case '#': {
@@ -162,7 +188,10 @@ LitValue lit_string_format(LitState* state, const char* format, ...) {
 			}
 
 			default: {
+				default_ending_copying:
 				*start++ = *c;
+
+				break;
 			}
 		}
 	}

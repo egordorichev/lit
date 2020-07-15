@@ -1,4 +1,5 @@
 #include <lit/scanner/lit_scanner.h>
+#include <lit/parser/lit_error.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -12,6 +13,7 @@ void lit_setup_scanner(LitState* state, LitScanner* scanner, const char* file_na
 	scanner->file_name = file_name;
 	scanner->state = state;
 	scanner->num_braces = 0;
+	scanner->had_error = false;
 }
 
 static bool is_at_end(LitScanner* scanner) {
@@ -29,12 +31,19 @@ static LitToken make_token(LitScanner* scanner, LitTokenType type) {
 	return token;
 }
 
-static LitToken make_error_token(LitScanner* scanner, const char* message) {
+static LitToken make_error_token(LitScanner* scanner, LitError error, ...) {
+	scanner->had_error = true;
+
+	va_list args;
+	va_start(args, error);
+	LitString* result = lit_vformat_error(scanner->state, scanner->line, error, args);
+	va_end(args);
+
 	LitToken token;
 
 	token.type = TOKEN_ERROR;
-	token.start = message;
-	token.length = (int) strlen(message);
+	token.start = result->chars;
+	token.length = result->length;
 	token.line = scanner->line;
 
 	return token;
@@ -42,6 +51,10 @@ static LitToken make_error_token(LitScanner* scanner, const char* message) {
 
 static char advance(LitScanner* scanner) {
 	scanner->current++;
+	return scanner->current[-1];
+}
+
+static char get_current(LitScanner* scanner) {
 	return scanner->current[-1];
 }
 
@@ -147,7 +160,7 @@ static LitToken parse_string(LitScanner* scanner, bool interpolation) {
 			break;
 		} else if (interpolation && c == '{') {
 			if (scanner->num_braces >= LIT_MAX_INTERPOLATION_NESTING) {
-				return make_error_token(scanner, "Interpolation is too deep");
+				return make_error_token(scanner, ERROR_INTERPOLATION_NESTING_TOO_DEEP, LIT_MAX_INTERPOLATION_NESTING);
 			}
 
 			string_type = TOKEN_INTERPOLATION;
@@ -157,7 +170,7 @@ static LitToken parse_string(LitScanner* scanner, bool interpolation) {
 		}
 
 		switch (c) {
-			case '\0': return make_error_token(scanner, "Unterminated string");
+			case '\0': return make_error_token(scanner, ERROR_UNTERMINATED_STRING);
 
 			case '\n': {
 				scanner->line++;
@@ -179,7 +192,7 @@ static LitToken parse_string(LitScanner* scanner, bool interpolation) {
 					case 'v': lit_bytes_write(state, &bytes, '\v'); break;
 
 					default: {
-						return make_error_token(scanner, "Invalid escape character");
+						return make_error_token(scanner, ERROR_INVALID_ESCAPE_CHAR, get_current(scanner));
 					}
 				}
 
@@ -238,7 +251,7 @@ static LitToken make_number_token(LitScanner* scanner, bool is_hex) {
 	}
 
 	if (errno == ERANGE) {
-		return make_error_token(scanner, "Number literal was too large");
+		return make_error_token(scanner, ERROR_NUMBER_IS_TOO_BIG);
 	}
 
 	LitToken token = make_token(scanner, TOKEN_NUMBER);
@@ -453,7 +466,7 @@ LitToken lit_scan_token(LitScanner* scanner) {
 
 		case '$': {
 			if (!match(scanner, '\"')) {
-				return make_error_token(scanner, "Expected '\"' after '$'");
+				return make_error_token(scanner, ERROR_CHAR_EXPECTATION_UNMET, '\"', '$', peek(scanner));
 			}
 
 			return parse_string(scanner, true);
@@ -462,5 +475,5 @@ LitToken lit_scan_token(LitScanner* scanner) {
 		case '"': return parse_string(scanner, false);
 	}
 
-	return make_error_token(scanner, "Unexpected character");
+	return make_error_token(scanner, ERROR_UNEXPECTED_CHAR, c);
 }
