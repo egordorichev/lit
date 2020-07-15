@@ -485,6 +485,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					break;
 				}
 
+				case TOKEN_CARET: {
+					emit_byte(emitter, expression->line, OP_BXOR);
+					break;
+				}
+
 				default: {
 					UNREACHABLE
 				}

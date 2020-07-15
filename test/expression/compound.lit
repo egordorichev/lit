@@ -10,6 +10,10 @@ print((a--)) // Expected: 16
 
 print((a %= 3)) // Expected: 1
 
+print(a |= 3) // Expected: 3
+print(a &= 10) // Expected: 2
+print(a ^= 31) // Expected: 29
+
 class Test {}
 var test = new Test()
 test.a = 32
