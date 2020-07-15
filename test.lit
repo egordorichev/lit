@@ -1,3 +1,1 @@
-print("test")
-print(32)
-test()
+print("Hello, World!")
