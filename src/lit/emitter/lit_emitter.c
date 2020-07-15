@@ -1090,6 +1090,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			if (local) {
 				mark_local_initialized(emitter, index);
+			} else {
+				mark_private_initialized(emitter, index);
 			}
 
 			begin_scope(emitter);

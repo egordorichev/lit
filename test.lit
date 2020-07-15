@@ -9,6 +9,5 @@ class Test : Super {
 }
 
 var a = new Test()
-a["test"] = 32
-print(a["test"])
+print(a["[]"])
 // print(a["test"])
