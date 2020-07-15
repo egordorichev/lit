@@ -997,27 +997,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(SUBSCRIPT_GET) {
 			LitValue instance = PEEK(1);
 
-			if (IS_ARRAY(instance)) {
-				if (!IS_NUMBER(PEEK(0))) {
-					lit_runtime_error(vm, "Array index must be a number");
-					RETURN_ERROR()
-				}
+			/*if (IS_ARRAY(instance)) {
 
-				LitValues* values = &AS_ARRAY(instance)->values;
-				int index = AS_NUMBER(PEEK(0));
-
-				if (index < 0) {
-					index = fmax(0, values->count + index);
-				}
-
-				DROP_MULTIPLE(2);
-
-				if (values->capacity <= index) {
-					PUSH(NULL_VALUE);
-				} else {
-					PUSH(values->values[index]);
-				}
-			} else if (IS_MAP(instance)) {
+			} else */if (IS_MAP(instance)) {
 				if (!IS_STRING(PEEK(0))) {
 					lit_runtime_error(vm, "Map index must be a string");
 					RETURN_ERROR()
@@ -1045,25 +1027,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(SUBSCRIPT_SET) {
 			LitValue instance = PEEK(2);
 
-			if (IS_ARRAY(instance)) {
-				if (!IS_NUMBER(PEEK(1))) {
-					lit_runtime_error(vm, "Array index must be a number");
-					RETURN_ERROR()
-				}
-
-				LitValues* values = &AS_ARRAY(instance)->values;
-				int index = AS_NUMBER(PEEK(1));
-
-				if (index < 0) {
-					index = fmax(0, values->count + index);
-				}
-
-				lit_values_ensure_size(state, values, index + 1);
-				LitValue value = values->values[index] = PEEK(0);
-				DROP_MULTIPLE(2);
-
-				*fiber->stack_top = value;
-			} else if (IS_MAP(instance)) {
+			if (IS_MAP(instance)) {
 				if (!IS_STRING(PEEK(1))) {
 					lit_runtime_error(vm, "Map index must be a string");
 					RETURN_ERROR()

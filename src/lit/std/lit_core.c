@@ -371,6 +371,47 @@ LIT_METHOD(array_slice) {
 	return array_splice(vm, AS_ARRAY(instance), from, to);
 }
 
+LIT_METHOD(array_subscript) {
+	if (arg_count == 2) {
+		if (!IS_NUMBER(args[0])) {
+			lit_runtime_error(vm, "Array index must be a number");
+		}
+
+		LitValues* values = &AS_ARRAY(instance)->values;
+		int index = AS_NUMBER(args[0]);
+
+		if (index < 0) {
+			index = fmax(0, values->count + index);
+		}
+
+		lit_values_ensure_size(vm->state, values, index + 1);
+		return values->values[index] = args[1];
+	}
+
+	if (!IS_NUMBER(args[0])) {
+		if (IS_RANGE(args[0])) {
+			LitRange* range = AS_RANGE(args[0]);
+			return array_splice(vm, AS_ARRAY(instance), (int) range->from, (int) range->to);
+		}
+
+		lit_runtime_error(vm, "Array index must be a number");
+		return NULL_VALUE;
+	}
+
+	LitValues* values = &AS_ARRAY(instance)->values;
+	int index = AS_NUMBER(args[0]);
+
+	if (index < 0) {
+		index = fmax(0, values->count + index);
+	}
+
+	if (values->capacity <= index) {
+		return NULL_VALUE;
+	}
+
+	return values->values[index];
+}
+
 LIT_METHOD(array_add) {
 	LIT_ENSURE_ARGS(1)
 
@@ -533,6 +574,7 @@ LIT_METHOD(array_length) {
 /*
  * Map
  */
+
 
 LIT_METHOD(map_addAll) {
 	LIT_ENSURE_ARGS(1)
@@ -793,6 +835,7 @@ void lit_open_core_library(LitState* state) {
 
 		// todo: insert
 
+		LIT_BIND_METHOD("[]", array_subscript)
 		LIT_BIND_METHOD("add", array_add)
 		LIT_BIND_METHOD("slice", array_slice)
 		LIT_BIND_METHOD("addAll", array_addAll)

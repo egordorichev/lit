@@ -1,5 +1,13 @@
-static class Test {
-	constructor() {
+var a = [ "a", "b", "c" ]
+var slice = a[1 .. -1]
 
-	}
+for (var i in slice) {
+	print(i)
 }
+
+/*class Test {
+
+}
+
+var a = new Test()
+print(a["test"])*/
