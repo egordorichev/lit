@@ -5,6 +5,8 @@
 #include <lit/lit_predefines.h>
 #include <lit/util/lit_array.h>
 
+#include <memory.h>
+
 #define SIGN_BIT ((uint64_t) 1 << 63u)
 #define QNAN ((uint64_t) 0x7ffc000000000000u)
 
@@ -29,22 +31,16 @@
 
 #define OBJECT_VALUE(obj) (LitValue) (SIGN_BIT | QNAN | (uint64_t) (uintptr_t) (obj))
 
-typedef union {
-	uint64_t bits64;
-	uint32_t bits32[2];
-	double num;
-} LitDoubleUnion;
-
 static inline double lit_value_to_number(LitValue value) {
-	LitDoubleUnion data;
-	data.bits64 = value;
-	return data.num;
+	double num;
+	memcpy(&num, &value, sizeof(LitValue));
+	return num;
 }
 
 static inline LitValue lit_number_to_value(double num) {
-	LitDoubleUnion data;
-	data.num = num;
-	return data.bits64;
+	LitValue value;
+	memcpy(&value, &num, sizeof(double));
+	return value;
 }
 
 void lit_print_value(LitValue value);

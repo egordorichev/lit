@@ -1,4 +1,5 @@
 #include <lit/emitter/lit_emitter.h>
+#include <lit/parser/lit_error.h>
 #include <lit/mem/lit_mem.h>
 #include <lit/debug/lit_debug.h>
 #include <lit/vm/lit_object.h>
@@ -143,11 +144,18 @@ static void end_scope(LitEmitter* emitter, uint16_t line) {
 	}
 }
 
-static uint8_t add_constant(LitEmitter* emitter, uint line, LitValue value) {
+static void error(LitEmitter* emitter, uint line, LitError error, ...) {
+	va_list args;
+	va_start(args, error);
+	lit_error(emitter->state, COMPILE_ERROR, line, lit_vformat_error(emitter->state, line, error, args)->chars);
+	va_end(args);
+}
+
+static uint16_t add_constant(LitEmitter* emitter, uint line, LitValue value) {
 	uint constant = lit_chunk_add_constant(emitter->state, emitter->chunk, value);
 
-	if (constant >= UINT8_MAX) {
-		lit_error(emitter->state, COMPILE_ERROR, line, "Too many constants in one chunk");
+	if (constant >= UINT16_MAX) {
+		error(emitter, line, ERROR_TOO_MANY_CONSTANTS);
 	}
 
 	return constant;
@@ -162,7 +170,7 @@ static uint emit_constant(LitEmitter* emitter, uint line, LitValue value) {
 		emit_byte(emitter, line, OP_CONSTANT_LONG);
 		emit_short(emitter, line, constant);
 	} else {
-		lit_error(emitter->state, COMPILE_ERROR, line, "Too many constants in one chunk");
+		error(emitter, line, ERROR_TOO_MANY_CONSTANTS);
 	}
 
 	return constant;
@@ -172,14 +180,14 @@ static int add_private(LitEmitter* emitter, const char* name, uint length, uint 
 	LitPrivates* privates = &emitter->privates;
 
 	if (privates->count == UINT16_MAX) {
-		lit_error(emitter->state, COMPILE_ERROR, line, "Too many top-level local variables in module");
+		error(emitter, line, ERROR_TOO_MANY_PRIVATES);
 	}
 
 	for (int i = (int) privates->count - 1; i >= 0; i--) {
 		LitPrivate* private = &privates->values[i];
 
-		if (name == private->name && length == private->length) {
-			lit_error(emitter->state, COMPILE_ERROR, line, "Variable '%.*s' was already declared in this module", length, name);
+		if (length == private->length && memcmp(private->name, name, length) == 0) {
+			error(emitter, line, ERROR_VAR_REDEFINED, length, name);
 		}
 	}
 
@@ -209,7 +217,7 @@ static int add_local(LitEmitter* emitter, const char* name, uint length, uint li
 	LitLocals* locals = &compiler->locals;
 
 	if (locals->count == UINT16_MAX) {
-		lit_error(emitter->state, COMPILE_ERROR, line, "Too many local variables in function");
+		error(emitter, line, ERROR_TOO_MANY_LOCALS);
 	}
 
 	for (int i = (int) locals->count - 1; i >= 0; i--) {
@@ -219,8 +227,8 @@ static int add_local(LitEmitter* emitter, const char* name, uint length, uint li
 			break;
 		}
 
-		if (name == local->name && length == local->length) {
-			lit_error(emitter->state, COMPILE_ERROR, line, "Variable '%.*s' was already declared in this scope", length, name);
+		if (length == local->length && memcmp(local->name, name, length) == 0) {
+			error(emitter, line, ERROR_VAR_REDEFINED, length, name);
 		}
 	}
 
@@ -239,7 +247,7 @@ static int resolve_local(LitEmitter* emitter, LitCompiler* compiler, const char*
 
 		if (local->length == length && memcmp(local->name, name, length) == 0) {
 			if (local->depth == UINT16_MAX) {
-				lit_error(emitter->state, COMPILE_ERROR, line, "Can't use local '%.*s' in its own initializer", length, name);
+				error(emitter, line, ERROR_VARIABLE_USED_IN_INIT, length, name);
 			}
 
 			return i;
@@ -260,8 +268,8 @@ static int add_upvalue(LitEmitter* emitter, LitCompiler* compiler, uint8_t index
 		}
 	}
 
-	if (upvalue_count == UINT8_COUNT) {
-		lit_error(emitter->state, COMPILE_ERROR, line, "Too many closure variables in function");
+	if (upvalue_count == UINT16_COUNT) {
+		error(emitter, line, ERROR_TOO_MANY_UPVALUES);
 		return 0;
 	}
 
@@ -307,7 +315,7 @@ static void patch_jump(LitEmitter* emitter, uint offset, uint line) {
 	uint jump = emitter->chunk->count - offset - 2;
 
 	if (jump > UINT16_MAX) {
-		lit_error(emitter->state, COMPILE_ERROR, line, "Too much code to jump over");
+		error(emitter, line, ERROR_JUMP_TOO_BIG);
 	}
 
 	emitter->chunk->code[offset] = (jump >> 8) & 0xff;
@@ -319,7 +327,7 @@ static void emit_loop(LitEmitter* emitter, uint start, uint line) {
 	uint offset = emitter->chunk->count - start + 2;
 
 	if (offset > UINT16_MAX) {
-		lit_error(emitter->state, COMPILE_ERROR, line, "Loop body is too large");
+		error(emitter, line, ERROR_JUMP_TOO_BIG);
 	}
 
 	emit_short(emitter, line, offset);
@@ -557,7 +565,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 				emit_byte(emitter, emitter->last_line, OP_SUBSCRIPT_SET);
 			} else {
-				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Invalid assigment target %d", (int) expr->to->type);
+				error(emitter, expression->line, ERROR_INVALID_ASSIGMENT_TARGET);
 			}
 
 			break;
@@ -713,9 +721,9 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case THIS_EXPRESSION: {
 			if (emitter->class_name == NULL) {
-				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Can't use 'this' outside of methods");
+				error(emitter, expression->line, ERROR_THIS_MISSUSE, "outside of methods");
 			} else if (emitter->compiler->type == FUNCTION_STATIC_METHOD) {
-				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Can't use 'this' in static methods");
+				error(emitter, expression->line, ERROR_THIS_MISSUSE, "in static methods");
 			}
 
 			emit_bytes(emitter, expression->line, OP_GET_LOCAL, 0);
@@ -724,11 +732,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case SUPER_EXPRESSION: {
 			if (emitter->class_name == NULL) {
-				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Can't use 'super' outside of methods");
+				error(emitter, expression->line, ERROR_THIS_MISSUSE, "outside of methods");
 			} else if (emitter->compiler->type == FUNCTION_STATIC_METHOD) {
-				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Can't use 'super' in static methods");
+				error(emitter, expression->line, ERROR_THIS_MISSUSE, "in static methods");
 			} else if (!emitter->class_has_super) {
-				lit_error(emitter->state, COMPILE_ERROR, expression->line, "Can't use 'super', class %s has no super class", emitter->class_name->chars);
+				error(emitter, expression->line, ERROR_THIS_MISSUSE, "in class '%s', because it doesn't have a super class");
 			}
 
 			LitSuperExpression* expr = (LitSuperExpression*) expression;
@@ -787,7 +795,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		}
 
 		default: {
-			lit_error(emitter->state, COMPILE_ERROR, expression->line, "Unknown expression type %d", (int) expression->type);
+			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
 			break;
 		}
 	}
@@ -1033,7 +1041,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case CONTINUE_STATEMENT: {
 			if (emitter->compiler->loop_depth == 0) {
-				lit_error(emitter->state, COMPILE_ERROR, statement->line, "Can't use 'continue' outside of loops");
+				error(emitter, statement->line, ERROR_LOOP_JUMP_MISSUSE, "continue");
 			}
 
 			if (emitter->emit_pop_continue) {
@@ -1046,7 +1054,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case BREAK_STATEMENT: {
 			if (emitter->compiler->loop_depth == 0) {
-				lit_error(emitter->state, COMPILE_ERROR, statement->line, "Can't use 'break' outside of loops");
+				error(emitter, statement->line, ERROR_LOOP_JUMP_MISSUSE, "break");
 			}
 
 			lit_uints_write(emitter->state, &emitter->breaks, emit_jump(emitter, OP_JUMP, statement->line));
@@ -1117,7 +1125,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case RETURN_STATEMENT: {
 			if (emitter->compiler->type == FUNCTION_CONSTRUCTOR) {
-				lit_error(emitter->state, COMPILE_ERROR, statement->line, "Can't use 'return' in constructors");
+				error(emitter, statement->line, ERROR_RETURN_FROM_CONSTRUCTOR);
 			}
 
 			LitExpression* expression = ((LitReturnStatement*) statement)->expression;
@@ -1142,7 +1150,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			bool constructor = stmt->name->length == 11 && memcmp(stmt->name->chars, "constructor", 11) == 0;
 
 			if (constructor && stmt->is_static) {
-				lit_error(emitter->state, COMPILE_ERROR, statement->line, "Constructors can't be static (at least for now)");
+				error(emitter, statement->line, ERROR_STATIC_CONSTRUCTOR);
 			}
 
 			begin_scope(emitter);
@@ -1246,7 +1254,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 		}
 
 		default: {
-			lit_error(emitter->state, COMPILE_ERROR, statement->line, "Unknown statement type %d", (int) statement->type);
+			error(emitter, statement->line, ERROR_UNKNOWN_STATEMENT, (int) statement->type);
 			break;
 		}
 	}

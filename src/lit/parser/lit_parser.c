@@ -60,7 +60,7 @@ void lit_free_parser(LitParser* parser) {
 
 }
 
-static void error_at(LitParser* parser, LitToken* token, const char* message) {
+static void string_error(LitParser* parser, LitToken* token, const char* message) {
 	if (parser->panic_mode) {
 		return;
 	}
@@ -69,12 +69,22 @@ static void error_at(LitParser* parser, LitToken* token, const char* message) {
 	parser->had_error = true;
 }
 
-static void error_at_current(LitParser* parser, const char* message) {
-	error_at(parser, &parser->current, message);
+static void error_at(LitParser* parser, LitToken* token, LitError error, va_list args) {
+	string_error(parser, token, lit_vformat_error(parser->state, token->line, error, args)->chars);
 }
 
-static void error(LitParser* parser, const char* message) {
-	error_at(parser, &parser->previous, message);
+static void error_at_current(LitParser* parser, LitError error, ...) {
+	va_list args;
+	va_start(args, error);
+	error_at(parser, &parser->current, error, args);
+	va_end(args);
+}
+
+static void error(LitParser* parser, LitError error, ...) {
+	va_list args;
+	va_start(args, error);
+	error_at(parser, &parser->previous, error, args);
+	va_end(args);
 }
 
 static void advance(LitParser* parser) {
@@ -87,7 +97,7 @@ static void advance(LitParser* parser) {
 			break;
 		}
 
-		error_at_current(parser, parser->current.start);
+		string_error(parser, &parser->current, parser->current.start);
 	}
 }
 
@@ -104,13 +114,16 @@ static bool match(LitParser* parser, LitTokenType type) {
 	return false;
 }
 
-static void consume(LitParser* parser, LitTokenType type, const char* message) {
+static void consume(LitParser* parser, LitTokenType type, ...) {
 	if (parser->current.type == type) {
 		advance(parser);
 		return;
 	}
 
-	error_at_current(parser, message);
+	va_list args;
+	va_start(args, type);
+	error_at(parser, &parser->current, ERROR_EXPECTION_UNMET, args);
+	va_end(args);
 }
 
 static bool match_new_line(LitParser* parser) {
@@ -129,11 +142,6 @@ static void ignore_new_lines(LitParser* parser) {
 	match_new_line(parser);
 }
 
-static void consume_new_line(LitParser* parser, const char* error) {
-	consume(parser, TOKEN_NEW_LINE, error);
-	ignore_new_lines(parser);
-}
-
 static LitStatement* parse_block(LitParser* parser) {
 	begin_scope(parser);
 	LitBlockStatement* statement = lit_create_block_statement(parser->state, parser->previous.line);
@@ -144,7 +152,7 @@ static LitStatement* parse_block(LitParser* parser) {
 		ignore_new_lines(parser);
 	}
 
-	consume(parser, TOKEN_RIGHT_BRACE, "'}' expected");
+	consume(parser, TOKEN_RIGHT_BRACE, "'}'");
 	end_scope(parser);
 
 	return (LitStatement*) statement;
@@ -155,7 +163,7 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
 	LitPrefixParseFn prefix_rule = get_rule(parser->previous.type)->prefix;
 
 	if (prefix_rule == NULL) {
-		error(parser, "Expected expression");
+		error(parser, ERROR_EXPECTION_UNMET, "expression");
 		return NULL;
 	}
 
@@ -169,7 +177,7 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
 	}
 
 	if (can_assign && match(parser, TOKEN_EQUAL)) {
-		error(parser, "Invalid assigment target");
+		error(parser, ERROR_INVALID_ASSIGMENT_TARGET);
 	}
 
 	return expr;
@@ -187,7 +195,7 @@ static LitExpression* parse_lambda(LitParser* parser, LitLambdaExpression* lambd
 
 static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assign) {
 	if (match(parser, TOKEN_RIGHT_PAREN)) {
-		consume(parser, TOKEN_ARROW, "Expected => after lambda arguments");
+		consume(parser, TOKEN_ARROW, "=> after lambda arguments");
 		return parse_lambda(parser, lit_create_lambda_expression(parser->state, parser->previous.line));
 	}
 
@@ -207,14 +215,14 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 
 			if (parser->previous.type == TOKEN_COMMA) {
 				do {
-					consume(parser, TOKEN_IDENTIFIER, "Expected argument name");
+					consume(parser, TOKEN_IDENTIFIER, "argument name");
 					lit_parameters_write(state, &lambda->parameters, (LitParameter) { parser->previous.start, parser->previous.length });
 				} while (match(parser, TOKEN_COMMA));
 
 			}
 
-			consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' lambda parameters");
-			consume(parser, TOKEN_ARROW, "Expected => after lambda arguments");
+			consume(parser, TOKEN_RIGHT_PAREN, "')' lambda parameters");
+			consume(parser, TOKEN_ARROW, "=> after lambda arguments");
 
 			return parse_lambda(parser, lambda);
 		} else {
@@ -231,7 +239,7 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 	}
 
 	LitExpression* expression = parse_expression(parser);
-	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after grouping expression");
+	consume(parser, TOKEN_RIGHT_PAREN, "')' after grouping expression");
 
 	return expression;
 }
@@ -253,10 +261,10 @@ static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool ca
 		}
 
 		if (expression->args.count > 255) {
-			error(parser, "Function can't be invoked with more than 255 arguments");
+			error(parser, ERROR_TOO_MANY_FUNCTION_ARGS, (int) expression->args.count);
 		}
 
-		consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after arguments");
+		consume(parser, TOKEN_RIGHT_PAREN, "')' after arguments");
 	}
 
 	return (LitExpression*) expression;
@@ -274,7 +282,7 @@ static LitExpression* parse_binary(LitParser* parser, LitExpression* prev, bool 
 	bool invert = parser->previous.type == TOKEN_BANG;
 
 	if (invert) {
-		consume(parser, TOKEN_IS, "Expected 'is' after '!'");
+		consume(parser, TOKEN_IS, "'is' after '!'");
 	}
 
 	LitTokenType operator = parser->previous.type;
@@ -391,7 +399,7 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign) {
 		lit_expressions_write(parser->state, &expression->expressions, parse_expression(parser));
 	} while (match(parser, TOKEN_INTERPOLATION));
 
-	consume(parser, TOKEN_STRING, "Expected end of interpolation");
+	consume(parser, TOKEN_STRING, "end of interpolation");
 
 	if (AS_STRING(parser->previous.value)->length > 0) {
 		lit_expressions_write(parser->state, &expression->expressions, (LitExpression *) lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value));
@@ -409,7 +417,7 @@ static LitExpression* parse_variable_expression_base(LitParser* parser, bool can
 
 	if (new) {
 		if (!check(parser, TOKEN_LEFT_PAREN)) {
-			error_at_current(parser, "Expected argument list for instance creation");
+			error_at_current(parser, ERROR_EXPECTION_UNMET, "argument list for instance creation");
 		}
 
 		return expression;
@@ -431,7 +439,7 @@ static LitExpression* parse_variable_expression(LitParser* parser, bool can_assi
 }
 
 static LitExpression* parse_new_expression(LitParser* parser, bool can_assign) {
-	consume(parser, TOKEN_IDENTIFIER, "Expected class name after 'new'");
+	consume(parser, TOKEN_IDENTIFIER, "class name after 'new'");
 	return parse_variable_expression_base(parser, false, true);
 }
 
@@ -439,7 +447,7 @@ static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool
 	uint line = parser->previous.line;
 
 	if (!(match(parser, TOKEN_CLASS) || match(parser, TOKEN_SUPER))) { // class and super are allowed field names
-		consume(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
+		consume(parser, TOKEN_IDENTIFIER, "property name after '.'");
 	}
 
 	const char* name = parser->previous.start;
@@ -467,12 +475,12 @@ static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression
 	uint line = parser->previous.line;
 
 	if (match(parser, TOKEN_DOT)) {
-		consume(parser, TOKEN_IDENTIFIER, "Expected property name after '.'");
+		consume(parser, TOKEN_IDENTIFIER, "property name after '.'");
 		return (LitExpression*) lit_create_get_expression(parser->state, line, previous, parser->previous.start, parser->previous.length, true);
 	}
 
 	LitExpression* if_branch = parse_expression(parser);
-	consume(parser, TOKEN_COLON, "Expected ':' after expression");
+	consume(parser, TOKEN_COLON, "':' after expression");
 	LitExpression* else_branch = parse_expression(parser);
 
 	return (LitExpression *) lit_create_if_experssion(parser->state, line, previous, if_branch, else_branch);
@@ -492,7 +500,7 @@ static LitExpression* parse_array(LitParser* parser, bool can_assign) {
 	}
 
 	ignore_new_lines(parser);
-	consume(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after array");
+	consume(parser, TOKEN_RIGHT_BRACKET, "']' after array");
 
 	return (LitExpression*) array;
 }
@@ -503,11 +511,11 @@ static LitExpression* parse_map(LitParser* parser, bool can_assign) {
 
 	while (!check(parser, TOKEN_RIGHT_BRACE)) {
 		ignore_new_lines(parser);
-		consume(parser, TOKEN_STRING, "Expected key string after '{'");
+		consume(parser, TOKEN_STRING, "key string after '{'");
 		lit_values_write(parser->state, &map->keys, OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start + 1, parser->previous.length - 2)));
 
 		ignore_new_lines(parser);
-		consume(parser, TOKEN_COLON, "Expected ':' after key string");
+		consume(parser, TOKEN_COLON, "':' after key string");
 
 		ignore_new_lines(parser);
 		lit_expressions_write(parser->state, &map->values, parse_expression(parser));
@@ -518,7 +526,7 @@ static LitExpression* parse_map(LitParser* parser, bool can_assign) {
 	}
 
 	ignore_new_lines(parser);
-	consume(parser, TOKEN_RIGHT_BRACE, "Expected '}' after map");
+	consume(parser, TOKEN_RIGHT_BRACE, "'}' after map");
 
 	return (LitExpression*) map;
 }
@@ -527,7 +535,7 @@ static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous
 	uint line = parser->previous.line;
 
 	LitExpression* index = parse_expression(parser);
-	consume(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after subscript");
+	consume(parser, TOKEN_RIGHT_BRACKET, "']' after subscript");
 
 	LitExpression* expression = (LitExpression*) lit_create_subscript_expression(parser->state, line, previous, index);
 
@@ -549,12 +557,12 @@ static LitExpression* parse_super(LitParser* parser, bool can_assign) {
 
 	if (!match(parser, TOKEN_DOT)) {
 		LitExpression* expression = (LitExpression*) lit_create_super_expression(parser->state, line, lit_copy_string(parser->state, "constructor", 11));
-		consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after 'super'");
+		consume(parser, TOKEN_LEFT_PAREN, "'(' after 'super'");
 
 		return parse_call(parser, expression, false);
 	}
 
-	consume(parser, TOKEN_IDENTIFIER, "Expected super method name after '.'");
+	consume(parser, TOKEN_IDENTIFIER, "super method name after '.'");
 
 	LitExpression* expression = (LitExpression*) lit_create_super_expression(parser->state, line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length));
 
@@ -572,7 +580,7 @@ static LitExpression* parse_expression(LitParser* parser) {
 
 static LitStatement* parse_var_declaration(LitParser* parser) {
 	uint line = parser->previous.line;
-	consume(parser, TOKEN_IDENTIFIER, "Expected variable name");
+	consume(parser, TOKEN_IDENTIFIER, "variable name");
 
 	const char* name = parser->previous.start;
 	uint length = parser->previous.length;
@@ -590,9 +598,9 @@ static LitStatement* parse_if(LitParser* parser) {
 	uint line = parser->previous.line;
 	bool invert = match(parser, TOKEN_BANG);
 
-	consume(parser, TOKEN_LEFT_PAREN, "Expected '('");
+	consume(parser, TOKEN_LEFT_PAREN, "'('");
 	LitExpression* condition = parse_expression(parser);
-	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')'");
+	consume(parser, TOKEN_RIGHT_PAREN, "')'");
 
 	if (invert) {
 		condition = (LitExpression*) lit_create_unary_expression(parser->state, condition->line, condition, TOKEN_BANG);
@@ -613,9 +621,9 @@ static LitStatement* parse_if(LitParser* parser) {
 			}
 
 			invert = match(parser, TOKEN_BANG);
-			consume(parser, TOKEN_LEFT_PAREN, "Expected '('");
+			consume(parser, TOKEN_LEFT_PAREN, "'('");
 			LitExpression* e = parse_expression(parser);
-			consume(parser, TOKEN_RIGHT_PAREN, "Expected ')'");
+			consume(parser, TOKEN_RIGHT_PAREN, "')'");
 
 			if (invert) {
 				e = (LitExpression*) lit_create_unary_expression(parser->state, condition->line, e, TOKEN_BANG);
@@ -630,7 +638,7 @@ static LitStatement* parse_if(LitParser* parser) {
 
 		// else
 		if (else_branch != NULL) {
-			error_at_current(parser, "If statement can only have one else branch");
+			error(parser, ERROR_MULTIPLE_ELSE_BRANCHES);
 		}
 
 		else_branch = parse_statement(parser);
@@ -642,7 +650,7 @@ static LitStatement* parse_if(LitParser* parser) {
 static LitStatement* parse_for(LitParser* parser) {
 	uint line = parser->previous.line;
 
-	consume(parser, TOKEN_LEFT_PAREN, "Expected '('");
+	consume(parser, TOKEN_LEFT_PAREN, "'('");
 
 	LitStatement* var = NULL;
 	LitExpression* init = NULL;
@@ -660,20 +668,20 @@ static LitStatement* parse_for(LitParser* parser) {
 	LitExpression* increment = NULL;
 
 	if (c_style) {
-		consume(parser, TOKEN_SEMICOLON, "Expected ';'");
+		consume(parser, TOKEN_SEMICOLON, "';'");
 		condition = check(parser, TOKEN_SEMICOLON) ? NULL : parse_expression(parser);
 
-		consume(parser, TOKEN_SEMICOLON, "Expected ';'");
+		consume(parser, TOKEN_SEMICOLON, "';'");
 		increment = check(parser, TOKEN_RIGHT_PAREN) ? NULL : parse_expression(parser);
 	} else {
 		condition = parse_expression(parser);
 
 		if (var == NULL) {
-			error(parser, "For loops using in-iteration must declare a new variable");
+			error(parser, ERROR_VAR_MISSING_IN_FORIN);
 		}
 	}
 
-	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')'");
+	consume(parser, TOKEN_RIGHT_PAREN, "')'");
 
 	return (LitStatement*) lit_create_for_statement(parser->state, line, init, var, condition, increment, parse_statement(parser), c_style);
 }
@@ -681,9 +689,9 @@ static LitStatement* parse_for(LitParser* parser) {
 static LitStatement* parse_while(LitParser* parser) {
 	uint line = parser->previous.line;
 
-	consume(parser, TOKEN_LEFT_PAREN, "Expected '('");
+	consume(parser, TOKEN_LEFT_PAREN, "'('");
 	LitExpression* condition = parse_expression(parser);
-	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')'");
+	consume(parser, TOKEN_RIGHT_PAREN, "')'");
 
 	LitStatement* body = parse_statement(parser);
 
@@ -698,7 +706,7 @@ static LitStatement* parse_function(LitParser* parser) {
 	}
 
 	uint line = parser->previous.line;
-	consume(parser, TOKEN_IDENTIFIER, "Expected function name");
+	consume(parser, TOKEN_IDENTIFIER, "function name");
 
 	LitFunctionStatement* function = lit_create_function_statement(parser->state, line, parser->previous.start, parser->previous.length);
 	function->export = export;
@@ -707,10 +715,10 @@ static LitStatement* parse_function(LitParser* parser) {
 	init_compiler(parser, &compiler);
 	begin_scope(parser);
 
-	consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after function name");
+	consume(parser, TOKEN_LEFT_PAREN, "'(' after function name");
 
 	while (!check(parser, TOKEN_RIGHT_PAREN)) {
-		consume(parser, TOKEN_IDENTIFIER, "Expected argument name");
+		consume(parser, TOKEN_IDENTIFIER, "argument name");
 
 		lit_parameters_write(parser->state, &function->parameters, (LitParameter) {
 			parser->previous.start, parser->previous.length
@@ -722,10 +730,10 @@ static LitStatement* parse_function(LitParser* parser) {
 	}
 
 	if (function->parameters.count > 255) {
-		error(parser, "Functions can't have more than 255 arguments");
+		error(parser, ERROR_TOO_MANY_FUNCTION_ARGS, (int) function->parameters.count);
 	}
 
-	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after function arguments");
+	consume(parser, TOKEN_RIGHT_PAREN, "')' after function arguments");
 
 	function->body = parse_statement(parser);
 
@@ -772,11 +780,11 @@ static LitStatement* parse_field(LitParser* parser, LitString* name, bool is_sta
 		}
 
 		if (getter == NULL && setter == NULL) {
-			error(parser, "Expected declaration of either getter or setter, got none");
+			error(parser, ERROR_NO_GETTER_AND_SETTER);
 		}
 
 		ignore_new_lines(parser);
-		consume(parser, TOKEN_RIGHT_BRACE, "Expected '}' after field declaration");
+		consume(parser, TOKEN_RIGHT_BRACE, "'}' after field declaration");
 	}
 
 	return (LitStatement *) lit_create_field_statement(parser->state, line, name, getter, setter, is_static);
@@ -811,7 +819,7 @@ static LitStatement* parse_method(LitParser* parser, bool is_static) {
 
 	if (match(parser, TOKEN_OPERATOR)) {
 		if (is_static) {
-			error(parser, "Operator methods can't be static or defined in static classes");
+			error(parser, ERROR_STATIC_OPERATOR);
 		}
 
 		uint i = 0;
@@ -825,13 +833,13 @@ static LitStatement* parse_method(LitParser* parser, bool is_static) {
 		}
 
 		if (parser->previous.type == TOKEN_LEFT_BRACKET) {
-			consume(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after '[' in operator method declaration");
+			consume(parser, TOKEN_RIGHT_BRACKET, "']' after '[' in operator method declaration");
 			name = lit_copy_string(parser->state, "[]", 2);
 		} else {
 			name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
 		}
 	} else {
-		consume(parser, TOKEN_IDENTIFIER, "Expected method name");
+		consume(parser, TOKEN_IDENTIFIER, "method name");
 		name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
 
 		if (check(parser, TOKEN_LEFT_BRACE) || check(parser, TOKEN_ARROW)) {
@@ -845,10 +853,10 @@ static LitStatement* parse_method(LitParser* parser, bool is_static) {
 	init_compiler(parser, &compiler);
 	begin_scope(parser);
 
-	consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after method name");
+	consume(parser, TOKEN_LEFT_PAREN, "'(' after method name");
 
 	while (!check(parser, TOKEN_RIGHT_PAREN)) {
-		consume(parser, TOKEN_IDENTIFIER, "Expected argument name");
+		consume(parser, TOKEN_IDENTIFIER, "argument name");
 
 		lit_parameters_write(parser->state, &method->parameters, (LitParameter) {
 			parser->previous.start, parser->previous.length
@@ -860,10 +868,10 @@ static LitStatement* parse_method(LitParser* parser, bool is_static) {
 	}
 
 	if (method->parameters.count > 255) {
-		error(parser, "Methods can't have more than 255 arguments");
+		error(parser, ERROR_TOO_MANY_FUNCTION_ARGS, (int) method->parameters.count);
 	}
 
-	consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after method arguments");
+	consume(parser, TOKEN_RIGHT_PAREN, "')' after method arguments");
 
 	method->body = parse_statement(parser);
 
@@ -879,26 +887,26 @@ static LitStatement* parse_class(LitParser* parser) {
 	bool is_static = parser->previous.type == TOKEN_STATIC;
 
 	if (is_static) {
-		consume(parser, TOKEN_CLASS, "Expected 'class' after 'static'");
+		consume(parser, TOKEN_CLASS, "'class' after 'static'");
 	}
 
-	consume(parser, TOKEN_IDENTIFIER, "Expected class name after 'class'");
+	consume(parser, TOKEN_IDENTIFIER, "class name after 'class'");
 	LitString* name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
 	LitString* super = NULL;
 
 	if (match(parser, TOKEN_COLON)) {
-		consume(parser, TOKEN_IDENTIFIER, "Expected super class name after ':'");
+		consume(parser, TOKEN_IDENTIFIER, "super class name after ':'");
 		super = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);
 
 		if (super == name) {
-			error(parser, "Classes can't inherit itselfes");
+			error(parser, ERROR_SELF_INHERITED_CLASS);
 		}
 	}
 
 	LitClassStatement* klass = lit_create_class_statement(parser->state, line, name, super);
 
 	ignore_new_lines(parser);
-	consume(parser, TOKEN_LEFT_BRACE, "Expected '{' before class body");
+	consume(parser, TOKEN_LEFT_BRACE, "'{' before class body");
 	ignore_new_lines(parser);
 
 	bool finished_parsing_fields = false;
@@ -911,7 +919,7 @@ static LitStatement* parse_class(LitParser* parser) {
 
 			if (match(parser, TOKEN_VAR)) {
 				if (finished_parsing_fields) {
-					error(parser, "All static fields must be defined before the methods");
+					error(parser, ERROR_STATIC_FIELDS_AFTER_METHODS);
 				}
 
 				LitStatement* var = parse_var_declaration(parser);
@@ -936,7 +944,7 @@ static LitStatement* parse_class(LitParser* parser) {
 		ignore_new_lines(parser);
 	}
 
-	consume(parser, TOKEN_RIGHT_BRACE, "Expected '}' after class body");
+	consume(parser, TOKEN_RIGHT_BRACE, "'}' after class body");
 
 	return (LitStatement*) klass;
 }
@@ -1022,7 +1030,7 @@ bool lit_parse(LitParser* parser, const char* file_name, const char* source, Lit
 	ignore_new_lines(parser);
 
 	if (is_at_end(parser)) {
-		error_at_current(parser, "Expected statement but got nothing");
+		error_at_current(parser, ERROR_MISSING_STATEMENT);
 	} else {
 		do {
 			LitStatement* statement = parse_declaration(parser);
