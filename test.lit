@@ -1,4 +1,5 @@
-function test() {
-	var a = a + 32
-	a = a + 32
+static class Test {
+	constructor() {
+
+	}
 }
