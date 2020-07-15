@@ -12,6 +12,9 @@ typedef enum {
 	PREC_ASSIGNMENT,  // =
 	PREC_OR,          // ||
 	PREC_AND,         // &&
+	PREC_BOR,         // | ^
+	PREC_BAND,        // &
+	PREC_SHIFT,       // << >>
 	PREC_EQUALITY,    // == !=
 	PREC_COMPARISON,  // < > <= >=
 	PREC_COMPOUND,    // += -= *= /= ++ --
@@ -19,7 +22,7 @@ typedef enum {
 	PREC_FACTOR,      // * /
 	PREC_IS,          // is
 	PREC_RANGE,       // ..
-	PREC_UNARY,       // ! -
+	PREC_UNARY,       // ! - ~
 	PREC_NULL,        // ??
 	PREC_CALL,        // . ()
 	PREC_PRIMARY

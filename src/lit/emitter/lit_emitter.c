@@ -465,6 +465,26 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					break;
 				}
 
+				case TOKEN_LESS_LESS: {
+					emit_byte(emitter, expression->line, OP_LSHIFT);
+					break;
+				}
+
+				case TOKEN_GREATER_GREATER: {
+					emit_byte(emitter, expression->line, OP_RSHIFT);
+					break;
+				}
+
+				case TOKEN_BAR: {
+					emit_byte(emitter, expression->line, OP_BOR);
+					break;
+				}
+
+				case TOKEN_AMPERSAND: {
+					emit_byte(emitter, expression->line, OP_BAND);
+					break;
+				}
+
 				default: {
 					UNREACHABLE
 				}
@@ -485,6 +505,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 				case TOKEN_BANG: {
 					emit_byte(emitter, expression->line, OP_NOT);
+					break;
+				}
+
+				case TOKEN_TILDE: {
+					emit_byte(emitter, expression->line, OP_BNOT);
 					break;
 				}
 

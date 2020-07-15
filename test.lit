@@ -1,13 +1,1 @@
-class Super {
-	test() {
-
-	}
-}
-
-class Test : Super {
-
-}
-
-var a = new Test()
-print(a["[]"])
-// print(a["test"])
+print(2 & 1)

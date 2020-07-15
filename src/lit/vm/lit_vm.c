@@ -375,6 +375,17 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	} \
 	INVOKE_METHOD(a, op_string, 1)
 
+
+#define BITWISE_OP(op, op_string) \
+	LitValue a = PEEK(1); \
+	LitValue b = PEEK(0); \
+	if (!IS_NUMBER(a) || !IS_NUMBER(b)) { \
+		lit_runtime_error(vm, "Operands of bitwise operator %s must be two numbers", op_string); \
+		RETURN_ERROR() \
+	} \
+	DROP(); \
+	*(fiber->stack_top - 1) = (NUMBER_VALUE((int) AS_NUMBER(a) op (int) AS_NUMBER(b)));
+
 #ifdef LIT_TRACE_EXECUTION
 	printf("== %s ==\n", frame->function->name->chars);
 	uint8_t instruction;
@@ -503,6 +514,16 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(BNOT) {
+			if (!IS_NUMBER(PEEK(0))) {
+				lit_runtime_error(vm, "Operand must be a number");
+				RETURN_ERROR()
+			}
+
+			PUSH(NUMBER_VALUE(~((int) AS_NUMBER(POP()))));
+			continue;
+		}
+
 		CASE_CODE(ADD) {
 			BINARY_OP(NUMBER_VALUE, +, "+")
 			continue;
@@ -564,6 +585,31 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			}
 
 			INVOKE_METHOD(a, "%", 1)
+			continue;
+		}
+
+		CASE_CODE(BAND) {
+			BITWISE_OP(&, "&")
+			continue;
+		}
+
+		CASE_CODE(BOR) {
+			BITWISE_OP(|, "|")
+			continue;
+		}
+
+		CASE_CODE(BXOR) {
+			BITWISE_OP(^, "^")
+			continue;
+		}
+
+		CASE_CODE(LSHIFT) {
+			BITWISE_OP(<<, "<<")
+			continue;
+		}
+
+		CASE_CODE(RSHIFT) {
+			BITWISE_OP(>>, ">>")
 			continue;
 		}
 
@@ -1208,6 +1254,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #undef WRITE_FRAME
 #undef READ_FRAME
 #undef PEEK
+#undef BITWISE_OP
 #undef BINARY_OP
 #undef READ_CONSTANT_LONG
 #undef READ_CONSTANT

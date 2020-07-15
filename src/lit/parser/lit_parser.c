@@ -329,6 +329,9 @@ static LitTokenType convert_compound_operator(LitTokenType operator) {
 		case TOKEN_SLASH_EQUAL: return TOKEN_SLASH;
 		case TOKEN_SHARP_EQUAL: return TOKEN_SHARP;
 		case TOKEN_PERCENT_EQUAL: return TOKEN_PERCENT;
+		case TOKEN_CARET_EQUAL: return TOKEN_CARET;
+		case TOKEN_BAR_EQUAL: return TOKEN_BAR;
+		case TOKEN_AMPERSAND_EQUAL: return TOKEN_AMPERSAND;
 
 		case TOKEN_PLUS_PLUS: return TOKEN_PLUS;
 		case TOKEN_MINUS_MINUS: return TOKEN_MINUS;
@@ -1059,6 +1062,15 @@ static void setup_rules() {
 	rules[TOKEN_STAR_STAR] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_SLASH] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_SHARP] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
+	rules[TOKEN_STAR] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
+	rules[TOKEN_STAR] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
+	rules[TOKEN_BAR] = (LitParseRule) { NULL, parse_binary, PREC_BOR };
+	rules[TOKEN_AMPERSAND] = (LitParseRule) { NULL, parse_binary, PREC_BAND };
+	rules[TOKEN_TILDE] = (LitParseRule) { parse_unary, NULL, PREC_UNARY };
+	rules[TOKEN_CARET] = (LitParseRule) { NULL, parse_binary, PREC_BOR };
+	rules[TOKEN_LESS_LESS] = (LitParseRule) { NULL, parse_binary, PREC_SHIFT };
+	rules[TOKEN_GREATER_GREATER] = (LitParseRule) { NULL, parse_binary, PREC_SHIFT };
+
 	rules[TOKEN_PERCENT] = (LitParseRule) { NULL, parse_binary, PREC_FACTOR };
 	rules[TOKEN_IS] = (LitParseRule) { NULL, parse_binary, PREC_IS };
 	rules[TOKEN_NUMBER] = (LitParseRule) { parse_number, NULL, PREC_NONE };
@@ -1081,6 +1093,9 @@ static void setup_rules() {
 	rules[TOKEN_SLASH_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_SHARP_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_PERCENT_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
+	rules[TOKEN_CARET_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
+	rules[TOKEN_BAR_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
+	rules[TOKEN_AMPERSAND_EQUAL] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_PLUS_PLUS] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_MINUS_MINUS] = (LitParseRule) { NULL, parse_compound, PREC_COMPOUND };
 	rules[TOKEN_AMPERSAND_AMPERSAND] = (LitParseRule) { NULL, parse_and, PREC_AND };

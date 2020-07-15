@@ -98,6 +98,12 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 		case OP_DIVIDE: return print_simple_op("OP_DIVIDE", offset);
 		case OP_FLOOR_DIVIDE: return print_simple_op("OP_FLOOR_DIVIDE", offset);
 		case OP_MOD: return print_simple_op("OP_MOD", offset);
+		case OP_BAND: return print_simple_op("OP_BAND", offset);
+		case OP_BOR: return print_simple_op("OP_BOR", offset);
+		case OP_BXOR: return print_simple_op("OP_XOR", offset);
+		case OP_LSHIFT: return print_simple_op("OP_LSHIFT", offset);
+		case OP_RSHIFT: return print_simple_op("OP_RSHIFT", offset);
+		case OP_BNOT: return print_simple_op("OP_BNOT", offset);
 		case OP_EQUAL: return print_simple_op("OP_EQUAL", offset);
 		case OP_GREATER: return print_simple_op("OP_GREATER", offset);
 		case OP_GREATER_EQUAL: return print_simple_op("OP_GREATER_EQUAL", offset);
