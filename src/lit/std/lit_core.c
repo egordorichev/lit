@@ -56,6 +56,46 @@ LIT_METHOD(object_toString) {
 	return OBJECT_VALUE(lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_get_class_for(vm->state, instance)->name)));
 }
 
+LIT_METHOD(object_subscript) {
+	if (!IS_INSTANCE(instance)) {
+		lit_runtime_error(vm, "Can't modify built-in types");
+		return NULL_VALUE;
+	}
+
+	LitInstance* inst = AS_INSTANCE(instance);
+
+	if (arg_count == 2) {
+		if (!IS_STRING(args[0])) {
+			lit_runtime_error(vm, "Object index must be a string");
+			return NULL_VALUE;
+		}
+
+		lit_table_set(vm->state, &inst->fields, AS_STRING(args[0]), args[1]);
+		return args[1];
+	}
+
+	if (!IS_STRING(args[0])) {
+		lit_runtime_error(vm, "Map index must be a string");
+		return NULL_VALUE;
+	}
+
+	LitValue value;
+
+	if (lit_table_get(&inst->fields, AS_STRING(args[0]), &value)) {
+		return value;
+	}
+
+	if (lit_table_get(&inst->klass->static_fields, AS_STRING(args[0]), &value)) {
+		return value;
+	}
+
+	if (lit_table_get(&inst->klass->methods, AS_STRING(args[0]), &value)) {
+		return value;
+	}
+
+	return NULL_VALUE;
+}
+
 /*
  * Number
  */
@@ -575,6 +615,30 @@ LIT_METHOD(array_length) {
  * Map
  */
 
+LIT_METHOD(map_subscript) {
+	if (arg_count == 2) {
+		if (!IS_STRING(args[0])) {
+			lit_runtime_error(vm, "Map index must be a string");
+			return NULL_VALUE;
+		}
+
+		lit_map_set(vm->state, AS_MAP(instance), AS_STRING(args[0]), args[1]);
+		return args[1];
+	}
+
+	if (!IS_STRING(args[0])) {
+		lit_runtime_error(vm, "Map index must be a string");
+		return NULL_VALUE;
+	}
+
+	LitValue value;
+
+	if (!lit_table_get(&AS_MAP(instance)->values, AS_STRING(args[0]), &value)) {
+		return NULL_VALUE;
+	}
+
+	return value;
+}
 
 LIT_METHOD(map_addAll) {
 	LIT_ENSURE_ARGS(1)
@@ -770,6 +834,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_INHERIT_CLASS(state->class_class)
 
 		LIT_BIND_METHOD("toString", object_toString)
+		LIT_BIND_METHOD("[]", object_subscript)
 		LIT_BIND_GETTER("class", object_class)
 
 		state->object_class = klass;
@@ -857,6 +922,7 @@ void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Map")
 		LIT_INHERIT_CLASS(state->object_class)
 
+		LIT_BIND_METHOD("[]", map_subscript)
 		LIT_BIND_METHOD("addAll", map_addAll)
 		LIT_BIND_METHOD("clear", map_clear)
 		LIT_BIND_METHOD("iterator", map_iterator)

@@ -160,7 +160,8 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 
 			case OBJECT_CLASS: {
 				LitClass* klass = AS_CLASS(callee);
-				vm->fiber->stack_top[-arg_count - 1] = OBJECT_VALUE(lit_create_instance(vm->state, klass));
+				LitInstance* instance = lit_create_instance(vm->state, klass);
+				vm->fiber->stack_top[-arg_count - 1] = OBJECT_VALUE(instance);
 
 				if (klass->init_method != NULL) {
 					return call_value(vm, OBJECT_VALUE(klass->init_method), arg_count);
@@ -995,55 +996,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(SUBSCRIPT_GET) {
-			LitValue instance = PEEK(1);
-
-			/*if (IS_ARRAY(instance)) {
-
-			} else */if (IS_MAP(instance)) {
-				if (!IS_STRING(PEEK(0))) {
-					lit_runtime_error(vm, "Map index must be a string");
-					RETURN_ERROR()
-				}
-
-				LitTable* values = &AS_MAP(instance)->values;
-				LitString* index = AS_STRING(PEEK(0));
-
-				DROP_MULTIPLE(2);
-
-				LitValue value;
-
-				if (!lit_table_get(values, index, &value)) {
-					value = NULL_VALUE;
-				}
-
-				PUSH(value);
-			} else {
-				INVOKE_METHOD(instance, "[]", 1)
-			}
-
+			INVOKE_METHOD(PEEK(1), "[]", 1)
 			continue;
 		}
 
 		CASE_CODE(SUBSCRIPT_SET) {
-			LitValue instance = PEEK(2);
-
-			if (IS_MAP(instance)) {
-				if (!IS_STRING(PEEK(1))) {
-					lit_runtime_error(vm, "Map index must be a string");
-					RETURN_ERROR()
-				}
-
-				LitMap* map = AS_MAP(instance);
-				LitValue value = PEEK(0);
-
-				lit_map_set(state, map, AS_STRING(PEEK(1)), value);
-
-				DROP_MULTIPLE(2);
-				*fiber->stack_top = value;
-			} else {
-				INVOKE_METHOD(instance, "[]", 2)
-			}
-
+			INVOKE_METHOD(PEEK(2), "[]", 2)
 			continue;
 		}
 
