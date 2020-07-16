@@ -10,7 +10,6 @@
  + file std library
  + allow to require modules using local path from the module path (module path + require_path)
 
-* creating fibers, yielding and trying & throwing exceptions
 * resizeable stack
 
 # feature creep

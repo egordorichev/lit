@@ -65,31 +65,9 @@ static void trace_stack(LitVm* vm) {
 	printf("\n");
 }
 
-void lit_runtime_error(LitVm* vm, const char* format, ...) {
-	/*
-
-	va_list args;
-	va_start(args, format);
-	vfprintf(stderr, format, args);
-	va_end(args);
-	fputs("\n", stderr);
-
-	*/
-
+void lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 	LitFiber* fiber = vm->fiber;
 
-	va_list args;
-	va_start(args, format);
-	size_t buffer_size = vsnprintf(NULL, 0, format, args) + 1;
-	va_end(args);
-
-	char buffer[buffer_size];
-
-	va_start(args, format);
-	vsnprintf(buffer, buffer_size, format, args);
-	va_end(args);
-
-	LitString* error_string = lit_copy_string(vm->state, buffer, buffer_size);
 	fiber->error = OBJECT_VALUE(error_string);
 	LitValue error = fiber->error;
 
@@ -97,6 +75,8 @@ void lit_runtime_error(LitVm* vm, const char* format, ...) {
 		fiber->error = error;
 
 		if (fiber->try) {
+			// idk if this is needed
+			// vm->fiber = fiber;
 			fiber->parent->stack_top[-1] = error;
 			return;
 		}
@@ -120,6 +100,23 @@ void lit_runtime_error(LitVm* vm, const char* format, ...) {
 	}
 
 	reset_stack(vm);
+}
+
+void lit_runtime_error(LitVm* vm, const char* format, ...) {
+	LitFiber* fiber = vm->fiber;
+
+	va_list args;
+	va_start(args, format);
+	size_t buffer_size = vsnprintf(NULL, 0, format, args) + 1;
+	va_end(args);
+
+	char buffer[buffer_size];
+
+	va_start(args, format);
+	vsnprintf(buffer, buffer_size, format, args);
+	va_end(args);
+
+	lit_handle_runtime_error(vm, lit_copy_string(vm->state, buffer, buffer_size));
 }
 
 static inline bool is_falsey(LitValue value) {

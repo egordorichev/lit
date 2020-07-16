@@ -42,6 +42,7 @@ LitValue lit_pop(LitVm* vm);
 
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module);
 LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber);
+void lit_handle_runtime_error(LitVm* vm, LitString* error_string);
 void lit_runtime_error(LitVm* vm, const char* format, ...);
 
 #endif

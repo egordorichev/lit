@@ -1,5 +1,11 @@
-var fiber = new Fiber((a) => {
-  print($"World! {a}")
+var fiber = new Fiber(() => {
+	Fiber.abort("Help")
+	// fixme: this still gets executed
+	print("test")
 })
 
-print(fiber.run(32, 48))
+var try = new Fiber(() => {
+	print(fiber.run())
+})
+
+try.try()

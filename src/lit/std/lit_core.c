@@ -379,20 +379,24 @@ LIT_METHOD(fiber_constructor) {
 	return OBJECT_VALUE(fiber);
 }
 
-static bool fiber_done(LitFiber* fiber) {
+static bool is_fiber_done(LitFiber* fiber) {
 	return fiber->frame_count == 0 || fiber->error != NULL_VALUE;
 }
 
-LIT_METHOD(fiber_run) {
-	LitFiber* fiber = AS_FIBER(instance);
+LIT_METHOD(fiber_done) {
+	return is_fiber_done(AS_FIBER(instance));
+}
 
-	if (fiber_done(fiber)) {
+static LitValue run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count, bool try) {
+	if (is_fiber_done(fiber)) {
 		lit_runtime_error(vm, "Fiber already finished executing");
 		return NULL_VALUE;
 	}
 
 	LitFiber* last_fiber = vm->fiber;
+
 	fiber->parent = vm->fiber;
+	fiber->try = try;
 	vm->fiber = fiber;
 
 	lit_push(vm, OBJECT_VALUE(fiber->frames[0].function));
@@ -402,14 +406,26 @@ LIT_METHOD(fiber_run) {
 	}
 
 	LitInterpretResult result = lit_interpret_fiber(vm->state, fiber);
-
 	vm->fiber = last_fiber;
 
 	return result.type == INTERPRET_OK ? result.result : fiber->error;
 }
 
+LIT_METHOD(fiber_run) {
+	return run_fiber(vm, AS_FIBER(instance), args, arg_count, false);
+}
+
+LIT_METHOD(fiber_try) {
+	return run_fiber(vm, AS_FIBER(instance), args, arg_count, true);
+}
+
 LIT_METHOD(fiber_yield) {
 	vm->fiber = vm->fiber->parent;
+	return NULL_VALUE;
+}
+
+LIT_METHOD(fiber_abort) {
+	lit_handle_runtime_error(vm, arg_count == 0 ? CONST_STRING(vm->state, "Fiber was aborted") : lit_to_string(vm->state, args[0]));
 	return NULL_VALUE;
 }
 
@@ -938,7 +954,10 @@ void lit_open_core_library(LitState* state) {
 		LIT_INHERIT_CLASS(state->object_class)
 		LIT_BIND_CONSTRUCTOR(fiber_constructor)
 		LIT_BIND_METHOD("run", fiber_run)
+		LIT_BIND_METHOD("try", fiber_try)
+		LIT_BIND_GETTER("done", fiber_done)
 		LIT_BIND_STATIC_METHOD("yield", fiber_yield)
+		LIT_BIND_STATIC_METHOD("abort", fiber_abort)
 
 		state->fiber_class = klass;
 	LIT_END_CLASS()
