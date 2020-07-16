@@ -65,7 +65,7 @@ static void string_error(LitParser* parser, LitToken* token, const char* message
 		return;
 	}
 
-	lit_error(parser->state, COMPILE_ERROR, token->line, message);
+	lit_error(parser->state, COMPILE_ERROR, message);
 	parser->had_error = true;
 }
 
@@ -209,6 +209,8 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 		uint arg_length = parser->previous.length;
 
 		if (match(parser, TOKEN_COMMA) || (match(parser, TOKEN_RIGHT_PAREN) && match(parser, TOKEN_ARROW))) {
+			bool had_arrow = parser->previous.type == TOKEN_ARROW;
+
 			// This is a lambda
 			LitLambdaExpression* lambda = lit_create_lambda_expression(state, line);
 			lit_parameters_write(state, &lambda->parameters, (LitParameter) { arg_start, arg_length });
@@ -218,11 +220,12 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 					consume(parser, TOKEN_IDENTIFIER, "argument name");
 					lit_parameters_write(state, &lambda->parameters, (LitParameter) { parser->previous.start, parser->previous.length });
 				} while (match(parser, TOKEN_COMMA));
-
 			}
 
-			consume(parser, TOKEN_RIGHT_PAREN, "')' lambda parameters");
-			consume(parser, TOKEN_ARROW, "=> after lambda arguments");
+			if (!had_arrow) {
+				consume(parser, TOKEN_RIGHT_PAREN, "')' after lambda parameters");
+				consume(parser, TOKEN_ARROW, "=> after lambda arguments");
+			}
 
 			return parse_lambda(parser, lambda);
 		} else {

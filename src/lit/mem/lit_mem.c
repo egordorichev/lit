@@ -28,7 +28,7 @@ void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new
 	void* ptr = realloc(pointer, new_size);
 
 	if (ptr == NULL)  {
-		lit_error(state, RUNTIME_ERROR, 0, "Fatal error:\nOut of memory\nProgram terminated");
+		lit_error(state, RUNTIME_ERROR, "Fatal error:\nOut of memory\nProgram terminated");
 		exit(111);
 	}
 

@@ -361,6 +361,59 @@ LIT_METHOD(function_name) {
 }
 
 /*
+ * Fiber
+ */
+
+LIT_METHOD(fiber_constructor) {
+	if (arg_count < 1 || !IS_FUNCTION(args[0])) {
+		lit_runtime_error(vm, "Fiber constructor expects a function as its argument");
+		return NULL_VALUE;
+	}
+
+	LitFunction* function = AS_FUNCTION(args[0]);
+	LitModule* module = vm->fiber->module;
+	LitFiber* fiber = lit_create_fiber(vm->state, module, function);
+
+	fiber->parent = vm->fiber;
+
+	return OBJECT_VALUE(fiber);
+}
+
+static bool fiber_done(LitFiber* fiber) {
+	return fiber->frame_count == 0 || fiber->error != NULL_VALUE;
+}
+
+LIT_METHOD(fiber_run) {
+	LitFiber* fiber = AS_FIBER(instance);
+
+	if (fiber_done(fiber)) {
+		lit_runtime_error(vm, "Fiber already finished executing");
+		return NULL_VALUE;
+	}
+
+	LitFiber* last_fiber = vm->fiber;
+	fiber->parent = vm->fiber;
+	vm->fiber = fiber;
+
+	lit_push(vm, OBJECT_VALUE(fiber->frames[0].function));
+
+	for (uint i = 0; i < arg_count; i++) {
+		lit_push(vm, args[i]);
+	}
+
+	LitInterpretResult result = lit_interpret_fiber(vm->state, fiber);
+
+	vm->fiber = last_fiber;
+
+	return result.type == INTERPRET_OK ? result.result : fiber->error;
+}
+
+LIT_METHOD(fiber_yield) {
+	vm->fiber = vm->fiber->parent;
+	return NULL_VALUE;
+}
+
+/*
  * Module
  */
 
@@ -883,6 +936,10 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Fiber")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(fiber_constructor)
+		LIT_BIND_METHOD("run", fiber_run)
+		LIT_BIND_STATIC_METHOD("yield", fiber_yield)
+
 		state->fiber_class = klass;
 	LIT_END_CLASS()
 

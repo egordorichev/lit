@@ -11,11 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void default_error(LitState* state, LitErrorType type, uint line, const char* message, va_list args) {
-	if (line > 0) {
-		fprintf(stderr, "[line %d]: ", line);
-	}
-
+static void default_error(LitState* state, LitErrorType type, const char* message, va_list args) {
 	vfprintf(stderr, message, args);
 	fprintf(stderr, "\n");
 }
@@ -195,7 +191,7 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 		module->return_value = result.result;
 
 		if (state->vm->fiber->stack_top != state->vm->fiber->stack) {
-			lit_error(state, RUNTIME_ERROR, 0, "Stack had left over trash in it");
+			lit_error(state, RUNTIME_ERROR, "Stack offset was not 0");
 		}
 
 		state->vm->fiber = state->vm->fiber->parent;
@@ -208,7 +204,7 @@ LitInterpretResult lit_interpret_file(LitState* state, const char* file_name) {
 	const char* source = lit_read_file(file_name);
 
 	if (source == NULL) {
-		lit_error(state, RUNTIME_ERROR, 0, "Failed top open file '%s'", file_name);
+		lit_error(state, RUNTIME_ERROR, "Failed top open file '%s'", file_name);
 		return INTERPRET_RUNTIME_FAIL;
 	}
 
@@ -218,10 +214,10 @@ LitInterpretResult lit_interpret_file(LitState* state, const char* file_name) {
 	return result;
 }
 
-void lit_error(LitState* state, LitErrorType type, uint line, const char* message, ...) {
+void lit_error(LitState* state, LitErrorType type, const char* message, ...) {
 	va_list args;
 	va_start(args, message);
-	state->errorFn(state, type, line, message, args);
+	state->errorFn(state, type, message, args);
 	va_end(args);
 
 	state->had_error = true;

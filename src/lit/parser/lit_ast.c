@@ -187,7 +187,7 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 		}
 
 		default: {
-			lit_error(state, COMPILE_ERROR, 0, "Unknown expression type %d", (int) expression->type);
+			lit_error(state, COMPILE_ERROR, "Unknown expression type %d", (int) expression->type);
 			break;
 		}
 	}
@@ -478,7 +478,7 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 		}
 
 		default: {
-			lit_error(state, COMPILE_ERROR, 0, "Unknown statement type %d", (int) statement->type);
+			lit_error(state, COMPILE_ERROR, "Unknown statement type %d", (int) statement->type);
 			break;
 		}
 	}

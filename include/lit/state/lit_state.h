@@ -13,7 +13,7 @@ typedef enum {
 	RUNTIME_ERROR
 } LitErrorType;
 
-typedef void (*LitErrorFn)(LitState* state, LitErrorType type, uint line, const char* message, va_list args);
+typedef void (*LitErrorFn)(LitState* state, LitErrorType type, const char* message, va_list args);
 typedef void (*LitPrintFn)(const char* message, va_list args);
 
 typedef struct sLitState {
@@ -70,7 +70,7 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 LitInterpretResult lit_interpret(LitState* state, const char* module_name, const char* code);
 LitInterpretResult lit_interpret_file(LitState* state, const char* file_name);
 
-void lit_error(LitState* state, LitErrorType type, uint line, const char* message, ...);
+void lit_error(LitState* state, LitErrorType type, const char* message, ...);
 void lit_printf(LitState* state, const char* message, ...);
 
 #endif

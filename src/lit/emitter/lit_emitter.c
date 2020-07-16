@@ -147,7 +147,7 @@ static void end_scope(LitEmitter* emitter, uint16_t line) {
 static void error(LitEmitter* emitter, uint line, LitError error, ...) {
 	va_list args;
 	va_start(args, error);
-	lit_error(emitter->state, COMPILE_ERROR, line, lit_vformat_error(emitter->state, line, error, args)->chars);
+	lit_error(emitter->state, COMPILE_ERROR, lit_vformat_error(emitter->state, line, error, args)->chars);
 	va_end(args);
 }
 
@@ -707,14 +707,14 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			function->arg_count = expr->parameters.count;
 
 			if (function->upvalue_count > 0) {
-				emit_byte(emitter, emitter->last_line, OP_CLOSURE);
+				emit_byte(emitter, expression->line, OP_CLOSURE);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
 
 				for (uint i = 0; i < function->upvalue_count; i++) {
 					emit_bytes(emitter, emitter->last_line, compiler.upvalues[i].isLocal ? 1 : 0, compiler.upvalues[i].index);
 				}
 			} else {
-				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
+				emit_constant(emitter, expression->line, OBJECT_VALUE(function));
 			}
 
 			end_scope(emitter, emitter->last_line);

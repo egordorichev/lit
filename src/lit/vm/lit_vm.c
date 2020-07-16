@@ -66,7 +66,7 @@ static void trace_stack(LitVm* vm) {
 }
 
 void lit_runtime_error(LitVm* vm, const char* format, ...) {
-	vm->fiber->abort = true;
+	/*
 
 	va_list args;
 	va_start(args, format);
@@ -74,8 +74,45 @@ void lit_runtime_error(LitVm* vm, const char* format, ...) {
 	va_end(args);
 	fputs("\n", stderr);
 
-	for (int i = (int) vm->fiber->frame_count - 1; i >= 0; i--) {
-		LitCallFrame* frame = &vm->fiber->frames[i];
+	*/
+
+	LitFiber* fiber = vm->fiber;
+
+	va_list args;
+	va_start(args, format);
+	size_t buffer_size = vsnprintf(NULL, 0, format, args) + 1;
+	va_end(args);
+
+	char buffer[buffer_size];
+
+	va_start(args, format);
+	vsnprintf(buffer, buffer_size, format, args);
+	va_end(args);
+
+	LitString* error_string = lit_copy_string(vm->state, buffer, buffer_size);
+	fiber->error = OBJECT_VALUE(error_string);
+	LitValue error = fiber->error;
+
+	while (fiber != NULL) {
+		fiber->error = error;
+
+		if (fiber->try) {
+			fiber->parent->stack_top[-1] = error;
+			return;
+		}
+
+		LitFiber* caller = fiber->parent;
+		fiber->parent = NULL;
+		fiber = caller;
+	}
+
+	fiber = vm->fiber;
+	fiber->abort = true;
+
+	fprintf(stderr, "%s\n", error_string->chars);
+
+	for (int i = (int) fiber->frame_count - 1; i >= 0; i--) {
+		LitCallFrame* frame = &fiber->frames[i];
 		LitFunction* function = frame->function;
 		LitString* name = function->name;
 
@@ -121,7 +158,7 @@ static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t 
 	}
 
 #ifdef LIT_TRACE_EXECUTION
-	printf("== %s ==\n", frame->function->name->chars);
+	printf("== f%i %s ==\n", fiber->frame_count - 1, frame->function->name->chars);
 #endif
 
 	return true;
@@ -151,9 +188,13 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 			case OBJECT_NATIVE_METHOD: {
 				LitNativeMethod* method = AS_NATIVE_METHOD(callee);
 
+				LitFiber* fiber = vm->fiber;
 				LitValue result = method->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count);
-				vm->fiber->stack_top -= arg_count + 1;
-				lit_push(vm, result);
+
+				if (vm->fiber != fiber->parent) {
+					vm->fiber->stack_top -= arg_count + 1;
+					lit_push(vm, result);
+				}
 
 				return !vm->fiber->abort;
 			}
@@ -309,7 +350,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	register LitChunk* current_chunk = &frame->function->chunk;
 	fiber->module = frame->function->module;
 
-	register uint8_t* ip = frame->ip = current_chunk->code;
+	register uint8_t* ip = frame->ip;
 	register LitValue* slots = frame->slots;
 	register LitValue* privates = fiber->module->privates;
 	register LitUpvalue** upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
@@ -387,7 +428,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	*(fiber->stack_top - 1) = (NUMBER_VALUE((int) AS_NUMBER(a) op (int) AS_NUMBER(b)));
 
 #ifdef LIT_TRACE_EXECUTION
-	printf("== %s ==\n", frame->function->name->chars);
+	printf("== f%i %s ==\n", fiber->frame_count - 1, frame->function->name->chars);
 	uint8_t instruction;
 #endif
 
@@ -425,7 +466,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				DROP();
 
 				#ifdef LIT_TRACE_EXECUTION
-					printf("== ==\n");
+					printf("== end ==\n");
 				#endif
 
 				return (LitInterpretResult) { INTERPRET_OK, result };
@@ -436,7 +477,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			READ_FRAME()
 
 			#ifdef LIT_TRACE_EXECUTION
-				printf("== %s ==\n", frame->function->name->chars);
+				printf("== f%i %s ==\n", fiber->frame_count - 1, frame->function->name->chars);
 			#endif
 
 			continue;
@@ -1112,6 +1153,20 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			if (IS_CLASS(receiver)) {
 				if (!invoke_static_from_class(vm, AS_CLASS(receiver), method_name, arg_count)) {
 					RETURN_ERROR()
+				}
+
+				if (vm->fiber == fiber->parent) {
+					WRITE_FRAME()
+
+					#ifdef LIT_TRACE_EXECUTION
+						int frame_id = vm->fiber->frame_count - 1;
+						printf("== f%i %s ==\n", frame_id, vm->fiber->frames[frame_id].function->name->chars);
+					#endif
+
+					LitValue result = arg_count == 0 ? NULL_VALUE : fiber->stack_top[-arg_count];
+					fiber->stack_top -= arg_count + 1;
+
+					return (LitInterpretResult) { INTERPRET_OK, result };
 				}
 
 				READ_FRAME()
