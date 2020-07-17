@@ -92,7 +92,6 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 	LitChunk* chunk = &function->chunk;
 
 	fiber->parent = state->vm->fiber;
-	fiber->frame_count = 1;
 
 #define PUSH(value) (*fiber->stack_top++ = value)
 
@@ -108,6 +107,8 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 	lit_write_chunk(state, chunk, OP_RETURN, 1);
 
 #undef PUSH
+
+	fiber->frames[0].ip = chunk->code;
 
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 	state->vm->fiber = fiber->parent;
@@ -216,8 +217,6 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	fiber->parent = state->vm->fiber;
 	LitChunk* chunk = &function->chunk;
 
-	fiber->frame_count = 1;
-
 #define PUSH(value) (*fiber->stack_top++ = value)
 
 	PUSH(OBJECT_VALUE(function));
@@ -228,6 +227,8 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	emit_bytes(state, chunk, 0, OP_RETURN);
 
 #undef PUSH
+
+	fiber->frames[0].ip = chunk->code;
 
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 
