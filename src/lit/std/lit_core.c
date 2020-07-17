@@ -420,7 +420,11 @@ LIT_METHOD(fiber_try) {
 }
 
 LIT_METHOD(fiber_yield) {
+	vm->fiber->stack_top++;
+	vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : args[0];
 	vm->fiber = vm->fiber->parent;
+	vm->fiber_updated = true;
+
 	return NULL_VALUE;
 }
 

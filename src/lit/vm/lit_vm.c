@@ -18,6 +18,7 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 	vm->state = state;
 	vm->objects = NULL;
 	vm->fiber = NULL;
+	vm->fiber_updated = false;
 	vm->open_upvalues = NULL;
 
 	vm->gray_stack = NULL;
@@ -66,18 +67,18 @@ static void trace_stack(LitVm* vm) {
 }
 
 void lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
+	LitValue error = OBJECT_VALUE(error_string);
 	LitFiber* fiber = vm->fiber;
-
-	fiber->error = OBJECT_VALUE(error_string);
-	LitValue error = fiber->error;
 
 	while (fiber != NULL) {
 		fiber->error = error;
 
 		if (fiber->try) {
-			// idk if this is needed
-			// vm->fiber = fiber;
-			fiber->parent->stack_top[-1] = error;
+			lit_push(vm, error);
+
+			vm->fiber = fiber->parent;
+			vm->fiber_updated = true;
+
 			return;
 		}
 
@@ -188,7 +189,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				LitFiber* fiber = vm->fiber;
 				LitValue result = method->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count);
 
-				if (vm->fiber != fiber->parent) {
+				if (!vm->fiber_updated) {
 					vm->fiber->stack_top -= arg_count + 1;
 					lit_push(vm, result);
 				}
@@ -341,6 +342,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	register LitVm *vm = state->vm;
 
 	vm->fiber = fiber;
+	vm->fiber_updated = false;
+
 	fiber->abort = false;
 
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
@@ -1152,7 +1155,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					RETURN_ERROR()
 				}
 
-				if (vm->fiber == fiber->parent) {
+				if (vm->fiber_updated) {
+					vm->fiber_updated = false;
+
 					WRITE_FRAME()
 
 					#ifdef LIT_TRACE_EXECUTION
@@ -1160,7 +1165,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 						printf("== f%i %s ==\n", frame_id, vm->fiber->frames[frame_id].function->name->chars);
 					#endif
 
-					LitValue result = arg_count == 0 ? NULL_VALUE : fiber->stack_top[-arg_count];
+					LitValue result = fiber->stack_top[-arg_count - 1];
 					fiber->stack_top -= arg_count + 1;
 
 					return (LitInterpretResult) { INTERPRET_OK, result };

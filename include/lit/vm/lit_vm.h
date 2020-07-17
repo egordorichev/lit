@@ -21,6 +21,7 @@ typedef struct sLitVm {
 	LitTable modules;
 
 	LitFiber* fiber;
+	bool fiber_updated;
 	LitUpvalue* open_upvalues;
 
 	// For garbage collection
