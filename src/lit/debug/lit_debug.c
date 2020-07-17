@@ -11,7 +11,7 @@ void lit_disassemble_chunk(LitChunk* chunk, const char* name) {
 }
 
 static uint print_simple_op(const char* name, uint offset) {
-	printf("%s\n", name);
+	printf("%s%s%s\n", COLOR_YELLOW, name, COLOR_RESET);
 	return offset + 1;
 }
 
@@ -25,7 +25,7 @@ static uint print_constant_op(const char* name, LitChunk* chunk, uint offset, bo
 		constant = chunk->code[offset + 1];
 	}
 
-	printf("%-16s %4d '", name, constant);
+	printf("%s%-16s%s %4d '", COLOR_YELLOW, name, COLOR_RESET, constant);
 	lit_print_value(chunk->constants.values[constant]);
 	printf("'\n");
 
@@ -34,7 +34,7 @@ static uint print_constant_op(const char* name, LitChunk* chunk, uint offset, bo
 
 static uint print_byte_op(const char* name, LitChunk* chunk, uint offset) {
 	uint8_t slot = chunk->code[offset + 1];
-	printf("%-16s %4d\n", name, slot);
+	printf("%s%-16s%s %4d\n", COLOR_YELLOW, name, COLOR_RESET, slot);
 
 	return offset + 2;
 }
@@ -43,7 +43,7 @@ static uint print_short_op(const char* name, LitChunk* chunk, uint offset) {
 	uint16_t slot = (uint16_t) (chunk->code[offset + 1] << 8);
 	slot |= chunk->code[offset + 2];
 
-	printf("%-16s %4d\n", name, slot);
+	printf("%s%-16s%s %4d\n", COLOR_YELLOW, name, COLOR_RESET, slot);
 
 	return offset + 2;
 }
@@ -51,7 +51,7 @@ static uint print_short_op(const char* name, LitChunk* chunk, uint offset) {
 static uint print_jump_op(const char* name, int sign, LitChunk* chunk, uint offset) {
 	uint16_t jump = (uint16_t)(chunk->code[offset + 1] << 8);
 	jump |= chunk->code[offset + 2];
-	printf("%-16s %4d -> %d\n", name, offset, offset + 3 + sign * jump);
+	printf("%s%-16s%s %4d -> %d\n", COLOR_YELLOW, name, COLOR_RESET, offset, offset + 3 + sign * jump);
 	return offset + 3;
 }
 
@@ -61,7 +61,7 @@ static uint print_invoke_op(const char* name, LitChunk* chunk, uint offset) {
 
 	uint8_t arg_count = chunk->code[offset + 3];
 
-	printf("%-16s (%d args) %4d '", name, arg_count, constant);
+	printf("%s%-16s%s (%d args) %4d '", COLOR_YELLOW, name, COLOR_RESET, arg_count, constant);
 	lit_print_value(chunk->constants.values[constant]);
 	printf("'\n");
 
@@ -75,7 +75,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 	if (offset > 0 && line == lit_chunk_get_line(chunk, offset - 1)) {
 		printf("   | ");
 	} else {
-		printf("%4d ", line);
+		printf("%s%4d%s ", COLOR_BLUE, line, COLOR_RESET);
 	}
 
 	uint8_t instruction = chunk->code[offset];

@@ -1,9 +1,13 @@
 var fiber = new Fiber(() => {
-	Fiber.abort()
+	print("hello")
 })
 
+fiber.run()
+
 var try = new Fiber(() => {
-	print(fiber.run())
+	fiber.run()
 })
 
 try.try()
+print(try.error)
+print(fiber.current.error)

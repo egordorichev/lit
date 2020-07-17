@@ -241,15 +241,6 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 	if (IS_NULL(callee)) {
 		lit_runtime_error(vm, "Attempt to call a null value");
 	} else {
-		if (IS_OBJECT(callee)) {
-			LitObjectType type = OBJECT_TYPE(callee);
-			printf("object\n");
-		} else if (IS_NUMBER(callee)) {
-			printf("number\n");
-		} else if (IS_BOOL(callee)) {
-			printf("bool\n");
-		}
-
 		lit_runtime_error(vm, "Can only call functions and classes");
 	}
 
@@ -426,6 +417,24 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	} \
 	DROP(); \
 	*(fiber->stack_top - 1) = (NUMBER_VALUE((int) AS_NUMBER(a) op (int) AS_NUMBER(b)));
+
+#ifdef LIT_TRACE_EXECUTION
+#define ALERT_NEW_FIBER() \
+	if (vm->fiber != fiber) { \
+		int frame_id = fiber->frame_count - 1; \
+		printf("== f%i %s ==\n", frame_id, fiber->frames[frame_id].function->name->chars); \
+	}
+#else
+#define ALERT_NEW_FIBER() do {} while (0);
+#endif
+
+#define UPDATE_FIBER() \
+	if (vm->fiber_updated) { \
+		vm->fiber_updated = false; \
+		LitValue result = fiber->stack_top[-arg_count - 1]; \
+		fiber->stack_top -= arg_count + 1; \
+		return (LitInterpretResult) { INTERPRET_OK, result }; \
+	}
 
 #ifdef LIT_TRACE_EXECUTION
 	printf("== f%i %s ==\n", fiber->frame_count - 1, frame->function->name->chars);
@@ -1155,22 +1164,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					RETURN_ERROR()
 				}
 
-				if (vm->fiber_updated) {
-					vm->fiber_updated = false;
-
-					WRITE_FRAME()
-
-					#ifdef LIT_TRACE_EXECUTION
-						int frame_id = vm->fiber->frame_count - 1;
-						printf("== f%i %s ==\n", frame_id, vm->fiber->frames[frame_id].function->name->chars);
-					#endif
-
-					LitValue result = fiber->stack_top[-arg_count - 1];
-					fiber->stack_top -= arg_count + 1;
-
-					return (LitInterpretResult) { INTERPRET_OK, result };
-				}
-
+				ALERT_NEW_FIBER()
+				UPDATE_FIBER()
 				READ_FRAME()
 				continue;
 			} else if (IS_INSTANCE(receiver)) {
@@ -1205,6 +1200,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					RETURN_ERROR()
 				}
 
+				ALERT_NEW_FIBER()
+				UPDATE_FIBER()
 				READ_FRAME()
 			}
 
@@ -1311,6 +1308,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #undef WRITE_FRAME
 #undef READ_FRAME
 #undef PEEK
+#undef ALERT_NEW_FIBER
+#undef UPDATE_FIBER
 #undef BITWISE_OP
 #undef BINARY_OP
 #undef READ_CONSTANT_LONG

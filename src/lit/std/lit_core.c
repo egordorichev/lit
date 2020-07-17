@@ -384,7 +384,15 @@ static bool is_fiber_done(LitFiber* fiber) {
 }
 
 LIT_METHOD(fiber_done) {
-	return is_fiber_done(AS_FIBER(instance));
+	return BOOL_VALUE(is_fiber_done(AS_FIBER(instance)));
+}
+
+LIT_METHOD(fiber_error) {
+	return AS_FIBER(instance)->error;
+}
+
+LIT_METHOD(fiber_current) {
+	return OBJECT_VALUE(vm->fiber);
 }
 
 static LitValue run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count, bool try) {
@@ -956,12 +964,16 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Fiber")
 		LIT_INHERIT_CLASS(state->object_class)
+
 		LIT_BIND_CONSTRUCTOR(fiber_constructor)
 		LIT_BIND_METHOD("run", fiber_run)
 		LIT_BIND_METHOD("try", fiber_try)
 		LIT_BIND_GETTER("done", fiber_done)
+		LIT_BIND_GETTER("error", fiber_error)
+
 		LIT_BIND_STATIC_METHOD("yield", fiber_yield)
 		LIT_BIND_STATIC_METHOD("abort", fiber_abort)
+		LIT_BIND_STATIC_GETTER("current", fiber_current)
 
 		state->fiber_class = klass;
 	LIT_END_CLASS()

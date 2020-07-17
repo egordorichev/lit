@@ -12,8 +12,10 @@
 #include <string.h>
 
 static void default_error(LitState* state, LitErrorType type, const char* message, va_list args) {
+	fflush(stdout);
 	vfprintf(stderr, message, args);
 	fprintf(stderr, "\n");
+	fflush(stderr);
 }
 
 static void default_printf(const char* message, va_list args) {
