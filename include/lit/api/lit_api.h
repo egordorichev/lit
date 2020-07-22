@@ -9,6 +9,8 @@
 
 #define LIT_NATIVE(name) static LitValue name##_native(LitVm* vm, uint arg_count, LitValue* args)
 #define LIT_METHOD(name) static LitValue name(LitVm* vm, LitValue instance, uint arg_count, LitValue* args)
+#define LIT_PRIMITIVE(name) static bool name(LitVm* vm, LitValue instance, uint arg_count, LitValue* args)
+
 #define LIT_BEGIN_CLASS(name) { \
 	LitString* klass_name = lit_copy_string(state, name, strlen(name)); \
 	LitClass* klass = lit_create_class(state, klass_name);
@@ -22,8 +24,10 @@
 	}
 
 #define LIT_BIND_METHOD(name, method) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_native_method(state, method)));
+#define LIT_BIND_PRIMITIVE(name, method) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_primitive_method(state, method)));
 #define LIT_BIND_CONSTRUCTOR(method) LitNativeMethod* m = lit_create_native_method(state, method); klass->init_method = (LitObject*) m; lit_table_set(state, &klass->methods, lit_copy_string(state, "constructor", 11), OBJECT_VALUE(m));
 #define LIT_BIND_STATIC_METHOD(name, method) lit_table_set(state, &klass->static_fields, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_native_method(state, method)));
+#define LIT_BIND_STATIC_PRIMITIVE(name, method) lit_table_set(state, &klass->static_fields, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_primitive_method(state, method)));
 #define LIT_BIND_STATIC_FIELD(name, field) lit_table_set(state, &klass->static_fields, lit_copy_string(state, name, strlen(name)), field);
 
 #define LIT_BIND_SETTER(name, setter) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, NULL, (LitObject*) lit_create_native_method(state, setter))));

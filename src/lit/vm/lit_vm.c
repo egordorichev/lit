@@ -2,11 +2,16 @@
 #include <lit/vm/lit_object.h>
 #include <lit/debug/lit_debug.h>
 #include <lit/mem/lit_mem.h>
-#include <lit/util/lit_fs.h>
 
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+
+#ifdef LIT_TRACE_EXECUTION
+	#define TRACE_FRAME() printf("== f%i %s ==\n", fiber->frame_count - 1, frame->function->name->chars);
+#else
+	#define TRACE_FRAME() do {} while (0);
+#endif
 
 static void reset_stack(LitVm* vm) {
 	if (vm->fiber != NULL) {
@@ -18,7 +23,6 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 	vm->state = state;
 	vm->objects = NULL;
 	vm->fiber = NULL;
-	vm->fiber_updated = false;
 	vm->open_upvalues = NULL;
 
 	vm->gray_stack = NULL;
@@ -75,9 +79,7 @@ void lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 
 		if (fiber->try) {
 			lit_push(vm, error);
-
 			vm->fiber = fiber->parent;
-			vm->fiber_updated = true;
 
 			return;
 		}
@@ -137,7 +139,7 @@ static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t 
 
 	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
 		lit_runtime_error(vm, "Stack overflow");
-		return false;
+		return true;
 	}
 
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
@@ -159,11 +161,8 @@ static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t 
 		}
 	}
 
-#ifdef LIT_TRACE_EXECUTION
-	printf("== f%i %s ==\n", fiber->frame_count - 1, frame->function->name->chars);
-#endif
-
-	return true;
+	TRACE_FRAME()
+	return false;
 }
 
 static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
@@ -181,10 +180,11 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 			case OBJECT_NATIVE_FUNCTION: {
 				LitNativeFunctionFn native = AS_NATIVE_FUNCTION(callee)->function;
 				LitValue result = native(vm, arg_count, vm->fiber->stack_top - arg_count);
+
 				vm->fiber->stack_top -= arg_count + 1;
 				lit_push(vm, result);
 
-				return !vm->fiber->abort;
+				return false;
 			}
 
 			case OBJECT_NATIVE_METHOD: {
@@ -193,12 +193,19 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				LitFiber* fiber = vm->fiber;
 				LitValue result = method->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count);
 
-				if (!vm->fiber_updated) {
-					vm->fiber->stack_top -= arg_count + 1;
-					lit_push(vm, result);
+				vm->fiber->stack_top -= arg_count + 1;
+				lit_push(vm, result);
+
+				return false;
+			}
+
+			case OBJECT_PRIMITIVE_METHOD: {
+				if (AS_PRIMITIVE_METHOD(callee)->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count)) {
+					vm->fiber->stack_top -= arg_count - 1;
+					return true;
 				}
 
-				return !vm->fiber->abort;
+				return false;
 			}
 
 			case OBJECT_CLASS: {
@@ -216,24 +223,25 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 					lit_pop(vm);
 				}
 
-				return true;
+				return false;
 			}
 
 			case OBJECT_BOUND_METHOD: {
 				LitBoundMethod* bound_method = AS_BOUND_METHOD(callee);
-				vm->fiber->stack_top[-arg_count - 1] = bound_method->receiver;
+				LitValue method = bound_method->method;
 
-				return call(vm, bound_method->method, NULL, arg_count);
-			}
+				if (IS_NATIVE_METHOD(method)) {
+					LitValue result = AS_NATIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, vm->fiber->stack_top - arg_count);
+					vm->fiber->stack_top -= arg_count + 1;
+					lit_push(vm, result);
 
-			case OBJECT_NATIVE_BOUND_METHOD: {
-				LitNativeBoundMethod* bound_method = AS_NATIVE_BOUND_METHOD(callee);
-
-				LitValue result = bound_method->method->method(vm, bound_method->receiver, arg_count, vm->fiber->stack_top - arg_count);
-				vm->fiber->stack_top -= arg_count + 1;
-				lit_push(vm, result);
-
-				return !vm->fiber->abort;
+					return false;
+				} else if (IS_PRIMITIVE_METHOD(method)) {
+					UNREACHABLE
+				} else {
+					vm->fiber->stack_top[-arg_count - 1] = bound_method->receiver;
+					return call(vm, AS_FUNCTION(method), NULL, arg_count);
+				}
 			}
 
 			default: {
@@ -248,7 +256,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 		lit_runtime_error(vm, "Can only call functions and classes");
 	}
 
-	return false;
+	return true;
 }
 
 static LitUpvalue* capture_upvalue(LitState* state, LitValue* local) {
@@ -287,39 +295,6 @@ static void close_upvalues(LitVm* vm, const LitValue* last) {
 	}
 }
 
-static bool invoke_from_class(LitVm* vm, LitClass* klass, LitString* method_name, uint8_t arg_count, bool error) {
-	LitValue method;
-
-	if (!lit_table_get(&klass->methods, method_name, &method)) {
-		if (error) {
-			lit_runtime_error(vm, "Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars);
-		}
-
-		return false;
-	}
-
-	if (IS_NATIVE_METHOD(method)) {
-		return call_value(vm, method, arg_count);
-	}
-
-	return call(vm, AS_FUNCTION(method), NULL, arg_count);
-}
-
-static bool invoke_static_from_class(LitVm* vm, LitClass* klass, LitString* method_name, uint8_t arg_count) {
-	LitValue method;
-
-	if (!lit_table_get(&klass->static_fields, method_name, &method)) {
-		lit_runtime_error(vm, "Attempt to call undefined static method '%s'", method_name->chars);
-		return false;
-	}
-
-	if (IS_NATIVE_METHOD(method)) {
-		return call_value(vm, method, arg_count);
-	}
-
-	return call(vm, AS_FUNCTION(method), NULL, arg_count);
-}
-
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 	register LitVm *vm = state->vm;
 
@@ -337,8 +312,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	register LitVm *vm = state->vm;
 
 	vm->fiber = fiber;
-	vm->fiber_updated = false;
-
 	fiber->abort = false;
 
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
@@ -379,9 +352,37 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
 
 #define WRITE_FRAME() frame->ip = ip;
-#define RETURN_ERROR() \
-	vm->fiber_updated = false; \
-	return (LitInterpretResult) {INTERPRET_RUNTIME_ERROR, NULL_VALUE};
+#define RETURN_ERROR() return (LitInterpretResult) {INTERPRET_RUNTIME_ERROR, NULL_VALUE};
+
+#define RECOVER_STATE() \
+	WRITE_FRAME() \
+	fiber = vm->fiber; \
+	if (fiber == NULL) { \
+		return (LitInterpretResult) {INTERPRET_OK, POP()}; \
+	} \
+	if (fiber->abort) { \
+		RETURN_ERROR() \
+	} \
+	READ_FRAME() \
+	TRACE_FRAME()
+
+#define CALL_VALUE(vm, callee, arg_count) \
+	if (call_value(vm, callee, arg_count)) { \
+		RECOVER_STATE() \
+	}
+
+#define INVOKE_FROM_CLASS(vm, klass, method_name, arg_count, error, stat) { \
+		LitValue method; \
+		if (!lit_table_get(&klass->stat, method_name, &method)) { \
+			if (error) { \
+				lit_runtime_error(vm, "Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars); \
+			} \
+		} else if (IS_FUNCTION(method)) { \
+			call(vm, AS_FUNCTION(method), NULL, arg_count); \
+		} else { \
+			CALL_VALUE(vm, method, arg_count); \
+		} \
+	}
 
 #define INVOKE_METHOD(instance, method_name, arg_count) \
 	LitClass* klass = lit_get_class_for(state, instance); \
@@ -390,9 +391,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		RETURN_ERROR() \
 	} \
 	WRITE_FRAME(); \
-	if (!invoke_from_class(vm, klass, CONST_STRING(state, method_name), arg_count, true)) { \
-		RETURN_ERROR() \
-	} \
+	INVOKE_FROM_CLASS(vm, klass, CONST_STRING(state, method_name), arg_count, true, methods) \
 	READ_FRAME();
 
 #define BINARY_OP(type, op, op_string) \
@@ -425,25 +424,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	*(fiber->stack_top - 1) = (NUMBER_VALUE((int) AS_NUMBER(a) op (int) AS_NUMBER(b)));
 
 #ifdef LIT_TRACE_EXECUTION
-#define ALERT_NEW_FIBER() \
-	if (vm->fiber != fiber) { \
-		int frame_id = fiber->frame_count - 1; \
-		printf("== f%i %s ==\n", frame_id, fiber->frames[frame_id].function->name->chars); \
-	}
-#else
-#define ALERT_NEW_FIBER() do {} while (0);
-#endif
-
-#define UPDATE_FIBER() \
-	if (vm->fiber_updated) { \
-		vm->fiber_updated = false; \
-		LitValue result = fiber->stack_top[-arg_count - 1]; \
-		fiber->stack_top -= arg_count + 1; \
-		return (LitInterpretResult) { INTERPRET_OK, result }; \
-	}
-
-#ifdef LIT_TRACE_EXECUTION
-	printf("== f%i %s ==\n", fiber->frame_count - 1, frame->function->name->chars);
+	TRACE_FRAME()
 	uint8_t instruction;
 #endif
 
@@ -478,23 +459,35 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			fiber->frame_count--;
 
 			if (fiber->frame_count == 0) {
-				DROP();
+				if (fiber->parent == NULL) {
+					DROP();
 
-				#ifdef LIT_TRACE_EXECUTION
+					#ifdef LIT_TRACE_EXECUTION
 					printf("== end ==\n");
-				#endif
+					#endif
 
-				return (LitInterpretResult) { INTERPRET_OK, result };
+					return (LitInterpretResult) { INTERPRET_OK, result };
+				}
+
+				uint arg_count = fiber->arg_count;
+				LitFiber *parent = fiber->parent;
+				fiber->parent = NULL;
+				vm->fiber = fiber = parent;
+
+				READ_FRAME()
+				TRACE_FRAME()
+
+				fiber->stack_top -= arg_count;
+				fiber->stack_top[-1] = result;
+
+				continue;
 			}
 
 			fiber->stack_top = frame->slots;
 			PUSH(result);
+
 			READ_FRAME()
-
-			#ifdef LIT_TRACE_EXECUTION
-				printf("== f%i %s ==\n", fiber->frame_count - 1, frame->function->name->chars);
-			#endif
-
+			TRACE_FRAME()
 			continue;
 		}
 
@@ -559,11 +552,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(NOT) {
 			if (IS_INSTANCE(PEEK(0))) {
 				WRITE_FRAME()
-
-				if (invoke_from_class(vm, AS_INSTANCE(PEEK(0))->klass, CONST_STRING(state, "!"), 0, false)) {
-					READ_FRAME()
-					continue;
-				}
+				INVOKE_FROM_CLASS(vm, AS_INSTANCE(PEEK(0))->klass, CONST_STRING(state, "!"), 0, false, methods)
+				continue;
 			}
 
 			PUSH(BOOL_VALUE(is_falsey(POP())));
@@ -672,11 +662,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(EQUAL) {
 			if (IS_INSTANCE(PEEK(1))) {
 				WRITE_FRAME()
-
-				if (invoke_from_class(vm, AS_INSTANCE(PEEK(1))->klass, CONST_STRING(state, "=="), 1, false)) {
-					READ_FRAME()
-					continue;
-				}
+				INVOKE_FROM_CLASS(vm, AS_INSTANCE(PEEK(1))->klass, CONST_STRING(state, "=="), 1, false, methods)
+				continue;
 			}
 
 			LitValue a = POP();
@@ -819,11 +806,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(CALL) {
 			uint8_t arg_count = READ_BYTE();
 			WRITE_FRAME()
-
-			if (!call_value(vm, PEEK(arg_count), arg_count)) {
-				RETURN_ERROR()
-			}
-
+			CALL_VALUE(vm, PEEK(arg_count), arg_count)
 			READ_FRAME()
 			continue;
 		}
@@ -900,15 +883,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 							DROP();
 							WRITE_FRAME()
-
-							if (!call_value(vm, OBJECT_VALUE(AS_FIELD(value)->getter), 0)) {
-								RETURN_ERROR()
-							}
-
+							CALL_VALUE(vm, OBJECT_VALUE(AS_FIELD(value)->getter), 0)
 							READ_FRAME()
 							continue;
 						} else {
-							value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(instance), AS_FUNCTION(value)));
+							value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(instance), value));
 						}
 					} else {
 						value = NULL_VALUE;
@@ -919,9 +898,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 				if (lit_table_get(&klass->static_fields, name, &value)) {
 					if (IS_NATIVE_METHOD(value)) {
-						value = OBJECT_VALUE(lit_create_native_bound_method(state, OBJECT_VALUE(klass), AS_NATIVE_METHOD(value)));
-					} else if (IS_FUNCTION(value)) {
-						value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klass), AS_FUNCTION(value)));
+						value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klass), value));
 					} else if (IS_FIELD(value)) {
 						LitField* field = AS_FIELD(value);
 
@@ -932,11 +909,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 						DROP();
 						WRITE_FRAME()
-
-						if (!call_value(vm, OBJECT_VALUE(field->getter), 0)) {
-							RETURN_ERROR()
-						}
-
+						CALL_VALUE(vm, OBJECT_VALUE(field->getter), 0)
 						READ_FRAME()
 						continue;
 					}
@@ -962,17 +935,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 						DROP();
 						WRITE_FRAME()
-
-						if (!call_value(vm, OBJECT_VALUE(AS_FIELD(value)->getter), 0)) {
-							RETURN_ERROR()
-						}
-
+						CALL_VALUE(vm, OBJECT_VALUE(AS_FIELD(value)->getter), 0)
 						READ_FRAME()
 						continue;
 					} else if (IS_NATIVE_METHOD(value)) {
-						value = OBJECT_VALUE(lit_create_native_bound_method(state, object, AS_NATIVE_METHOD(value)));
-					} else {
-						value = OBJECT_VALUE(lit_create_bound_method(state, object, AS_FUNCTION(value)));
+						value = OBJECT_VALUE(lit_create_bound_method(state, object, value));
 					}
 				} else {
 					value = NULL_VALUE;
@@ -1011,11 +978,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					DROP_MULTIPLE(2);
 					PUSH(value);
 					WRITE_FRAME()
-
-					if (!call_value(vm, OBJECT_VALUE(field->setter), 1)) {
-						RETURN_ERROR()
-					}
-
+					CALL_VALUE(vm, OBJECT_VALUE(field->setter), 1)
 					READ_FRAME()
 					continue;
 				}
@@ -1043,11 +1006,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					DROP_MULTIPLE(2);
 					PUSH(value);
 					WRITE_FRAME()
-
-					if (!call_value(vm, OBJECT_VALUE(field->setter), 1)) {
-						RETURN_ERROR()
-					}
-
+					CALL_VALUE(vm, OBJECT_VALUE(field->setter), 1)
 					READ_FRAME()
 					continue;
 				}
@@ -1081,11 +1040,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					DROP_MULTIPLE(2);
 					PUSH(value);
 					WRITE_FRAME()
-
-					if (!call_value(vm, OBJECT_VALUE(field->setter), 1)) {
-						RETURN_ERROR()
-					}
-
+					CALL_VALUE(vm, OBJECT_VALUE(field->setter), 1)
 					READ_FRAME()
 					continue;
 				} else {
@@ -1166,12 +1121,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			WRITE_FRAME()
 
 			if (IS_CLASS(receiver)) {
-				if (!invoke_static_from_class(vm, AS_CLASS(receiver), method_name, arg_count)) {
-					RETURN_ERROR()
-				}
-
-				ALERT_NEW_FIBER()
-				UPDATE_FIBER()
+				INVOKE_FROM_CLASS(vm, AS_CLASS(receiver), method_name, arg_count, true, static_fields)
 				READ_FRAME()
 				continue;
 			} else if (IS_INSTANCE(receiver)) {
@@ -1181,18 +1131,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				if (lit_table_get(&instance->fields, method_name, &value)) {
 					fiber->stack_top[-arg_count - 1] = value;
 
-					if (!call_value(vm, value, arg_count)) {
-						RETURN_ERROR()
-					}
-
+					CALL_VALUE(vm, value, arg_count)
 					READ_FRAME()
 					continue;
 				}
 
-				if (!invoke_from_class(vm, instance->klass, method_name, arg_count, true)) {
-					RETURN_ERROR()
-				}
-
+				INVOKE_FROM_CLASS(vm, instance->klass, method_name, arg_count, true, methods)
 				READ_FRAME()
 			} else {
 				LitClass* type = lit_get_class_for(state, receiver);
@@ -1202,12 +1146,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					RETURN_ERROR()
 				}
 
-				if (!invoke_from_class(vm, type, method_name, arg_count, true)) {
-					RETURN_ERROR()
-				}
-
-				ALERT_NEW_FIBER()
-				UPDATE_FIBER()
+				INVOKE_FROM_CLASS(vm, type, method_name, arg_count, true, methods)
 				READ_FRAME()
 			}
 
@@ -1220,11 +1159,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitClass* klass = AS_CLASS(POP());
 
 			WRITE_FRAME()
-
-			if (!invoke_from_class(vm, klass, method_name, arg_count, true)) {
-				RETURN_ERROR()
-			}
-
+			INVOKE_FROM_CLASS(vm, klass, method_name, arg_count, true, methods)
 			READ_FRAME()
 			continue;
 		}
@@ -1236,7 +1171,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue value;
 
 			if (lit_table_get(&((LitClass*) AS_INSTANCE(instance)->klass->super)->methods, method_name, &value)) {
-				value = OBJECT_VALUE(lit_create_bound_method(state, instance, AS_FUNCTION(value)));
+				value = OBJECT_VALUE(lit_create_bound_method(state, instance, value));
 			} else {
 				value = NULL_VALUE;
 			}
@@ -1307,15 +1242,16 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 #undef INVOKE_METHOD
+#undef INVOKE_FROM_CLASS
 #undef DROP_MULTIPLE
 #undef PUSH
 #undef DROP
 #undef POP
+#undef CALL_VALUE
+#undef RECOVER_STATE
 #undef WRITE_FRAME
 #undef READ_FRAME
 #undef PEEK
-#undef ALERT_NEW_FIBER
-#undef UPDATE_FIBER
 #undef BITWISE_OP
 #undef BINARY_OP
 #undef READ_CONSTANT_LONG
@@ -1329,3 +1265,5 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 #undef RETURN_ERROR
 }
+
+#undef LIT_TRACE_FRAME

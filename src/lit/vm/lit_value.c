@@ -67,14 +67,17 @@ static void print_object(LitValue value) {
 		}
 
 		case OBJECT_BOUND_METHOD: {
-			printf("method %s", AS_BOUND_METHOD(value)->method->name->chars);
+			LitValue method = AS_BOUND_METHOD(value)->method;
+
+			if (IS_FUNCTION(method)) {
+				printf("method %s", AS_FUNCTION(method)->name->chars);
+			} else {
+				printf("native method");
+			}
+
 			break;
 		}
 
-		case OBJECT_NATIVE_BOUND_METHOD: {
-			printf("native method");
-			break;
-		}
 
 		case OBJECT_ARRAY: {
 			LitArray* array = AS_ARRAY(value);

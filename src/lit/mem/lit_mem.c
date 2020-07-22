@@ -70,6 +70,11 @@ void lit_free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_PRIMITIVE_METHOD: {
+			LIT_FREE(state, LitPrimitiveMethod, object);
+			break;
+		}
+
 		case OBJECT_FIBER: {
 			LIT_FREE(state, LitFiber, object);
 			break;
@@ -118,11 +123,6 @@ void lit_free_object(LitState* state, LitObject* object) {
 
 		case OBJECT_BOUND_METHOD: {
 			LIT_FREE(state, LitBoundMethod, object);
-			break;
-		}
-
-		case OBJECT_NATIVE_BOUND_METHOD: {
-			LIT_FREE(state, LitNativeBoundMethod, object);
 			break;
 		}
 
@@ -275,6 +275,7 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 	switch (object->type) {
 		case OBJECT_NATIVE_FUNCTION:
 		case OBJECT_NATIVE_METHOD:
+		case OBJECT_PRIMITIVE_METHOD:
 		case OBJECT_RANGE:
 		case OBJECT_USERDATA:
 		case OBJECT_STRING: {
@@ -358,16 +359,7 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 			LitBoundMethod* bound_method = (LitBoundMethod*) object;
 
 			lit_mark_value(vm, bound_method->receiver);
-			lit_mark_object(vm, (LitObject *) bound_method->method);
-
-			break;
-		}
-
-		case OBJECT_NATIVE_BOUND_METHOD: {
-			LitNativeBoundMethod* bound_method = (LitNativeBoundMethod*) object;
-
-			lit_mark_value(vm, bound_method->receiver);
-			lit_mark_object(vm, (LitObject *) bound_method->method);
+			lit_mark_value(vm, bound_method->method);
 
 			break;
 		}
@@ -396,7 +388,7 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		}
 
 		default: {
-			UNREACHABLE;
+			UNREACHABLE
 		}
 	}
 }

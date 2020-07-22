@@ -16,6 +16,7 @@
 #define IS_FUNCTION(value) IS_OBJECTS_TYPE(value, OBJECT_FUNCTION)
 #define IS_NATIVE_FUNCTION(value) IS_OBJECTS_TYPE(value, OBJECT_NATIVE_FUNCTION)
 #define IS_NATIVE_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_NATIVE_METHOD)
+#define IS_PRIMITIVE_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_PRIMITIVE_METHOD)
 #define IS_MODULE(value) IS_OBJECTS_TYPE(value, OBJECT_MODULE)
 #define IS_CLOSURE(value) IS_OBJECTS_TYPE(value, OBJECT_CLOSURE)
 #define IS_UPVALUE(value) IS_OBJECTS_TYPE(value, OBJECT_UPVALUE)
@@ -24,7 +25,6 @@
 #define IS_ARRAY(value) IS_OBJECTS_TYPE(value, OBJECT_ARRAY)
 #define IS_MAP(value) IS_OBJECTS_TYPE(value, OBJECT_MAP)
 #define IS_BOUND_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_BOUND_METHOD)
-#define IS_NATIVE_BOUND_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_NATIVE_BOUND_METHOD)
 #define IS_USERDATA(value) IS_OBJECTS_TYPE(value, OBJECT_USERDATA)
 #define IS_RANGE(value) IS_OBJECTS_TYPE(value, OBJECT_RANGE)
 #define IS_FIELD(value) IS_OBJECTS_TYPE(value, OBJECT_FIELD)
@@ -34,6 +34,7 @@
 #define AS_FUNCTION(value) ((LitFunction*) AS_OBJECT(value))
 #define AS_NATIVE_FUNCTION(value) ((LitNativeFunction*) AS_OBJECT(value))
 #define AS_NATIVE_METHOD(value) ((LitNativeMethod*) AS_OBJECT(value))
+#define AS_PRIMITIVE_METHOD(value) ((LitPrimitiveMethod*) AS_OBJECT(value))
 #define AS_MODULE(value) ((LitModule*) AS_OBJECT(value))
 #define AS_CLOSURE(value) ((LitClosure*) AS_OBJECT(value))
 #define AS_UPVALUE(value) ((LitUpvalue*) AS_OBJECT(value))
@@ -42,7 +43,6 @@
 #define AS_ARRAY(value) ((LitArray*) AS_OBJECT(value))
 #define AS_MAP(value) ((LitMap*) AS_OBJECT(value))
 #define AS_BOUND_METHOD(value) ((LitBoundMethod*) AS_OBJECT(value))
-#define AS_NATIVE_BOUND_METHOD(value) ((LitNativeBoundMethod*) AS_OBJECT(value))
 #define AS_USERDATA(value) ((LitUserdata*) AS_OBJECT(value))
 #define AS_RANGE(value) ((LitRange*) AS_OBJECT(value))
 #define AS_FIELD(value) ((LitField*) AS_OBJECT(value))
@@ -57,6 +57,7 @@ typedef enum {
 	OBJECT_FUNCTION,
 	OBJECT_NATIVE_FUNCTION,
 	OBJECT_NATIVE_METHOD,
+	OBJECT_PRIMITIVE_METHOD,
 	OBJECT_FIBER,
 	OBJECT_MODULE,
 	OBJECT_CLOSURE,
@@ -64,7 +65,6 @@ typedef enum {
 	OBJECT_CLASS,
 	OBJECT_INSTANCE,
 	OBJECT_BOUND_METHOD,
-	OBJECT_NATIVE_BOUND_METHOD,
 	OBJECT_ARRAY,
 	OBJECT_MAP,
 	OBJECT_USERDATA,
@@ -77,6 +77,7 @@ static const char* lit_object_type_names[] = {
 	"function",
 	"native_function",
 	"native_method",
+	"primitive_method",
 	"fiber",
 	"module",
 	"closure",
@@ -179,6 +180,15 @@ typedef struct {
 
 LitNativeMethod* lit_create_native_method(LitState* state, LitNativeMethodFn function);
 
+typedef bool (*LitPrimitiveMethodFn)(LitVm* vm, LitValue instance, uint arg_count, LitValue* args);
+
+typedef struct {
+	LitObject object;
+	LitPrimitiveMethodFn method;
+} LitPrimitiveMethod;
+
+LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMethodFn method);
+
 typedef struct {
 	LitFunction* function;
 	LitClosure* closure;
@@ -211,11 +221,12 @@ typedef struct LitFiber {
 
 	LitCallFrame frames[LIT_CALL_FRAMES_MAX];
 	uint frame_count;
+	uint arg_count;
 
 	LitModule* module;
-	bool abort;
-
 	LitValue error;
+
+	bool abort;
 	bool try;
 } LitFiber;
 
@@ -248,19 +259,10 @@ typedef struct {
 	LitObject object;
 
 	LitValue receiver;
-	LitFunction* method;
+	LitValue method;
 } LitBoundMethod;
 
-LitBoundMethod* lit_create_bound_method(LitState* state, LitValue receiver, LitFunction* method);
-
-typedef struct {
-	LitObject object;
-
-	LitValue receiver;
-	LitNativeMethod* method;
-} LitNativeBoundMethod;
-
-LitNativeBoundMethod* lit_create_native_bound_method(LitState* state, LitValue receiver, LitNativeMethod* method);
+LitBoundMethod* lit_create_bound_method(LitState* state, LitValue receiver, LitValue method);
 
 typedef struct {
 	LitObject object;

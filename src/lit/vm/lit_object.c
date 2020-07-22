@@ -272,12 +272,19 @@ LitNativeMethod* lit_create_native_method(LitState* state, LitNativeMethodFn met
 	return native;
 }
 
+LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMethodFn method) {
+	LitPrimitiveMethod* native = ALLOCATE_OBJECT(state, LitPrimitiveMethod, OBJECT_PRIMITIVE_METHOD);
+	native->method = method;
+	return native;
+}
+
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function) {
 	LitFiber* fiber = ALLOCATE_OBJECT(state, LitFiber, OBJECT_FIBER);
 
 	fiber->stack_top = fiber->stack;
 	fiber->parent = NULL;
 	fiber->frame_count = 1;
+	fiber->arg_count = 0;
 	fiber->module = module;
 	fiber->try = false;
 	fiber->error = NULL_VALUE;
@@ -329,17 +336,8 @@ LitInstance* lit_create_instance(LitState* state, LitClass* klass) {
 	return instance;
 }
 
-LitBoundMethod* lit_create_bound_method(LitState* state, LitValue receiver, LitFunction* method) {
+LitBoundMethod* lit_create_bound_method(LitState* state, LitValue receiver, LitValue method) {
 	LitBoundMethod* bound_method = ALLOCATE_OBJECT(state, LitBoundMethod, OBJECT_BOUND_METHOD);
-
-	bound_method->receiver = receiver;
-	bound_method->method = method;
-
-	return bound_method;
-}
-
-LitNativeBoundMethod* lit_create_native_bound_method(LitState* state, LitValue receiver, LitNativeMethod* method) {
-	LitNativeBoundMethod* bound_method = ALLOCATE_OBJECT(state, LitNativeBoundMethod, OBJECT_NATIVE_BOUND_METHOD);
 
 	bound_method->receiver = receiver;
 	bound_method->method = method;

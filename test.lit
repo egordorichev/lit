@@ -1,8 +1,6 @@
-class A {
-	operator [](a, b) {
-		print(a, b)
-	}
-}
+// fixme: handle_runtime_error doesn't really work yet, RESTORE_FRAME() stuff is not being called obv
+print(new Fiber(() => {
+  null()
+}).try()) // Expected: Attempt to call a null value
 
-var a = new A()
-a[0] = "test"
+// fixme: calling !instance will try to run method ! and when it doesnt find it just continue
