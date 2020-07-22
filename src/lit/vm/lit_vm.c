@@ -90,6 +90,10 @@ void lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 	fiber = vm->fiber;
 	fiber->abort = true;
 
+	if (fiber->parent != NULL) {
+		fiber->parent->abort = true;
+	}
+
 	fprintf(stderr, "%s\n", error_string->chars);
 
 	for (int i = (int) fiber->frame_count - 1; i >= 0; i--) {
@@ -375,7 +379,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
 
 #define WRITE_FRAME() frame->ip = ip;
-#define RETURN_ERROR() return (LitInterpretResult) {INTERPRET_RUNTIME_ERROR, NULL_VALUE};
+#define RETURN_ERROR() \
+	vm->fiber_updated = false; \
+	return (LitInterpretResult) {INTERPRET_RUNTIME_ERROR, NULL_VALUE};
 
 #define INVOKE_METHOD(instance, method_name, arg_count) \
 	LitClass* klass = lit_get_class_for(state, instance); \

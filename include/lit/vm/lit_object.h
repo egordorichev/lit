@@ -28,7 +28,6 @@
 #define IS_USERDATA(value) IS_OBJECTS_TYPE(value, OBJECT_USERDATA)
 #define IS_RANGE(value) IS_OBJECTS_TYPE(value, OBJECT_RANGE)
 #define IS_FIELD(value) IS_OBJECTS_TYPE(value, OBJECT_FIELD)
-#define IS_FIBER(value) IS_OBJECTS_TYPE(value, OBJECT_FIBER)
 
 #define AS_STRING(value) ((LitString*) AS_OBJECT(value))
 #define AS_CSTRING(value) (((LitString*) AS_OBJECT(value))->chars)

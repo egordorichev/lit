@@ -192,11 +192,13 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 		state->allow_gc = allowed_gc;
 		module->return_value = result.result;
 
-		if (state->vm->fiber->stack_top != state->vm->fiber->stack) {
+		LitFiber* fiber = state->vm->fiber;
+
+		if (!fiber->abort && fiber->stack_top != fiber->stack) {
 			lit_error(state, RUNTIME_ERROR, "Stack offset was not 0");
 		}
 
-		state->vm->fiber = state->vm->fiber->parent;
+		state->vm->fiber = fiber->parent;
 	}
 
 	return result;

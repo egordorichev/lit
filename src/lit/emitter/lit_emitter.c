@@ -707,14 +707,14 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			function->arg_count = expr->parameters.count;
 
 			if (function->upvalue_count > 0) {
-				emit_byte(emitter, expression->line, OP_CLOSURE);
+				emit_byte(emitter, emitter->last_line, OP_CLOSURE);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
 
 				for (uint i = 0; i < function->upvalue_count; i++) {
 					emit_bytes(emitter, emitter->last_line, compiler.upvalues[i].isLocal ? 1 : 0, compiler.upvalues[i].index);
 				}
 			} else {
-				emit_constant(emitter, expression->line, OBJECT_VALUE(function));
+				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
 			}
 
 			end_scope(emitter, emitter->last_line);
@@ -879,8 +879,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			bool private = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
 
 			int index = private ?
-				add_private(emitter, stmt->name, stmt->length, statement->line) :
-				add_local(emitter, stmt->name, stmt->length, statement->line);
+			            add_private(emitter, stmt->name, stmt->length, statement->line) :
+			            add_local(emitter, stmt->name, stmt->length, statement->line);
 
 			if (stmt->init == NULL) {
 				emit_byte(emitter, line, OP_NULL);
@@ -1112,8 +1112,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			if (!export) {
 				index = private ? add_private(emitter, stmt->name, stmt->length, statement->line) : add_local(emitter, stmt->name,
-				                                                                                        stmt->length,
-				                                                                                        statement->line);
+				                                                                                              stmt->length,
+				                                                                                              statement->line);
 			}
 
 			LitString* name = lit_copy_string(emitter->state, stmt->name, stmt->length);

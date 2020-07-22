@@ -16,7 +16,7 @@ REPO_DIR = dirname(realpath(__file__))
 OUTPUT_EXPECT = re.compile(r'// Expected: ?(.*)')
 ERROR_EXPECT = re.compile(r'// (Error.*)')
 ERROR_LINE_EXPECT = re.compile(r'// \[((java|c) )?line (\d+)\] (Error.*)')
-RUNTIME_ERROR_EXPECT = re.compile(r'// expect runtime error: (.+)')
+RUNTIME_ERROR_EXPECT = re.compile(r'// exception: (.+)')
 SYNTAX_ERROR_RE = re.compile(r'\[.*line (\d+)\] (Error.+)')
 STACK_TRACE_RE = re.compile(r'\[line (\d+)\]')
 NONTEST_RE = re.compile(r'// nontest')
@@ -387,6 +387,7 @@ def run_suite(name):
 
     walk(join(REPO_DIR, 'test/expression'), run_script)
     walk(join(REPO_DIR, 'test/statement'), run_script)
+    walk(join(REPO_DIR, 'test/api'), run_script)
     # walk(join(REPO_DIR, 'test/error'), run_script)
     print_line()
 

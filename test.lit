@@ -1,13 +1,8 @@
-var fiber = new Fiber(() => {
-	print("hello")
-})
+class A {
+	operator [](a, b) {
+		print(a, b)
+	}
+}
 
-fiber.run()
-
-var try = new Fiber(() => {
-	fiber.run()
-})
-
-try.try()
-print(try.error)
-print(fiber.current.error)
+var a = new A()
+a[0] = "test"

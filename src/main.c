@@ -26,20 +26,30 @@ static int run_repl() {
 
 	if (amount != 0) {
 		fprintf(stderr, "Error: memory leak of %ld bytes!\n", amount);
+		return 1;
 	}
+
+	return 0;
 }
 
 static int run_file(const char* file) {
 	LitState* state = lit_new_state();
 
 	lit_open_libraries(state);
-	lit_interpret_file(state, file);
+	LitInterpretResult result = lit_interpret_file(state, file);
 
 	int64_t amount = lit_free_state(state);
 
 	if (amount != 0) {
 		fprintf(stderr, "Error: memory leak of %ld bytes!\n", amount);
+		return 1;
 	}
+
+	if (result.type == INTERPRET_OK) {
+		return 0;
+	}
+
+	return result.type == INTERPRET_RUNTIME_ERROR ? 70 : 65;
 }
 
 int main(int argc, char* argv[]) {

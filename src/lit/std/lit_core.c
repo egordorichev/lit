@@ -414,9 +414,13 @@ static LitValue run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_c
 	}
 
 	LitInterpretResult result = lit_interpret_fiber(vm->state, fiber);
-	vm->fiber = last_fiber;
 
-	return result.type == INTERPRET_OK ? result.result : fiber->error;
+	if (result.type == INTERPRET_OK) {
+		vm->fiber = last_fiber;
+		return result.result;
+	}
+
+	return fiber->error;
 }
 
 LIT_METHOD(fiber_run) {
