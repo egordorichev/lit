@@ -70,7 +70,7 @@ static void trace_stack(LitVm* vm) {
 	printf("\n");
 }
 
-void lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
+bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 	LitValue error = OBJECT_VALUE(error_string);
 	LitFiber* fiber = vm->fiber;
 
@@ -78,10 +78,11 @@ void lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 		fiber->error = error;
 
 		if (fiber->try) {
-			lit_push(vm, error);
 			vm->fiber = fiber->parent;
+			vm->fiber->stack_top -= fiber->arg_count;
+			vm->fiber->stack_top[-1] = error;
 
-			return;
+			return true;
 		}
 
 		LitFiber* caller = fiber->parent;
@@ -107,9 +108,10 @@ void lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 	}
 
 	reset_stack(vm);
+	return false;
 }
 
-void lit_runtime_error(LitVm* vm, const char* format, ...) {
+bool lit_runtime_error(LitVm* vm, const char* format, ...) {
 	LitFiber* fiber = vm->fiber;
 
 	va_list args;
@@ -123,7 +125,7 @@ void lit_runtime_error(LitVm* vm, const char* format, ...) {
 	vsnprintf(buffer, buffer_size, format, args);
 	va_end(args);
 
-	lit_handle_runtime_error(vm, lit_copy_string(vm->state, buffer, buffer_size));
+	return lit_handle_runtime_error(vm, lit_copy_string(vm->state, buffer, buffer_size));
 }
 
 static inline bool is_falsey(LitValue value) {
@@ -201,7 +203,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 
 			case OBJECT_PRIMITIVE_METHOD: {
 				if (AS_PRIMITIVE_METHOD(callee)->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count)) {
-					vm->fiber->stack_top -= arg_count - 1;
+					// vm->fiber->stack_top -= arg_count - 1;
 					return true;
 				}
 
@@ -366,32 +368,49 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	READ_FRAME() \
 	TRACE_FRAME()
 
-#define CALL_VALUE(vm, callee, arg_count) \
+#define CALL_VALUE(callee, arg_count) \
 	if (call_value(vm, callee, arg_count)) { \
 		RECOVER_STATE() \
 	}
 
-#define INVOKE_FROM_CLASS(vm, klass, method_name, arg_count, error, stat) { \
-		LitValue method; \
-		if (!lit_table_get(&klass->stat, method_name, &method)) { \
-			if (error) { \
-				lit_runtime_error(vm, "Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars); \
-			} \
-		} else if (IS_FUNCTION(method)) { \
-			call(vm, AS_FUNCTION(method), NULL, arg_count); \
-		} else { \
-			CALL_VALUE(vm, method, arg_count); \
-		} \
+#define RUNTIME_ERROR(format) \
+	if (lit_runtime_error(vm, format)) { \
+		RECOVER_STATE() \
+		continue; \
+	} else { \
+		RETURN_ERROR() \
 	}
+
+#define RUNTIME_ERROR_VARG(format, ...) \
+	if (lit_runtime_error(vm, format, __VA_ARGS__)) { \
+		RECOVER_STATE() \
+		continue; \
+	} else { \
+		RETURN_ERROR() \
+	}
+
+#define INVOKE_FROM_CLASS(klass, method_name, arg_count, error, stat) \
+	LitValue method; \
+	if (!lit_table_get(&klass->stat, method_name, &method)) { \
+		if (error) { \
+			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars) \
+		} \
+	} else if (IS_FUNCTION(method)) { \
+		call(vm, AS_FUNCTION(method), NULL, arg_count); \
+	} else { \
+		CALL_VALUE(method, arg_count); \
+	} \
+	if (error) { \
+		continue; \
+	} \
 
 #define INVOKE_METHOD(instance, method_name, arg_count) \
 	LitClass* klass = lit_get_class_for(state, instance); \
 	if (klass == NULL) { \
-		lit_runtime_error(vm, "Only instances and classes have methods"); \
-		RETURN_ERROR() \
+		RUNTIME_ERROR("Only instances and classes have methods") \
 	} \
 	WRITE_FRAME(); \
-	INVOKE_FROM_CLASS(vm, klass, CONST_STRING(state, method_name), arg_count, true, methods) \
+	INVOKE_FROM_CLASS(klass, CONST_STRING(state, method_name), arg_count, true, methods) \
 	READ_FRAME();
 
 #define BINARY_OP(type, op, op_string) \
@@ -399,16 +418,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	LitValue b = PEEK(0); \
 	if (IS_NUMBER(a)) { \
 		if (!IS_NUMBER(b)) { \
-			lit_runtime_error(vm, "Attempt to use operator %s with a number and not a number", op_string); \
-			RETURN_ERROR() \
+			RUNTIME_ERROR_VARG("Attempt to use operator %s with a number and not a number", op_string) \
 		} \
 		DROP(); \
 		*(fiber->stack_top - 1) = (type(AS_NUMBER(a) op AS_NUMBER(b))); \
 		continue; \
 	} \
 	if (IS_NULL(a)) { \
-		lit_runtime_error(vm, "Attempt to use operator %s on a null value", op_string); \
-		RETURN_ERROR() \
+		RUNTIME_ERROR_VARG("Attempt to use operator %s on a null value", op_string) \
 	} \
 	INVOKE_METHOD(a, op_string, 1)
 
@@ -417,8 +434,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	LitValue a = PEEK(1); \
 	LitValue b = PEEK(0); \
 	if (!IS_NUMBER(a) || !IS_NUMBER(b)) { \
-		lit_runtime_error(vm, "Operands of bitwise operator %s must be two numbers", op_string); \
-		RETURN_ERROR() \
+		RUNTIME_ERROR_VARG("Operands of bitwise operator %s must be two numbers", op_string) \
 	} \
 	DROP(); \
 	*(fiber->stack_top - 1) = (NUMBER_VALUE((int) AS_NUMBER(a) op (int) AS_NUMBER(b)));
@@ -531,8 +547,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue b = POP();
 
 			if (!IS_NUMBER(a) || !IS_NUMBER(b)) {
-				lit_runtime_error(vm, "Range operands must be number");
-				RETURN_ERROR()
+				RUNTIME_ERROR("Range operands must be number")
 			}
 
 			PUSH(OBJECT_VALUE(lit_create_range(state, AS_NUMBER(a), AS_NUMBER(b))));
@@ -541,8 +556,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(NEGATE) {
 			if (!IS_NUMBER(PEEK(0))) {
-				lit_runtime_error(vm, "Operand must be a number");
-				RETURN_ERROR()
+				RUNTIME_ERROR("Operand must be a number")
 			}
 
 			PUSH(NUMBER_VALUE(-AS_NUMBER(POP())));
@@ -552,8 +566,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(NOT) {
 			if (IS_INSTANCE(PEEK(0))) {
 				WRITE_FRAME()
-				INVOKE_FROM_CLASS(vm, AS_INSTANCE(PEEK(0))->klass, CONST_STRING(state, "!"), 0, false, methods)
-				continue;
+				INVOKE_FROM_CLASS(AS_INSTANCE(PEEK(0))->klass, CONST_STRING(state, "!"), 0, false, methods)
 			}
 
 			PUSH(BOOL_VALUE(is_falsey(POP())));
@@ -562,8 +575,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(BNOT) {
 			if (!IS_NUMBER(PEEK(0))) {
-				lit_runtime_error(vm, "Operand must be a number");
-				RETURN_ERROR()
+				RUNTIME_ERROR("Operand must be a number")
 			}
 
 			PUSH(NUMBER_VALUE(~((int) AS_NUMBER(POP()))));
@@ -662,8 +674,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(EQUAL) {
 			if (IS_INSTANCE(PEEK(1))) {
 				WRITE_FRAME()
-				INVOKE_FROM_CLASS(vm, AS_INSTANCE(PEEK(1))->klass, CONST_STRING(state, "=="), 1, false, methods)
-				continue;
+				INVOKE_FROM_CLASS(AS_INSTANCE(PEEK(1))->klass, CONST_STRING(state, "=="), 1, false, methods)
 			}
 
 			LitValue a = POP();
@@ -806,7 +817,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(CALL) {
 			uint8_t arg_count = READ_BYTE();
 			WRITE_FRAME()
-			CALL_VALUE(vm, PEEK(arg_count), arg_count)
+			CALL_VALUE(PEEK(arg_count), arg_count)
 			READ_FRAME()
 			continue;
 		}
@@ -861,8 +872,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue object = PEEK(1);
 
 			if (IS_NULL(object)) {
-				lit_runtime_error(vm, "Attempt to index a null value");
-				RETURN_ERROR()
+				RUNTIME_ERROR("Attempt to index a null value")
 			}
 
 			LitValue value;
@@ -877,13 +887,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 							LitField* field = AS_FIELD(value);
 
 							if (field->getter == NULL) {
-								lit_runtime_error(vm, "Class %s does not have a getter for the field %s", instance->klass->name->chars, name->chars);
-								RETURN_ERROR()
+								RUNTIME_ERROR_VARG("Class %s does not have a getter for the field %s", instance->klass->name->chars, name->chars)
 							}
 
 							DROP();
 							WRITE_FRAME()
-							CALL_VALUE(vm, OBJECT_VALUE(AS_FIELD(value)->getter), 0)
+							CALL_VALUE(OBJECT_VALUE(AS_FIELD(value)->getter), 0)
 							READ_FRAME()
 							continue;
 						} else {
@@ -903,13 +912,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 						LitField* field = AS_FIELD(value);
 
 						if (field->getter == NULL) {
-							lit_runtime_error(vm, "Class %s does not have a getter for the field %s", klass->name->chars, name->chars);
-							RETURN_ERROR()
+							RUNTIME_ERROR_VARG("Class %s does not have a getter for the field %s", klass->name->chars, name->chars)
 						}
 
 						DROP();
 						WRITE_FRAME()
-						CALL_VALUE(vm, OBJECT_VALUE(field->getter), 0)
+						CALL_VALUE(OBJECT_VALUE(field->getter), 0)
 						READ_FRAME()
 						continue;
 					}
@@ -920,8 +928,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				LitClass* klass = lit_get_class_for(state, object);
 
 				if (klass == NULL) {
-					lit_runtime_error(vm, "Only instances and classes have fields");
-					RETURN_ERROR()
+					RUNTIME_ERROR("Only instances and classes have fields")
 				}
 
 				if (lit_table_get(&klass->methods, name, &value)) {
@@ -929,13 +936,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 						LitField *field = AS_FIELD(value);
 
 						if (field->getter == NULL) {
-							lit_runtime_error(vm, "Class %s does not have a getter for the field %s", klass->name->chars, name->chars);
-							RETURN_ERROR()
+							RUNTIME_ERROR_VARG("Class %s does not have a getter for the field %s", klass->name->chars, name->chars)
 						}
 
 						DROP();
 						WRITE_FRAME()
-						CALL_VALUE(vm, OBJECT_VALUE(AS_FIELD(value)->getter), 0)
+						CALL_VALUE(OBJECT_VALUE(AS_FIELD(value)->getter), 0)
 						READ_FRAME()
 						continue;
 					} else if (IS_NATIVE_METHOD(value)) {
@@ -956,8 +962,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue instance = PEEK(2);
 
 			if (IS_NULL(instance)) {
-				lit_runtime_error(vm, "Attempt to index a null value");
-				RETURN_ERROR()
+				RUNTIME_ERROR("Attempt to index a null value")
 			}
 
 			LitValue value = PEEK(1);
@@ -971,14 +976,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					LitField* field = AS_FIELD(setter);
 
 					if (field->setter == NULL) {
-						lit_runtime_error(vm, "Class %s does not have a setter for the field %s", klass->name->chars, field_name->chars);
-						RETURN_ERROR()
+						RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", klass->name->chars, field_name->chars)
 					}
 
 					DROP_MULTIPLE(2);
 					PUSH(value);
 					WRITE_FRAME()
-					CALL_VALUE(vm, OBJECT_VALUE(field->setter), 1)
+					CALL_VALUE(OBJECT_VALUE(field->setter), 1)
 					READ_FRAME()
 					continue;
 				}
@@ -999,14 +1003,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					LitField* field = AS_FIELD(setter);
 
 					if (field->setter == NULL) {
-						lit_runtime_error(vm, "Class %s does not have a setter for the field %s", inst->klass->name->chars, field_name->chars);
-						RETURN_ERROR()
+						RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", inst->klass->name->chars, field_name->chars)
 					}
 
 					DROP_MULTIPLE(2);
 					PUSH(value);
 					WRITE_FRAME()
-					CALL_VALUE(vm, OBJECT_VALUE(field->setter), 1)
+					CALL_VALUE(OBJECT_VALUE(field->setter), 1)
 					READ_FRAME()
 					continue;
 				}
@@ -1023,8 +1026,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				LitClass* klass = lit_get_class_for(state, instance);
 
 				if (klass == NULL) {
-					lit_runtime_error(vm, "Only instances and classes have fields");
-					RETURN_ERROR()
+					RUNTIME_ERROR("Only instances and classes have fields")
 				}
 
 				LitValue setter;
@@ -1033,19 +1035,17 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					LitField* field = AS_FIELD(setter);
 
 					if (field->setter == NULL) {
-						lit_runtime_error(vm, "Class %s does not have a setter for the field %s", klass->name->chars, field_name->chars);
-						RETURN_ERROR()
+						RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", klass->name->chars, field_name->chars)
 					}
 
 					DROP_MULTIPLE(2);
 					PUSH(value);
 					WRITE_FRAME()
-					CALL_VALUE(vm, OBJECT_VALUE(field->setter), 1)
+					CALL_VALUE(OBJECT_VALUE(field->setter), 1)
 					READ_FRAME()
 					continue;
 				} else {
-					lit_runtime_error(vm, "Class %s does not contain field %s", klass->name->chars, field_name->chars);
-					RETURN_ERROR()
+					RUNTIME_ERROR_VARG("Class %s does not contain field %s", klass->name->chars, field_name->chars)
 				}
 			}
 
@@ -1114,14 +1114,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue receiver = PEEK(arg_count);
 
 			if (IS_NULL(receiver)) {
-				lit_runtime_error(vm, "Attempt to index a null value");
-				RETURN_ERROR()
+				RUNTIME_ERROR("Attempt to index a null value")
 			}
 
 			WRITE_FRAME()
 
 			if (IS_CLASS(receiver)) {
-				INVOKE_FROM_CLASS(vm, AS_CLASS(receiver), method_name, arg_count, true, static_fields)
+				INVOKE_FROM_CLASS(AS_CLASS(receiver), method_name, arg_count, true, static_fields)
 				READ_FRAME()
 				continue;
 			} else if (IS_INSTANCE(receiver)) {
@@ -1131,22 +1130,21 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				if (lit_table_get(&instance->fields, method_name, &value)) {
 					fiber->stack_top[-arg_count - 1] = value;
 
-					CALL_VALUE(vm, value, arg_count)
+					CALL_VALUE(value, arg_count)
 					READ_FRAME()
 					continue;
 				}
 
-				INVOKE_FROM_CLASS(vm, instance->klass, method_name, arg_count, true, methods)
+				INVOKE_FROM_CLASS(instance->klass, method_name, arg_count, true, methods)
 				READ_FRAME()
 			} else {
 				LitClass* type = lit_get_class_for(state, receiver);
 
 				if (type == NULL) {
-					lit_runtime_error(vm, "Only instances and classes have methods");
-					RETURN_ERROR()
+					RUNTIME_ERROR("Only instances and classes have methods")
 				}
 
-				INVOKE_FROM_CLASS(vm, type, method_name, arg_count, true, methods)
+				INVOKE_FROM_CLASS(type, method_name, arg_count, true, methods)
 				READ_FRAME()
 			}
 
@@ -1159,7 +1157,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitClass* klass = AS_CLASS(POP());
 
 			WRITE_FRAME()
-			INVOKE_FROM_CLASS(vm, klass, method_name, arg_count, true, methods)
+			INVOKE_FROM_CLASS(klass, method_name, arg_count, true, methods)
 			READ_FRAME()
 			continue;
 		}
@@ -1184,8 +1182,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue super = PEEK(0);
 
 			if (!IS_CLASS(super)) {
-				lit_runtime_error(vm, "Superclass must be a class");
-				RETURN_ERROR()
+				RUNTIME_ERROR("Superclass must be a class")
 			}
 
 			LitClass* klass = AS_CLASS(PEEK(1));
@@ -1215,8 +1212,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitValue klass = PEEK(0);
 
 			if (instance_klass == NULL || !IS_CLASS(klass)) {
-				lit_runtime_error(vm, "Operands must be an instance and a class");
-				RETURN_ERROR()
+				RUNTIME_ERROR("Operands must be an instance and a class")
 			}
 
 			LitClass* type = AS_CLASS(klass);
@@ -1237,10 +1233,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
-		lit_runtime_error(vm, "Unknown op code '%d'", *ip);
+		RUNTIME_ERROR_VARG("Unknown op code '%d'", *ip)
 		break;
 	}
 
+#undef RUNTIME_ERROR_VARG
+#undef RUNTIME_ERROR
 #undef INVOKE_METHOD
 #undef INVOKE_FROM_CLASS
 #undef DROP_MULTIPLE

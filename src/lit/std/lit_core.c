@@ -345,7 +345,7 @@ static LitValue get_function_name(LitVm* vm, LitValue instance) {
 		}
 
 		default: {
-			UNREACHABLE
+			break;
 		}
 	}
 
@@ -413,11 +413,18 @@ static LitValue run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_c
 
 	vm->fiber = fiber;
 
-	if (fiber->frames[0].ip == fiber->frames[0].function->chunk.code) {
-		lit_push(vm, OBJECT_VALUE(fiber->frames[0].function));
+	LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
 
-		for (uint i = 0; i < arg_count; i++) {
-			lit_push(vm, args[i]);
+	if (frame->ip == frame->function->chunk.code) {
+		frame->slots = fiber->stack_top;
+
+		lit_push(vm, OBJECT_VALUE(frame->function));
+		uint function_arg_count = frame->function->arg_count;
+
+		if (arg_count <= function_arg_count) {
+			for (uint i = 0; i < function_arg_count; i++) {
+				lit_push(vm, i < arg_count ? args[i] : NULL_VALUE);
+			}
 		}
 	}
 }
