@@ -24,6 +24,7 @@ static void print_object(LitValue value) {
 			break;
 		}
 
+		case OBJECT_NATIVE_PRIMITIVE:
 		case OBJECT_NATIVE_FUNCTION: {
 			printf("native function");
 			break;

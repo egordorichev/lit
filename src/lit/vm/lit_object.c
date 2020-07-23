@@ -266,6 +266,12 @@ LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunction
 	return native;
 }
 
+LitNativePrimitive* lit_create_native_primitive(LitState* state, LitNativePrimitiveFn function) {
+	LitNativePrimitive* native = ALLOCATE_OBJECT(state, LitNativePrimitive, OBJECT_NATIVE_PRIMITIVE);
+	native->function = function;
+	return native;
+}
+
 LitNativeMethod* lit_create_native_method(LitState* state, LitNativeMethodFn method) {
 	LitNativeMethod* native = ALLOCATE_OBJECT(state, LitNativeMethod, OBJECT_NATIVE_METHOD);
 	native->method = method;

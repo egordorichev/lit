@@ -65,6 +65,11 @@ void lit_free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_NATIVE_PRIMITIVE: {
+			LIT_FREE(state, LitNativePrimitive, object);
+			break;
+		}
+
 		case OBJECT_NATIVE_METHOD: {
 			LIT_FREE(state, LitNativeMethod, object);
 			break;
@@ -274,6 +279,7 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 
 	switch (object->type) {
 		case OBJECT_NATIVE_FUNCTION:
+		case OBJECT_NATIVE_PRIMITIVE:
 		case OBJECT_NATIVE_METHOD:
 		case OBJECT_PRIMITIVE_METHOD:
 		case OBJECT_RANGE:

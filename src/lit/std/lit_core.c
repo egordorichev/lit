@@ -879,12 +879,36 @@ LIT_NATIVE(print) {
 	return NULL_VALUE;
 }
 
-LIT_NATIVE(eval) {
-	const char* code = LIT_CHECK_STRING(0);
-	return lit_interpret(vm->state, "eval", code).result;
+static bool interpret(LitVm* vm, LitString* module_name, const char* source) {
+	LitModule* module = lit_compile_module(vm->state, module_name, source);
+
+	if (module == NULL) {
+		return false;
+	}
+
+	LitFunction* function = module->main_function;
+	LitFiber* fiber = lit_create_fiber(vm->state, module, function);
+	LitFiber* last_fiber = vm->fiber;
+
+	fiber->parent = vm->fiber;
+	vm->fiber = fiber;
+
+	LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
+
+	if (frame->ip == frame->function->chunk.code) {
+		frame->slots = fiber->stack_top;
+		lit_push(vm, OBJECT_VALUE(frame->function));
+	}
+
+	return true;
 }
 
-LIT_NATIVE(require) {
+LIT_NATIVE_PRIMITIVE(eval) {
+	const char* code = LIT_CHECK_STRING(0);
+	return interpret(vm, CONST_STRING(vm->state, "eval"), code);
+}
+
+LIT_NATIVE_PRIMITIVE(require) {
 	LitString* name = LIT_CHECK_OBJECT_STRING(0);
 
 	const char* path = name->chars;
@@ -911,10 +935,10 @@ LIT_NATIVE(require) {
 
 	if (source == NULL) {
 		lit_runtime_error(vm, "Failed to open '%s'", full_path);
-		return NULL_VALUE;
+		return false;
 	}
 
-	return lit_internal_interpret(vm->state, module_name, source).result;
+	return interpret(vm, module_name, source);
 }
 
 void lit_open_core_library(LitState* state) {
@@ -1009,7 +1033,6 @@ void lit_open_core_library(LitState* state) {
 		LIT_INHERIT_CLASS(state->object_class)
 
 		// todo: insert
-
 		LIT_BIND_METHOD("[]", array_subscript)
 		LIT_BIND_METHOD("add", array_add)
 		LIT_BIND_METHOD("slice", array_slice)
@@ -1061,7 +1084,8 @@ void lit_open_core_library(LitState* state) {
 
 	lit_define_native(state, "time", time_native);
 	lit_define_native(state, "systemTime", systemTime_native);
-	lit_define_native(state, "eval", eval_native);
 	lit_define_native(state, "print", print_native);
-	lit_define_native(state, "require", require_native);
+
+	lit_define_native_primitive(state, "require", require_primitive);
+	lit_define_native_primitive(state, "eval", eval_primitive);
 }

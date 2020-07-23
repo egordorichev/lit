@@ -66,6 +66,7 @@ void lit_pop_roots(LitState* state, uint8_t amount);
 
 LitClass* lit_get_class_for(LitState* state, LitValue value);
 
+LitModule* lit_compile_module(LitState* state, LitString* module_name, const char* code);
 LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code);
 LitInterpretResult lit_interpret(LitState* state, const char* module_name, const char* code);
 LitInterpretResult lit_interpret_file(LitState* state, const char* file_name);

@@ -1,40 +1,4 @@
-print(new Fiber(() => {
-  null()
-}).try()) // Expected: Attempt to call a null value
+eval("1 + 2")
 
-print(new Fiber(() => {
-  Fiber.yield()
-}).run()) // Expected: null
-
-print(new Fiber(() => {
-  Fiber.yield("Hello, World!")
-}).run()) // Expected: Hello, World!
-
-var fiber = new Fiber(() => {
-  Fiber.yield(0)
-})
-
-print(fiber.run()) // Expected: 0
-print(fiber.done) // Expected: false
-print(fiber.run()) // Expected: null
-print(fiber.done) // Expected: true
-
-print(Fiber.current.done) // Expected: false
-
-fiber = new Fiber(() => {
-  Fiber.abort("ono")
-})
-
-print(fiber.try()) // Expected: ono
-print(fiber.error) // Expected: ono
-
-var failFiber = new Fiber(() => {
-  null()
-})
-
-fiber = new Fiber(() => {
-  failFiber.run()
-  print("help")
-})
-
-print(fiber.try()) // Expected: Attempt to call a null value
+// todo: test bound primitive methods
+// todo: if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)

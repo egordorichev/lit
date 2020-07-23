@@ -1333,7 +1333,10 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	module->privates_count = emitter->privates.count;
 
 	lit_free_privates(emitter->state, &emitter->privates);
-	lit_table_set(state, &state->vm->modules, module_name, OBJECT_VALUE(module));
+
+	if (!state->had_error) {
+		lit_table_set(state, &state->vm->modules, module_name, OBJECT_VALUE(module));
+	}
 
 	return module;
 }

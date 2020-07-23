@@ -119,6 +119,7 @@ LitClass* lit_get_class_for(LitState* state, LitValue value) {
 			case OBJECT_FUNCTION:
 			case OBJECT_CLOSURE:
 			case OBJECT_NATIVE_FUNCTION:
+			case OBJECT_NATIVE_PRIMITIVE:
 			case OBJECT_BOUND_METHOD:
 			case OBJECT_PRIMITIVE_METHOD:
 			case OBJECT_NATIVE_METHOD: {
@@ -164,7 +165,7 @@ LitInterpretResult lit_interpret(LitState* state, const char* module_name, const
 	return lit_internal_interpret(state, lit_copy_string(state, module_name, strlen(module_name)), code);
 }
 
-LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code) {
+LitModule* lit_compile_module(LitState* state, LitString* module_name, const char* code) {
 	bool allowed_gc = state->allow_gc;
 
 	state->allow_gc = false;
@@ -175,32 +176,34 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 
 	if (lit_parse(state->parser, module_name->chars, code, &statements)) {
 		free_statements(state, &statements);
-		return (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VALUE };
+		return NULL;
 	}
 
 	LitModule* module = lit_emit(state->emitter, &statements, module_name);
 	free_statements(state, &statements);
 
-	LitInterpretResult result;
+	state->allow_gc = allowed_gc;
 
-	if (state->had_error) {
-		result = (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VALUE };
-		state->allow_gc = allowed_gc;
-	} else {
-		state->allow_gc = true;
-		result = lit_interpret_module(state, module);
-		state->allow_gc = allowed_gc;
-		module->return_value = result.result;
+	return state->had_error ? NULL : module;
+}
 
-		LitFiber* fiber = state->vm->fiber;
+LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code) {
+	LitModule* module = lit_compile_module(state, module_name, code);
 
-		if (!fiber->abort && fiber->stack_top != fiber->stack) {
-			lit_error(state, RUNTIME_ERROR, "Stack offset was not 0");
-		}
-
-		state->vm->fiber = fiber->parent;
+	if (module == NULL) {
+		return (LitInterpretResult) {INTERPRET_COMPILE_ERROR, NULL_VALUE };
 	}
 
+	LitInterpretResult result = lit_interpret_module(state, module);
+	module->return_value = result.result;
+
+	LitFiber* fiber = state->vm->fiber;
+
+	if (!fiber->abort && fiber->stack_top != fiber->stack) {
+		lit_error(state, RUNTIME_ERROR, "Stack offset was not 0");
+	}
+
+	state->vm->fiber = fiber->parent;
 	return result;
 }
 

@@ -10,6 +10,7 @@
 #define LIT_NATIVE(name) static LitValue name##_native(LitVm* vm, uint arg_count, LitValue* args)
 #define LIT_METHOD(name) static LitValue name(LitVm* vm, LitValue instance, uint arg_count, LitValue* args)
 #define LIT_PRIMITIVE(name) static bool name(LitVm* vm, LitValue instance, uint arg_count, LitValue* args)
+#define LIT_NATIVE_PRIMITIVE(name) static bool name##_primitive(LitVm* vm, uint arg_count, LitValue* args)
 
 #define LIT_BEGIN_CLASS(name) { \
 	LitString* klass_name = lit_copy_string(state, name, strlen(name)); \
@@ -46,6 +47,7 @@ LitFunction* lit_get_global_function(LitState* state, LitString* name);
 void lit_set_global(LitState* state, LitString* name, LitValue value);
 bool lit_global_exists(LitState* state, LitString* name);
 void lit_define_native(LitState* state, const char* name, LitNativeFunctionFn native);
+void lit_define_native_primitive(LitState* state, const char* name, LitNativePrimitiveFn native);
 
 LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count);
 LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count);

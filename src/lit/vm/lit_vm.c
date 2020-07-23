@@ -189,6 +189,17 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 				return false;
 			}
 
+			case OBJECT_NATIVE_PRIMITIVE: {
+				LitFiber* fiber = vm->fiber;
+
+				if (AS_NATIVE_PRIMITIVE(callee)->function(vm, arg_count, vm->fiber->stack_top - arg_count)) {
+					fiber->stack_top -= arg_count;
+					return true;
+				}
+
+				return false;
+			}
+
 			case OBJECT_NATIVE_METHOD: {
 				LitNativeMethod* method = AS_NATIVE_METHOD(callee);
 
@@ -203,7 +214,6 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 
 			case OBJECT_PRIMITIVE_METHOD: {
 				if (AS_PRIMITIVE_METHOD(callee)->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count)) {
-					// vm->fiber->stack_top -= arg_count - 1;
 					return true;
 				}
 

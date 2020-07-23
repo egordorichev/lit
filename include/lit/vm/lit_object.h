@@ -15,6 +15,7 @@
 #define IS_STRING(value) IS_OBJECTS_TYPE(value, OBJECT_STRING)
 #define IS_FUNCTION(value) IS_OBJECTS_TYPE(value, OBJECT_FUNCTION)
 #define IS_NATIVE_FUNCTION(value) IS_OBJECTS_TYPE(value, OBJECT_NATIVE_FUNCTION)
+#define IS_NATIVE_PRIMITIVE(value) IS_OBJECTS_TYPE(value, OBJECT_NATIVE_PRIMITIVE)
 #define IS_NATIVE_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_NATIVE_METHOD)
 #define IS_PRIMITIVE_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_PRIMITIVE_METHOD)
 #define IS_MODULE(value) IS_OBJECTS_TYPE(value, OBJECT_MODULE)
@@ -33,6 +34,7 @@
 #define AS_CSTRING(value) (((LitString*) AS_OBJECT(value))->chars)
 #define AS_FUNCTION(value) ((LitFunction*) AS_OBJECT(value))
 #define AS_NATIVE_FUNCTION(value) ((LitNativeFunction*) AS_OBJECT(value))
+#define AS_NATIVE_PRIMITIVE(value) ((LitNativePrimitive*) AS_OBJECT(value))
 #define AS_NATIVE_METHOD(value) ((LitNativeMethod*) AS_OBJECT(value))
 #define AS_PRIMITIVE_METHOD(value) ((LitPrimitiveMethod*) AS_OBJECT(value))
 #define AS_MODULE(value) ((LitModule*) AS_OBJECT(value))
@@ -56,6 +58,7 @@ typedef enum {
 	OBJECT_STRING,
 	OBJECT_FUNCTION,
 	OBJECT_NATIVE_FUNCTION,
+	OBJECT_NATIVE_PRIMITIVE,
 	OBJECT_NATIVE_METHOD,
 	OBJECT_PRIMITIVE_METHOD,
 	OBJECT_FIBER,
@@ -76,6 +79,7 @@ static const char* lit_object_type_names[] = {
 	"string",
 	"function",
 	"native_function",
+	"native_primitive",
 	"native_method",
 	"primitive_method",
 	"fiber",
@@ -170,6 +174,15 @@ typedef struct {
 } LitNativeFunction;
 
 LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunctionFn function);
+
+typedef bool (*LitNativePrimitiveFn)(LitVm* vm, uint arg_count, LitValue* args);
+
+typedef struct {
+	LitObject object;
+	LitNativePrimitiveFn function;
+} LitNativePrimitive;
+
+LitNativePrimitive* lit_create_native_primitive(LitState* state, LitNativePrimitiveFn function);
 
 typedef LitValue (*LitNativeMethodFn)(LitVm* vm, LitValue instance, uint arg_count, LitValue* args);
 
