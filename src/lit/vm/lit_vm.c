@@ -252,7 +252,14 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 
 					return false;
 				} else if (IS_PRIMITIVE_METHOD(method)) {
-					UNREACHABLE
+					LitFiber* fiber = vm->fiber;
+
+					if (AS_PRIMITIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, fiber->stack_top - arg_count)) {
+						fiber->stack_top -= arg_count;
+						return true;
+					}
+
+					return false;
 				} else {
 					vm->fiber->stack_top[-arg_count - 1] = bound_method->receiver;
 					return call(vm, AS_FUNCTION(method), NULL, arg_count);
@@ -919,7 +926,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				LitClass *klass = AS_CLASS(object);
 
 				if (lit_table_get(&klass->static_fields, name, &value)) {
-					if (IS_NATIVE_METHOD(value)) {
+					if (IS_NATIVE_METHOD(value) || IS_PRIMITIVE_METHOD(value)) {
 						value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klass), value));
 					} else if (IS_FIELD(value)) {
 						LitField* field = AS_FIELD(value);
@@ -957,7 +964,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 						CALL_VALUE(OBJECT_VALUE(AS_FIELD(value)->getter), 0)
 						READ_FRAME()
 						continue;
-					} else if (IS_NATIVE_METHOD(value)) {
+					} else if (IS_NATIVE_METHOD(value) || IS_PRIMITIVE_METHOD(value)) {
 						value = OBJECT_VALUE(lit_create_bound_method(state, object, value));
 					}
 				} else {

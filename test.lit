@@ -1,4 +1,8 @@
-print(Fiber.current)
+var test = new Fiber(() => {
+	print("hello")
+})
 
-// todo: test bound primitive methods
+var b = test.run
+b()
+
 // todo: if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)

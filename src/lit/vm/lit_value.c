@@ -30,6 +30,7 @@ static void print_object(LitValue value) {
 			break;
 		}
 
+		case OBJECT_PRIMITIVE_METHOD:
 		case OBJECT_NATIVE_METHOD: {
 			printf("native method");
 			break;
