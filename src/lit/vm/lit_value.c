@@ -79,7 +79,6 @@ static void print_object(LitValue value) {
 			break;
 		}
 
-
 		case OBJECT_ARRAY: {
 			LitArray* array = AS_ARRAY(value);
 			uint size = array->values.count;

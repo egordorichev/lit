@@ -6,27 +6,14 @@
 #include <string.h>
 #include <lit/debug/lit_debug.h>
 
-static void emit_byte(LitState* state, LitChunk* chunk, uint8_t byte) {
-	lit_write_chunk(state, chunk, byte, 1);
-}
-
-static void emit_bytes(LitState* state, LitChunk* chunk, uint8_t a, uint8_t b) {
-	lit_write_chunk(state, chunk, a, 1);
-	lit_write_chunk(state, chunk, b, 1);
-}
-
-static void emit_short(LitState* state, LitChunk* chunk, uint16_t value) {
-	emit_bytes(state, chunk, (uint8_t) ((value >> 8) & 0xff), (uint8_t) (value & 0xff));
-}
-
 static uint emit_constant(LitState* state, LitChunk* chunk, LitValue value) {
 	uint constant = lit_chunk_add_constant(state, chunk, value);
 
 	if (constant < UINT8_MAX) {
-		emit_bytes(state, chunk, OP_CONSTANT, constant);
+		lit_emit_bytes(state, chunk, OP_CONSTANT, constant);
 	} else if (constant < UINT16_MAX) {
-		emit_byte(state, chunk, OP_CONSTANT_LONG);
-		emit_short(state, chunk, constant);
+		lit_emit_byte(state, chunk, OP_CONSTANT_LONG);
+		lit_emit_short(state, chunk, constant);
 	} else {
 		lit_runtime_error(state->vm, "Too many constants in one chunk");
 	}
@@ -34,11 +21,9 @@ static uint emit_constant(LitState* state, LitChunk* chunk, LitValue value) {
 	return constant;
 }
 
-static LitString* api_name;
-
 void lit_init_api(LitState* state) {
-	api_name = lit_copy_string(state, "c", 1);
-	state->api_module = lit_create_module(state, api_name);
+	state->api_name = lit_copy_string(state, "c", 1);
+	state->api_module = lit_create_module(state, state->api_name);
 }
 
 void lit_free_api(LitState* state) {
@@ -93,12 +78,10 @@ void lit_define_native_primitive(LitState* state, const char* name, LitNativePri
 
 LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count) {
 	LitFunction* function = lit_create_function(state, state->api_module);
-	function->name = api_name;
+	function->name = state->api_name;
 
 	LitFiber* fiber = lit_create_fiber(state, state->api_module, function);
 	LitChunk* chunk = &function->chunk;
-
-	fiber->parent = state->vm->fiber;
 
 #define PUSH(value) (*fiber->stack_top++ = value)
 
@@ -218,10 +201,9 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	}
 
 	LitFunction* function = lit_create_function(state, state->api_module);
-	function->name = api_name;
+	function->name = state->api_name;
 
 	LitFiber* fiber = lit_create_fiber(state, state->api_module, function);
-	fiber->parent = state->vm->fiber;
 	LitChunk* chunk = &function->chunk;
 
 #define PUSH(value) (*fiber->stack_top++ = value)
@@ -229,17 +211,18 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	PUSH(OBJECT_VALUE(function));
 	PUSH(object);
 
-	emit_byte(state, chunk, OP_INVOKE);
-	emit_short(state, chunk, lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString")));
-	emit_bytes(state, chunk, 0, OP_RETURN);
+	lit_emit_byte(state, chunk, OP_INVOKE);
+	lit_emit_short(state, chunk, lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString")));
+	lit_emit_bytes(state, chunk, 0, OP_RETURN);
 
 #undef PUSH
 
 	fiber->frames[0].ip = chunk->code;
 
+	LitFiber* last_fiber = state->vm->fiber;
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 
-	state->vm->fiber = fiber->parent;
+	state->vm->fiber = last_fiber;
 	lit_free_chunk(state, chunk);
 
 	if (!IS_STRING(result.result)) {

@@ -212,3 +212,16 @@ LitChunk* lit_load_chunk(LitState* state, FILE* file) {
 	
 	return chunk;
 }
+
+void lit_emit_byte(LitState* state, LitChunk* chunk, uint8_t byte) {
+	lit_write_chunk(state, chunk, byte, 1);
+}
+
+void lit_emit_bytes(LitState* state, LitChunk* chunk, uint8_t a, uint8_t b) {
+	lit_write_chunk(state, chunk, a, 1);
+	lit_write_chunk(state, chunk, b, 1);
+}
+
+void lit_emit_short(LitState* state, LitChunk* chunk, uint16_t value) {
+	lit_emit_bytes(state, chunk, (uint8_t) ((value >> 8) & 0xff), (uint8_t) (value & 0xff));
+}

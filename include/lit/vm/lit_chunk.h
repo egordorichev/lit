@@ -35,4 +35,8 @@ void lit_shrink_chunk(LitState* state, LitChunk* chunk);
 void lit_save_chunk(LitChunk* chunk, FILE* file);
 LitChunk* lit_load_chunk(LitState* state, FILE* file);
 
+void lit_emit_byte(LitState* state, LitChunk* chunk, uint8_t byte);
+void lit_emit_bytes(LitState* state, LitChunk* chunk, uint8_t a, uint8_t b);
+void lit_emit_short(LitState* state, LitChunk* chunk, uint16_t value);
+
 #endif
