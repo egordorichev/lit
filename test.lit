@@ -1,4 +1,14 @@
-eval("1 + 2")
+function ahbar() {
+	Fiber.yield("ahbar")
+	print("Haha")
+}
+
+var test = new Fiber(() => {
+	ahbar()
+})
+
+print(test.run())
+test.run()
 
 // todo: test bound primitive methods
 // todo: if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)

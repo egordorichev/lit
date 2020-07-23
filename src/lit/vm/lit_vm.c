@@ -213,7 +213,10 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 			}
 
 			case OBJECT_PRIMITIVE_METHOD: {
+				LitFiber* fiber = vm->fiber;
+
 				if (AS_PRIMITIVE_METHOD(callee)->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count)) {
+					fiber->stack_top -= arg_count;
 					return true;
 				}
 

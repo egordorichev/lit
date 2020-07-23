@@ -451,11 +451,13 @@ LIT_PRIMITIVE(fiber_yield) {
 	vm->fiber->stack_top -= fiber->arg_count;
 	vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 
+	args[-1] = NULL_VALUE;
 	return true;
 }
 
 LIT_PRIMITIVE(fiber_abort) {
 	lit_handle_runtime_error(vm, arg_count == 0 ? CONST_STRING(vm->state, "Fiber was aborted") : lit_to_string(vm->state, args[0]));
+	args[-1] = NULL_VALUE;
 	return true;
 }
 
