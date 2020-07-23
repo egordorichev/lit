@@ -1,8 +1,5 @@
-var test = new Fiber(() => {
-	print("hello")
-})
-
-var b = test.run
-b()
+var a = require("test.expression.folder.module") // Expected: hi
+print(a) // Expected: 32
+print(require("test.expression.folder.module")) // Expected: 32
 
 // todo: if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)

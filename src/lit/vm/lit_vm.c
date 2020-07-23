@@ -495,6 +495,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			fiber->frame_count--;
 
 			if (fiber->frame_count == 0) {
+				fiber->module->return_value = result;
+
 				if (fiber->parent == NULL) {
 					DROP();
 
@@ -508,6 +510,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				uint arg_count = fiber->arg_count;
 				LitFiber *parent = fiber->parent;
 				fiber->parent = NULL;
+
 				vm->fiber = fiber = parent;
 
 				READ_FRAME()
@@ -516,14 +519,16 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				fiber->stack_top -= arg_count;
 				fiber->stack_top[-1] = result;
 
+
 				continue;
 			}
 
 			fiber->stack_top = frame->slots;
-			PUSH(result);
 
+			PUSH(result);
 			READ_FRAME()
 			TRACE_FRAME()
+
 			continue;
 		}
 

@@ -195,8 +195,6 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 	}
 
 	LitInterpretResult result = lit_interpret_module(state, module);
-	module->return_value = result.result;
-
 	LitFiber* fiber = state->vm->fiber;
 
 	if (!fiber->abort && fiber->stack_top != fiber->stack) {

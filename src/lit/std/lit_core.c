@@ -930,7 +930,10 @@ LIT_NATIVE_PRIMITIVE(require) {
 	LitValue existing_module;
 
 	if (!(arg_count > 1 && IS_BOOL(args[1]) && AS_BOOL(args[1])) && lit_table_get(&vm->modules, module_name, &existing_module)) {
-		return AS_MODULE(existing_module)->return_value;
+		vm->fiber->stack_top -= arg_count;
+		args[-1] = AS_MODULE(existing_module)->return_value;
+
+		return false;
 	}
 
 	const char* source = lit_read_file(full_path);
