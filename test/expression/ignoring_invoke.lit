@@ -1,0 +1,32 @@
+class Awesome {
+	setup() {
+		this.prop = "test"
+		return 32
+	}
+
+	whatever(a) {
+		return a + "ever"
+	}
+}
+
+class Test : Awesome {
+	output(a) {
+		print(a ?? this.prop)
+	}
+
+	performTest() {
+		super->setup()->whatever("what").output()
+	}
+
+	getValue() {
+		return 32
+	}
+
+	testSelf() {
+		this->getValue().output(48)
+	}
+}
+
+var t = new Test()
+t.performTest() // Expected: test
+t.testSelf() // Expected: 48

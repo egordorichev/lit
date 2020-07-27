@@ -1,6 +1,6 @@
 class Awesome {
-	constructor() {
-		this.prop = "good"
+	constructor(a) {
+		this.prop = a
 	}
 
 	test() {
@@ -9,7 +9,7 @@ class Awesome {
 }
 
 print(Awesome) // Expected: class Awesome
-var a = new Awesome()
+var a = new Awesome("good")
 
 print(a) // Expected: Awesome instance
 
@@ -21,6 +21,10 @@ a.prop = "awesome"
 print(a.test()) // Expected: awesome
 
 class Best : Awesome {
+	constructor() {
+		super("good")
+	}
+
 	printTest() {
 		print(this.test())
 	}

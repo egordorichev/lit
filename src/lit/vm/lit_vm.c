@@ -55,17 +55,29 @@ LitValue lit_pop(LitVm* vm) {
 }
 
 static void trace_stack(LitVm* vm) {
-	if (vm->fiber->stack_top == vm->fiber->stack) {
+	LitFiber* fiber = vm->fiber;
+
+	if (fiber->stack_top == fiber->stack) {
 		return;
 	}
 
-	printf("        | ");
+	LitValue* top = fiber->frames[fiber->frame_count - 1].slots;
+	printf("        | %s", COLOR_GREEN);
 
-	for (LitValue* slot = vm->fiber->stack; slot < vm->fiber->stack_top; slot++) {
+	for (LitValue* slot = fiber->stack; slot < top; slot++) {
 		printf("[ ");
 		lit_print_value(*slot);
 		printf(" ]");
 	}
+
+	printf("%s", COLOR_RESET);
+
+	for (LitValue* slot = top; slot < fiber->stack_top; slot++) {
+		printf("[ ");
+		lit_print_value(*slot);
+		printf(" ]");
+	}
+
 
 	printf("\n");
 }
@@ -1188,7 +1200,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(INVOKE_SUPER) {
 			LitString* method_name = READ_STRING_LONG();
 			uint8_t arg_count = READ_BYTE();
-			LitClass* klass = AS_INSTANCE(PEEK(0))->klass->super;
+			LitClass* klass = AS_INSTANCE(PEEK(arg_count))->klass->super;
 
 			WRITE_FRAME()
 			INVOKE_FROM_CLASS(klass, method_name, arg_count, true, methods, false)

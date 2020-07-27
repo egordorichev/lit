@@ -66,6 +66,7 @@ static void setup_errors() {
 	error_messages[ERROR_TOO_MANY_UPVALUES] = "Too many upvalues for one function";
 	error_messages[ERROR_VARIABLE_USED_IN_INIT] = "Variable '%.*s' can't use itself in its initializer";
 	error_messages[ERROR_JUMP_TOO_BIG] = "Too much code to jump over";
+	error_messages[ERROR_NO_SUPER] = "'super' can't be used in class '%s', because it doesn't have a super class";
 	error_messages[ERROR_THIS_MISSUSE] = "'this' can't be used %s";
 	error_messages[ERROR_SUPER_MISSUSE] = "'super' can't be used %s";
 	error_messages[ERROR_UNKNOWN_EXPRESSION] = "Unknown expression with id '%i'";

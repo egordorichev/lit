@@ -622,6 +622,10 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 			emit_expression(emitter, expr->callee);
 
+			if (super) {
+				emit_bytes(emitter, expression->line, OP_GET_LOCAL, 0);
+			}
+
 			for (uint i = 0; i < expr->args.count; i++) {
 				emit_expression(emitter, expr->args.values[i]);
 			}
@@ -636,7 +640,6 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				} else {
 					LitSuperExpression *e = (LitSuperExpression *) expr->callee;
 
-					emit_bytes(emitter, expression->line, OP_GET_LOCAL, 0);
 					emit_byte(emitter, emitter->last_line, ((LitSuperExpression *) expr->callee)->ignore_result ? OP_INVOKE_SUPER_IGNORING : OP_INVOKE_SUPER);
 					emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(e->method)));
 					emit_byte(emitter, expression->line, (uint8_t) expr->args.count);
@@ -773,11 +776,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case SUPER_EXPRESSION: {
 			if (emitter->class_name == NULL) {
-				error(emitter, expression->line, ERROR_THIS_MISSUSE, "outside of methods");
+				error(emitter, expression->line, ERROR_SUPER_MISSUSE, "outside of methods");
 			} else if (emitter->compiler->type == FUNCTION_STATIC_METHOD) {
-				error(emitter, expression->line, ERROR_THIS_MISSUSE, "in static methods");
+				error(emitter, expression->line, ERROR_SUPER_MISSUSE, "in static methods");
 			} else if (!emitter->class_has_super) {
-				error(emitter, expression->line, ERROR_THIS_MISSUSE, "in class '%s', because it doesn't have a super class");
+				error(emitter, expression->line, ERROR_NO_SUPER, emitter->class_name->chars);
 			}
 
 			LitSuperExpression* expr = (LitSuperExpression*) expression;

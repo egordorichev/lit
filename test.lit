@@ -1,21 +1,16 @@
 class Awesome {
-	setup() {
-		this.prop = "test"
-		return 32
+	constructor(a) {
+		this.prop = a
 	}
 }
 
-class Test : Awesome {
-	output() {
-		print(this.prop)
-	}
-
-	performTest() {
-		super.setup().output()
+class Best : Awesome {
+	constructor() {
+		super("test")
 	}
 }
 
-var t = new Test()
-t.performTest()
+var b = new Best()
+print(b.prop)
 
 // todo: if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)
