@@ -163,8 +163,7 @@ static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t 
 		}
 	}
 
-	TRACE_FRAME()
-	return false;
+	return true;
 }
 
 static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
@@ -416,9 +415,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars) \
 		} \
 	} else if (IS_FUNCTION(method)) { \
-		call(vm, AS_FUNCTION(method), NULL, arg_count); \
+		if (call(vm, AS_FUNCTION(method), NULL, arg_count)) { \
+			RECOVER_STATE() \
+		} \
 	} else { \
-		CALL_VALUE(method, arg_count); \
+		CALL_VALUE(method, arg_count) \
 	} \
 	if (error) { \
 		continue; \
@@ -429,9 +430,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	if (klass == NULL) { \
 		RUNTIME_ERROR("Only instances and classes have methods") \
 	} \
-	WRITE_FRAME(); \
+	WRITE_FRAME() \
 	INVOKE_FROM_CLASS(klass, CONST_STRING(state, method_name), arg_count, true, methods) \
-	READ_FRAME();
+	READ_FRAME()
 
 #define BINARY_OP(type, op, op_string) \
 	LitValue a = PEEK(1); \
@@ -592,6 +593,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			if (IS_INSTANCE(PEEK(0))) {
 				WRITE_FRAME()
 				INVOKE_FROM_CLASS(AS_INSTANCE(PEEK(0))->klass, CONST_STRING(state, "!"), 0, false, methods)
+				continue;
 			}
 
 			PUSH(BOOL_VALUE(is_falsey(POP())));
@@ -700,6 +702,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			if (IS_INSTANCE(PEEK(1))) {
 				WRITE_FRAME()
 				INVOKE_FROM_CLASS(AS_INSTANCE(PEEK(1))->klass, CONST_STRING(state, "=="), 1, false, methods)
+				continue;
 			}
 
 			LitValue a = POP();

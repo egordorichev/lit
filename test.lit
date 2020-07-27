@@ -1,5 +1,11 @@
-var a = require("test.expression.folder.module") // Expected: hi
-print(a) // Expected: 32
-print(require("test.expression.folder.module")) // Expected: 32
+class Test {
+	operator == (value) {
+    return 2 == value
+  }
+}
 
-// todo: if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)
+var t = new Test()
+print(t == 3)
+print(t == 2)
+
+// todo: if argument expected type doesnt match in native function, like r  equire, it will crash (cuz it still continues to operate)
