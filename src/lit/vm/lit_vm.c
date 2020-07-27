@@ -150,6 +150,7 @@ static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t 
 	frame->closure = closure;
 	frame->ip = function->chunk.code;
 	frame->slots = fiber->stack_top - arg_count - 1;
+	frame->result_ignored = false;
 
 	uint function_arg_count = function->arg_count;
 
@@ -408,18 +409,24 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		RETURN_ERROR() \
 	}
 
-#define INVOKE_FROM_CLASS(klass, method_name, arg_count, error, stat) \
+#define INVOKE_FROM_CLASS(klass, method_name, arg_count, error, stat, ignoring) \
 	LitValue method; \
-	if (!lit_table_get(&klass->stat, method_name, &method)) { \
+	if (lit_table_get(&klass->stat, method_name, &method)) { \
+		if (ignoring) { \
+			LitValue callee = PEEK(arg_count + 1); \
+			if (call_value(vm, method, arg_count)) { \
+				RECOVER_STATE() \
+				frame->result_ignored = true; \
+			} else { \
+				fiber->stack_top[-1] = callee; \
+			} \
+		} else { \
+			CALL_VALUE(method, arg_count) \
+		} \
+	} else { \
 		if (error) { \
 			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars) \
 		} \
-	} else if (IS_FUNCTION(method)) { \
-		if (call(vm, AS_FUNCTION(method), NULL, arg_count)) { \
-			RECOVER_STATE() \
-		} \
-	} else { \
-		CALL_VALUE(method, arg_count) \
 	} \
 	if (error) { \
 		continue; \
@@ -431,7 +438,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		RUNTIME_ERROR("Only instances and classes have methods") \
 	} \
 	WRITE_FRAME() \
-	INVOKE_FROM_CLASS(klass, CONST_STRING(state, method_name), arg_count, true, methods) \
+	INVOKE_FROM_CLASS(klass, CONST_STRING(state, method_name), arg_count, true, methods, false) \
 	READ_FRAME()
 
 #define BINARY_OP(type, op, op_string) \
@@ -459,6 +466,35 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	} \
 	DROP(); \
 	*(fiber->stack_top - 1) = (NUMBER_VALUE((int) AS_NUMBER(a) op (int) AS_NUMBER(b)));
+
+#define INVOKE_OPERATION(ignoring) \
+	LitString* method_name = READ_STRING_LONG(); \
+	uint8_t arg_count = READ_BYTE(); \
+	LitValue receiver = PEEK(arg_count); \
+	if (IS_NULL(receiver)) { \
+		RUNTIME_ERROR("Attempt to index a null value") \
+	} \
+	WRITE_FRAME() \
+	if (IS_CLASS(receiver)) { \
+		INVOKE_FROM_CLASS(AS_CLASS(receiver), method_name, arg_count, true, static_fields, ignoring) \
+		continue; \
+	} else if (IS_INSTANCE(receiver)) { \
+		LitInstance* instance = AS_INSTANCE(receiver); \
+		LitValue value; \
+		if (lit_table_get(&instance->fields, method_name, &value)) { \
+			fiber->stack_top[-arg_count - 1] = value; \
+			CALL_VALUE(value, arg_count) \
+			READ_FRAME() \
+			continue; \
+		} \
+		INVOKE_FROM_CLASS(instance->klass, method_name, arg_count, true, methods, ignoring) \
+	} else { \
+		LitClass* type = lit_get_class_for(state, receiver); \
+		if (type == NULL) { \
+			RUNTIME_ERROR("Only instances and classes have methods") \
+		} \
+		INVOKE_FROM_CLASS(type, method_name, arg_count, true, methods, ignoring) \
+	}
 
 #ifdef LIT_TRACE_EXECUTION
 	TRACE_FRAME()
@@ -520,13 +556,17 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				fiber->stack_top -= arg_count;
 				fiber->stack_top[-1] = result;
 
-
 				continue;
 			}
 
 			fiber->stack_top = frame->slots;
 
-			PUSH(result);
+			if (frame->result_ignored) {
+				fiber->stack_top++;
+			} else {
+				PUSH(result);
+			}
+
 			READ_FRAME()
 			TRACE_FRAME()
 
@@ -592,7 +632,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(NOT) {
 			if (IS_INSTANCE(PEEK(0))) {
 				WRITE_FRAME()
-				INVOKE_FROM_CLASS(AS_INSTANCE(PEEK(0))->klass, CONST_STRING(state, "!"), 0, false, methods)
+				INVOKE_FROM_CLASS(AS_INSTANCE(PEEK(0))->klass, CONST_STRING(state, "!"), 0, false, methods, false)
 				continue;
 			}
 
@@ -701,7 +741,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(EQUAL) {
 			if (IS_INSTANCE(PEEK(1))) {
 				WRITE_FRAME()
-				INVOKE_FROM_CLASS(AS_INSTANCE(PEEK(1))->klass, CONST_STRING(state, "=="), 1, false, methods)
+				INVOKE_FROM_CLASS(AS_INSTANCE(PEEK(1))->klass, CONST_STRING(state, "=="), 1, false, methods, false)
 				continue;
 			}
 
@@ -846,7 +886,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			uint8_t arg_count = READ_BYTE();
 			WRITE_FRAME()
 			CALL_VALUE(PEEK(arg_count), arg_count)
-			READ_FRAME()
 			continue;
 		}
 
@@ -1137,56 +1176,32 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(INVOKE) {
-			LitString* method_name = READ_STRING_LONG();
-			uint8_t arg_count = READ_BYTE();
-			LitValue receiver = PEEK(arg_count);
+			INVOKE_OPERATION(false)
+			continue;
+		}
 
-			if (IS_NULL(receiver)) {
-				RUNTIME_ERROR("Attempt to index a null value")
-			}
-
-			WRITE_FRAME()
-
-			if (IS_CLASS(receiver)) {
-				INVOKE_FROM_CLASS(AS_CLASS(receiver), method_name, arg_count, true, static_fields)
-				READ_FRAME()
-				continue;
-			} else if (IS_INSTANCE(receiver)) {
-				LitInstance* instance = AS_INSTANCE(receiver);
-				LitValue value;
-
-				if (lit_table_get(&instance->fields, method_name, &value)) {
-					fiber->stack_top[-arg_count - 1] = value;
-
-					CALL_VALUE(value, arg_count)
-					READ_FRAME()
-					continue;
-				}
-
-				INVOKE_FROM_CLASS(instance->klass, method_name, arg_count, true, methods)
-				READ_FRAME()
-			} else {
-				LitClass* type = lit_get_class_for(state, receiver);
-
-				if (type == NULL) {
-					RUNTIME_ERROR("Only instances and classes have methods")
-				}
-
-				INVOKE_FROM_CLASS(type, method_name, arg_count, true, methods)
-				READ_FRAME()
-			}
-
+		CASE_CODE(INVOKE_IGNORING) {
+			INVOKE_OPERATION(true)
 			continue;
 		}
 
 		CASE_CODE(INVOKE_SUPER) {
 			LitString* method_name = READ_STRING_LONG();
 			uint8_t arg_count = READ_BYTE();
-			LitClass* klass = AS_CLASS(POP());
+			LitClass* klass = AS_INSTANCE(PEEK(0))->klass->super;
 
 			WRITE_FRAME()
-			INVOKE_FROM_CLASS(klass, method_name, arg_count, true, methods)
-			READ_FRAME()
+			INVOKE_FROM_CLASS(klass, method_name, arg_count, true, methods, false)
+			continue;
+		}
+
+		CASE_CODE(INVOKE_SUPER_IGNORING) {
+			LitString* method_name = READ_STRING_LONG();
+			uint8_t arg_count = READ_BYTE();
+			LitClass* klass = AS_INSTANCE(PEEK(0))->klass->super;
+
+			WRITE_FRAME()
+			INVOKE_FROM_CLASS(klass, method_name, arg_count, true, methods, true)
 			continue;
 		}
 

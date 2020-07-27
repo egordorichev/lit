@@ -264,7 +264,7 @@ LitCallExpression *lit_create_call_expression(LitState* state, uint line, LitExp
 	return expression;
 }
 
-LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length, bool questionable) {
+LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length, bool questionable, bool ignore_result) {
 	LitGetExpression* expression = ALLOCATE_EXPRESSION(state, LitGetExpression, GET_EXPRESSION);
 
 	expression->where = where;
@@ -272,6 +272,7 @@ LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpre
 	expression->length = length;
 	expression->ignore_emit = false;
 	expression->questionable = questionable;
+	expression->ignore_result = ignore_result;
 
 	return expression;
 }
@@ -324,11 +325,12 @@ LitThisExpression *lit_create_this_expression(LitState* state, uint line) {
 	return ALLOCATE_EXPRESSION(state, LitThisExpression, THIS_EXPRESSION);
 }
 
-LitSuperExpression *lit_create_super_expression(LitState* state, uint line, LitString* method) {
+LitSuperExpression *lit_create_super_expression(LitState* state, uint line, LitString* method, bool ignore_result) {
 	LitSuperExpression* expression = ALLOCATE_EXPRESSION(state, LitSuperExpression, SUPER_EXPRESSION);
 
 	expression->method = method;
 	expression->ignore_emit = false;
+	expression->ignore_result = ignore_result;
 
 	return expression;
 }

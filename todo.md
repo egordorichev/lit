@@ -1,9 +1,9 @@
 # todo
 
-* test..call()..smth()
 * if argument expected type doesnt match in native function, like r  equire, it will crash (cuz it still continues to operate)
 * check how syncing works
-* command line args (get them in the actual lit script), command line input, color printing
+* command line args (get them in the actual lit script), command line input
+* module.globals? module.exported?
 * allow to require modules using local path from the module path (module path + require_path)
 * resizeable stack
 * ffi?

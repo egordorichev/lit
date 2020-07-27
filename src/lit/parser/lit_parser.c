@@ -451,20 +451,21 @@ static LitExpression* parse_new_expression(LitParser* parser, bool can_assign) {
 
 static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool can_assign) {
 	uint line = parser->previous.line;
+	bool ignored = parser->previous.type == TOKEN_SMALL_ARROW;
 
 	if (!(match(parser, TOKEN_CLASS) || match(parser, TOKEN_SUPER))) { // class and super are allowed field names
-		consume(parser, TOKEN_IDENTIFIER, "property name after '.'");
+		consume(parser, TOKEN_IDENTIFIER, ignored ? "propety name after '->'" : "property name after '.'");
 	}
 
 	const char* name = parser->previous.start;
 	uint length = parser->previous.length;
 
-	if (can_assign && match(parser, TOKEN_EQUAL)) {
+	if (!ignored && can_assign && match(parser, TOKEN_EQUAL)) {
 		return (LitExpression *) lit_create_set_expression(parser->state, line, previous, name, length, parse_expression(parser));
 	} else {
-		LitExpression* expression = (LitExpression*) lit_create_get_expression(parser->state, line, previous, name, length, false);
+		LitExpression* expression = (LitExpression*) lit_create_get_expression(parser->state, line, previous, name, length, false, ignored);
 
-		if (match(parser, TOKEN_LEFT_BRACKET)) {
+		if (!ignored && match(parser, TOKEN_LEFT_BRACKET)) {
 			return parse_subscript(parser, expression, can_assign);
 		}
 
@@ -480,9 +481,10 @@ static LitExpression* parse_range(LitParser* parser, LitExpression* previous, bo
 static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression* previous, bool can_assign) {
 	uint line = parser->previous.line;
 
-	if (match(parser, TOKEN_DOT)) {
-		consume(parser, TOKEN_IDENTIFIER, "property name after '.'");
-		return (LitExpression*) lit_create_get_expression(parser->state, line, previous, parser->previous.start, parser->previous.length, true);
+	if (match(parser, TOKEN_DOT) || match(parser, TOKEN_SMALL_ARROW)) {
+		bool ignored = parser->previous.type == TOKEN_SMALL_ARROW;
+		consume(parser, TOKEN_IDENTIFIER, ignored ? "property name after '->'" : "property name after '.'");
+		return (LitExpression*) lit_create_get_expression(parser->state, line, previous, parser->previous.start, parser->previous.length, true, ignored);
 	}
 
 	LitExpression* if_branch = parse_expression(parser);
@@ -561,16 +563,17 @@ static LitExpression* parse_this(LitParser* parser, bool can_assign) {
 static LitExpression* parse_super(LitParser* parser, bool can_assign) {
 	uint line = parser->previous.line;
 
-	if (!match(parser, TOKEN_DOT)) {
-		LitExpression* expression = (LitExpression*) lit_create_super_expression(parser->state, line, lit_copy_string(parser->state, "constructor", 11));
+	if (!(match(parser, TOKEN_DOT) || match(parser, TOKEN_SMALL_ARROW))) {
+		LitExpression* expression = (LitExpression*) lit_create_super_expression(parser->state, line, lit_copy_string(parser->state, "constructor", 11), false);
 		consume(parser, TOKEN_LEFT_PAREN, "'(' after 'super'");
 
 		return parse_call(parser, expression, false);
 	}
 
-	consume(parser, TOKEN_IDENTIFIER, "super method name after '.'");
+	bool ignoring = parser->previous.type == TOKEN_SMALL_ARROW;
+	consume(parser, TOKEN_IDENTIFIER, ignoring ? "super method name after '->'" : "super method name after '.'");
 
-	LitExpression* expression = (LitExpression*) lit_create_super_expression(parser->state, line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length));
+	LitExpression* expression = (LitExpression*) lit_create_super_expression(parser->state, line, lit_copy_string(parser->state, parser->previous.start, parser->previous.length), ignoring);
 
 	if (match(parser, TOKEN_LEFT_PAREN)) {
 		return parse_call(parser, expression, false);
@@ -1105,6 +1108,7 @@ static void setup_rules() {
 	rules[TOKEN_BAR_BAR] = (LitParseRule) { NULL, parse_or, PREC_AND };
 	rules[TOKEN_QUESTION_QUESTION] = (LitParseRule) { NULL, parse_null_filter, PREC_NULL };
 	rules[TOKEN_DOT] = (LitParseRule) { NULL, parse_dot, PREC_CALL };
+	rules[TOKEN_SMALL_ARROW] = (LitParseRule) { NULL, parse_dot, PREC_CALL };
 	rules[TOKEN_DOT_DOT] = (LitParseRule) { NULL, parse_range, PREC_RANGE };
 	rules[TOKEN_LEFT_BRACKET] = (LitParseRule) { parse_array, parse_subscript, PREC_NONE };
 	rules[TOKEN_LEFT_BRACE] = (LitParseRule) { parse_map, NULL, PREC_NONE };

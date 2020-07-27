@@ -175,6 +175,8 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 
 		case OP_INVOKE: return print_invoke_op("OP_INVOKE", chunk, offset);
 		case OP_INVOKE_SUPER: return print_invoke_op("OP_INVOKE_SUPER", chunk, offset);
+		case OP_INVOKE_IGNORING: return print_invoke_op("OP_INVOKE_IGNORING", chunk, offset);
+		case OP_INVOKE_SUPER_IGNORING: return print_invoke_op("OP_INVOKE_SUPER_IGNORING", chunk, offset);
 		case OP_INHERIT: return print_simple_op("OP_INHERIT", offset);
 		case OP_IS: return print_simple_op("OP_IS", offset);
 		case OP_GET_SUPER_METHOD: return print_constant_op("OP_GET_SUPER_METHOD", chunk, offset, true);

@@ -612,7 +612,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		case CALL_EXPRESSION: {
 			LitCallExpression* expr = (LitCallExpression*) expression;
 			bool method = expr->callee->type == GET_EXPRESSION;
-			bool super = expr->callee->type == GET_EXPRESSION;
+			bool super = expr->callee->type == SUPER_EXPRESSION;
 
 			if (method) {
 				((LitGetExpression*) expr->callee)->ignore_emit = true;
@@ -626,18 +626,21 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				emit_expression(emitter, expr->args.values[i]);
 			}
 
-			if (method) {
-				LitGetExpression *e = (LitGetExpression *) expr->callee;
+			if (method || super) {
+				if (method) {
+					LitGetExpression *e = (LitGetExpression *) expr->callee;
 
-				emit_byte(emitter, expression->line, OP_INVOKE);
-				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
-				emit_byte(emitter, expression->line, (uint8_t) expr->args.count);
-			} else if (super) {
-				LitSuperExpression *e = (LitSuperExpression *) expr->callee;
+					emit_byte(emitter, expression->line, ((LitGetExpression*) expr->callee)->ignore_result ? OP_INVOKE_IGNORING : OP_INVOKE);
+					emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
+					emit_byte(emitter, expression->line, (uint8_t) expr->args.count);
+				} else {
+					LitSuperExpression *e = (LitSuperExpression *) expr->callee;
 
-				emit_byte(emitter, expression->line, OP_INVOKE_SUPER);
-				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(e->method)));
-				emit_byte(emitter, expression->line, (uint8_t) expr->args.count);
+					emit_bytes(emitter, expression->line, OP_GET_LOCAL, 0);
+					emit_byte(emitter, emitter->last_line, ((LitSuperExpression *) expr->callee)->ignore_result ? OP_INVOKE_SUPER_IGNORING : OP_INVOKE_SUPER);
+					emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(e->method)));
+					emit_byte(emitter, expression->line, (uint8_t) expr->args.count);
+				}
 			} else {
 				emit_bytes(emitter, expression->line, OP_CALL, (uint8_t) expr->args.count);
 			}

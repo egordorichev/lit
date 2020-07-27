@@ -208,6 +208,8 @@ typedef struct {
 
 	uint8_t* ip;
 	LitValue* slots;
+
+	bool result_ignored;
 } LitCallFrame;
 
 typedef struct sLitModule {

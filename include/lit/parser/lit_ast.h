@@ -129,9 +129,10 @@ typedef struct {
 
 	bool ignore_emit;
 	bool questionable;
+	bool ignore_result;
 } LitGetExpression;
 
-LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length, bool questionable);
+LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpression* where, const char* name, uint length, bool questionable, bool ignore_result);
 
 typedef struct {
 	LitExpression expression;
@@ -197,9 +198,10 @@ typedef struct {
 
 	LitString* method;
 	bool ignore_emit;
+	bool ignore_result;
 } LitSuperExpression;
 
-LitSuperExpression *lit_create_super_expression(LitState* state, uint line, LitString* method);
+LitSuperExpression *lit_create_super_expression(LitState* state, uint line, LitString* method, bool ignore_result);
 
 typedef struct {
 	LitExpression expression;
