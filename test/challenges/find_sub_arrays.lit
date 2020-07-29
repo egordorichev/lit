@@ -5,14 +5,13 @@ var length = input.length
 var subArrays = []
 
 for (var i = 0; i < length; i++) {
-	var a = input[i]
-	var array = [ a ]
-	var sum = a
+	var array = []
+	var sum = 0
 
-	for (var j = i + 1; j < length; j++) {
-		var b = input[j]
-		sum += b
-		array.add(b)
+	for (var j = i; j < length; j++) {
+		var value = input[j]
+		sum += value
+		array.add(value)
 
 		if (sum == 0) {
 			subArrays.add(array)
@@ -21,4 +20,4 @@ for (var i = 0; i < length; i++) {
 }
 
 print(subArrays.length) // Expected: 6
-print(subArrays[0][1]) // Expected: 4
+print(subArrays[0]) // Expected: [ 3, 4, -7 ]

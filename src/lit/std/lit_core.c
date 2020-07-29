@@ -676,7 +676,7 @@ LIT_METHOD(array_iteratorValue) {
 	return values->values[index];
 }
 
-	LIT_METHOD(array_join) {
+LIT_METHOD(array_join) {
 	LitValues* values = &AS_ARRAY(instance)->values;
 	LitString* strings[values->count];
 
@@ -702,6 +702,25 @@ LIT_METHOD(array_iteratorValue) {
 	}
 
 	return OBJECT_VALUE(lit_copy_string(vm->state, chars, length));
+}
+
+LIT_METHOD(array_clone) {
+	LitState* state = vm->state;
+	LitValues *values = &AS_ARRAY(instance)->values;
+
+	LitArray* array = lit_create_array(state);
+	LitValues* new_values = &array->values;
+
+	lit_values_ensure_size(state, new_values, values->count);
+
+	// lit_values_ensure_size sets the count to max of previous count (0 in this case) and new count, so we have to reset it
+	new_values->count = 0;
+
+	for (uint i = 0; i < values->count; i++) {
+		lit_values_write(state, new_values, values->values[i]);
+	}
+
+	return OBJECT_VALUE(array);
 }
 
 LIT_METHOD(array_toString) {
@@ -1050,6 +1069,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("iterator", array_iterator)
 		LIT_BIND_METHOD("iteratorValue", array_iteratorValue)
 		LIT_BIND_METHOD("join", array_join)
+		LIT_BIND_METHOD("clone", array_clone)
 		LIT_BIND_METHOD("toString", array_toString)
 
 		LIT_BIND_GETTER("length", array_length)
