@@ -81,63 +81,70 @@ static void print_object(LitValue value) {
 		}
 
 		case OBJECT_ARRAY: {
-			LitArray* array = AS_ARRAY(value);
-			uint size = array->values.count;
+			#ifdef LIT_MINIMIZE_CONTAINERS
+				printf("array");
+			#else
+				LitArray* array = AS_ARRAY(value);
+				uint size = array->values.count;
 
-			printf("(%u) [", size);
+				printf("(%u) [", size);
 
-			if (size > 32) {
-				printf(" (too big to be displayed) ");
-			} else if (size > 0) {
-				printf(" ");
+				if (size > 32) {
+					printf(" (too big to be displayed) ");
+				} else if (size > 0) {
+					printf(" ");
 
-				for (uint i = 0; i < size; i++) {
-					lit_print_value(array->values.values[i]);
+					for (uint i = 0; i < size; i++) {
+						lit_print_value(array->values.values[i]);
 
-					if (i + 1 < size) {
-						printf(", ");
-					} else {
-						printf(" ");
-					}
-				}
-			}
-
-			printf("]");
-			break;
-		}
-
-		case OBJECT_MAP: {
-			LitMap* map = AS_MAP(value);
-			uint size = map->values.count;
-			printf("(%u) {", size);
-			bool had_before = false;
-
-			if (size > 16) {
-				printf(" (too big to be displayed) ");
-			} else if (size > 0) {
-				for (uint i = 0; i < map->values.capacity; i++) {
-					LitTableEntry* entry = &map->values.entries[i];
-
-					if (entry->key != NULL) {
-						if (had_before) {
+						if (i + 1 < size) {
 							printf(", ");
 						} else {
 							printf(" ");
 						}
-
-						printf("\"%s\" : ", entry->key->chars);
-						lit_print_value(entry->value);
-						had_before = true;
 					}
 				}
-			}
 
-			if (had_before) {
-				printf(" }");
-			} else {
-				printf("}");
-			}
+				printf("]");
+			#endif
+			break;
+		}
 
+		case OBJECT_MAP: {
+			#ifdef LIT_MINIMIZE_CONTAINERS
+				printf("map");
+			#else
+				LitMap* map = AS_MAP(value);
+				uint size = map->values.count;
+				printf("(%u) {", size);
+				bool had_before = false;
+
+				if (size > 16) {
+					printf(" (too big to be displayed) ");
+				} else if (size > 0) {
+					for (uint i = 0; i < map->values.capacity; i++) {
+						LitTableEntry* entry = &map->values.entries[i];
+
+						if (entry->key != NULL) {
+							if (had_before) {
+								printf(", ");
+							} else {
+								printf(" ");
+							}
+
+							printf("\"%s\" : ", entry->key->chars);
+							lit_print_value(entry->value);
+							had_before = true;
+						}
+					}
+				}
+
+				if (had_before) {
+					printf(" }");
+				} else {
+					printf("}");
+				}
+			#endif
 			break;
 		}
 

@@ -1048,10 +1048,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 				bool block = stmt->body->type == BLOCK_STATEMENT;
 
-				if (!block) {
-					begin_scope(emitter);
-				}
-
 				uint local = add_local(emitter, var->name, var->length, statement->line);
 				emit_byte(emitter, emitter->last_line, OP_INVOKE);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iteratorValue")));
@@ -1059,17 +1055,19 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, local);
 
 				mark_local_initialized(emitter, local);
+				begin_scope(emitter);
 
 				if (block) {
-					LitBlockStatement* bl = (LitBlockStatement *) stmt->body;
+					LitStatements* statements = &((LitBlockStatement *) stmt->body)->statements;
 
-					for (uint i = 0; i < bl->statements.count; i++) {
-						emit_statement(emitter, bl->statements.values[i]);
+					for (uint i = 0; i < statements->count; i++) {
+						emit_statement(emitter, statements->values[i]);
 					}
 				} else {
 					emit_statement(emitter, stmt->body);
-					end_scope(emitter, emitter->last_line);
 				}
+
+				end_scope(emitter, emitter->last_line);
 
 				emit_byte(emitter, emitter->last_line, OP_POP);
 				emit_loop(emitter, start, emitter->last_line);

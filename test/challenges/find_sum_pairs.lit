@@ -15,16 +15,7 @@ for (var i = 0; i < length; i++) {
 	}
 }
 
-for (var pair in pairs) {
-	var i = pair[0]
-	var j = pair[1]
-	var a = input[i]
-	var b = input[j]
-
-	print($"{a} ({i}) + {b} ({j}) = {sum}") // Ignore
-}
-
-print(pairs.length == 2) // Expected: true
+print(pairs.length) // Expected: 2
 
 function getPairSum(id) {
 	var pair = pairs[id]

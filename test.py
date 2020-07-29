@@ -385,10 +385,10 @@ def run_suite(name):
     num_skipped = 0
     expectations = 0
 
+    walk(join(REPO_DIR, 'test/challenges'), run_script)
     walk(join(REPO_DIR, 'test/expression'), run_script)
     walk(join(REPO_DIR, 'test/statement'), run_script)
     walk(join(REPO_DIR, 'test/api'), run_script)
-    # walk(join(REPO_DIR, 'test/error'), run_script)
     print_line()
 
     if failed == 0:

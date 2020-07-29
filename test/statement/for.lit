@@ -34,3 +34,16 @@ for (var z in 0 .. 100) {
 }
 
 print(i) // Expected: 1
+
+var pairs = [
+	[ 0, 1 ],
+	[ 2, 3 ]
+]
+
+var sum = 0
+
+for (var pair in pairs) {
+	sum += pair[0] + pair[1]
+}
+
+print(sum) // Expected: 6

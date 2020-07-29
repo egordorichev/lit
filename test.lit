@@ -1,35 +1,11 @@
-var input = [ 8, 7, 2, 5, 3, 1 ]
-var sum = 10
-var length = input.length
-var pairs = []
-
-for (var i = 0; i < length; i++) {
-	var a = input[i]
-
-	for (var j = i + 1; j < length; j++) {
-		var b = input[j]
-
-		if (a + b == sum) {
-			pairs.add([ i, j ])
-		}
-	}
-}
+var pairs = [
+	[ 0, 1 ],
+	[ 2, 3 ]
+]
 
 for (var pair in pairs) {
-	var i = pair[0]
-	var j = pair[1]
-	var a = input[i]
-	var b = input[j]
+	var a = pair[0]
+	var b = pair[1]
 
-	print($"{a} ({i}) + {b} ({j}) = {sum}") // Ignore
+	print($"{a} + {b} = {a + b}")
 }
-
-print(pairs.length == 2) // Expected: true
-
-function getPairSum(id) {
-	var pair = pairs[id]
-	return input[pair[0]] + input[pair[1]]
-}
-
-print(getPairSum(0) == sum) // Expected: true
-print(getPairSum(1) == sum) // Expected: true
