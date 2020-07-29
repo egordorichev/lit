@@ -1,6 +1,7 @@
 # todo
 
 * # unary
+* print({}.clone()["b"]) doesnt parse correctly
 * print without newline
 * array.insert
 * if argument expected type doesnt match in native function, like r  equire, it will crash (cuz it still continues to operate)

@@ -24,3 +24,5 @@ for (var i = 0; i < length; i++) {
 
 print(longestArray.length) // Expected: 4
 print(longestArray) // Expected: [ -5, 5, 3, 5 ]
+
+// FIXME: implement map/array pretty printing

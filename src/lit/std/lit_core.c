@@ -812,6 +812,15 @@ LIT_METHOD(map_iteratorValue) {
 	return values->values[index];
 }
 
+LIT_METHOD(map_clone) {
+	LitState* state = vm->state;
+	LitMap* map = lit_create_map(state);
+
+	lit_table_add_all(state, &AS_MAP(instance)->values, &map->values);
+
+	return OBJECT_VALUE(map);
+}
+
 LIT_METHOD(map_toString) {
 	return OBJECT_VALUE(lit_string_format(vm->state, "Map(#)", (double) AS_MAP(instance)->values.count));
 }
@@ -1085,6 +1094,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("clear", map_clear)
 		LIT_BIND_METHOD("iterator", map_iterator)
 		LIT_BIND_METHOD("iteratorValue", map_iteratorValue)
+		LIT_BIND_METHOD("clone", map_clone)
 		LIT_BIND_METHOD("toString", map_toString)
 
 		LIT_BIND_GETTER("length", map_length)
