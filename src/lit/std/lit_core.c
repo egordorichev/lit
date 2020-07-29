@@ -676,7 +676,7 @@ LIT_METHOD(array_iteratorValue) {
 	return values->values[index];
 }
 
-LIT_METHOD(array_join) {
+	LIT_METHOD(array_join) {
 	LitValues* values = &AS_ARRAY(instance)->values;
 	LitString* strings[values->count];
 

@@ -1,3 +1,5 @@
+// Challenge from https://techiedelight.com/find-pair-with-given-sum-array/
+
 var input = [ 8, 7, 2, 5, 3, 1 ]
 var sum = 10
 var length = input.length

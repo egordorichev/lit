@@ -1,5 +1,7 @@
 # todo
 
+* # unary
+* print without newline
 * if argument expected type doesnt match in native function, like r  equire, it will crash (cuz it still continues to operate)
 * check how syncing works
 * command line args (get them in the actual lit script), command line input
