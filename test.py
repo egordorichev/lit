@@ -16,10 +16,10 @@ REPO_DIR = dirname(realpath(__file__))
 OUTPUT_EXPECT = re.compile(r'// Expected: ?(.*)')
 ERROR_EXPECT = re.compile(r'// (Error.*)')
 ERROR_LINE_EXPECT = re.compile(r'// \[((java|c) )?line (\d+)\] (Error.*)')
-RUNTIME_ERROR_EXPECT = re.compile(r'// exception: (.+)')
+RUNTIME_ERROR_EXPECT = re.compile(r'// Exception: (.+)')
 SYNTAX_ERROR_RE = re.compile(r'\[.*line (\d+)\] (Error.+)')
 STACK_TRACE_RE = re.compile(r'\[line (\d+)\]')
-NONTEST_RE = re.compile(r'// nontest')
+NONTEST_RE = re.compile(r'// Ignore')
 
 passed = 0
 failed = 0
