@@ -202,12 +202,26 @@ LIT_METHOD(random_pick) {
 			return array->values.values[value % array->values.count];
 		} else if (IS_MAP(args[0])) {
 			LitMap* map = AS_MAP(args[0]);
+			uint length = map->values.count;
 
-			if (map->key_list->values.count == 0) {
+			if (length == 0) {
 				return NULL_VALUE;
 			}
 
-			return map->key_list->values.values[value % map->key_list->values.count];
+			uint target = value % length;
+			uint index = 0;
+
+			for (uint i = 0; i < length; i++) {
+				if (map->values.entries[i].key != NULL) {
+					if (index == target) {
+						return map->values.entries[i].value;
+					}
+
+					index++;
+				}
+			}
+
+			return NULL_VALUE;
 		} else {
 			lit_runtime_error(vm, "Expected map or array as the argument");
 			return NULL_VALUE;

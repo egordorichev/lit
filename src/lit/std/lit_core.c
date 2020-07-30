@@ -24,6 +24,37 @@ LIT_METHOD(class_toString) {
 	return OBJECT_VALUE(lit_string_format(vm->state, "class @", AS_CLASS(instance)->name));
 }
 
+
+LIT_METHOD(class_iterator) {
+	LIT_ENSURE_ARGS(1)
+
+	LitClass* klass = AS_CLASS(instance);
+	int number = 0;
+
+	/*if (IS_NUMBER(args[0])) {
+		number = AS_NUMBER(args[0]);
+
+		if (number >= (int) array->values.count - 1) {
+			return NULL_VALUE;
+		}
+
+		number++;
+	}
+
+	return array->values.count == 0 ? NULL_VALUE : NUMBER_VALUE(number);*/
+}
+
+LIT_METHOD(class_iteratorValue) {
+	/*uint index = LIT_CHECK_NUMBER(0);
+	LitValues* values = &AS_CLASS(instance)->values;
+
+	if (values->count <= index) {
+		return NULL_VALUE;
+	}
+
+	return values->values[index];*/
+}
+
 LIT_METHOD(class_super) {
 	LitClass* super = NULL;
 
@@ -853,43 +884,49 @@ LIT_METHOD(map_addAll) {
 }
 
 LIT_METHOD(map_clear) {
-	LitMap* map = AS_MAP(instance);
-
-	map->values.count = 0;
-	map->key_list->values.count = 0;
-
+	AS_MAP(instance)->values.count = 0;
 	return NULL_VALUE;
 }
 
 LIT_METHOD(map_iterator) {
 	LIT_ENSURE_ARGS(1)
 
-	LitMap* map = AS_MAP(instance);
+	LitTable* table = &AS_MAP(instance)->values;
+
+	if (table->count == 0) {
+		return NULL_VALUE;
+	}
+
 	int number = 0;
 
 	if (IS_NUMBER(args[0])) {
 		number = AS_NUMBER(args[0]);
 
-		if (number >= (int) map->values.count - 1) {
+		if (number >= (int) table->capacity) {
 			return NULL_VALUE;
 		}
 
 		number++;
 	}
 
-	return map->values.count == 0 ? NULL_VALUE : NUMBER_VALUE(number);
+	for (; number < table->capacity; number++) {
+		if (table->entries[number].key != NULL) {
+			return NUMBER_VALUE(number);
+		}
+	}
+
+	return NULL_VALUE;
 }
 
 LIT_METHOD(map_iteratorValue) {
 	uint index = LIT_CHECK_NUMBER(0);
+	LitTable* table = &AS_MAP(instance)->values;
 
-	LitValues* values = &AS_MAP(instance)->key_list->values;
-
-	if (values->count <= index) {
+	if (table->capacity <= index) {
 		return NULL_VALUE;
 	}
 
-	return values->values[index];
+	return table->entries[index].value;
 }
 
 LIT_METHOD(map_clone) {
@@ -907,10 +944,6 @@ LIT_METHOD(map_toString) {
 
 LIT_METHOD(map_length) {
 	return NUMBER_VALUE(AS_MAP(instance)->values.count);
-}
-
-LIT_METHOD(map_keys) {
-	return OBJECT_VALUE(AS_MAP(instance)->key_list);
 }
 
 /*
@@ -1057,7 +1090,10 @@ LIT_NATIVE_PRIMITIVE(require) {
 void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Class")
 		LIT_BIND_METHOD("toString", class_toString)
+
 		LIT_BIND_STATIC_METHOD("toString", class_toString)
+		LIT_BIND_STATIC_METHOD("iterator", class_iterator)
+		LIT_BIND_STATIC_METHOD("iteratorValue", class_iteratorValue)
 
 		LIT_BIND_GETTER("super", class_super)
 		LIT_BIND_STATIC_GETTER("super", class_super)
@@ -1178,7 +1214,6 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("toString", map_toString)
 
 		LIT_BIND_GETTER("length", map_length)
-		LIT_BIND_GETTER("keys", map_keys)
 
 		state->map_class = klass;
 	LIT_END_CLASS()

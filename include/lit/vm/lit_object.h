@@ -289,8 +289,6 @@ LitArray* lit_create_array(LitState* state);
 typedef struct {
 	LitObject object;
 	LitTable values;
-
-	LitArray* key_list;
 } LitMap;
 
 LitMap* lit_create_map(LitState* state);
