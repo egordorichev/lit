@@ -1,0 +1,24 @@
+var string = "test " + "world"
+
+print(string) // Expected: test world
+
+print(string.toUpperCase()) // Expected: TEST WORLD
+print("48 Camels".toLowerCase()) // Expected: 48 camels
+
+print(string.contains("test")) // Expected: true
+print(string.contains("beens")) // Expected: false
+
+print(string.startsWith("te")) // Expected: true
+print(string.startsWith("est")) // Expected: false
+
+print(string.endsWith("orld")) // Expected: true
+print(string.endsWith("worl")) // Expected: false
+
+print(string.replace("t", "r")) // Expected: resr world
+print(string.substring(1, 2)) // Expected: es
+
+print(string[2 .. 5]) // Expected: st w
+print(string[0]) // Expected: t
+print(string[-2]) // Expected: l
+
+print(string.length) // Expected: 10
