@@ -232,6 +232,63 @@ LitFunction* lit_create_function(LitState* state, LitModule* module) {
 	return function;
 }
 
+
+LitValue lit_get_function_name(LitVm* vm, LitValue instance) {
+	LitString* name = NULL;
+
+	switch (OBJECT_TYPE(instance)) {
+		case OBJECT_FUNCTION: {
+			name = AS_FUNCTION(instance)->name;
+			break;
+		}
+
+		case OBJECT_CLOSURE: {
+			name = AS_CLOSURE(instance)->function->name;
+			break;
+		}
+
+		case OBJECT_FIELD: {
+			LitField* field = AS_FIELD(instance);
+
+			if (field->getter != NULL) {
+				return lit_get_function_name(vm, OBJECT_VALUE(field->getter));
+			}
+
+			return lit_get_function_name(vm, OBJECT_VALUE(field->setter));
+		}
+
+		case OBJECT_NATIVE_PRIMITIVE: {
+			name = AS_NATIVE_PRIMITIVE(instance)->name;
+			break;
+		}
+
+		case OBJECT_NATIVE_FUNCTION: {
+			name = AS_NATIVE_FUNCTION(instance)->name;
+			break;
+		}
+
+		case OBJECT_NATIVE_METHOD: {
+			name = AS_NATIVE_METHOD(instance)->name;
+			break;
+		}
+
+		case OBJECT_PRIMITIVE_METHOD: {
+			name = AS_PRIMITIVE_METHOD(instance)->name;
+			break;
+		}
+
+		default: {
+			break;
+		}
+	}
+
+	if (name == NULL) {
+		return OBJECT_VALUE(lit_string_format(vm->state, "function #", (double) (int) AS_OBJECT(instance)));
+	}
+
+	return OBJECT_VALUE(lit_string_format(vm->state, "function @", name));
+}
+
 LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot) {
 	LitUpvalue* upvalue = ALLOCATE_OBJECT(state, LitUpvalue, OBJECT_UPVALUE);
 
@@ -260,27 +317,39 @@ LitClosure* lit_create_closure(LitState* state, LitFunction* function) {
 	return closure;
 }
 
-LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunctionFn function) {
+LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunctionFn function, LitString* name) {
 	LitNativeFunction* native = ALLOCATE_OBJECT(state, LitNativeFunction, OBJECT_NATIVE_FUNCTION);
+
 	native->function = function;
+	native->name = name;
+
 	return native;
 }
 
-LitNativePrimitive* lit_create_native_primitive(LitState* state, LitNativePrimitiveFn function) {
+LitNativePrimitive* lit_create_native_primitive(LitState* state, LitNativePrimitiveFn function, LitString* name) {
 	LitNativePrimitive* native = ALLOCATE_OBJECT(state, LitNativePrimitive, OBJECT_NATIVE_PRIMITIVE);
+
 	native->function = function;
+	native->name = name;
+
 	return native;
 }
 
-LitNativeMethod* lit_create_native_method(LitState* state, LitNativeMethodFn method) {
+LitNativeMethod* lit_create_native_method(LitState* state, LitNativeMethodFn method, LitString* name) {
 	LitNativeMethod* native = ALLOCATE_OBJECT(state, LitNativeMethod, OBJECT_NATIVE_METHOD);
+
 	native->method = method;
+	native->name = name;
+
 	return native;
 }
 
-LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMethodFn method) {
+LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMethodFn method, LitString* name) {
 	LitPrimitiveMethod* native = ALLOCATE_OBJECT(state, LitPrimitiveMethod, OBJECT_PRIMITIVE_METHOD);
+
 	native->method = method;
+	native->name = name;
+
 	return native;
 }
 

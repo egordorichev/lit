@@ -1,19 +1,13 @@
-/*class Test {
+class Test {
+	static var a = 32
+
 	fn() {
 
 	}
 }
 
+var t = new Test()
+
 for (var field in Test) {
-	print(field)
-}*/
-
-var test = {
-	"a" : 32,
-	"b" : true,
-	"c" : [ true, false ]
-}
-
-for (var field in test) {
 	print(field)
 }

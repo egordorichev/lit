@@ -24,35 +24,64 @@ LIT_METHOD(class_toString) {
 	return OBJECT_VALUE(lit_string_format(vm->state, "class @", AS_CLASS(instance)->name));
 }
 
+static int table_iterator(LitTable* table, int number) {
+	if (table->count == 0) {
+		return -1;
+	}
 
-LIT_METHOD(class_iterator) {
-	LIT_ENSURE_ARGS(1)
-
-	LitClass* klass = AS_CLASS(instance);
-	int number = 0;
-
-	/*if (IS_NUMBER(args[0])) {
-		number = AS_NUMBER(args[0]);
-
-		if (number >= (int) array->values.count - 1) {
-			return NULL_VALUE;
+	if (number != -1) {
+		if (number >= (int) table->capacity) {
+			return -1;
 		}
 
 		number++;
 	}
 
-	return array->values.count == 0 ? NULL_VALUE : NUMBER_VALUE(number);*/
+	for (; number < table->capacity; number++) {
+		if (table->entries[number].key != NULL) {
+			return number;
+		}
+	}
+
+	return -1;
 }
 
-LIT_METHOD(class_iteratorValue) {
-	/*uint index = LIT_CHECK_NUMBER(0);
-	LitValues* values = &AS_CLASS(instance)->values;
-
-	if (values->count <= index) {
+static LitValue table_iterator_value(LitTable* table, int index) {
+	if (table->capacity <= index) {
 		return NULL_VALUE;
 	}
 
-	return values->values[index];*/
+	return table->entries[index].value;
+}
+
+LIT_METHOD(class_iterator) {
+	LIT_ENSURE_ARGS(1)
+
+	LitClass* klass = AS_CLASS(instance);
+	int index = args[0] == NULL_VALUE ? 0 : AS_NUMBER(args[0]);
+	int methodsCapacity = klass->methods.capacity;
+	bool fields = index >= methodsCapacity;
+
+	int value = table_iterator(fields ? &klass->static_fields : &klass->methods, fields ? index - methodsCapacity : index);
+
+	if (value == -1) {
+		if (fields) {
+			return NULL_VALUE;
+		}
+
+		index++;
+		value = table_iterator(&klass->static_fields, index - methodsCapacity);
+	}
+
+	return value == -1 ? NULL_VALUE : NUMBER_VALUE(fields ? value + methodsCapacity : value);
+}
+
+LIT_METHOD(class_iteratorValue) {
+	uint index = LIT_CHECK_NUMBER(0);
+	LitClass* klass = AS_CLASS(instance);
+	bool fields = index >= klass->methods.capacity;
+
+	return table_iterator_value(fields ? &klass->static_fields : &klass->methods, fields ? index - klass->methods.capacity : index);
 }
 
 LIT_METHOD(class_super) {
@@ -361,38 +390,12 @@ LIT_METHOD(string_length) {
  * Function
  */
 
-static LitValue get_function_name(LitVm* vm, LitValue instance) {
-	LitString* name = NULL;
-
-	switch (OBJECT_TYPE(instance)) {
-		case OBJECT_FUNCTION: {
-			name = AS_FUNCTION(instance)->name;
-			break;
-		}
-
-		case OBJECT_CLOSURE: {
-			name = AS_CLOSURE(instance)->function->name;
-			break;
-		}
-
-		default: {
-			break;
-		}
-	}
-
-	if (name == NULL) {
-		return OBJECT_CONST_STRING(vm->state, "function");
-	} else {
-		return OBJECT_VALUE(lit_string_format(vm->state, "function @", name));
-	}
-}
-
 LIT_METHOD(function_toString) {
-	return get_function_name(vm, instance);
+	return lit_get_function_name(vm, instance);
 }
 
 LIT_METHOD(function_name) {
-	return get_function_name(vm, instance);
+	return lit_get_function_name(vm, instance);
 }
 
 /*
@@ -890,43 +893,15 @@ LIT_METHOD(map_clear) {
 
 LIT_METHOD(map_iterator) {
 	LIT_ENSURE_ARGS(1)
+	int index = args[0] == NULL_VALUE ? 0 : AS_NUMBER(args[0]);
 
-	LitTable* table = &AS_MAP(instance)->values;
-
-	if (table->count == 0) {
-		return NULL_VALUE;
-	}
-
-	int number = 0;
-
-	if (IS_NUMBER(args[0])) {
-		number = AS_NUMBER(args[0]);
-
-		if (number >= (int) table->capacity) {
-			return NULL_VALUE;
-		}
-
-		number++;
-	}
-
-	for (; number < table->capacity; number++) {
-		if (table->entries[number].key != NULL) {
-			return NUMBER_VALUE(number);
-		}
-	}
-
-	return NULL_VALUE;
+	int value = table_iterator(&AS_MAP(instance)->values, index);
+	return value == -1 ? NULL_VALUE : NUMBER_VALUE(value);
 }
 
 LIT_METHOD(map_iteratorValue) {
 	uint index = LIT_CHECK_NUMBER(0);
-	LitTable* table = &AS_MAP(instance)->values;
-
-	if (table->capacity <= index) {
-		return NULL_VALUE;
-	}
-
-	return table->entries[index].value;
+	return table_iterator_value(&AS_MAP(instance)->values, index);
 }
 
 LIT_METHOD(map_clone) {

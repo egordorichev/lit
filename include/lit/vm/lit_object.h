@@ -144,6 +144,7 @@ typedef struct {
 } LitFunction;
 
 LitFunction* lit_create_function(LitState* state, LitModule* module);
+LitValue lit_get_function_name(LitVm* vm, LitValue instance);
 
 typedef struct sLitUpvalue {
 	LitObject object;
@@ -170,37 +171,45 @@ typedef LitValue (*LitNativeFunctionFn)(LitVm* vm, uint arg_count, LitValue* arg
 
 typedef struct {
 	LitObject object;
+
 	LitNativeFunctionFn function;
+	LitString* name;
 } LitNativeFunction;
 
-LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunctionFn function);
+LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunctionFn function, LitString* name);
 
 typedef bool (*LitNativePrimitiveFn)(LitVm* vm, uint arg_count, LitValue* args);
 
 typedef struct {
 	LitObject object;
+
 	LitNativePrimitiveFn function;
+	LitString* name;
 } LitNativePrimitive;
 
-LitNativePrimitive* lit_create_native_primitive(LitState* state, LitNativePrimitiveFn function);
+LitNativePrimitive* lit_create_native_primitive(LitState* state, LitNativePrimitiveFn function, LitString* name);
 
 typedef LitValue (*LitNativeMethodFn)(LitVm* vm, LitValue instance, uint arg_count, LitValue* args);
 
 typedef struct {
 	LitObject object;
+
 	LitNativeMethodFn method;
+	LitString* name;
 } LitNativeMethod;
 
-LitNativeMethod* lit_create_native_method(LitState* state, LitNativeMethodFn function);
+LitNativeMethod* lit_create_native_method(LitState* state, LitNativeMethodFn function, LitString* name);
 
 typedef bool (*LitPrimitiveMethodFn)(LitVm* vm, LitValue instance, uint arg_count, LitValue* args);
 
 typedef struct {
 	LitObject object;
+
 	LitPrimitiveMethodFn method;
+	LitString* name;
 } LitPrimitiveMethod;
 
-LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMethodFn method);
+LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMethodFn method, LitString* name);
 
 typedef struct {
 	LitFunction* function;

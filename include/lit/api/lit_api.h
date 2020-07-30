@@ -24,19 +24,19 @@
 #define LIT_END_CLASS() lit_set_global(state, klass_name, OBJECT_VALUE(klass)); \
 	}
 
-#define LIT_BIND_METHOD(name, method) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_native_method(state, method)));
-#define LIT_BIND_PRIMITIVE(name, method) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_primitive_method(state, method)));
-#define LIT_BIND_CONSTRUCTOR(method) LitNativeMethod* m = lit_create_native_method(state, method); klass->init_method = (LitObject*) m; lit_table_set(state, &klass->methods, lit_copy_string(state, "constructor", 11), OBJECT_VALUE(m));
-#define LIT_BIND_STATIC_METHOD(name, method) lit_table_set(state, &klass->static_fields, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_native_method(state, method)));
-#define LIT_BIND_STATIC_PRIMITIVE(name, method) lit_table_set(state, &klass->static_fields, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_primitive_method(state, method)));
-#define LIT_BIND_STATIC_FIELD(name, field) lit_table_set(state, &klass->static_fields, lit_copy_string(state, name, strlen(name)), field);
+#define LIT_BIND_METHOD(name, method) { LitString* nm = lit_copy_string(state, name, strlen(name)); lit_table_set(state, &klass->methods, nm, OBJECT_VALUE(lit_create_native_method(state, method, nm))); }
+#define LIT_BIND_PRIMITIVE(name, method) { LitString* nm = lit_copy_string(state, name, strlen(name)); lit_table_set(state, &klass->methods, nm, OBJECT_VALUE(lit_create_primitive_method(state, method, nm))); }
+#define LIT_BIND_CONSTRUCTOR(method) { LitString* nm = lit_copy_string(state, "constructor", 11); LitNativeMethod* m = lit_create_native_method(state, method, nm); klass->init_method = (LitObject*) m; lit_table_set(state, &klass->methods, nm, OBJECT_VALUE(m)); }
+#define LIT_BIND_STATIC_METHOD(name, method) { LitString* nm = lit_copy_string(state, name, strlen(name)); lit_table_set(state, &klass->static_fields, nm, OBJECT_VALUE(lit_create_native_method(state, method, nm))); }
+#define LIT_BIND_STATIC_PRIMITIVE(name, method) { LitString* nm = lit_copy_string(state, name, strlen(name)); lit_table_set(state, &klass->static_fields, nm, OBJECT_VALUE(lit_create_primitive_method(state, method, nm))); }
+#define LIT_BIND_STATIC_FIELD(name, field) { LitString* nm = lit_copy_string(state, name, strlen(name)); lit_table_set(state, &klass->static_fields, nm, field); }
 
-#define LIT_BIND_SETTER(name, setter) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, NULL, (LitObject*) lit_create_native_method(state, setter))));
-#define LIT_BIND_GETTER(name, getter) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, (LitObject*) lit_create_native_method(state, getter), NULL)));
-#define LIT_BIND_FIELD(name, getter, setter) lit_table_set(state, &klass->methods, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, (LitObject*) lit_create_native_method(state, getter), (LitObject*) lit_create_native_method(state, setter))));
+#define LIT_BIND_SETTER(name, setter) { LitString* nm = lit_copy_string(state, name, strlen(name)); lit_table_set(state, &klass->methods, nm, OBJECT_VALUE(lit_create_field(state, NULL, (LitObject*) lit_create_native_method(state, setter, nm)))); }
+#define LIT_BIND_GETTER(name, getter) { LitString* nm = lit_copy_string(state, name, strlen(name)); lit_table_set(state, &klass->methods, nm, OBJECT_VALUE(lit_create_field(state, (LitObject*) lit_create_native_method(state, getter, nm), NULL))); }
+#define LIT_BIND_FIELD(name, getter, setter) { LitString* nm = lit_copy_string(state, name, strlen(name)); lit_table_set(state, &klass->methods, nm, OBJECT_VALUE(lit_create_field(state, (LitObject*) lit_create_native_method(state, getter, nm), (LitObject*) lit_create_native_method(state, setter, nm)))); }
 
-#define LIT_BIND_STATIC_SETTER(name, setter) lit_table_set(state, &klass->static_fields, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, NULL, (LitObject*) lit_create_native_method(state, setter))));
-#define LIT_BIND_STATIC_GETTER(name, getter) lit_table_set(state, &klass->static_fields, lit_copy_string(state, name, strlen(name)), OBJECT_VALUE(lit_create_field(state, (LitObject*) lit_create_native_method(state, getter), NULL)));
+#define LIT_BIND_STATIC_SETTER(name, setter) { LitString* nm = lit_copy_string(state, name, strlen(name)); lit_table_set(state, &klass->static_fields, nm, OBJECT_VALUE(lit_create_field(state, NULL, (LitObject*) lit_create_native_method(state, setter, nm)))); }
+#define LIT_BIND_STATIC_GETTER(name, getter) { LitString* nm = lit_copy_string(state, name, strlen(name)); lit_table_set(state, &klass->static_fields, nm, OBJECT_VALUE(lit_create_field(state, (LitObject*) lit_create_native_method(state, getter, nm), NULL))); }
 
 void lit_init_api(LitState* state);
 void lit_free_api(LitState* state);

@@ -14,8 +14,7 @@ static void print_object(LitValue value) {
 		}
 
 		case OBJECT_FUNCTION: {
-			LitString* name = AS_FUNCTION(value)->name;
-			printf("function %s", name == NULL ? "unknown" : name->chars);
+			printf("function %s", AS_FUNCTION(value)->name->chars);
 			break;
 		}
 
@@ -24,15 +23,23 @@ static void print_object(LitValue value) {
 			break;
 		}
 
-		case OBJECT_NATIVE_PRIMITIVE:
-		case OBJECT_NATIVE_FUNCTION: {
-			printf("native function");
+		case OBJECT_NATIVE_PRIMITIVE: {
+			printf("function %s", AS_NATIVE_PRIMITIVE(value)->name->chars);
 			break;
 		}
 
-		case OBJECT_PRIMITIVE_METHOD:
+		case OBJECT_NATIVE_FUNCTION: {
+			printf("function %s", AS_NATIVE_FUNCTION(value)->name->chars);
+			break;
+		}
+
+		case OBJECT_PRIMITIVE_METHOD: {
+			printf("function %s", AS_PRIMITIVE_METHOD(value)->name->chars);
+			break;
+		}
+
 		case OBJECT_NATIVE_METHOD: {
-			printf("native method");
+			printf("function %s", AS_NATIVE_METHOD(value)->name->chars);
 			break;
 		}
 
@@ -69,15 +76,8 @@ static void print_object(LitValue value) {
 		}
 
 		case OBJECT_BOUND_METHOD: {
-			LitValue method = AS_BOUND_METHOD(value)->method;
-
-			if (IS_FUNCTION(method)) {
-				printf("method %s", AS_FUNCTION(method)->name->chars);
-			} else {
-				printf("native method");
-			}
-
-			break;
+			lit_print_value(AS_BOUND_METHOD(value)->method);
+			return;
 		}
 
 		case OBJECT_ARRAY: {

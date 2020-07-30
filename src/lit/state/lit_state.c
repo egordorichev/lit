@@ -116,6 +116,7 @@ LitClass* lit_get_class_for(LitState* state, LitValue value) {
 			case OBJECT_STRING: return state->string_class;
 			case OBJECT_USERDATA: return state->object_class;
 
+			case OBJECT_FIELD:
 			case OBJECT_FUNCTION:
 			case OBJECT_CLOSURE:
 			case OBJECT_NATIVE_FUNCTION:

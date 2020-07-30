@@ -203,6 +203,7 @@ LIT_METHOD(random_pick) {
 		} else if (IS_MAP(args[0])) {
 			LitMap* map = AS_MAP(args[0]);
 			uint length = map->values.count;
+			uint capacity = map->values.capacity;
 
 			if (length == 0) {
 				return NULL_VALUE;
@@ -211,7 +212,7 @@ LIT_METHOD(random_pick) {
 			uint target = value % length;
 			uint index = 0;
 
-			for (uint i = 0; i < length; i++) {
+			for (uint i = 0; i < capacity; i++) {
 				if (map->values.entries[i].key != NULL) {
 					if (index == target) {
 						return map->values.entries[i].value;
