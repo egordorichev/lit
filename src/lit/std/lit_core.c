@@ -616,7 +616,9 @@ static int indexOf(LitArray* array, LitValue value) {
 
 LIT_METHOD(array_indexOf) {
 	LIT_ENSURE_ARGS(1)
-	return NUMBER_VALUE(indexOf(AS_ARRAY(instance), args[0]));
+
+	int index = indexOf(AS_ARRAY(instance), args[0]);
+	return index == -1 ? NULL_VALUE : NUMBER_VALUE(index);
 }
 
 static LitValue removeAt(LitArray* array, uint index) {
