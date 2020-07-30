@@ -619,21 +619,28 @@ LIT_METHOD(array_indexOf) {
 	return NUMBER_VALUE(indexOf(AS_ARRAY(instance), args[0]));
 }
 
-static void removeAt(LitArray* array, uint index) {
+static LitValue removeAt(LitArray* array, uint index) {
 	LitValues* values = &array->values;
 	uint count = values->count;
 
 	if (index >= count) {
-		return;
-	} else if (index == count - 1) {
-		values->values[count - 1] = NULL_VALUE;
+		return NULL_VALUE;
+	}
+
+	LitValue value = values->values[index];
+
+	if (index == count - 1) {
+		values->values[index] = NULL_VALUE;
 	} else {
-		for (uint i = count - 2; i <= index; i++) {
+		for (uint i = index; i < values->count - 1; i++) {
 			values->values[i] = values->values[i + 1];
 		}
+
+		values->values[count - 1] = NULL_VALUE;
 	}
 
 	values->count--;
+	return value;
 }
 
 LIT_METHOD(array_remove) {
@@ -643,7 +650,7 @@ LIT_METHOD(array_remove) {
 	int index = indexOf(array, args[0]);
 
 	if (index != -1) {
-		removeAt(array, (uint) index);
+		return removeAt(array, (uint) index);
 	}
 
 	return NULL_VALUE;
@@ -656,8 +663,7 @@ LIT_METHOD(array_removeAt) {
 		return NULL_VALUE;
 	}
 
-	removeAt(AS_ARRAY(instance), (uint) index);
-	return NULL_VALUE;
+	return removeAt(AS_ARRAY(instance), (uint) index);
 }
 
 LIT_METHOD(array_contains) {

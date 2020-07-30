@@ -1,0 +1,35 @@
+// Challenge from https://techiedelight.com/inplace-merge-two-sorted-arrays/
+
+var x = [ 1, 4, 7, 8, 10 ]
+var y = [ 2, 3, 9 ]
+
+// Just to make sure this alg is valid for all given sets
+if (x.length < y.length) {
+	var tmp = x
+	x = y
+	y = tmp
+}
+
+var xLength = x.length
+var yLength = y.length
+var yIndex = 0
+
+for (var i = 0; i < xLength || yIndex < yLength; i++) {
+	var value = y[yIndex]
+
+	if (x[i] > value) {
+		x.insert(i, value)
+		yIndex++
+	}
+}
+
+y.clear()
+
+var index = x.length - yLength
+
+for (var i in 0 .. yLength - 1) {
+	y.add(x.removeAt(index))
+}
+
+print(x) // Expected: [ 1, 2, 3, 4, 7 ]
+print(y) // Expected: [ 8, 9, 10 ]
