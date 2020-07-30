@@ -1,0 +1,26 @@
+var input = [ 5, 6, -5, 5, 3, 5, 3, -2, 0 ]
+var length = input.length
+var expectedSum = 8
+
+var longestArray = []
+var maxLength = 0
+
+for (var i = 0; i < length; i++) {
+	var array = []
+	var sum = 0
+
+	for (var j = i; j < length; j++) {
+		var value = input[j]
+
+		array.add(value)
+		sum += value
+
+		if (sum == expectedSum && array.length > maxLength) {
+			longestArray = array.clone()
+			maxLength = array.length
+		}
+	}
+}
+
+print(longestArray.length) // Expected: 4
+print(longestArray) // Expected: [ -5, 5, 3, 5 ]
