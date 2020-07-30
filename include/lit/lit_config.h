@@ -22,6 +22,7 @@
 #define LIT_CALL_FRAMES_MAX 32
 #define LIT_STACK_MAX (LIT_CALL_FRAMES_MAX * 8)
 #define LIT_ROOT_MAX 10
+#define LIT_CONTAINER_OUTPUT_MAX 10
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 #define LIT_OS_WINDOWS

@@ -707,7 +707,6 @@ LIT_METHOD(array_join) {
 LIT_METHOD(array_clone) {
 	LitState* state = vm->state;
 	LitValues *values = &AS_ARRAY(instance)->values;
-
 	LitArray* array = lit_create_array(state);
 	LitValues* new_values = &array->values;
 
@@ -724,7 +723,56 @@ LIT_METHOD(array_clone) {
 }
 
 LIT_METHOD(array_toString) {
-	return OBJECT_VALUE(lit_string_format(vm->state, "Array(#)", (double) AS_ARRAY(instance)->values.count));
+	LitValues* values = &AS_ARRAY(instance)->values;
+	LitState* state = vm->state;
+
+	if (values->count == 0) {
+		return OBJECT_CONST_STRING(state, "[]");
+	}
+
+	bool has_more = values->count > LIT_CONTAINER_OUTPUT_MAX;
+	uint value_amount = has_more ? LIT_CONTAINER_OUTPUT_MAX : values->count;
+	LitString* values_converted[value_amount];
+
+	for (uint i = 0; i < value_amount; i++) {
+		values_converted[i] = lit_to_string(state, values->values[(has_more && i == value_amount - 1) ? values->count - 1 : i]);
+	}
+
+	// "[ a, b ... n ]"
+
+	uint string_length = 3; // "[ ]"
+
+	if (has_more) {
+		string_length += 3;
+	}
+
+	for (uint i = 0; i < value_amount; i++) {
+		string_length += values_converted[i]->length + (i == value_amount - 1 ? 1 : 2);
+	}
+
+	char buffer[string_length + 1];
+	memcpy(buffer, "[ ", 2);
+
+	uint buffer_index = 2;
+
+	for (uint i = 0; i < value_amount; i++) {
+		LitString* part = values_converted[i];
+
+		memcpy(&buffer[buffer_index], part->chars, part->length);
+		buffer_index += part->length;
+
+		if (has_more && i == value_amount - 2) {
+			memcpy(&buffer[buffer_index], " ... ", 5);
+			buffer_index += 5;
+		} else {
+			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " ]" : ", ", 2);
+			buffer_index += 2;
+		}
+	}
+
+	buffer[string_length] = '\0';
+
+	return OBJECT_VALUE(lit_copy_string(vm->state, buffer, string_length));
 }
 
 LIT_METHOD(array_length) {
