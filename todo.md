@@ -4,7 +4,6 @@
 * check if method overload via instance["+"] and class["+"] works?
 * print({}.clone()["b"]) doesnt parse correctly
 * print without newline
-* array.insert
 * map pretty printing
 * if argument expected type doesnt match in native function, like r  equire, it will crash (cuz it still continues to operate)
 * check how syncing works

@@ -1,4 +1,4 @@
-// Challenge from https://techiedelight.com/check-subarray-with-0-sum-exists-not/
+// Challenge from https://techiedelight.com/find-maximum-length-sub-array-having-given-sum/
 
 var input = [ 3, 4, -7, 3, 1, 3, 1, -4, -2, -2 ]
 var length = input.length

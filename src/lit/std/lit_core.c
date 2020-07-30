@@ -555,10 +555,34 @@ LIT_METHOD(array_subscript) {
 
 LIT_METHOD(array_add) {
 	LIT_ENSURE_ARGS(1)
+	lit_values_write(vm->state, &AS_ARRAY(instance)->values, args[0]);
 
-	LitArray* array = AS_ARRAY(instance);
-	lit_values_write(vm->state, &array->values, args[0]);
+	return NULL_VALUE;
+}
 
+LIT_METHOD(array_insert) {
+	LIT_ENSURE_ARGS(2)
+
+	LitValues* values = &AS_ARRAY(instance)->values;
+	int index = LIT_CHECK_NUMBER(0);
+
+	if (index < 0) {
+		index = fmax(0, values->count + index);
+	}
+
+	LitValue value = args[1];
+
+	if (values->count <= index) {
+		lit_values_ensure_size(vm->state, values, index + 1);
+	} else {
+		lit_values_ensure_size(vm->state, values, values->count + 1);
+
+		for (uint i = values->count - 1; i > index; i--) {
+			values->values[i] = values->values[i - 1];
+		}
+	}
+
+	values->values[index] = value;
 	return NULL_VALUE;
 }
 
@@ -1113,9 +1137,9 @@ void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Array")
 		LIT_INHERIT_CLASS(state->object_class)
 
-		// todo: insert
 		LIT_BIND_METHOD("[]", array_subscript)
 		LIT_BIND_METHOD("add", array_add)
+		LIT_BIND_METHOD("insert", array_insert)
 		LIT_BIND_METHOD("slice", array_slice)
 		LIT_BIND_METHOD("addAll", array_addAll)
 		LIT_BIND_METHOD("remove", array_remove)

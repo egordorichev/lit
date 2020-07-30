@@ -1,1 +1,27 @@
-print([ 4, true, 32, 18, "test" ])
+var x = [ 1, 4, 7, 8, 10 ]
+x.insert(7, "test")
+
+/*
+var y = [ 2, 3, 9 ]
+
+// Just to make sure this alg is valid for all given sets
+if (x.length < y.length) {
+	var tmp = x
+	x = y
+	y = tmp
+}
+
+var xLength = x.length
+var yLength = y.length
+var yIndex = 0
+
+for (var i = 0; i < yLength; i++) {
+	var value = y[yIndex]
+
+	if (x[i] > value) {
+		x.insert(i, value)
+		yIndex++
+	}
+}*/
+
+print(x)
