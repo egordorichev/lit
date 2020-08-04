@@ -158,6 +158,38 @@ LIT_METHOD(object_subscript) {
 	return NULL_VALUE;
 }
 
+LIT_METHOD(object_iterator) {
+	LIT_ENSURE_ARGS(1)
+
+	LitInstance* self = AS_INSTANCE(instance);
+	int index = args[0] == NULL_VALUE ? 0 : AS_NUMBER(args[0]);
+	uint methodsCapacity = self->klass->methods.capacity;
+	bool fields = index >= methodsCapacity;
+
+	int value = table_iterator(fields ? &self->fields : &self->klass->methods, fields ? index - methodsCapacity : index);
+
+	if (value == -1) {
+		if (fields) {
+			return NULL_VALUE;
+		}
+
+		index++;
+		fields = true;
+		value = table_iterator(&self->fields, index - methodsCapacity);
+	}
+
+	return value == -1 ? NULL_VALUE : NUMBER_VALUE(fields ? value + methodsCapacity : value);
+}
+
+LIT_METHOD(object_iteratorValue) {
+	uint index = LIT_CHECK_NUMBER(0);
+	LitInstance* self = AS_INSTANCE(instance);
+	uint methodsCapacity = self->klass->methods.capacity;
+	bool fields = index >= methodsCapacity;
+
+	return table_iterator_key(fields ? &self->fields : &self->klass->methods, fields ? index - methodsCapacity : index);
+}
+
 /*
  * Number
  */
@@ -1084,6 +1116,8 @@ void lit_open_core_library(LitState* state) {
 
 		LIT_BIND_METHOD("toString", object_toString)
 		LIT_BIND_METHOD("[]", object_subscript)
+		LIT_BIND_METHOD("iterator", object_iterator)
+		LIT_BIND_METHOD("iteratorValue", object_iteratorValue)
 		LIT_BIND_GETTER("class", object_class)
 
 		state->object_class = klass;

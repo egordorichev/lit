@@ -1,8 +1,15 @@
-var map = {
-	"a" : 32,
-	"b" : true
+class Test {
+	static var a = 32
+
+	fn() {
+
+	}
 }
 
-for (var k in map) {
-	print($"{k} = {map[k]}")
+var t = new Test()
+
+t.awesome = "test"
+
+for (var field in t) {
+	print($"{field} = {t[field]}")
 }
