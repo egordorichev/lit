@@ -5,8 +5,7 @@
 #define LIT_VERSION_MINOR 1
 #define LIT_VERSION_STRING "0.1"
 
-#define RELEASE
-// #define TESTING
+#define TESTING
 
 #ifndef RELEASE
 #define LIT_TRACE_EXECUTION

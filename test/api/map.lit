@@ -1,1 +1,29 @@
-print({ "a" : 32 }) // Expected: { a : 32 }
+var map = { "a" : 32, "b" : true }
+
+print(map) // Expected: { a : 32, b : true }
+print(map["b"]) // Expected: true
+print(map.length) // Expected: 2
+
+map["b"] = 48
+
+print(map["b"]) // Expected: 48
+print(map.length) // Expected: 2
+
+map["test"] = "whatever"
+
+print(map["test"]) // Expected: whatever
+print(map.length) // Expected: 3
+
+map.addAll({
+ "z" : 128,
+ "alpha" : 243
+})
+
+print(map.length) // Expected: 5
+print(map["z"]) // Expected: 128
+
+map.clear()
+print(map) // Expected: {}
+print(map.length) // Expected: 0
+
+print({ "a" : "test" }.clone()) // Expected: { a : test }

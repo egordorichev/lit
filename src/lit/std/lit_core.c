@@ -1328,7 +1328,6 @@ void lit_open_core_library(LitState* state) {
 
 		state->array_class = klass;
 	LIT_END_CLASS()
-
 	LIT_BEGIN_CLASS("Map")
 		LIT_INHERIT_CLASS(state->object_class)
 
