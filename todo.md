@@ -1,7 +1,6 @@
 # todo
 
 * # unary
-* print({}.clone()["b"]) doesnt parse correctly
 * print without newline
 * map pretty printing
 * if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)

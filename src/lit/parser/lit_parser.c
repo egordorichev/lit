@@ -975,8 +975,6 @@ static LitStatement* parse_statement(LitParser* parser) {
 		return parse_function(parser);
 	} else if (match(parser, TOKEN_RETURN)) {
 		return parse_return(parser);
-	} else if (match(parser, TOKEN_LEFT_BRACE)) {
-		return parse_block(parser);
 	}
 
 	LitExpression* expression = parse_expression(parser);

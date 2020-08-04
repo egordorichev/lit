@@ -1,12 +1,1 @@
-class Test {
-
-}
-
-Test["+"] = (value) => {
-	return this.prop + value
-}
-
-var t = new Test()
-t.prop = 32
-
-print(t + 2)
+{}.clone()["+"]
