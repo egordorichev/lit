@@ -421,11 +421,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		RETURN_ERROR() \
 	}
 
-#define INVOKE_FROM_CLASS(klass, method_name, arg_count, error, stat, ignoring) \
+	// && ( || )
+
+#define INVOKE_FROM_CLASS_ADVANCED(zklass, method_name, arg_count, error, stat, ignoring, callee) \
 	LitValue method; \
-	if (lit_table_get(&klass->stat, method_name, &method)) { \
+	if ((IS_INSTANCE(callee) && (lit_table_get(&AS_INSTANCE(callee)->fields, method_name, &method) || lit_table_get(&AS_INSTANCE(callee)->klass->static_fields, method_name, &method))) || lit_table_get(&zklass->stat, method_name, &method)) { \
 		if (ignoring) { \
-			LitValue callee = PEEK(arg_count + 1); \
 			if (call_value(vm, method, arg_count)) { \
 				RECOVER_STATE() \
 				frame->result_ignored = true; \
@@ -437,12 +438,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		} \
 	} else { \
 		if (error) { \
-			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars) \
+			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, zklass->name->chars) \
 		} \
 	} \
 	if (error) { \
 		continue; \
 	} \
+
+#define INVOKE_FROM_CLASS(klass, method_name, arg_count, error, stat, ignoring) INVOKE_FROM_CLASS_ADVANCED(klass, method_name, arg_count, error, stat, ignoring, PEEK(arg_count + 1))
 
 #define INVOKE_METHOD(instance, method_name, arg_count) \
 	LitClass* klass = lit_get_class_for(state, instance); \
@@ -450,7 +453,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		RUNTIME_ERROR("Only instances and classes have methods") \
 	} \
 	WRITE_FRAME() \
-	INVOKE_FROM_CLASS(klass, CONST_STRING(state, method_name), arg_count, true, methods, false) \
+	INVOKE_FROM_CLASS_ADVANCED(klass, CONST_STRING(state, method_name), arg_count, true, methods, false, instance) \
 	READ_FRAME()
 
 #define BINARY_OP(type, op, op_string) \
@@ -1296,6 +1299,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #undef RUNTIME_ERROR
 #undef INVOKE_METHOD
 #undef INVOKE_FROM_CLASS
+#undef INVOKE_FROM_CLASS_ADVANCED
 #undef DROP_MULTIPLE
 #undef PUSH
 #undef DROP

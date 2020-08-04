@@ -764,9 +764,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		}
 
 		case THIS_EXPRESSION: {
-			if (emitter->class_name == NULL) {
-				error(emitter, expression->line, ERROR_THIS_MISSUSE, "outside of methods");
-			} else if (emitter->compiler->type == FUNCTION_STATIC_METHOD) {
+			if (emitter->compiler->type == FUNCTION_STATIC_METHOD) {
 				error(emitter, expression->line, ERROR_THIS_MISSUSE, "in static methods");
 			}
 
@@ -775,9 +773,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		}
 
 		case SUPER_EXPRESSION: {
-			if (emitter->class_name == NULL) {
-				error(emitter, expression->line, ERROR_SUPER_MISSUSE, "outside of methods");
-			} else if (emitter->compiler->type == FUNCTION_STATIC_METHOD) {
+			if (emitter->compiler->type == FUNCTION_STATIC_METHOD) {
 				error(emitter, expression->line, ERROR_SUPER_MISSUSE, "in static methods");
 			} else if (!emitter->class_has_super) {
 				error(emitter, expression->line, ERROR_NO_SUPER, emitter->class_name->chars);

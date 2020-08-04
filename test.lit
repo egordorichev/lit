@@ -1,15 +1,12 @@
 class Test {
-	static var a = 32
 
-	fn() {
+}
 
-	}
+Test["+"] = (value) => {
+	return this.prop + value
 }
 
 var t = new Test()
+t.prop = 32
 
-t.awesome = "test"
-
-for (var field in t) {
-	print($"{field} = {t[field]}")
-}
+print(t + 2)

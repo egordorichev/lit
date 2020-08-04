@@ -102,6 +102,38 @@ LIT_METHOD(class_super) {
 	return OBJECT_VALUE(super);
 }
 
+LIT_METHOD(class_subscript) {
+	LitClass* klass = AS_CLASS(instance);
+
+	if (arg_count == 2) {
+		if (!IS_STRING(args[0])) {
+			lit_runtime_error(vm, "Class index must be a string");
+			return NULL_VALUE;
+		}
+
+		lit_table_set(vm->state, &klass->static_fields, AS_STRING(args[0]), args[1]);
+		return args[1];
+	}
+
+	if (!IS_STRING(args[0])) {
+		lit_runtime_error(vm, "Class index must be a string");
+		return NULL_VALUE;
+	}
+
+	LitValue value;
+
+	if (lit_table_get(&klass->static_fields, AS_STRING(args[0]), &value)) {
+		return value;
+	}
+
+	if (lit_table_get(&klass->methods, AS_STRING(args[0]), &value)) {
+		return value;
+	}
+
+	return NULL_VALUE;
+}
+
+
 LIT_METHOD(class_name) {
 	return OBJECT_VALUE(AS_CLASS(instance)->name);
 }
@@ -137,7 +169,7 @@ LIT_METHOD(object_subscript) {
 	}
 
 	if (!IS_STRING(args[0])) {
-		lit_runtime_error(vm, "Map index must be a string");
+		lit_runtime_error(vm, "Object index must be a string");
 		return NULL_VALUE;
 	}
 
@@ -1099,6 +1131,7 @@ LIT_NATIVE_PRIMITIVE(require) {
 void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Class")
 		LIT_BIND_METHOD("toString", class_toString)
+		LIT_BIND_METHOD("[]", class_subscript)
 
 		LIT_BIND_STATIC_METHOD("toString", class_toString)
 		LIT_BIND_STATIC_METHOD("iterator", class_iterator)

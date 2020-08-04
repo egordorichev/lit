@@ -1,7 +1,6 @@
 # todo
 
 * # unary
-* check if method overload via instance["+"] and class["+"] works?
 * print({}.clone()["b"]) doesnt parse correctly
 * print without newline
 * map pretty printing
