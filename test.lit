@@ -1,2 +1,8 @@
-print("test", "")
-print("awesome")
+print({
+	"a" : true,
+	"b" : 32,
+	"c" : -1,
+	"d" : [ 32, 48, 1024 ],
+	"e" : "test",
+	"f" : 48
+})

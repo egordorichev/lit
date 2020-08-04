@@ -1,7 +1,6 @@
 # todo
 
 * # unary
-* map pretty printing
 * if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)
 * check how syncing works
 * command line args (get them in the actual lit script), command line input

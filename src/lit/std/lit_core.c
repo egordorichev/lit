@@ -866,12 +866,6 @@ LIT_METHOD(array_toString) {
 	uint value_amount = has_more ? LIT_CONTAINER_OUTPUT_MAX : values->count;
 	LitString* values_converted[value_amount];
 
-	for (uint i = 0; i < value_amount; i++) {
-		values_converted[i] = lit_to_string(state, values->values[(has_more && i == value_amount - 1) ? values->count - 1 : i]);
-	}
-
-	// "[ a, b ... n ]"
-
 	uint string_length = 3; // "[ ]"
 
 	if (has_more) {
@@ -879,7 +873,10 @@ LIT_METHOD(array_toString) {
 	}
 
 	for (uint i = 0; i < value_amount; i++) {
-		string_length += values_converted[i]->length + (i == value_amount - 1 ? 1 : 2);
+		LitString* value = lit_to_string(state, values->values[(has_more && i == value_amount - 1) ? values->count - 1 : i]);
+
+		values_converted[i] = value;
+		string_length += value->length + (i == value_amount - 1 ? 1 : 2);
 	}
 
 	char buffer[string_length + 1];
@@ -903,7 +900,6 @@ LIT_METHOD(array_toString) {
 	}
 
 	buffer[string_length] = '\0';
-
 	return OBJECT_VALUE(lit_copy_string(vm->state, buffer, string_length));
 }
 
@@ -980,7 +976,72 @@ LIT_METHOD(map_clone) {
 }
 
 LIT_METHOD(map_toString) {
-	return OBJECT_VALUE(lit_string_format(vm->state, "Map(#)", (double) AS_MAP(instance)->values.count));
+	LitState* state = vm->state;
+	LitTable* values = &AS_MAP(instance)->values;
+
+	if (values->count == 0) {
+		return OBJECT_CONST_STRING(state, "{}");
+	}
+
+	bool has_more = values->count > LIT_CONTAINER_OUTPUT_MAX;
+	uint value_amount = has_more ? LIT_CONTAINER_OUTPUT_MAX : values->count;
+
+	LitString* values_converted[value_amount];
+	LitString* keys[value_amount];
+	uint string_length = 3;
+
+	if (has_more) {
+		string_length += 6;
+	}
+
+	uint i = 0;
+	uint index = 0;
+
+	do {
+		LitTableEntry* entry = &values->entries[index++];
+
+		if (entry->key != NULL) {
+			LitString* value = lit_to_string(state, entry->value);
+
+			values_converted[i] = value;
+			keys[i] = entry->key;
+			string_length += entry->key->length + 3 + value->length + (i == value_amount - 1 ? 2 : 3);
+
+			i++;
+		}
+	} while (i < value_amount);
+
+	char buffer[string_length + 1];
+	memcpy(buffer, "{\n", 2);
+
+	uint buffer_index = 2;
+
+	for (i = 0; i < value_amount; i++) {
+		LitString *key = keys[i];
+		LitString *value = values_converted[i];
+
+		buffer[buffer_index++] = '\t';
+
+		memcpy(&buffer[buffer_index], key->chars, key->length);
+		buffer_index += key->length;
+
+		memcpy(&buffer[buffer_index], " : ", 3);
+		buffer_index += 3;
+
+		memcpy(&buffer[buffer_index], value->chars, value->length);
+		buffer_index += value->length;
+
+		if (has_more && i == value_amount - 1) {
+			memcpy(&buffer[buffer_index], ",\n\t...\n}", 8);
+			buffer_index += 8;
+		} else {
+			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? "\n}" : ",\n", 2);
+			buffer_index += 2;
+		}
+	}
+
+	buffer[string_length] = '\0';
+	return OBJECT_VALUE(lit_copy_string(vm->state, buffer, string_length));
 }
 
 LIT_METHOD(map_length) {
