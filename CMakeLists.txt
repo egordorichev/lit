@@ -19,7 +19,7 @@ endif()
 IF(DEFINE_TEST)
  MESSAGE("Adding Testing flag...")
  ADD_DEFINITIONS(-DTESTING)
-ELSE
+ELSE()
  MESSAGE("Adding Release flag...")
  ADD_DEFINITIONS(-DRELEASE)
 ENDIF(DEFINE_TEST)
