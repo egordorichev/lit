@@ -389,6 +389,7 @@ def run_suite(name):
     walk(join(REPO_DIR, 'test/expression'), run_script)
     walk(join(REPO_DIR, 'test/statement'), run_script)
     walk(join(REPO_DIR, 'test/api'), run_script)
+    walk(join(REPO_DIR, 'test/examples'), run_script)
     print_line()
 
     if failed == 0:
