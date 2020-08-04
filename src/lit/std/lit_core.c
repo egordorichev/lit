@@ -46,12 +46,12 @@ static int table_iterator(LitTable* table, int number) {
 	return -1;
 }
 
-static LitValue table_iterator_value(LitTable* table, int index) {
+static LitValue table_iterator_key(LitTable* table, int index) {
 	if (table->capacity <= index) {
 		return NULL_VALUE;
 	}
 
-	return table->entries[index].value;
+	return OBJECT_VALUE(table->entries[index].key);
 }
 
 LIT_METHOD(class_iterator) {
@@ -59,7 +59,7 @@ LIT_METHOD(class_iterator) {
 
 	LitClass* klass = AS_CLASS(instance);
 	int index = args[0] == NULL_VALUE ? 0 : AS_NUMBER(args[0]);
-	int methodsCapacity = klass->methods.capacity;
+	uint methodsCapacity = klass->methods.capacity;
 	bool fields = index >= methodsCapacity;
 
 	int value = table_iterator(fields ? &klass->static_fields : &klass->methods, fields ? index - methodsCapacity : index);
@@ -70,6 +70,7 @@ LIT_METHOD(class_iterator) {
 		}
 
 		index++;
+		fields = true;
 		value = table_iterator(&klass->static_fields, index - methodsCapacity);
 	}
 
@@ -79,9 +80,10 @@ LIT_METHOD(class_iterator) {
 LIT_METHOD(class_iteratorValue) {
 	uint index = LIT_CHECK_NUMBER(0);
 	LitClass* klass = AS_CLASS(instance);
-	bool fields = index >= klass->methods.capacity;
+	uint methodsCapacity = klass->methods.capacity;
+	bool fields = index >= methodsCapacity;
 
-	return table_iterator_value(fields ? &klass->static_fields : &klass->methods, fields ? index - klass->methods.capacity : index);
+	return table_iterator_key(fields ? &klass->static_fields : &klass->methods, fields ? index - methodsCapacity : index);
 }
 
 LIT_METHOD(class_super) {
@@ -901,7 +903,7 @@ LIT_METHOD(map_iterator) {
 
 LIT_METHOD(map_iteratorValue) {
 	uint index = LIT_CHECK_NUMBER(0);
-	return table_iterator_value(&AS_MAP(instance)->values, index);
+	return table_iterator_key(&AS_MAP(instance)->values, index);
 }
 
 LIT_METHOD(map_clone) {
