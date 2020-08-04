@@ -5,15 +5,24 @@
 #define LIT_VERSION_MINOR 1
 #define LIT_VERSION_STRING "0.1"
 
-#define TEST
+#define RELEASE
+// #define TESTING
 
-#ifndef TEST
+#ifndef RELEASE
 #define LIT_TRACE_EXECUTION
 #define LIT_TRACE_STACK
 // #define LIT_MINIMIZE_CONTAINERS
 // #define LIT_TRACE_CHUNK
 // #define LIT_STRESS_TEST_GC
 // #define LIT_LOG_GC
+#endif
+
+#ifdef TESTING
+// So that we can actually test the map contents with a single-line expression
+#define SINGLE_LINE_MAPS
+#define SINGLE_LINE_MAPS_ENABLED true
+#else
+#define SINGLE_LINE_MAPS_ENABLED false
 #endif
 
 #define LIT_MAX_INTERPOLATION_NESTING 4

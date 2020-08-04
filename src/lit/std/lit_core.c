@@ -991,7 +991,7 @@ LIT_METHOD(map_toString) {
 	uint string_length = 3;
 
 	if (has_more) {
-		string_length += 6;
+		string_length += SINGLE_LINE_MAPS_ENABLED ? 5 : 6;
 	}
 
 	uint i = 0;
@@ -1005,14 +1005,24 @@ LIT_METHOD(map_toString) {
 
 			values_converted[i] = value;
 			keys[i] = entry->key;
-			string_length += entry->key->length + 3 + value->length + (i == value_amount - 1 ? 2 : 3);
+			string_length += entry->key->length + 3 + value->length +
+				#ifdef SINGLE_LINE_MAPS
+					(i == value_amount - 1 ? 1 : 2);
+				#else
+					(i == value_amount - 1 ? 2 : 3);
+				#endif
 
 			i++;
 		}
 	} while (i < value_amount);
 
 	char buffer[string_length + 1];
-	memcpy(buffer, "{\n", 2);
+
+	#ifdef SINGLE_LINE_MAPS
+		memcpy(buffer, "{ ", 2);
+	#else
+		memcpy(buffer, "{\n", 2);
+	#endif
 
 	uint buffer_index = 2;
 
@@ -1020,7 +1030,9 @@ LIT_METHOD(map_toString) {
 		LitString *key = keys[i];
 		LitString *value = values_converted[i];
 
-		buffer[buffer_index++] = '\t';
+		#ifndef SINGLE_LINE_MAPS
+			buffer[buffer_index++] = '\t';
+		#endif
 
 		memcpy(&buffer[buffer_index], key->chars, key->length);
 		buffer_index += key->length;
@@ -1032,10 +1044,19 @@ LIT_METHOD(map_toString) {
 		buffer_index += value->length;
 
 		if (has_more && i == value_amount - 1) {
-			memcpy(&buffer[buffer_index], ",\n\t...\n}", 8);
+			#ifdef SINGLE_LINE_MAPS
+				memcpy(&buffer[buffer_index], ", ... }", 7);
+			#else
+				memcpy(&buffer[buffer_index], ",\n\t...\n}", 8);
+			#endif
 			buffer_index += 8;
 		} else {
-			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? "\n}" : ",\n", 2);
+			#ifdef SINGLE_LINE_MAPS
+				memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " }" : ", ", 2);
+			#else
+				memcpy(&buffer[buffer_index], (i == value_amount - 1) ? "\n}" : ",\n", 2);
+			#endif
+
 			buffer_index += 2;
 		}
 	}
