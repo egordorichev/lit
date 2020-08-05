@@ -207,12 +207,19 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 	return result;
 }
 
-LitInterpretResult lit_interpret_file(LitState* state, const char* file_name) {
+LitInterpretResult lit_interpret_file(LitState* state, char* file_name) {
 	const char* source = lit_read_file(file_name);
 
 	if (source == NULL) {
 		lit_error(state, RUNTIME_ERROR, "Failed top open file '%s'", file_name);
 		return INTERPRET_RUNTIME_FAIL;
+	}
+
+	int name_length = strlen(file_name);
+
+	// Check, if our file_name ends with .lit, and remove it
+	if (name_length > 4 && !strcmp(file_name + name_length - 4, ".lit")) {
+		file_name[name_length - 4] = '\0';
 	}
 
 	LitInterpretResult result = lit_interpret(state, file_name, source);

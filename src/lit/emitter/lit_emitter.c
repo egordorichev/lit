@@ -1113,8 +1113,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
 
 			bool export = stmt->export;
-			bool private = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
-			bool local = !export && !private;
+			bool private = !export && emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
+			bool local = !(export || private);
 
 			int index;
 
@@ -1128,7 +1128,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			if (local) {
 				mark_local_initialized(emitter, index);
-			} else {
+			} else if (private) {
 				mark_private_initialized(emitter, index);
 			}
 
@@ -1160,7 +1160,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			if (export) {
 				emit_byte(emitter, emitter->last_line, OP_SET_GLOBAL);
-				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, stmt->name, stmt->length))));
+				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(name)));
 			} else if (private) {
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
 			} else {

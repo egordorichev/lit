@@ -129,7 +129,7 @@ int main(int argc, const char* argv[]) {
 		}
 
 		lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
-		result = lit_interpret_file(state, file_to_run).type;
+		result = lit_interpret_file(state, (char*) file_to_run).type;
 	}
 
 	int64_t amount = lit_free_state(state);

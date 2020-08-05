@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 void lit_open_libraries(LitState* state) {
 	lit_open_math_library(state);
@@ -1188,40 +1189,112 @@ LIT_NATIVE_PRIMITIVE(eval) {
 	return interpret(vm, vm->fiber->module->name, code);
 }
 
-LIT_NATIVE_PRIMITIVE(require) {
-	LitString* name = LIT_CHECK_OBJECT_STRING(0);
+static bool file_exists(const char* filename) {
+	struct stat buffer;
+	return stat(filename, &buffer) == 0;
+}
 
-	const char* path = name->chars;
+static bool should_update_locals;
+
+static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const char* path, bool ignore_previous) {
+	should_update_locals = false;
+
 	size_t length = strlen(path);
-	char full_path[length + 5];
+	char module_name[length + 5];
+	char module_name_dotted[length + 5];
 
-	memcpy((void *) full_path, path, length);
-	memcpy((void *) (full_path + length), ".lit\0", 5);
+	memcpy((void *) module_name_dotted, path, length);
+	memcpy((void *) module_name_dotted + length, ".lit", 4);
 
-	for (uint i = 0; i < length; i++) {
-		if (full_path[i] == '.' || full_path[i] == '\\') {
-			full_path[i] = '/';
+	module_name_dotted[length + 4] = '\0';
+
+	for (uint i = 0; i < length + 5; i++) {
+		char c = module_name_dotted[i];
+
+		if (c == '.' || c == '\\') {
+			module_name[i] = '/';
+		} else {
+			module_name[i] = c;
 		}
 	}
 
-	LitString* module_name = lit_copy_string(vm->state, full_path, length);
-	LitValue existing_module;
+	module_name[length] = '.';
 
-	if (!(arg_count > 1 && IS_BOOL(args[1]) && AS_BOOL(args[1])) && lit_table_get(&vm->modules, module_name, &existing_module)) {
-		vm->fiber->stack_top -= arg_count;
-		args[-1] = AS_MODULE(existing_module)->return_value;
-
+	if (!file_exists(module_name)) {
 		return false;
 	}
 
-	const char* source = lit_read_file(full_path);
+	LitString *name = lit_copy_string(vm->state, module_name_dotted, length);
+
+	if (!ignore_previous) {
+		LitValue existing_module;
+
+		if (lit_table_get(&vm->modules, name, &existing_module)) {
+			vm->fiber->stack_top -= arg_count;
+			args[-1] = AS_MODULE(existing_module)->return_value;
+
+			return true;
+		}
+	}
+
+	const char* source = lit_read_file(module_name);
 
 	if (source == NULL) {
-		lit_runtime_error(vm, "Failed to open '%s'", full_path);
 		return false;
 	}
 
-	return interpret(vm, module_name, source);
+	if (interpret(vm, name, source)) {
+		should_update_locals = true;
+	}
+
+	return true;
+}
+
+static bool attempt_to_require_combined(LitVm* vm, LitValue* args, uint arg_count, const char* a, const char* b, bool ignore_previous) {
+	size_t a_length = strlen(a);
+	size_t b_length = strlen(b);
+	size_t total_length = a_length + b_length + 1;
+
+	char path[total_length + 1];
+
+	memcpy((void *) path, a, a_length);
+	memcpy((void *) path + a_length + 1, b, b_length);
+
+	path[a_length] = '.';
+	path[total_length] = '\0';
+
+	return attempt_to_require(vm, args, arg_count, (const char*) &path, ignore_previous);
+}
+
+LIT_NATIVE_PRIMITIVE(require) {
+	LitString* name = LIT_CHECK_OBJECT_STRING(0);
+	bool ignore_previous = arg_count > 1 && IS_BOOL(args[1]) && AS_BOOL(args[1]);
+
+	// First check, if a file with this name exists in the local path
+	if (attempt_to_require(vm, args, arg_count, name->chars, ignore_previous)) {
+		return should_update_locals;
+	}
+
+	// If not, we join the path of the current module to it (the path goes all the way from the root)
+	LitString* module_name = vm->fiber->module->name;
+
+	// We need to get rid of the module name (test.folder.module -> test.folder)
+	char* index = strrchr(module_name->chars, '.');
+
+	if (index != NULL) {
+		size_t length = index - module_name->chars;
+
+		char buffer[length + 1];
+		memcpy((void *) buffer, module_name->chars, length);
+		buffer[length] = '\0';
+
+		if (attempt_to_require_combined(vm, args, arg_count, (const char *) &buffer, name->chars, ignore_previous)) {
+			return should_update_locals;
+		}
+	}
+
+	lit_runtime_error(vm, "Failed to require module '%s'", name->chars);
+	return false;
 }
 
 void lit_open_core_library(LitState* state) {

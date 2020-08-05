@@ -1,13 +1,10 @@
 # todo
 
-* cli
 * update readme with proper example links (and docs links)
 
-* # unary
 * if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)
 * check how syncing works
-* module.globals? module.exported?
-* allow to require modules using local path from the module path (module path + require_path)
+* table with globals? module.exported? module.privates?
 * resizeable stack
 * ffi?
 
@@ -18,3 +15,4 @@
 # feature creep
 
 * switch statement?
+* # unary? (length or square root?)

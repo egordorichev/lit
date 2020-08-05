@@ -70,7 +70,7 @@ LitClass* lit_get_class_for(LitState* state, LitValue value);
 LitModule* lit_compile_module(LitState* state, LitString* module_name, const char* code);
 LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code);
 LitInterpretResult lit_interpret(LitState* state, const char* module_name, const char* code);
-LitInterpretResult lit_interpret_file(LitState* state, const char* file_name);
+LitInterpretResult lit_interpret_file(LitState* state, char* file_name);
 
 void lit_error(LitState* state, LitErrorType type, const char* message, ...);
 void lit_printf(LitState* state, const char* message, ...);

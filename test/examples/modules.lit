@@ -1,0 +1,2 @@
+require("libs.example_library")
+exampleFunction() // Expected: Hello, from the library!
