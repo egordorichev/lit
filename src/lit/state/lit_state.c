@@ -13,8 +13,9 @@
 
 static void default_error(LitState* state, LitErrorType type, const char* message, va_list args) {
 	fflush(stdout);
+	fprintf(stderr, COLOR_RED);
 	vfprintf(stderr, message, args);
-	fprintf(stderr, "\n");
+	fprintf(stderr, "%s\n", COLOR_RESET);
 	fflush(stderr);
 }
 

@@ -36,7 +36,7 @@ static int run_repl() {
 
 	if (amount != 0) {
 		fprintf(stderr, "Error: memory leak of %ld bytes!\n", amount);
-		return 1;
+		return EXIT_CODE_MEM_LEAK;
 	}
 
 	return 0;
@@ -56,8 +56,7 @@ static bool match_arg(const char* arg, const char* a, const char* b) {
 
 int main(int argc, const char* argv[]) {
 	if (argc == 1) {
-		run_repl();
-		return 0;
+		return run_repl();
 	}
 
 	LitState* state = lit_new_state();
@@ -89,6 +88,8 @@ int main(int argc, const char* argv[]) {
 		file_to_run = arg;
 	}
 
+	LitArray* arg_array = NULL;
+
 	for (int i = 1; i < argc; i++) {
 		int args_left = argc - i - 1;
 		const char* arg = argv[i];
@@ -107,7 +108,14 @@ int main(int argc, const char* argv[]) {
 		} else if (match_arg(arg, "-h", "--help")) {
 			show_help();
 		} else if (match_arg(arg, "-p", "--pass")) {
-			// TODO
+			arg_array = lit_create_array(state);
+
+			for (int j = 0; j < args_left; j++) {
+				const char* arg_string = argv[i + j + 1];
+				lit_values_write(state, &arg_array->values, OBJECT_CONST_STRING(state, arg_string));
+			}
+
+			lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
 			break;
 		} else if (arg[0] == '-') {
 			printf("Unknown argument '%s', run 'lit --help' for help.\n", arg);
@@ -116,6 +124,11 @@ int main(int argc, const char* argv[]) {
 	}
 
 	if (file_to_run != NULL) {
+		if (arg_array == NULL) {
+			arg_array = lit_create_array(state);
+		}
+
+		lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
 		result = lit_interpret_file(state, file_to_run).type;
 	}
 

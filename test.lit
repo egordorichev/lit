@@ -1,1 +1,1 @@
-print(z)
+print(args)

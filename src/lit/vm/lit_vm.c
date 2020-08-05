@@ -109,7 +109,7 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 		fiber->parent->abort = true;
 	}
 
-	fprintf(stderr, "%s\n", error_string->chars);
+	fprintf(stderr, "%s%s\n", COLOR_RED, error_string->chars);
 
 	for (int i = (int) fiber->frame_count - 1; i >= 0; i--) {
 		LitCallFrame* frame = &fiber->frames[i];
@@ -119,7 +119,9 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 		fprintf(stderr, "[line %d] in %s()\n", lit_chunk_get_line(&function->chunk, frame->ip - function->chunk.code - 1), name == NULL ? "unknown" : name->chars);
 	}
 
+	fprintf(stderr, "%s", COLOR_RESET);
 	reset_stack(vm);
+
 	return false;
 }
 

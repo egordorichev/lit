@@ -1,13 +1,12 @@
 # todo
 
 * cli
-* command line options (help, eval, etc)
+* number to string, string to number
 * update readme with proper example links (and docs links)
 
 * # unary
 * if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)
 * check how syncing works
-* command line args (get them in the actual lit script), command line input
 * module.globals? module.exported?
 * allow to require modules using local path from the module path (module path + require_path)
 * resizeable stack
