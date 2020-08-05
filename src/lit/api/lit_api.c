@@ -104,7 +104,6 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 	state->vm->fiber = fiber->parent;
 
 	lit_free_chunk(state, chunk);
-
 	return result;
 }
 
@@ -115,7 +114,6 @@ LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitVa
 
 	return lit_call(state, OBJECT_VALUE(callee), arguments, argument_count);
 }
-
 
 double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_NUMBER(args[id])) {

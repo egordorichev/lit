@@ -1,14 +1,15 @@
+#include <lit/lit.h>
 #include <lit/vm/lit_vm.h>
+#include <lit/std/lit_core.h>
 #include <lit/scanner/lit_scanner.h>
 
 #include <stdio.h>
-#include <lit/std/lit_core.h>
-#include <lit/api/lit_api.h>
 
 static int run_repl() {
 	LitState* state = lit_new_state();
 	lit_open_libraries(state);
 
+	printf("lit v%s\n", LIT_VERSION_STRING);
 	char line[1024];
 
 	while (true) {
@@ -19,7 +20,11 @@ static int run_repl() {
 			break;
 		}
 
-		lit_interpret(state, "repl", line);
+		LitInterpretResult result = lit_interpret(state, "repl", line);
+
+		if (result.type == INTERPRET_OK && result.result != NULL_VALUE) {
+			printf("%s\n", lit_to_string(state, result.result)->chars);
+		}
 	}
 
 	int64_t amount = lit_free_state(state);

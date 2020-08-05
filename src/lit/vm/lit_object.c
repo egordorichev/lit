@@ -283,7 +283,7 @@ LitValue lit_get_function_name(LitVm* vm, LitValue instance) {
 	}
 
 	if (name == NULL) {
-		return OBJECT_VALUE(lit_string_format(vm->state, "function #", (double) (int) AS_OBJECT(instance)));
+		return OBJECT_VALUE(lit_string_format(vm->state, "function #", *((double *) AS_OBJECT(instance))));
 	}
 
 	return OBJECT_VALUE(lit_string_format(vm->state, "function @", name));
@@ -387,7 +387,8 @@ LitModule* lit_create_module(LitState* state, LitString* name) {
 	module->return_value = NULL_VALUE;
 	module->main_function = NULL;
 	module->privates = NULL;
-	module->privates_count = 0;
+
+	lit_init_table(&module->private_names);
 
 	return module;
 }

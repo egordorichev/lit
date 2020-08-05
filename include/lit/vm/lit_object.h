@@ -227,8 +227,8 @@ typedef struct sLitModule {
 	LitValue return_value;
 	LitString* name;
 
-	uint privates_count;
 	LitValue* privates;
+	LitTable private_names;
 
 	LitFunction* main_function;
 } LitModule;

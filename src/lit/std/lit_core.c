@@ -1172,7 +1172,7 @@ static bool interpret(LitVm* vm, LitString* module_name, const char* source) {
 
 LIT_NATIVE_PRIMITIVE(eval) {
 	const char* code = LIT_CHECK_STRING(0);
-	return interpret(vm, CONST_STRING(vm->state, "eval"), code);
+	return interpret(vm, vm->fiber->module->name, code);
 }
 
 LIT_NATIVE_PRIMITIVE(require) {

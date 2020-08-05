@@ -183,34 +183,45 @@ static int add_private(LitEmitter* emitter, const char* name, uint length, uint 
 		error(emitter, line, ERROR_TOO_MANY_PRIVATES);
 	}
 
-	for (int i = (int) privates->count - 1; i >= 0; i--) {
-		LitPrivate* private = &privates->values[i];
+	LitTable* private_names = &emitter->module->private_names;
+	LitString* key = lit_table_find_string(private_names, name, length, lit_hash_string(name, length));
 
-		if (length == private->length && memcmp(private->name, name, length) == 0) {
-			error(emitter, line, ERROR_VAR_REDEFINED, length, name);
-		}
+	if (key != NULL) {
+		error(emitter, line, ERROR_VAR_REDEFINED, length, name);
+
+		LitValue index;
+		lit_table_get(private_names, key, &index);
+
+		return AS_NUMBER(index);
 	}
 
-	lit_privates_write(emitter->state, privates, (LitPrivate) {
+	LitState* state = emitter->state;
+
+	lit_privates_write(state, privates, (LitPrivate) {
 		name, length, false
 	});
 
-	return (int) privates->count - 1;
+	int index = (int) privates->count - 1;
+	lit_table_set(state, private_names, lit_copy_string(state, name, length), NUMBER_VALUE(index));
+
+	return index;
 }
 
 static int resolve_private(LitEmitter* emitter, const char* name, uint length, uint line) {
-	LitPrivates* privates = &emitter->privates;
+	LitTable* private_names = &emitter->module->private_names;
+	LitString* key = lit_table_find_string(private_names, name, length, lit_hash_string(name, length));
 
-	for (int i = (int) privates->count - 1; i >= 0; i--) {
-		LitPrivate* private = &privates->values[i];
+	if (key != NULL) {
+		LitValue index;
+		lit_table_get(private_names, key, &index);
 
-		if (private->length == length && memcmp(private->name, name, length) == 0) {
-			if (!private->finished_declaration) {
-				error(emitter, line, ERROR_VARIABLE_USED_IN_INIT, length, name);
-			}
+		int number_index = AS_NUMBER(index);
 
-			return i;
+		if (!emitter->privates.values[number_index].finished_declaration) {
+			error(emitter, line, ERROR_VARIABLE_USED_IN_INIT, length, name);
 		}
+
+		return number_index;
 	}
 
 	return -1;
@@ -1306,7 +1317,17 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 }
 
 LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* module_name) {
-	LitModule* module = lit_create_module(emitter->state, module_name);
+	LitValue module_value;
+	LitModule* module;
+	bool new = false;
+
+	if (lit_table_get(&emitter->state->vm->modules, module_name, &module_value)) {
+		module = AS_MODULE(module_value);
+	} else {
+		module = lit_create_module(emitter->state, module_name);
+		new = true;
+	}
+
 	emitter->module = module;
 
 	LitCompiler compiler;
@@ -1328,13 +1349,16 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	LitFunction* function = end_compiler(emitter, module_name);
 
 	module->main_function = function;
-	module->privates = LIT_ALLOCATE(emitter->state, LitValue, emitter->privates.count);
-	// This must go after privates is allocated, to make sure, that gc doesn't crash trying to iterate NULL array with count > 0
-	module->privates_count = emitter->privates.count;
+
+	if (new) {
+		module->privates = LIT_ALLOCATE(emitter->state, LitValue, emitter->privates.count);
+	} else {
+		// TODO: fix me
+	}
 
 	lit_free_privates(emitter->state, &emitter->privates);
 
-	if (!state->had_error) {
+	if (new && !state->had_error) {
 		lit_table_set(state, &state->vm->modules, module_name, OBJECT_VALUE(module));
 	}
 
