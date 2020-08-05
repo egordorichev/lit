@@ -1,7 +1,6 @@
 # todo
 
 * cli
-* number to string, string to number
 * update readme with proper example links (and docs links)
 
 * # unary

@@ -251,6 +251,7 @@ static LitToken make_number_token(LitScanner* scanner, bool is_hex) {
 	}
 
 	if (errno == ERANGE) {
+		errno = 0;
 		return make_error_token(scanner, ERROR_NUMBER_IS_TOO_BIG);
 	}
 

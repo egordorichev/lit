@@ -1,1 +1,2 @@
-print(args)
+print("0xf".toNumber())
+print("infinity".toNumber())

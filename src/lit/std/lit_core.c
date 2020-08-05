@@ -10,6 +10,8 @@
 #include <ctype.h>
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
+#include <errno.h>
 
 void lit_open_libraries(LitState* state) {
 	lit_open_math_library(state);
@@ -271,6 +273,17 @@ LIT_METHOD(string_plus) {
 
 LIT_METHOD(string_toString) {
 	return instance;
+}
+
+LIT_METHOD(string_toNumber) {
+	double result = strtod(AS_STRING(instance)->chars, NULL);
+
+	if (errno == ERANGE) {
+		errno = 0;
+		return NULL_VALUE;
+	}
+
+	return NUMBER_VALUE(result);
 }
 
 LIT_METHOD(string_toUpperCase) {
@@ -1251,6 +1264,7 @@ void lit_open_core_library(LitState* state) {
 
 		LIT_BIND_METHOD("+", string_plus)
 		LIT_BIND_METHOD("toString", string_toString)
+		LIT_BIND_METHOD("toNumber", string_toNumber)
 		LIT_BIND_METHOD("toUpperCase", string_toUpperCase)
 		LIT_BIND_METHOD("toLowerCase", string_toLowerCase)
 		LIT_BIND_METHOD("contains", string_contains)
