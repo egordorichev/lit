@@ -222,6 +222,14 @@ LitInterpretResult lit_interpret_file(LitState* state, char* file_name) {
 		file_name[name_length - 4] = '\0';
 	}
 
+	for (uint i = 0; i < name_length; i++) {
+		char c = file_name[i];
+
+		if (c == '/' || c == '\\') {
+			file_name[i] = '.';
+		}
+	}
+
 	LitInterpretResult result = lit_interpret(state, file_name, source);
 	free((void*) source);
 
