@@ -1,3 +1,1 @@
-var a = 32
-eval("print(a) z = 48")
 print(z)

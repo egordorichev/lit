@@ -1,7 +1,5 @@
 # todo
 
-* i need to figure out a way to preserve context yet allow for more privates (for ex eval() should probably be able to access the variables in the current context)
-
 * cli
 * command line options (help, eval, etc)
 * update readme with proper example links (and docs links)
