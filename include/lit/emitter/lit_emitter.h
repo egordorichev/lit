@@ -8,13 +8,7 @@
 #include <lit/util/lit_array.h>
 #include <lit/vm/lit_object.h>
 
-typedef struct {
-	const char* name;
-	uint length;
-	bool finished_declaration;
-} LitPrivate;
-
-DECLARE_ARRAY(LitPrivates, LitPrivate, privates)
+DECLARE_ARRAY(LitBools, bool, bools)
 
 typedef struct {
 	const char* name;
@@ -53,7 +47,7 @@ typedef struct sLitEmitter {
 	uint last_line;
 	uint loop_start;
 
-	LitPrivates privates;
+	LitBools private_statuses;
 	LitUInts breaks;
 
 	LitModule* module;

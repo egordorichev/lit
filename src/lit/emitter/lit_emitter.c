@@ -9,7 +9,7 @@
 
 #include <string.h>
 
-DEFINE_ARRAY(LitPrivates, LitPrivate, privates)
+DEFINE_ARRAY(LitBools, bool, bools)
 DEFINE_ARRAY(LitLocals, LitLocal, locals)
 
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement);
@@ -25,7 +25,7 @@ void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->class_has_super = false;
 	emitter->emit_pop_continue = false;
 
-	lit_init_privates(&emitter->privates);
+	lit_init_bools(&emitter->private_statuses);
 	lit_init_uints(&emitter->breaks);
 }
 
@@ -177,9 +177,9 @@ static uint emit_constant(LitEmitter* emitter, uint line, LitValue value) {
 }
 
 static int add_private(LitEmitter* emitter, const char* name, uint length, uint line) {
-	LitPrivates* privates = &emitter->privates;
+	LitBools* private_statuses = &emitter->private_statuses;
 
-	if (privates->count == UINT16_MAX) {
+	if (private_statuses->count == UINT16_MAX) {
 		error(emitter, line, ERROR_TOO_MANY_PRIVATES);
 	}
 
@@ -196,12 +196,9 @@ static int add_private(LitEmitter* emitter, const char* name, uint length, uint 
 	}
 
 	LitState* state = emitter->state;
+	int index = (int) private_statuses->count;
 
-	lit_privates_write(state, privates, (LitPrivate) {
-		name, length, false
-	});
-
-	int index = (int) privates->count - 1;
+	lit_bools_write(state, private_statuses, false);
 	lit_table_set(state, private_names, lit_copy_string(state, name, length), NUMBER_VALUE(index));
 
 	return index;
@@ -217,7 +214,7 @@ static int resolve_private(LitEmitter* emitter, const char* name, uint length, u
 
 		int number_index = AS_NUMBER(index);
 
-		if (!emitter->privates.values[number_index].finished_declaration) {
+		if (!emitter->private_statuses.values[number_index]) {
 			error(emitter, line, ERROR_VARIABLE_USED_IN_INIT, length, name);
 		}
 
@@ -320,7 +317,7 @@ static void mark_local_initialized(LitEmitter* emitter, uint index) {
 }
 
 static void mark_private_initialized(LitEmitter* emitter, uint index) {
-	emitter->privates.values[index].finished_declaration = true;
+	emitter->private_statuses.values[index] = true;
 }
 
 static uint emit_jump(LitEmitter* emitter, LitOpCode code, uint line) {
@@ -1317,8 +1314,11 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 }
 
 LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* module_name) {
+	LitState* state = emitter->state;
+
 	LitValue module_value;
 	LitModule* module;
+
 	bool new = false;
 
 	if (lit_table_get(&emitter->state->vm->modules, module_name, &module_value)) {
@@ -1329,6 +1329,18 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	}
 
 	emitter->module = module;
+	uint old_privates_count = module->private_names.count;
+
+	if (old_privates_count > 0) {
+		LitBools* private_statuses = &emitter->private_statuses;
+
+		private_statuses->count = old_privates_count - 1;
+		lit_bools_write(state, private_statuses, true);
+
+		for (uint i = 0; i < old_privates_count; i++) {
+			private_statuses->values[i] = true;
+		}
+	}
 
 	LitCompiler compiler;
 	init_compiler(emitter, &compiler, FUNCTION_SCRIPT);
@@ -1344,19 +1356,15 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	}
 
 	end_scope(emitter, emitter->last_line);
-
-	LitState* state = emitter->state;
-	LitFunction* function = end_compiler(emitter, module_name);
-
-	module->main_function = function;
+	module->main_function = end_compiler(emitter, module_name);
 
 	if (new) {
-		module->privates = LIT_ALLOCATE(emitter->state, LitValue, emitter->privates.count);
+		module->privates = LIT_ALLOCATE(emitter->state, LitValue, emitter->private_statuses.count);
 	} else {
-		// TODO: fix me
+		module->privates = LIT_GROW_ARRAY(emitter->state, module->privates, LitValue, old_privates_count, module->private_names.count);
 	}
 
-	lit_free_privates(emitter->state, &emitter->privates);
+	lit_free_bools(emitter->state, &emitter->private_statuses);
 
 	if (new && !state->had_error) {
 		lit_table_set(state, &state->vm->modules, module_name, OBJECT_VALUE(module));

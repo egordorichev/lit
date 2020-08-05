@@ -9,10 +9,10 @@
 #define DEBUG
 
 #ifdef DEBUG
-// #define LIT_TRACE_EXECUTION
-// #define LIT_TRACE_STACK
+#define LIT_TRACE_EXECUTION
+#define LIT_TRACE_STACK
 // #define LIT_MINIMIZE_CONTAINERS
-#define LIT_TRACE_CHUNK
+// #define LIT_TRACE_CHUNK
 // #define LIT_STRESS_TEST_GC
 // #define LIT_LOG_GC
 #endif
