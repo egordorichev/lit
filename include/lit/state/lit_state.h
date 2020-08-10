@@ -30,6 +30,7 @@ typedef struct sLitState {
 	struct sLitScanner* scanner;
 	struct sLitParser* parser;
 	struct sLitEmitter* emitter;
+	struct sLitOptimizer* optimizer;
 	struct sLitVm* vm;
 
 	bool had_error;

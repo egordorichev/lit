@@ -1,5 +1,13 @@
 # todo
 
+* optimizations {
+ * unused locals / privates
+ * expression folding
+ * constant folding
+ * while loops with false condition
+ * multiplication by 1
+}
+
 * update readme with proper example links (and docs links)
 * enums
 * html5 version auto-build & demo

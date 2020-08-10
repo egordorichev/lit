@@ -142,14 +142,6 @@ bool lit_runtime_error(LitVm* vm, const char* format, ...) {
 	return lit_handle_runtime_error(vm, lit_copy_string(vm->state, buffer, buffer_size));
 }
 
-static inline bool is_falsey(LitValue value) {
-	if (IS_NUMBER(value)) {
-		return AS_NUMBER(value) == 0;
-	}
-
-	return IS_NULL(value) || (IS_BOOL(value) && !AS_BOOL(value));
-}
-
 static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t arg_count) {
 	LitFiber* fiber = vm->fiber;
 
@@ -653,7 +645,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				continue;
 			}
 
-			PUSH(BOOL_VALUE(is_falsey(POP())));
+			PUSH(BOOL_VALUE(lit_is_falsey(POP())));
 			continue;
 		}
 
@@ -872,7 +864,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(JUMP_IF_FALSE) {
 			uint16_t offset = READ_SHORT();
 
-			if (is_falsey(PEEK(0))) {
+			if (lit_is_falsey(PEEK(0))) {
 				ip += offset;
 			}
 

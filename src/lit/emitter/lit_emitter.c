@@ -411,6 +411,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					emit_byte(emitter, expression->line, OP_ADD);
 					break;
 				}
+
 				case TOKEN_MINUS: {
 					emit_byte(emitter, expression->line, OP_SUBTRACT);
 					break;

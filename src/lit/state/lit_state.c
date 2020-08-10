@@ -1,9 +1,10 @@
 #include <lit/state/lit_state.h>
-#include <lit/vm/lit_vm.h>
 #include <lit/debug/lit_debug.h>
-#include <lit/emitter/lit_emitter.h>
-#include <lit/parser/lit_parser.h>
 #include <lit/scanner/lit_scanner.h>
+#include <lit/parser/lit_parser.h>
+#include <lit/optimizer/lit_optimizer.h>
+#include <lit/emitter/lit_emitter.h>
+#include <lit/vm/lit_vm.h>
 #include <lit/util/lit_fs.h>
 #include <lit/std/lit_core.h>
 #include <lit/api/lit_api.h>
@@ -57,6 +58,9 @@ LitState* lit_new_state() {
 	state->emitter = (LitEmitter*) malloc(sizeof(LitEmitter));
 	lit_init_emitter(state, state->emitter);
 
+	state->optimizer = (LitOptimizer *) malloc(sizeof(LitOptimizer));
+	lit_init_optimizer(state, state->optimizer);
+
 	state->vm = (LitVm*) malloc(sizeof(LitVm));
 
 	lit_init_vm(state, state->vm);
@@ -75,6 +79,8 @@ int64_t lit_free_state(LitState* state) {
 
 	lit_free_emitter(state->emitter);
 	free(state->emitter);
+
+	free(state->optimizer);
 
 	lit_free_vm(state->vm);
 	free(state->vm);
@@ -181,11 +187,12 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, const cha
 		return NULL;
 	}
 
+	lit_optimize(state->optimizer, &statements);
+
 	LitModule* module = lit_emit(state->emitter, &statements, module_name);
 	free_statements(state, &statements);
 
 	state->allow_gc = allowed_gc;
-
 	return state->had_error ? NULL : module;
 }
 
