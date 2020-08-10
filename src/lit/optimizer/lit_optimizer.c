@@ -1,6 +1,8 @@
 #include <lit/optimizer/lit_optimizer.h>
 #include <lit/lit.h>
 
+#include <math.h>
+
 static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot);
 static void optimize_expressions(LitOptimizer* optimizer, LitExpressions* expressions);
 static void optimize_statements(LitOptimizer* optimizer, LitStatements* statements);
@@ -47,78 +49,62 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType operator
 	  } \
 		return NULL_VALUE;
 
+	#define BITWISE_OP(op) \
+		if (IS_NUMBER(a) && IS_NUMBER(b)) { \
+			return NUMBER_VALUE((int) AS_NUMBER(a) op (int) AS_NUMBER(b)); \
+	  } \
+		return NULL_VALUE;
+
+	#define FN_OP(fn) \
+		if (IS_NUMBER(a) && IS_NUMBER(b)) { \
+			return NUMBER_VALUE(fn(AS_NUMBER(a), AS_NUMBER(b))); \
+	  } \
+		return NULL_VALUE;
+
 	switch (operator) {
 		case TOKEN_PLUS: BINARY_OP(+)
 		case TOKEN_MINUS: BINARY_OP(-)
 		case TOKEN_STAR: BINARY_OP(*)
 		case TOKEN_SLASH: BINARY_OP(/)
+		case TOKEN_STAR_STAR: FN_OP(pow)
+		case TOKEN_PERCENT: FN_OP(fmod)
 
-		case TOKEN_STAR_STAR: {
-			break;
-		}
+		case TOKEN_GREATER: BINARY_OP(>)
+		case TOKEN_GREATER_EQUAL: BINARY_OP(>=)
+		case TOKEN_LESS: BINARY_OP(<)
+		case TOKEN_LESS_EQUAL: BINARY_OP(<=)
+		case TOKEN_LESS_LESS: BITWISE_OP(<<)
+		case TOKEN_GREATER_GREATER: BITWISE_OP(>>)
+		case TOKEN_BAR: BITWISE_OP(|)
+		case TOKEN_AMPERSAND: BITWISE_OP(&)
+		case TOKEN_CARET: BITWISE_OP(^)
 
 		case TOKEN_SHARP: {
-			break;
-		}
+			if (IS_NUMBER(a) && IS_NUMBER(b)) {
+				return NUMBER_VALUE(floor(AS_NUMBER(a) / AS_NUMBER(b)));
+		  }
 
-		case TOKEN_PERCENT: {
-			break;
-		}
-
-		case TOKEN_IS: {
-			break;
+			return NULL_VALUE;
 		}
 
 		case TOKEN_EQUAL_EQUAL: {
-			break;
+			return BOOL_VALUE(a == b);
 		}
 
 		case TOKEN_BANG_EQUAL: {
-			break;
+			return BOOL_VALUE(a != b);
 		}
 
-		case TOKEN_GREATER: {
-			break;
-		}
-
-		case TOKEN_GREATER_EQUAL: {
-			break;
-		}
-
-		case TOKEN_LESS: {
-			break;
-		}
-
-		case TOKEN_LESS_EQUAL: {
-			break;
-		}
-
-		case TOKEN_LESS_LESS: {
-			break;
-		}
-
-		case TOKEN_GREATER_GREATER: {
-			break;
-		}
-
-		case TOKEN_BAR: {
-			break;
-		}
-
-		case TOKEN_AMPERSAND: {
-			break;
-		}
-
-		case TOKEN_CARET: {
-			break;
-		}
-
+		case TOKEN_IS:
 		default: {
 			break;
 		}
 	}
 
+	#undef FN_OP
+	#undef BITWISE_OP
 	#undef BINARY_OP
+
 	return NULL_VALUE;
 }
 
@@ -279,8 +265,10 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 		case LITERAL_EXPRESSION:
 		case VAR_EXPRESSION:
 		case THIS_EXPRESSION:
-		case SUPER_EXPRESSION:
+		case SUPER_EXPRESSION: {
+			// Nothing, that we can do here
 			break;
+		}
 	}
 }
 

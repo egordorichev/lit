@@ -25,4 +25,3 @@
 # feature creep
 
 * switch statement?
-* # unary? (length or square root?)
