@@ -1,6 +1,11 @@
 #include <lit/optimizer/lit_optimizer.h>
 #include <lit/lit.h>
 
+static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot);
+static void optimize_expressions(LitOptimizer* optimizer, LitExpressions* expressions);
+static void optimize_statements(LitOptimizer* optimizer, LitStatements* statements);
+static void optimize_statement(LitOptimizer* optimizer, LitStatement* statement);
+
 void lit_init_optimizer(LitState* state, LitOptimizer* optimizer) {
 	optimizer->state = state;
 }
@@ -109,11 +114,12 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType operator
 		}
 
 		default: {
-			return NULL_VALUE;
+			break;
 		}
 	}
 
 	#undef BINARY_OP
+	return NULL_VALUE;
 }
 
 static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expression) {
@@ -177,37 +183,110 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 			break;
 		}
 
+		case ASSIGN_EXPRESSION: {
+			LitAssignExpression* expr = (LitAssignExpression*) expression;
+
+			optimize_expression(optimizer, &expr->to);
+			optimize_expression(optimizer, &expr->value);
+
+			break;
+		}
+
+		case CALL_EXPRESSION: {
+			LitCallExpression* expr = (LitCallExpression*) expression;
+
+			optimize_expression(optimizer, &expr->callee);
+			optimize_expressions(optimizer, &expr->args);
+
+			break;
+		}
+
+		case SET_EXPRESSION: {
+			LitSetExpression* expr = (LitSetExpression*) expression;
+
+			optimize_expression(optimizer, &expr->where);
+			optimize_expression(optimizer, &expr->value);
+
+			break;
+		}
+
+		case GET_EXPRESSION: {
+			optimize_expression(optimizer, &((LitGetExpression*) expression)->where);
+			break;
+		}
+
+		case LAMBDA_EXPRESSION: {
+			optimize_statement(optimizer, ((LitLambdaExpression*) expression)->body);
+			break;
+		}
+
+		case ARRAY_EXPRESSION: {
+			optimize_expressions(optimizer, &((LitArrayExpression*) expression)->values);
+			break;
+		}
+
+		case MAP_EXPRESSION: {
+			optimize_expressions(optimizer, &((LitMapExpression*) expression)->values);
+			break;
+		}
+
+		case SUBSCRIPT_EXPRESSION: {
+			LitSubscriptExpression* expr = (LitSubscriptExpression*) expression;
+
+			optimize_expression(optimizer, &expr->array);
+			optimize_expression(optimizer, &expr->index);
+
+			break;
+		}
+
+		case RANGE_EXPRESSION: {
+			LitRangeExpression* expr = (LitRangeExpression*) expression;
+
+			optimize_expression(optimizer, &expr->from);
+			optimize_expression(optimizer, &expr->to);
+
+			break;
+		}
+
+		case IF_EXPRESSION: {
+			LitIfExpression* expr = (LitIfExpression*) expression;
+			LitValue optimized = evaluate_expression(optimizer, expr->condition);
+
+			if (optimized != NULL_VALUE) {
+				if (lit_is_falsey(optimized)) {
+					*slot = expr->else_branch;
+					expr->else_branch = NULL; // So that it doesn't get freed
+				} else {
+					*slot = expr->if_branch;
+					expr->if_branch = NULL; // So that it doesn't get freed
+				}
+
+				optimize_expression(optimizer, slot);
+				lit_free_expression(state, expression);
+			} else {
+				optimize_expression(optimizer, &expr->if_branch);
+				optimize_expression(optimizer, &expr->else_branch);
+			}
+
+			break;
+		}
+
+		case INTERPOLATION_EXPRESSION: {
+			optimize_expressions(optimizer, &((LitInterpolationExpression*) expression)->expressions);
+			break;
+		}
+
 		case LITERAL_EXPRESSION:
-			break;
-			break;
 		case VAR_EXPRESSION:
-			break;
-		case ASSIGN_EXPRESSION:
-			break;
-		case CALL_EXPRESSION:
-			break;
-		case SET_EXPRESSION:
-			break;
-		case GET_EXPRESSION:
-			break;
-		case LAMBDA_EXPRESSION:
-			break;
-		case ARRAY_EXPRESSION:
-			break;
-		case MAP_EXPRESSION:
-			break;
-		case SUBSCRIPT_EXPRESSION:
-			break;
 		case THIS_EXPRESSION:
-			break;
 		case SUPER_EXPRESSION:
 			break;
-		case RANGE_EXPRESSION:
-			break;
-		case IF_EXPRESSION:
-			break;
-		case INTERPOLATION_EXPRESSION:
-			break;
+	}
+}
+
+static void optimize_expressions(LitOptimizer* optimizer, LitExpressions* expressions) {
+	for (uint i = 0; i < expressions->count; i++) {
+		optimize_expression(optimizer, &expressions->values[i]);
 	}
 }
 
@@ -270,12 +349,12 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement* statement)
 	}
 }
 
-static void walk_statements(LitOptimizer* optimizer, LitStatements* statements) {
+static void optimize_statements(LitOptimizer* optimizer, LitStatements* statements) {
 	for (uint i = 0; i < statements->count; i++) {
 		optimize_statement(optimizer, statements->values[i]);
 	}
 }
 
 void lit_optimize(LitOptimizer* optimizer, LitStatements* statements) {
-	walk_statements(optimizer, statements);
+	optimize_statements(optimizer, statements);
 }
