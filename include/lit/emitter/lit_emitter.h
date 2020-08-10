@@ -8,13 +8,20 @@
 #include <lit/util/lit_array.h>
 #include <lit/vm/lit_object.h>
 
-DECLARE_ARRAY(LitBools, bool, bools)
+typedef struct {
+	bool initialized;
+	bool constant;
+} LitPrivate;
+
+DECLARE_ARRAY(LitPrivates, LitPrivate, privates)
 
 typedef struct {
 	const char* name;
 	uint length;
 	int depth;
+
 	bool captured;
+	bool constant;
 } LitLocal;
 
 DECLARE_ARRAY(LitLocals, LitLocal, locals)
@@ -47,7 +54,7 @@ typedef struct sLitEmitter {
 	uint last_line;
 	uint loop_start;
 
-	LitBools private_statuses;
+	LitPrivates privates;
 	LitUInts breaks;
 
 	LitModule* module;

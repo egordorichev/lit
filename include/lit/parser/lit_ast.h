@@ -253,12 +253,15 @@ LitBlockStatement *lit_create_block_statement(LitState* state, uint line);
 
 typedef struct {
 	LitStatement statement;
+
 	const char* name;
 	uint length;
+	bool constant;
+
 	LitExpression* init;
 } LitVarStatement;
 
-LitVarStatement *lit_create_var_statement(LitState* state, uint line, const char* name, uint length, LitExpression* init);
+LitVarStatement *lit_create_var_statement(LitState* state, uint line, const char* name, uint length, LitExpression* init, bool constant);
 
 typedef struct {
 	LitStatement statement;

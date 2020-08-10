@@ -588,7 +588,9 @@ static LitExpression* parse_expression(LitParser* parser) {
 }
 
 static LitStatement* parse_var_declaration(LitParser* parser) {
+	bool constant = parser->previous.type == TOKEN_CONST;
 	uint line = parser->previous.line;
+
 	consume(parser, TOKEN_IDENTIFIER, "variable name");
 
 	const char* name = parser->previous.start;
@@ -600,7 +602,7 @@ static LitStatement* parse_var_declaration(LitParser* parser) {
 		init = parse_expression(parser);
 	}
 
-	return (LitStatement*) lit_create_var_statement(parser->state, line, name, length, init);
+	return (LitStatement*) lit_create_var_statement(parser->state, line, name, length, init, constant);
 }
 
 static LitStatement* parse_if(LitParser* parser) {
@@ -959,7 +961,7 @@ static LitStatement* parse_class(LitParser* parser) {
 }
 
 static LitStatement* parse_statement(LitParser* parser) {
-	if (match(parser, TOKEN_VAR)) {
+	if (match(parser, TOKEN_VAR) || match(parser, TOKEN_CONST)) {
 		return parse_var_declaration(parser);
 	} else if (match(parser, TOKEN_IF)) {
 		return parse_if(parser);
@@ -995,6 +997,7 @@ static void sync(LitParser* parser) {
 			case TOKEN_CLASS:
 			case TOKEN_FUNCTION:
 			case TOKEN_VAR:
+			case TOKEN_CONST:
 			case TOKEN_FOR:
 			case TOKEN_STATIC:
 			case TOKEN_IF:

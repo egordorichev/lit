@@ -1,10 +1,12 @@
 # todo
 
 * update readme with proper example links (and docs links)
+* enums
+* html5 version auto-build & demo
 
 * if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)
 * check how syncing works
-* table with globals? module.exported? module.privates?
+* table with globals? module.privates?
 * resizeable stack
 * ffi?
 

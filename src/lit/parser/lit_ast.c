@@ -513,12 +513,13 @@ LitBlockStatement *lit_create_block_statement(LitState* state, uint line) {
 	return statement;
 }
 
-LitVarStatement *lit_create_var_statement(LitState* state, uint line, const char* name, uint length, LitExpression* init) {
+LitVarStatement *lit_create_var_statement(LitState* state, uint line, const char* name, uint length, LitExpression* init, bool constant) {
 	LitVarStatement* statement = ALLOCATE_STATEMENT(state, LitVarStatement, VAR_STATEMENT);
 
 	statement->name = name;
 	statement->length = length;
 	statement->init = init;
+	statement->constant = constant;
 
 	return statement;
 }

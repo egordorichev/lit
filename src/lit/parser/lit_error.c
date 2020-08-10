@@ -74,4 +74,5 @@ static void setup_errors() {
 	error_messages[ERROR_LOOP_JUMP_MISSUSE] = "Can't use '%s' outside of loops";
 	error_messages[ERROR_RETURN_FROM_CONSTRUCTOR] = "Can't use 'return' in constructors";
 	error_messages[ERROR_STATIC_CONSTRUCTOR] = "Constructors can't be static (at least for now)";
+	error_messages[ERROR_CONSTANT_MODIFIED] = "Attempt to modify constant '%.*s'";
 }

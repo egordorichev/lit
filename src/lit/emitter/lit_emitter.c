@@ -9,7 +9,7 @@
 
 #include <string.h>
 
-DEFINE_ARRAY(LitBools, bool, bools)
+DEFINE_ARRAY(LitPrivates, LitPrivate, privates)
 DEFINE_ARRAY(LitLocals, LitLocal, locals)
 
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement);
@@ -25,7 +25,7 @@ void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->class_has_super = false;
 	emitter->emit_pop_continue = false;
 
-	lit_init_bools(&emitter->private_statuses);
+	lit_init_privates(&emitter->privates);
 	lit_init_uints(&emitter->breaks);
 }
 
@@ -78,11 +78,11 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 
 	if (type == FUNCTION_METHOD || type == FUNCTION_STATIC_METHOD || type == FUNCTION_CONSTRUCTOR) {
 		lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
-			"this", 4, -1, false
+			"this", 4, -1, false, false
 		});
 	} else {
 		lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
-			"", 0, -1, false
+			"", 0, -1, false, false
 		});
 	}
 }
@@ -176,10 +176,10 @@ static uint emit_constant(LitEmitter* emitter, uint line, LitValue value) {
 	return constant;
 }
 
-static int add_private(LitEmitter* emitter, const char* name, uint length, uint line) {
-	LitBools* private_statuses = &emitter->private_statuses;
+static int add_private(LitEmitter* emitter, const char* name, uint length, uint line, bool constant) {
+	LitPrivates* privates = &emitter->privates;
 
-	if (private_statuses->count == UINT16_MAX) {
+	if (privates->count == UINT16_MAX) {
 		error(emitter, line, ERROR_TOO_MANY_PRIVATES);
 	}
 
@@ -196,9 +196,12 @@ static int add_private(LitEmitter* emitter, const char* name, uint length, uint 
 	}
 
 	LitState* state = emitter->state;
-	int index = (int) private_statuses->count;
+	int index = (int) privates->count;
 
-	lit_bools_write(state, private_statuses, false);
+	lit_privates_write(state, privates, (LitPrivate) {
+		false, constant
+	});
+
 	lit_table_set(state, private_names, lit_copy_string(state, name, length), NUMBER_VALUE(index));
 
 	return index;
@@ -214,7 +217,7 @@ static int resolve_private(LitEmitter* emitter, const char* name, uint length, u
 
 		int number_index = AS_NUMBER(index);
 
-		if (!emitter->private_statuses.values[number_index]) {
+		if (!emitter->privates.values[number_index].initialized) {
 			error(emitter, line, ERROR_VARIABLE_USED_IN_INIT, length, name);
 		}
 
@@ -224,7 +227,7 @@ static int resolve_private(LitEmitter* emitter, const char* name, uint length, u
 	return -1;
 }
 
-static int add_local(LitEmitter* emitter, const char* name, uint length, uint line) {
+static int add_local(LitEmitter* emitter, const char* name, uint length, uint line, bool constant) {
 	LitCompiler* compiler = emitter->compiler;
 	LitLocals* locals = &compiler->locals;
 
@@ -245,7 +248,7 @@ static int add_local(LitEmitter* emitter, const char* name, uint length, uint li
 	}
 
 	lit_locals_write(emitter->state, locals, (LitLocal) {
-		name, length, UINT16_MAX, false
+		name, length, UINT16_MAX, false, constant
 	});
 
 	return (int) locals->count - 1;
@@ -317,7 +320,7 @@ static void mark_local_initialized(LitEmitter* emitter, uint index) {
 }
 
 static void mark_private_initialized(LitEmitter* emitter, uint index) {
-	emitter->private_statuses.values[index] = true;
+	emitter->privates.values[index].initialized = true;
 }
 
 static uint emit_jump(LitEmitter* emitter, LitOpCode code, uint line) {
@@ -583,6 +586,10 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 							emit_byte(emitter, expression->line, OP_SET_GLOBAL);
 							emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
 						} else {
+							if (emitter->privates.values[index].constant) {
+								error(emitter, expression->line, ERROR_CONSTANT_MODIFIED, e->length, e->name);
+							}
+
 							emit_byte_or_short(emitter, expression->line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
 						}
 					} else {
@@ -591,6 +598,10 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 					break;
 				} else {
+					if (emitter->compiler->locals.values[index].constant) {
+						error(emitter, expression->line, ERROR_CONSTANT_MODIFIED, e->length, e->name);
+					}
+
 					emit_byte_or_short(emitter, expression->line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, index);
 				}
 			} else if (expr->to->type == GET_EXPRESSION) {
@@ -701,7 +712,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 			for (uint i = 0; i < expr->parameters.count; i++) {
 				LitParameter parameter = expr->parameters.values[i];
-				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, expression->line));
+				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, expression->line, false));
 			}
 
 			bool single_expression = expr->body->type == EXPRESSION_STATEMENT;
@@ -889,8 +900,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			bool private = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
 
 			int index = private ?
-			            add_private(emitter, stmt->name, stmt->length, statement->line) :
-			            add_local(emitter, stmt->name, stmt->length, statement->line);
+				add_private(emitter, stmt->name, stmt->length, statement->line, stmt->constant) :
+				add_local(emitter, stmt->name, stmt->length, statement->line, stmt->constant);
 
 			if (stmt->init == NULL) {
 				emit_byte(emitter, line, OP_NULL);
@@ -1029,11 +1040,11 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emitter->emit_pop_continue = true;
 
 				LitVarStatement* var = (LitVarStatement *) stmt->var;
-				uint sequence = add_local(emitter, "seq ", 4, statement->line);
+				uint sequence = add_local(emitter, "seq ", 4, statement->line, false);
 				emit_expression(emitter, stmt->condition);
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, sequence);
 
-				uint iterator = add_local(emitter, "iter ", 5, statement->line);
+				uint iterator = add_local(emitter, "iter ", 5, statement->line, false);
 				emit_byte(emitter, emitter->last_line, OP_NULL);
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
 
@@ -1052,7 +1063,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 				bool block = stmt->body->type == BLOCK_STATEMENT;
 
-				uint local = add_local(emitter, var->name, var->length, statement->line);
+				uint local = add_local(emitter, var->name, var->length, statement->line, false);
 				emit_byte(emitter, emitter->last_line, OP_INVOKE);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iteratorValue")));
 				emit_byte(emitter, emitter->last_line, 1);
@@ -1119,9 +1130,9 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			int index;
 
 			if (!export) {
-				index = private ? add_private(emitter, stmt->name, stmt->length, statement->line) : add_local(emitter, stmt->name,
-				                                                                                              stmt->length,
-				                                                                                              statement->line);
+				index = private ?
+					add_private(emitter, stmt->name, stmt->length, statement->line, false) :
+					add_local(emitter, stmt->name, stmt->length, statement->line, false);
 			}
 
 			LitString* name = lit_copy_string(emitter->state, stmt->name, stmt->length);
@@ -1139,7 +1150,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			for (uint i = 0; i < stmt->parameters.count; i++) {
 				LitParameter parameter = stmt->parameters.values[i];
-				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, statement->line));
+				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, statement->line, false));
 			}
 
 			emit_statement(emitter, stmt->body);
@@ -1210,7 +1221,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			for (uint i = 0; i < stmt->parameters.count; i++) {
 				LitParameter parameter = stmt->parameters.values[i];
-				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, statement->line));
+				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, statement->line, false));
 			}
 
 			emit_statement(emitter, stmt->body);
@@ -1286,7 +1297,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 				LitCompiler compiler;
 				init_compiler(emitter, &compiler, stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD);
-				mark_local_initialized(emitter, add_local(emitter, "value", 5, statement->line));
+				mark_local_initialized(emitter, add_local(emitter, "value", 5, statement->line, false));
 
 				emit_statement(emitter, stmt->setter);
 				setter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:set @", emitter->class_name, stmt->name)));
@@ -1332,13 +1343,15 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	uint old_privates_count = module->private_names.count;
 
 	if (old_privates_count > 0) {
-		LitBools* private_statuses = &emitter->private_statuses;
+		LitPrivates* privates = &emitter->privates;
+		privates->count = old_privates_count - 1;
 
-		private_statuses->count = old_privates_count - 1;
-		lit_bools_write(state, private_statuses, true);
+		lit_privates_write(state, privates, (LitPrivate) {
+			true, false
+		});
 
 		for (uint i = 0; i < old_privates_count; i++) {
-			private_statuses->values[i] = true;
+			privates->values[i].initialized = true;
 		}
 	}
 
@@ -1359,12 +1372,12 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	module->main_function = end_compiler(emitter, module_name);
 
 	if (new) {
-		module->privates = LIT_ALLOCATE(emitter->state, LitValue, emitter->private_statuses.count);
+		module->privates = LIT_ALLOCATE(emitter->state, LitValue, emitter->privates.count);
 	} else {
 		module->privates = LIT_GROW_ARRAY(emitter->state, module->privates, LitValue, old_privates_count, module->private_names.count);
 	}
 
-	lit_free_bools(emitter->state, &emitter->private_statuses);
+	lit_free_privates(emitter->state, &emitter->privates);
 
 	if (new && !state->had_error) {
 		lit_table_set(state, &state->vm->modules, module_name, OBJECT_VALUE(module));

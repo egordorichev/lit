@@ -302,7 +302,15 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 			if (scanner->current - scanner->start > 1) {
 				switch (scanner->start[1]) {
 					case 'l': return check_keyword(scanner, 2, 3, "ass", TOKEN_CLASS);
-					case 'o': return check_keyword(scanner, 2, 6, "ntinue", TOKEN_CONTINUE);
+
+					case 'o': {
+						if (scanner->current - scanner->start > 3) {
+							switch (scanner->start[3]) {
+								case 's': return check_keyword(scanner, 2, 3, "nst", TOKEN_CONST);
+								case 't': return check_keyword(scanner, 2, 6, "ntinue", TOKEN_CONTINUE);
+							}
+						}
+					}
 				}
 			}
 
