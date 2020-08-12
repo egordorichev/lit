@@ -333,6 +333,10 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case IF_STATEMENT: {
+			if (true) {
+				break;
+			}
+
 			LitIfStatement *stmt = (LitIfStatement *) statement;
 			LitStatement *branch = stmt->if_branch;
 
