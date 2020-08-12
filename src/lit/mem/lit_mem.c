@@ -315,7 +315,7 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 			lit_mark_object(vm, (LitObject *) module->name);
 			lit_mark_object(vm, (LitObject *) module->main_function);
 
-			for (uint i = 0; i < module->private_names.count; i++) {
+			for (int i = 0; i < module->private_names.count; i++) {
 				lit_mark_value(vm, module->privates[i]);
 			}
 

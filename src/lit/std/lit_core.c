@@ -513,13 +513,11 @@ LIT_METHOD(fiber_current) {
 	return OBJECT_VALUE(vm->fiber);
 }
 
-static LitValue run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count, bool try) {
+static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count, bool try) {
 	if (is_fiber_done(fiber)) {
 		lit_runtime_error(vm, "Fiber already finished executing");
-		return NULL_VALUE;
+		return;
 	}
-
-	LitFiber* last_fiber = vm->fiber;
 
 	fiber->parent = vm->fiber;
 	fiber->try = try;
@@ -686,12 +684,12 @@ LIT_METHOD(array_insert) {
 
 	LitValue value = args[1];
 
-	if (values->count <= index) {
+	if ((int) values->count <= index) {
 		lit_values_ensure_size(vm->state, values, index + 1);
 	} else {
 		lit_values_ensure_size(vm->state, values, values->count + 1);
 
-		for (uint i = values->count - 1; i > index; i--) {
+		for (int i = values->count - 1; i > index; i--) {
 			values->values[i] = values->values[i - 1];
 		}
 	}

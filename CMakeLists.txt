@@ -6,8 +6,15 @@ include_directories(include)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/dist")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/dist")
 
+if(NOT CMAKE_BUILD_TYPE)
+ set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
+set(CMAKE_C_FLAGS_DEBUG "-g")
+set(CMAKE_C_FLAGS_RELEASE "-O3")
+
 OPTION(DEFINE_TEST "Build code for testing (disables debug output)" OFF)
-OPTION(DEFINE_OPTIMIZE "Build code for deployment (disables debug and enables optimisation)" ON)
 
 if (EMSCRIPTEN)
  set(CMAKE_AR "emcc")
@@ -23,11 +30,6 @@ ELSE()
  MESSAGE("Adding Release flag...")
  ADD_DEFINITIONS(-DRELEASE)
 ENDIF(DEFINE_TEST)
-
-IF(DEFINE_OPTIMIZE)
- MESSAGE("Adding Optimize flag...")
- set(CMAKE_C_FLAGS "-O3")
-ENDIF(DEFINE_OPTIMIZE)
 
 add_library(lit STATIC src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/vm/lit_chunk.c
  src/lit/debug/lit_debug.c src/lit/vm/lit_value.c src/lit/vm/lit_vm.c src/lit/scanner/lit_scanner.c

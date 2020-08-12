@@ -355,7 +355,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 				}
 			}
 
-			if (removed) {
+			/*if (removed) {
 				uint last_stable = 0;
 
 				for (uint i = 0; i < stmt->elseif_conditions->count; i++) {
@@ -363,7 +363,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 						last_stable = i;
 					}
 				}
-			}
+			}*/
 
 			// This complex piece of code basically sets the if condition/branch pair to the first non-NULL one
 			{

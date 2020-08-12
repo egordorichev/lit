@@ -863,7 +863,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	if (statement == NULL) {
-		return;
+		return false;
 	}
 
 	switch (statement->type) {
