@@ -633,7 +633,15 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(NEGATE) {
 			if (!IS_NUMBER(PEEK(0))) {
-				RUNTIME_ERROR("Operand must be a number")
+				LitValue arg = PEEK(0);
+
+				// Don't even ask me why
+				// This doesn't kill our performance, since it's a error anyway
+				if (IS_STRING(arg) && strcmp(AS_CSTRING(arg), "muffin") == 0) {
+					RUNTIME_ERROR("Idk, can you negate a muffin?")
+				} else {
+					RUNTIME_ERROR("Operand must be a number")
+				}
 			}
 
 			PUSH(NUMBER_VALUE(-AS_NUMBER(POP())));

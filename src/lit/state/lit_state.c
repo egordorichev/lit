@@ -187,7 +187,7 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, const cha
 		return NULL;
 	}
 
-	lit_optimize(state->optimizer, &statements);
+	// lit_optimize(state->optimizer, &statements);
 
 	LitModule* module = lit_emit(state->emitter, &statements, module_name);
 	free_statements(state, &statements);

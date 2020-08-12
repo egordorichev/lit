@@ -140,10 +140,7 @@ class Test:
 
     def run(self):
         # Invoke the interpreter and run the test.
-        args = ["/home/egor/lit/lit", self.path]
-
-        if not os.path.exists(args[0]):
-            args = ["./dist/lit", self.path]
+        args = ["./dist/lit", self.path]
 
         proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
