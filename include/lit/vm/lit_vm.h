@@ -45,12 +45,4 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber);
 bool lit_handle_runtime_error(LitVm* vm, LitString* error_string);
 bool lit_runtime_error(LitVm* vm, const char* format, ...);
 
-static inline bool lit_is_falsey(LitValue value) {
-	if (IS_NUMBER(value)) {
-		return AS_NUMBER(value) == 0;
-	}
-
-	return IS_NULL(value) || (IS_BOOL(value) && !AS_BOOL(value));
-}
-
 #endif

@@ -32,15 +32,15 @@
 #define OBJECT_VALUE(obj) (LitValue) (SIGN_BIT | QNAN | (uint64_t) (uintptr_t) (obj))
 
 static inline double lit_value_to_number(LitValue value) {
-	double num;
-	memcpy(&num, &value, sizeof(LitValue));
-	return num;
+	return *((double*) &value);
 }
 
 static inline LitValue lit_number_to_value(double num) {
-	LitValue value;
-	memcpy(&value, &num, sizeof(double));
-	return value;
+	return *((LitValue*) &num);
+}
+
+static inline bool lit_is_falsey(LitValue value) {
+	return (IS_BOOL(value) && value == FALSE_VALUE) || IS_NULL(value) || (IS_NUMBER(value) && AS_NUMBER(value) == 0);
 }
 
 void lit_print_value(LitValue value);
