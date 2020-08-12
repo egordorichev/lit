@@ -187,6 +187,7 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, const cha
 		return NULL;
 	}
 
+	// FIXME: mem leak in merge_arrays
 	// lit_optimize(state->optimizer, &statements);
 
 	LitModule* module = lit_emit(state->emitter, &statements, module_name);

@@ -43,17 +43,6 @@ void lit_free_vm(LitVm* vm) {
 	lit_init_vm(vm->state, vm);
 }
 
-void lit_push(LitVm* vm, LitValue value) {
-	*vm->fiber->stack_top = value;
-	vm->fiber->stack_top++;
-}
-
-LitValue lit_pop(LitVm* vm) {
-	assert(vm->fiber->stack_top > vm->fiber->stack);
-	vm->fiber->stack_top--;
-	return *vm->fiber->stack_top;
-}
-
 static void trace_stack(LitVm* vm) {
 	LitFiber* fiber = vm->fiber;
 
@@ -142,21 +131,20 @@ bool lit_runtime_error(LitVm* vm, const char* format, ...) {
 	return lit_handle_runtime_error(vm, lit_copy_string(vm->state, buffer, buffer_size));
 }
 
-static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t arg_count) {
-	LitFiber* fiber = vm->fiber;
+static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure, uint8_t arg_count) {
+	register LitFiber* fiber = vm->fiber;
 
 	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
 		lit_runtime_error(vm, "Stack overflow");
 		return true;
 	}
 
-	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
+	register LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 
 	frame->function = function;
 	frame->closure = closure;
 	frame->ip = function->chunk.code;
 	frame->slots = fiber->stack_top - arg_count - 1;
-	frame->result_ignored = false;
 
 	uint function_arg_count = function->arg_count;
 
@@ -175,7 +163,7 @@ static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t 
 	return true;
 }
 
-static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
+static bool call_value(LitVm* vm, register LitValue callee, register uint8_t arg_count) {
 	if (IS_OBJECT(callee)) {
 		switch (OBJECT_TYPE(callee)) {
 			case OBJECT_FUNCTION: {
@@ -188,9 +176,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 			}
 
 			case OBJECT_NATIVE_FUNCTION: {
-				LitNativeFunctionFn native = AS_NATIVE_FUNCTION(callee)->function;
-				LitValue result = native(vm, arg_count, vm->fiber->stack_top - arg_count);
-
+				LitValue result = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, vm->fiber->stack_top - arg_count);
 				vm->fiber->stack_top -= arg_count + 1;
 				lit_push(vm, result);
 
@@ -314,7 +300,7 @@ static LitUpvalue* capture_upvalue(LitState* state, LitValue* local) {
 	return created_upvalue;
 }
 
-static void close_upvalues(LitVm* vm, const LitValue* last) {
+static void close_upvalues(register LitVm* vm, const LitValue* last) {
 	while (vm->open_upvalues != NULL && vm->open_upvalues->location >= last) {
 		LitUpvalue* upvalue = vm->open_upvalues;
 
@@ -574,6 +560,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			if (frame->result_ignored) {
 				fiber->stack_top++;
+				frame->result_ignored = false;
 			} else {
 				PUSH(result);
 			}
@@ -892,19 +879,25 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(JUMP) {
-			ip += READ_SHORT();
+			uint16_t offset = READ_SHORT();
+			ip += offset;
+
 			continue;
 		}
 
 		CASE_CODE(JUMP_BACK) {
-			ip -= READ_SHORT();
+			uint16_t offset = READ_SHORT();
+			ip -= offset;
+
 			continue;
 		}
 
 		CASE_CODE(CALL) {
 			uint8_t arg_count = READ_BYTE();
+
 			WRITE_FRAME()
 			CALL_VALUE(PEEK(arg_count), arg_count)
+
 			continue;
 		}
 

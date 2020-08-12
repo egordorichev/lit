@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Test script adapted from lox (https://github.com/munificent/craftinginterpreters)
 
 from __future__ import print_function
 

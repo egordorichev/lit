@@ -7,7 +7,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/dist")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/dist")
 
 OPTION(DEFINE_TEST "Build code for testing (disables debug output)" OFF)
-OPTION(DEFINE_OPTIMIZE "Build code for deployment (disables debug and enables optimisation)" OFF)
+OPTION(DEFINE_OPTIMIZE "Build code for deployment (disables debug and enables optimisation)" ON)
 
 if (EMSCRIPTEN)
  set(CMAKE_AR "emcc")
@@ -26,7 +26,6 @@ ENDIF(DEFINE_TEST)
 
 IF(DEFINE_OPTIMIZE)
  MESSAGE("Adding Optimize flag...")
- ADD_DEFINITIONS(-DTEST)
  set(CMAKE_C_FLAGS "-O3")
 ENDIF(DEFINE_OPTIMIZE)
 
@@ -35,7 +34,7 @@ add_library(lit STATIC src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/v
  src/lit/parser/lit_parser.c src/lit/parser/lit_ast.c src/lit/emitter/lit_emitter.c src/lit/vm/lit_object.c
  src/lit/util/lit_table.c src/lit/util/lit_array.c src/lit/util/lit_fs.c src/lit/api/lit_api.c
  src/lit/std/lit_core.c src/lit/std/lit_math.c src/lit/std/lit_file.c src/lit/parser/lit_error.c
-        src/lit/optimizer/lit_optimizer.c)
+ src/lit/optimizer/lit_optimizer.c)
 
 add_executable(litc src/main.c)
 target_link_libraries(litc lit)

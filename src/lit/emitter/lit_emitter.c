@@ -12,7 +12,7 @@
 DEFINE_ARRAY(LitPrivates, LitPrivate, privates)
 DEFINE_ARRAY(LitLocals, LitLocal, locals)
 
-static void emit_statement(LitEmitter* emitter, LitStatement* statement);
+static bool emit_statement(LitEmitter* emitter, LitStatement* statement);
 
 void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->state = state;
@@ -861,7 +861,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	}
 }
 
-static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
+static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	if (statement == NULL) {
 		return;
 	}
@@ -884,7 +884,10 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			for (uint i = 0; i < statements.count; i++) {
 				LitStatement* stmt = statements.values[i];
-				emit_statement(emitter, stmt);
+
+				if (emit_statement(emitter, stmt)) {
+					break;
+				}
 			}
 
 			end_scope(emitter, emitter->last_line);
@@ -1201,7 +1204,7 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emitter->compiler->skip_return = true;
 			}
 
-			break;
+			return true;
 		}
 
 		case METHOD_STATEMENT: {
@@ -1319,6 +1322,7 @@ static void emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	}
 
 	emitter->previous_was_expression_statement = statement->type == EXPRESSION_STATEMENT;
+	return false;
 }
 
 LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* module_name) {
@@ -1359,7 +1363,10 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 
 	for (uint i = 0; i < statements->count; i++) {
 		LitStatement* stmt = statements->values[i];
-		emit_statement(emitter, stmt);
+
+		if (emit_statement(emitter, stmt)) {
+			break;
+		}
 	}
 
 	end_scope(emitter, emitter->last_line);
