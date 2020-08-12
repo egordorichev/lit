@@ -1,1 +1,9 @@
-10 + 3 == 13
+if (false) {
+	10
+} else if (true) {
+	30
+} else if (false) {
+	40
+} else {
+	20
+}

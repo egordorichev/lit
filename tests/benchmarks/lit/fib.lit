@@ -1,0 +1,15 @@
+function fib(n) {
+	if (n < 2) {
+		return n
+	}
+
+	return fib(n - 2) + fib(n - 1)
+}
+
+var start = time()
+
+for (var i in 1 .. 5) {
+	print(fib(28))
+}
+
+print("elapsed: " + (time() - start))

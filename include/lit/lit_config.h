@@ -6,7 +6,7 @@
 #define LIT_VERSION_STRING "0.1"
 
 // #define TESTING
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
 #define LIT_TRACE_EXECUTION

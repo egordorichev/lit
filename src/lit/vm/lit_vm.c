@@ -160,13 +160,15 @@ static bool call(LitVm* vm, LitFunction* function, LitClosure* closure, uint8_t 
 
 	uint function_arg_count = function->arg_count;
 
-	if (arg_count < function_arg_count) {
-		for (uint i = 0; i < function_arg_count - arg_count; i++) {
-			lit_push(vm, NULL_VALUE);
-		}
-	} else if (arg_count > function_arg_count) {
-		for (uint i = 0; i < arg_count - function_arg_count; i++) {
-			lit_pop(vm);
+	if (arg_count != function_arg_count) {
+		if (arg_count < function_arg_count) {
+			for (uint i = 0; i < function_arg_count - arg_count; i++) {
+				lit_push(vm, NULL_VALUE);
+			}
+		} else {
+			for (uint i = 0; i < arg_count - function_arg_count; i++) {
+				lit_pop(vm);
+			}
 		}
 	}
 
