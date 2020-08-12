@@ -22,6 +22,8 @@ def BENCHMARK(name, pattern):
 	regex = re.compile(pattern + "\n" + r"elapsed: (\d+\.\d+)", re.MULTILINE)
 	BENCHMARKS.append([name, regex, None])
 
+BENCHMARK("for", r"""499999500000""")
+
 BENCHMARK("fib", r"""317811
 317811
 317811
@@ -82,7 +84,7 @@ def run_trial(benchmark, language):
 	"""Runs one benchmark one time for one language."""
 	executable_args = language[1]
 
-	benchmark_path = os.path.join(BENCHMARK_DIR, benchmark[0] + language[2])
+	benchmark_path = os.path.join(BENCHMARK_DIR, benchmark[0], 'benchmark' + language[2])
 	benchmark_path = relpath(benchmark_path).replace("\\", "/")
 
 	args = []
@@ -115,7 +117,7 @@ def run_benchmark_language(benchmark, language, benchmark_result):
 	print("{0:30s}".format(name), end=' ')
 
 	if not os.path.exists(os.path.join(
-		BENCHMARK_DIR, benchmark[0] + language[2])):
+		BENCHMARK_DIR, benchmark[0] + '/benchmark' + language[2])):
 		print("No implementation for this language")
 		return
 

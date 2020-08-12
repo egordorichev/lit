@@ -1,0 +1,15 @@
+var list = []
+var start = time()
+
+for (var i in 0 .. 999999) {
+	list.add(i)
+}
+
+var sum = 0
+
+for (var i in list) {
+	sum = sum + i
+}
+
+print(sum)
+print("elapsed: " + (time() - start))

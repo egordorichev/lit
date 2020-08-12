@@ -122,7 +122,7 @@ static void print_object(LitValue value) {
 				if (size > 16) {
 					printf(" (too big to be displayed) ");
 				} else if (size > 0) {
-					for (uint i = 0; i < map->values.capacity; i++) {
+					for (int i = 0; i < map->values.capacity; i++) {
 						LitTableEntry* entry = &map->values.entries[i];
 
 						if (entry->key != NULL) {

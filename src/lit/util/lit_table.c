@@ -157,7 +157,7 @@ void lit_table_add_all(LitState* state, LitTable* from, LitTable* to) {
 }
 
 void lit_table_remove_white(LitTable* table) {
-	for (uint i = 0; i <= table->capacity; i++) {
+	for (int i = 0; i <= table->capacity; i++) {
 		LitTableEntry* entry = &table->entries[i];
 
 		if (entry->key != NULL && !entry->key->object.marked) {

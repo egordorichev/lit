@@ -10,7 +10,7 @@ if(NOT CMAKE_BUILD_TYPE)
  set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter")
+set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-strict-aliasing -Wno-unused-result -Wno-sequence-point")
 set(CMAKE_C_FLAGS_DEBUG "-g")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 

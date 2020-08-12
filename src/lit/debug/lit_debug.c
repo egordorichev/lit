@@ -5,7 +5,7 @@
 void lit_disassemble_chunk(LitChunk* chunk, const char* name) {
 	printf("== %s ==\n", name);
 
-	for (int offset = 0; offset < chunk->count;) {
+	for (uint offset = 0; offset < chunk->count;) {
 		offset = lit_disassemble_instruction(chunk, offset);
 	}
 }
@@ -145,7 +145,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
 
 			LitFunction* function = AS_FUNCTION(chunk->constants.values[constant]);
 
-			for (int j = 0; j < function->upvalue_count; j++) {
+			for (uint j = 0; j < function->upvalue_count; j++) {
 				int is_local = chunk->code[offset++];
 				int index = chunk->code[offset++];
 

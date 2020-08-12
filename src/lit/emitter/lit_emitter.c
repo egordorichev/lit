@@ -273,7 +273,7 @@ static int resolve_local(LitEmitter* emitter, LitCompiler* compiler, const char*
 }
 
 static int add_upvalue(LitEmitter* emitter, LitCompiler* compiler, uint8_t index, uint line, bool is_local) {
-	int upvalue_count = compiler->function->upvalue_count;
+	uint upvalue_count = compiler->function->upvalue_count;
 
 	for (uint i = 0; i < upvalue_count; i++) {
 		LitCompilerUpvalue* upvalue = &compiler->upvalues[i];
@@ -965,7 +965,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			patch_jump(emitter, end_jump, emitter->last_line);
 
 			if (stmt->elseif_branches != NULL) {
-				for (int i = 0; i < stmt->elseif_branches->count; i++) {
+				for (uint i = 0; i < stmt->elseif_branches->count; i++) {
 					patch_jump(emitter, end_jumps[i], stmt->elseif_branches->values[i]->line);
 				}
 			}
@@ -1008,7 +1008,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				}
 
 				uint start = emitter->chunk->count;
-				uint exit_jump;
+				uint exit_jump = 0;
 
 				if (stmt->condition != NULL) {
 					emit_expression(emitter, stmt->condition);

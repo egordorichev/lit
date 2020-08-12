@@ -62,7 +62,7 @@ LIT_METHOD(class_iterator) {
 
 	LitClass* klass = AS_CLASS(instance);
 	int index = args[0] == NULL_VALUE ? 0 : AS_NUMBER(args[0]);
-	uint methodsCapacity = klass->methods.capacity;
+	int methodsCapacity = (int) klass->methods.capacity;
 	bool fields = index >= methodsCapacity;
 
 	int value = table_iterator(fields ? &klass->static_fields : &klass->methods, fields ? index - methodsCapacity : index);
@@ -198,7 +198,7 @@ LIT_METHOD(object_iterator) {
 
 	LitInstance* self = AS_INSTANCE(instance);
 	int index = args[0] == NULL_VALUE ? 0 : AS_NUMBER(args[0]);
-	uint methodsCapacity = self->klass->methods.capacity;
+	int methodsCapacity = (int) self->klass->methods.capacity;
 	bool fields = index >= methodsCapacity;
 
 	int value = table_iterator(fields ? &self->fields : &self->klass->methods, fields ? index - methodsCapacity : index);
@@ -610,7 +610,7 @@ static LitValue array_splice(LitVm* vm, LitArray* array, int from, int to) {
 	length = fmin(length, to - from + 1);
 	LitArray* new_array = lit_create_array(vm->state);
 
-	for (int i = 0; i < length; i++) {
+	for (uint i = 0; i < length; i++) {
 		lit_values_write(vm->state, &new_array->values,  array->values.values[from + i]);
 	}
 
@@ -658,7 +658,7 @@ LIT_METHOD(array_subscript) {
 		index = fmax(0, values->count + index);
 	}
 
-	if (values->capacity <= index) {
+	if (values->capacity <= (uint) index) {
 		return NULL_VALUE;
 	}
 
