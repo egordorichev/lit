@@ -1,6 +1,7 @@
 #include <lit/vm/lit_chunk.h>
 #include <lit/mem/lit_mem.h>
 #include <lit/state/lit_state.h>
+#include <lit/util/lit_fs.h>
 
 void lit_init_chunk(LitChunk* chunk) {
 	chunk->count = 0;
@@ -117,97 +118,56 @@ void lit_shrink_chunk(LitState* state, LitChunk* chunk) {
 	}
 }
 
-static void write_uint8_t(FILE* file, uint8_t byte) {
-	fwrite(&byte, sizeof(uint8_t), 1, file);
-}
-
-static void write_uint16_t(FILE* file, uint16_t byte) {
-	fwrite(&byte, sizeof(uint16_t), 1, file);
-}
-
-static void write_uint32_t(FILE* file, uint32_t byte) {
-	fwrite(&byte, sizeof(uint32_t), 1, file);
-}
-
-static void write_double(FILE* file, double byte) {
-	fwrite(&byte, sizeof(double), 1, file);
-}
-
-static uint8_t btmp;
-static uint16_t stmp;
-static uint32_t itmp;
-static double dtmp;
-
-static uint8_t read_uint8_t(FILE* file) {
-	fread(&btmp, sizeof(uint8_t), 1, file);
-	return btmp;
-}
-
-static uint16_t read_uint16_t(FILE* file) {
-	fread(&stmp, sizeof(uint16_t), 1, file);
-	return stmp;
-}
-
-static uint32_t read_uint32_t(FILE* file) {
-	fread(&itmp, sizeof(uint32_t), 1, file);
-	return itmp;
-}
-
-static uint8_t read_double(FILE* file) {
-	fread(&dtmp, sizeof(double), 1, file);
-	return dtmp;
-}
-
-void lit_save_chunk(LitChunk* chunk, FILE* file) {
-	write_uint32_t(file, chunk->count);
+void lit_save_chunk(FILE* file, LitChunk* chunk) {
+	lit_write_uint32_t(file, chunk->count);
 
 	for (uint i = 0; i < chunk->count; i++) {
-		write_uint8_t(file, chunk->code[i]);
+		lit_write_uint8_t(file, chunk->code[i]);
 	}
 
 	uint c = chunk->line_count * 2 + 2;
-	write_uint32_t(file, c);
+	lit_write_uint32_t(file, c);
 
 	for (uint i = 0; i < c; i++) {
-		write_uint16_t(file, chunk->lines[i]);
+		lit_write_uint16_t(file, chunk->lines[i]);
 	}
 
-	write_uint32_t(file, chunk->constants.count);
+	lit_write_uint32_t(file, chunk->constants.count);
 
 	for (uint i = 0; i < chunk->constants.count; i++) {
-		write_double(file, chunk->constants.values[i]);
+		lit_write_double(file, chunk->constants.values[i]);
 	}
 }
 
-LitChunk* lit_load_chunk(LitState* state, FILE* file) {
+LitChunk* lit_load_chunk(FILE* file, LitState* state) {
 	LitChunk* chunk = (LitChunk*) lit_reallocate(state, NULL, 0, sizeof(LitChunk));
 	lit_init_chunk(chunk);
 	
-	uint count = read_uint32_t(file);
+	uint count = lit_read_uint32_t(file);
 	chunk->code = (uint8_t*) lit_reallocate(state, NULL, 0, sizeof(uint8_t) * count);
 	chunk->count = count;
 	chunk->capacity = count;
 	
 	for (uint i = 0; i < count; i++) {
-		chunk->code[i] = read_uint8_t(file);
+		chunk->code[i] = lit_read_uint8_t(file);
 	}
 
-	count = read_uint32_t(file);
+	count = lit_read_uint32_t(file);
 	chunk->lines = (uint16_t*) lit_reallocate(state, NULL, 0, sizeof(uint16_t) * count);
 	chunk->line_count = count;
 	chunk->line_capacity = count;
 
 	for (uint i = 0; i < count; i++) {
-		chunk->lines[i] = read_uint16_t(file);
+		chunk->lines[i] = lit_read_uint16_t(file);
 	}
 
-	count = read_uint32_t(file);
+	count = lit_read_uint32_t(file);
 	chunk->constants.values = (LitValue*) lit_reallocate(state, NULL, 0, sizeof(LitValue) * count);
 	chunk->constants.count = count;
 	chunk->constants.capacity = count;
 
 	for (uint i = 0; i < count; i++) {
-		chunk->constants.values[i] = (LitValue) read_double(file);
+		chunk->constants.values[i] = (LitValue) lit_read_double(file);
 	}
 	
 	return chunk;

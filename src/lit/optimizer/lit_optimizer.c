@@ -338,9 +338,9 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 			}
 
 			LitIfStatement *stmt = (LitIfStatement *) statement;
-			LitStatement *branch = stmt->if_branch;
+			// LitStatement *branch = stmt->if_branch;
 
-			bool removed = false;
+			// bool removed = false;
 
 			// Removes all the dead if-else condition/branch pairs
 			if (stmt->elseif_conditions != NULL) {
@@ -354,7 +354,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 						stmt->elseif_conditions->values[i] = NULL;
 						stmt->elseif_branches->values[i] = NULL;
 
-						removed = true;
+						// removed = true;
 					}
 				}
 			}

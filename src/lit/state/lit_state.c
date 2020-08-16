@@ -179,18 +179,24 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, const cha
 	state->allow_gc = false;
 	state->had_error = false;
 
-	LitStatements statements;
-	lit_init_stataments(&statements);
+	LitModule *module = NULL;
 
-	if (lit_parse(state->parser, module_name->chars, code, &statements)) {
+	// This is a lbc format
+	if ((code[1] << 8 | code[0]) == CHUNK_MAGICAL_NUMBER) {
+		UNREACHABLE // FIXME
+	} else {
+		LitStatements statements;
+		lit_init_stataments(&statements);
+
+		if (lit_parse(state->parser, module_name->chars, code, &statements)) {
+			free_statements(state, &statements);
+			return NULL;
+		}
+
+		lit_optimize(state->optimizer, &statements);
+		module = lit_emit(state->emitter, &statements, module_name);
 		free_statements(state, &statements);
-		return NULL;
 	}
-
-	lit_optimize(state->optimizer, &statements);
-
-	LitModule* module = lit_emit(state->emitter, &statements, module_name);
-	free_statements(state, &statements);
 
 	state->allow_gc = allowed_gc;
 	return state->had_error ? NULL : module;
@@ -214,18 +220,11 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 	return result;
 }
 
-LitInterpretResult lit_interpret_file(LitState* state, char* file_name) {
-	const char* source = lit_read_file(file_name);
-
-	if (source == NULL) {
-		lit_error(state, RUNTIME_ERROR, "Failed top open file '%s'", file_name);
-		return INTERPRET_RUNTIME_FAIL;
-	}
-
+void lit_patch_file_name(char* file_name) {
 	int name_length = strlen(file_name);
 
-	// Check, if our file_name ends with .lit, and remove it
-	if (name_length > 4 && !strcmp(file_name + name_length - 4, ".lit")) {
+	// Check, if our file_name ends with .lit or lbc, and remove it
+	if (name_length > 4 && (strcmp(file_name + name_length - 4, ".lit") == 0 || strcmp(file_name + name_length - 4, ".lbc") == 0)) {
 		file_name[name_length - 4] = '\0';
 	}
 
@@ -236,6 +235,36 @@ LitInterpretResult lit_interpret_file(LitState* state, char* file_name) {
 			file_name[i] = '.';
 		}
 	}
+}
+
+bool lit_compile_and_save_file(LitState* state, char* file_name, const char* output_file) {
+	const char* source = lit_read_file(file_name);
+
+	if (source == NULL) {
+		lit_error(state, RUNTIME_ERROR, "Failed to open file '%s'", file_name);
+		return false;
+	}
+
+	lit_patch_file_name(file_name);
+
+	LitString* module_name = lit_copy_string(state, file_name, strlen(file_name));
+	LitModule* module = lit_compile_module(state, module_name, source);
+
+	bool result = module != NULL && lit_save_module(module, output_file);
+	free((void*) source);
+
+	return result;
+}
+
+LitInterpretResult lit_interpret_file(LitState* state, char* file_name) {
+	const char* source = lit_read_file(file_name);
+
+	if (source == NULL) {
+		lit_error(state, RUNTIME_ERROR, "Failed to open file '%s'", file_name);
+		return INTERPRET_RUNTIME_FAIL;
+	}
+
+	lit_patch_file_name(file_name);
 
 	LitInterpretResult result = lit_interpret(state, file_name, source);
 	free((void*) source);

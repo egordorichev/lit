@@ -137,8 +137,8 @@ typedef struct {
 	LitChunk chunk;
 	LitString* name;
 
-	uint arg_count;
-	uint upvalue_count;
+	uint8_t arg_count;
+	uint16_t upvalue_count;
 
 	struct sLitModule* module;
 } LitFunction;

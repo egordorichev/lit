@@ -2,11 +2,11 @@
 #include <lit/api/lit_api.h>
 #include <lit/vm/lit_vm.h>
 #include <lit/lit_config.h>
+#include <lit/util/lit_fs.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
-#include <stdlib.h>
 #include <dirent.h>
 
 #ifdef LIT_OS_WINDOWS
@@ -99,31 +99,29 @@ LIT_METHOD(file_write) {
 
 LIT_METHOD(file_writeByte) {
 	uint8_t byte = (uint8_t) LIT_CHECK_NUMBER(0);
-	fwrite(&byte, 1, 1, extract_file_data(vm->state, instance)->file);
+	lit_write_uint8_t(extract_file_data(vm->state, instance)->file, byte);
 
 	return NULL_VALUE;
 }
 
 LIT_METHOD(file_writeShort) {
 	uint16_t shrt = (uint16_t) LIT_CHECK_NUMBER(0);
-	fwrite(&shrt, 2, 1, extract_file_data(vm->state, instance)->file);
+	lit_write_uint16_t(extract_file_data(vm->state, instance)->file, shrt);
 
 	return NULL_VALUE;
 }
 
 LIT_METHOD(file_writeNumber) {
-	float shrt = (float) LIT_CHECK_NUMBER(0);
-	fwrite(&shrt, 4, 1, extract_file_data(vm->state, instance)->file);
+	float num = (float) LIT_CHECK_NUMBER(0);
+	lit_write_uint32_t(extract_file_data(vm->state, instance)->file, num);
 
 	return NULL_VALUE;
 }
 
 LIT_METHOD(file_writeBool) {
 	bool value = LIT_CHECK_BOOL(0);
-	char c = value ? '1' : '0';
 
-	fwrite(&c, 1, 1, extract_file_data(vm->state, instance)->file);
-
+	lit_write_uint8_t(extract_file_data(vm->state, instance)->file, (uint8_t) value ? '1' : '0');
 	return NULL_VALUE;
 }
 
@@ -135,14 +133,7 @@ LIT_METHOD(file_writeString) {
 	LitString* string = AS_STRING(args[0]);
 	LitFileData* data = extract_file_data(vm->state, instance);
 
-	if (string->length > 255) {
-		lit_runtime_error(vm, "String length is greater, than 255 bytes");
-	}
-
-	uint8_t c = string->length;
-	fwrite(&c, 1, 1, data->file);
-	fwrite(string->chars, string->length, 1, data->file);
-
+	lit_write_string(data->file, string);
 	return NULL_VALUE;
 }
 
@@ -171,10 +162,6 @@ LIT_METHOD(file_readAll) {
 	return OBJECT_VALUE(result);
 }
 
-static uint8_t btmp;
-static uint16_t stmp;
-static float ftmp;
-
 LIT_METHOD(file_readLine) {
 	uint max_length = (uint) LIT_GET_NUMBER(0, 128);
 	LitFileData* data = extract_file_data(vm->state, instance);
@@ -189,43 +176,27 @@ LIT_METHOD(file_readLine) {
 }
 
 LIT_METHOD(file_readByte) {
-	fread(&btmp, 1, 1, extract_file_data(vm->state, instance)->file);
-	return NUMBER_VALUE(btmp);
+	return NUMBER_VALUE(lit_read_uint8_t(extract_file_data(vm->state, instance)->file));
 }
 
 LIT_METHOD(file_readShort) {
-	fread(&stmp, 2, 1, extract_file_data(vm->state, instance)->file);
-	return NUMBER_VALUE(stmp);
+	return NUMBER_VALUE(lit_read_uint16_t(extract_file_data(vm->state, instance)->file));
 }
 
 LIT_METHOD(file_readNumber) {
-	fread(&ftmp, 4, 1, extract_file_data(vm->state, instance)->file);
-	return NUMBER_VALUE(ftmp);
+	return NUMBER_VALUE(lit_read_uint32_t(extract_file_data(vm->state, instance)->file));
 }
 
 LIT_METHOD(file_readBool) {
-	fread(&btmp, 1, 1, extract_file_data(vm->state, instance)->file);
-	return BOOL_VALUE((char) btmp == '1');
+	return BOOL_VALUE((char) lit_read_uint8_t(extract_file_data(vm->state, instance)->file) == '1');
 }
 
 LIT_METHOD(file_readString) {
 	LitFileData* data = extract_file_data(vm->state, instance);
-	fread(&btmp, 1, 1, data->file);
-	int length = btmp;
+	LitString* string = lit_read_string(vm->state, data->file);
 
-	if (length < 1) {
-		return NULL_VALUE;
-	}
-
-	char line[length];
-
-	if (!fread(line, length, 1, data->file)) {
-		return NULL_VALUE;
-	}
-
-	return OBJECT_VALUE(lit_copy_string(vm->state, line, length));
+	return string == NULL ? NULL_VALUE : OBJECT_VALUE(string);
 }
-
 
 LIT_METHOD(file_getLastModified) {
 	struct stat buffer;

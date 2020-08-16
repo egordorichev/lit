@@ -10,10 +10,7 @@
 #define EXIT_CODE_RUNTIME_ERROR 70
 #define EXIT_CODE_COMPILE_ERROR 65
 
-static int run_repl() {
-	LitState* state = lit_new_state();
-	lit_open_libraries(state);
-
+static void run_repl(LitState* state) {
 	printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
 	char line[1024];
 
@@ -31,21 +28,14 @@ static int run_repl() {
 			printf("%s%s%s\n", COLOR_GREEN, lit_to_string(state, result.result)->chars, COLOR_RESET);
 		}
 	}
-
-	int64_t amount = lit_free_state(state);
-
-	if (amount != 0) {
-		fprintf(stderr, "Error: memory leak of %ld bytes!\n", amount);
-		return EXIT_CODE_MEM_LEAK;
-	}
-
-	return 0;
 }
 
 static void show_help() {
 	printf("lit [options] [file]\n");
+	printf("\t-o --output [file]\tInstead of running the file the compiled bytecode will be saved.\n");
 	printf("\t-e --eval [string]\tRuns the given code string.\n");
 	printf("\t-p --pass [args]\tPasses the rest of the arguments to the script.\n");
+	printf("\t-i --interactive\tStarts an interactive shell.\n");
 	printf("\t-h --help\t\tI wonder, what this option does.\n");
 	printf("\tIf no arguments are provided, interactive shell will start.\n");
 }
@@ -55,10 +45,6 @@ static bool match_arg(const char* arg, const char* a, const char* b) {
 }
 
 int main(int argc, const char* argv[]) {
-	if (argc == 1) {
-		return run_repl();
-	}
-
 	LitState* state = lit_new_state();
 	lit_open_libraries(state);
 
@@ -69,7 +55,7 @@ int main(int argc, const char* argv[]) {
 		const char* arg = argv[i];
 
 		if (arg[0] == '-') {
-			if (match_arg(arg, "-e", "--eval")) {
+			if (match_arg(arg, "-e", "--eval") || match_arg(arg, "-o", "--output")) {
 				// It takes an extra argument, count it or we will use it as the file name to run :P
 				i++;
 			} else if (match_arg(arg, "-p", "--pass")) {
@@ -89,6 +75,8 @@ int main(int argc, const char* argv[]) {
 	}
 
 	LitArray* arg_array = NULL;
+	bool show_repl = argc == 1;
+	char* bytecode_file = NULL;
 
 	for (int i = 1; i < argc; i++) {
 		int args_left = argc - i - 1;
@@ -107,6 +95,15 @@ int main(int argc, const char* argv[]) {
 			}
 		} else if (match_arg(arg, "-h", "--help")) {
 			show_help();
+		} else if (match_arg(arg, "-i", "--interactive")) {
+			show_repl = true;
+		} else if (match_arg(arg, "-o", "--output")) {
+			if (args_left == 0) {
+				printf("Expected file name where to save the bytecode.\n");
+				return EXIT_CODE_ARGUMENT_ERROR;
+			}
+
+			bytecode_file = (char*) argv[++i];
 		} else if (match_arg(arg, "-p", "--pass")) {
 			arg_array = lit_create_array(state);
 
@@ -124,12 +121,22 @@ int main(int argc, const char* argv[]) {
 	}
 
 	if (file_to_run != NULL) {
-		if (arg_array == NULL) {
-			arg_array = lit_create_array(state);
-		}
+		if (bytecode_file != NULL) {
+			if (!lit_compile_and_save_file(state, (char*) file_to_run, bytecode_file)) {
+				result = INTERPRET_COMPILE_ERROR;
+			}
+		} else {
+			if (arg_array == NULL) {
+				arg_array = lit_create_array(state);
+			}
 
-		lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
-		result = lit_interpret_file(state, (char*) file_to_run).type;
+			lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
+			result = lit_interpret_file(state, (char*) file_to_run).type;
+		}
+	}
+
+	if (show_repl) {
+		run_repl(state);
 	}
 
 	int64_t amount = lit_free_state(state);

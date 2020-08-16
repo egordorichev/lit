@@ -7,6 +7,8 @@
 
 #include <stdio.h>
 
+#define CHUNK_MAGICAL_NUMBER 6932
+
 typedef enum {
 #define OPCODE(name, effect) OP_##name,
 #include <lit/vm/lit_opcodes.h>
@@ -32,8 +34,8 @@ uint lit_chunk_add_constant(LitState* state, LitChunk* chunk, LitValue constant)
 uint lit_chunk_get_line(LitChunk* chunk, uint offset);
 void lit_shrink_chunk(LitState* state, LitChunk* chunk);
 
-void lit_save_chunk(LitChunk* chunk, FILE* file);
-LitChunk* lit_load_chunk(LitState* state, FILE* file);
+void lit_save_chunk(FILE* file, LitChunk* chunk);
+LitChunk* lit_load_chunk(FILE* file, LitState* state);
 
 void lit_emit_byte(LitState* state, LitChunk* chunk, uint8_t byte);
 void lit_emit_bytes(LitState* state, LitChunk* chunk, uint8_t a, uint8_t b);
