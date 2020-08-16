@@ -1,5 +1,7 @@
 # todo
 
+* compile/run multiple files
+
 * optimizations {
  * unused locals / privates
  * constant folding
@@ -22,7 +24,6 @@
 
 * make var statements into expressions to allow stuff like if (var a = test()) { print(a) }
 * emit_pop_continue needs to work with nested loops
-* opcode saving/loading
 
 # feature creep
 
