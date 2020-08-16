@@ -7,6 +7,8 @@
 
 #include <stdio.h>
 
+#define BYTECODE_MAGICAL_NUMBER 6932
+
 const char* lit_read_file(const char* path);
 
 void lit_write_uint8_t(FILE* file, uint8_t byte);
@@ -35,5 +37,6 @@ double lit_read_edouble(LitEmulatedFile* file);
 LitString* lit_read_estring(LitState* state, LitEmulatedFile* file);
 
 bool lit_save_module(LitModule* module, const char* output_file);
+LitModule* lit_load_module(LitState* state, const char* input);
 
 #endif

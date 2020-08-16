@@ -182,8 +182,8 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, const cha
 	LitModule *module = NULL;
 
 	// This is a lbc format
-	if ((code[1] << 8 | code[0]) == CHUNK_MAGICAL_NUMBER) {
-		UNREACHABLE // FIXME
+	if ((code[1] << 8 | code[0]) == BYTECODE_MAGICAL_NUMBER) {
+		module = lit_load_module(state, code);
 	} else {
 		LitStatements statements;
 		lit_init_stataments(&statements);

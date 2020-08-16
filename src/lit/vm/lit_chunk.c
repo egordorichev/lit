@@ -118,61 +118,6 @@ void lit_shrink_chunk(LitState* state, LitChunk* chunk) {
 	}
 }
 
-void lit_save_chunk(FILE* file, LitChunk* chunk) {
-	lit_write_uint32_t(file, chunk->count);
-
-	for (uint i = 0; i < chunk->count; i++) {
-		lit_write_uint8_t(file, chunk->code[i]);
-	}
-
-	uint c = chunk->line_count * 2 + 2;
-	lit_write_uint32_t(file, c);
-
-	for (uint i = 0; i < c; i++) {
-		lit_write_uint16_t(file, chunk->lines[i]);
-	}
-
-	lit_write_uint32_t(file, chunk->constants.count);
-
-	for (uint i = 0; i < chunk->constants.count; i++) {
-		lit_write_double(file, chunk->constants.values[i]);
-	}
-}
-
-LitChunk* lit_load_chunk(FILE* file, LitState* state) {
-	LitChunk* chunk = (LitChunk*) lit_reallocate(state, NULL, 0, sizeof(LitChunk));
-	lit_init_chunk(chunk);
-	
-	uint count = lit_read_uint32_t(file);
-	chunk->code = (uint8_t*) lit_reallocate(state, NULL, 0, sizeof(uint8_t) * count);
-	chunk->count = count;
-	chunk->capacity = count;
-	
-	for (uint i = 0; i < count; i++) {
-		chunk->code[i] = lit_read_uint8_t(file);
-	}
-
-	count = lit_read_uint32_t(file);
-	chunk->lines = (uint16_t*) lit_reallocate(state, NULL, 0, sizeof(uint16_t) * count);
-	chunk->line_count = count;
-	chunk->line_capacity = count;
-
-	for (uint i = 0; i < count; i++) {
-		chunk->lines[i] = lit_read_uint16_t(file);
-	}
-
-	count = lit_read_uint32_t(file);
-	chunk->constants.values = (LitValue*) lit_reallocate(state, NULL, 0, sizeof(LitValue) * count);
-	chunk->constants.count = count;
-	chunk->constants.capacity = count;
-
-	for (uint i = 0; i < count; i++) {
-		chunk->constants.values[i] = (LitValue) lit_read_double(file);
-	}
-	
-	return chunk;
-}
-
 void lit_emit_byte(LitState* state, LitChunk* chunk, uint8_t byte) {
 	lit_write_chunk(state, chunk, byte, 1);
 }

@@ -97,20 +97,22 @@ uint8_t lit_read_euint8_t(LitEmulatedFile* file) {
 }
 
 uint16_t lit_read_euint16_t(LitEmulatedFile* file) {
-	return (uint16_t) ((lit_read_euint8_t(file) << 8u) | lit_read_euint8_t(file));
+	return (uint16_t) (lit_read_euint8_t(file) | (lit_read_euint8_t(file) << 8u));
 }
 
 uint32_t lit_read_euint32_t(LitEmulatedFile* file) {
-	return (uint32_t) ((lit_read_euint8_t(file) << 24u) | (lit_read_euint8_t(file) << 16u) | (lit_read_euint8_t(file) << 8u) | lit_read_euint8_t(file));
+	return (uint32_t) (lit_read_euint8_t(file) | (lit_read_euint8_t(file) << 8u) | (lit_read_euint8_t(file) << 16u) | (lit_read_euint8_t(file) << 24u));
 }
 
 double lit_read_edouble(LitEmulatedFile* file) {
-	double result = 0;
+	uint8_t values[8];
+	double result;
 
-	for (int i = 0; i < 8; i++) {
-		result += lit_read_euint8_t(file) << (i * 8);
+	for (uint i = 0; i < 8; i++) {
+		values[i] = lit_read_euint8_t(file);
 	}
 
+	memcpy(&result, values, 8);
 	return result;
 }
 
@@ -130,12 +132,125 @@ LitString* lit_read_estring(LitState* state, LitEmulatedFile* file) {
 	return lit_copy_string(state, line, length);
 }
 
+static void save_chunk(FILE* file, LitChunk* chunk);
+static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module, LitChunk* chunk);
+
 static void save_function(FILE* file, LitFunction* function) {
-	lit_save_chunk(file, &function->chunk);
+	save_chunk(file, &function->chunk);
 	lit_write_string(file, function->name);
 
 	lit_write_uint8_t(file, function->arg_count);
 	lit_write_uint16_t(file, function->upvalue_count);
+}
+
+static LitFunction* load_function(LitState* state, LitEmulatedFile* file, LitModule* module) {
+	LitFunction* function = lit_create_function(state, module);
+
+	load_chunk(state, file, module, &function->chunk);
+	function->name = lit_read_estring(state, file);
+
+	function->arg_count = lit_read_euint8_t(file);
+	function->upvalue_count = lit_read_euint16_t(file);
+
+	return function;
+}
+
+static void save_chunk(FILE* file, LitChunk* chunk) {
+	lit_write_uint32_t(file, chunk->count);
+
+	for (uint i = 0; i < chunk->count; i++) {
+		lit_write_uint8_t(file, chunk->code[i]);
+	}
+
+	uint c = chunk->line_count * 2 + 2;
+	lit_write_uint32_t(file, c);
+
+	for (uint i = 0; i < c; i++) {
+		lit_write_uint16_t(file, chunk->lines[i]);
+	}
+
+	lit_write_uint32_t(file, chunk->constants.count);
+
+	for (uint i = 0; i < chunk->constants.count; i++) {
+		LitValue constant = chunk->constants.values[i];
+
+		if (IS_OBJECT(constant)) {
+			LitObjectType type = AS_OBJECT(constant)->type;
+			lit_write_uint8_t(file, (uint8_t) (type + 1));
+
+			switch (type) {
+				case OBJECT_STRING: {
+					lit_write_string(file, AS_STRING(constant));
+					break;
+				}
+
+				case OBJECT_FUNCTION: {
+					save_function(file, AS_FUNCTION(constant));
+					break;
+				}
+
+				default: {
+					UNREACHABLE
+					break;
+				}
+			}
+		} else {
+			lit_write_uint8_t(file, 0);
+			lit_write_double(file, AS_NUMBER(constant));
+		}
+	}
+}
+
+static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module, LitChunk* chunk) {
+	lit_init_chunk(chunk);
+
+	uint count = lit_read_euint32_t(file);
+	chunk->code = (uint8_t*) lit_reallocate(state, NULL, 0, sizeof(uint8_t) * count);
+	chunk->count = count;
+	chunk->capacity = count;
+
+	for (uint i = 0; i < count; i++) {
+		chunk->code[i] = lit_read_euint8_t(file);
+	}
+
+	count = lit_read_euint32_t(file);
+	chunk->lines = (uint16_t*) lit_reallocate(state, NULL, 0, sizeof(uint16_t) * count);
+	chunk->line_count = count;
+	chunk->line_capacity = count;
+
+	for (uint i = 0; i < count; i++) {
+		chunk->lines[i] = lit_read_euint16_t(file);
+	}
+
+	count = lit_read_euint32_t(file);
+	chunk->constants.values = (LitValue*) lit_reallocate(state, NULL, 0, sizeof(LitValue) * count);
+	chunk->constants.count = count;
+	chunk->constants.capacity = count;
+
+	for (uint i = 0; i < count; i++) {
+		uint8_t type = lit_read_euint8_t(file);
+
+		if (type == 0) {
+			chunk->constants.values[i] = NUMBER_VALUE(lit_read_edouble(file));
+		} else {
+			switch ((LitObjectType) (type - 1)) {
+				case OBJECT_STRING: {
+					chunk->constants.values[i] = OBJECT_VALUE(lit_read_estring(state, file));
+					break;
+				}
+
+				case OBJECT_FUNCTION: {
+					chunk->constants.values[i] = OBJECT_VALUE(load_function(state, file, module));
+					break;
+				}
+
+				default: {
+					UNREACHABLE
+					break;
+				}
+			}
+		}
+	}
 }
 
 bool lit_save_module(LitModule* module, const char* output_file) {
@@ -145,6 +260,7 @@ bool lit_save_module(LitModule* module, const char* output_file) {
 		return false;
 	}
 
+	lit_write_uint16_t(file, BYTECODE_MAGICAL_NUMBER);
 	lit_write_string(file, module->name);
 
 	LitTable* privates = &module->private_names;
@@ -161,4 +277,29 @@ bool lit_save_module(LitModule* module, const char* output_file) {
 	fclose(file);
 
 	return true;
+}
+
+LitModule* lit_load_module(LitState* state, const char* input) {
+	LitEmulatedFile file;
+	lit_init_emulated_file(&file, input);
+
+	if (lit_read_euint16_t(&file) != BYTECODE_MAGICAL_NUMBER) {
+		return NULL;
+	}
+
+	LitModule* module = lit_create_module(state, lit_read_estring(state, &file));
+	LitTable* privates = &module->private_names;
+
+	uint16_t privates_count = lit_read_euint16_t(&file);
+	module->privates = LIT_ALLOCATE(state, LitValue, privates_count);
+
+	for (uint16_t i = 0; i < privates_count; i++) {
+		LitString* name = lit_read_estring(state, &file);
+		uint16_t id = lit_read_euint16_t(&file);
+
+		lit_table_set(state, privates, name, NUMBER_VALUE(id));
+	}
+
+	module->main_function = load_function(state, &file, module);
+	return module;
 }
