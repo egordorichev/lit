@@ -182,7 +182,7 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, const cha
 	LitModule *module = NULL;
 
 	// This is a lbc format
-	if ((code[1] << 8 | code[0]) == BYTECODE_MAGICAL_NUMBER) {
+	if ((code[1] << 8 | code[0]) == LIT_BYTECODE_MAGIC_NUMBER) {
 		module = lit_load_module(state, code);
 	} else {
 		LitStatements statements;
@@ -212,7 +212,7 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 	LitInterpretResult result = lit_interpret_module(state, module);
 	LitFiber* fiber = state->vm->fiber;
 
-	if (!fiber->abort && fiber->stack_top != fiber->stack) {
+	if (!state->had_error && !fiber->abort && fiber->stack_top != fiber->stack) {
 		lit_error(state, RUNTIME_ERROR, "Stack offset was not 0");
 	}
 

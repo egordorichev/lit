@@ -7,7 +7,8 @@
 
 #include <stdio.h>
 
-#define BYTECODE_MAGICAL_NUMBER 6932
+#define LIT_BYTECODE_MAGIC_NUMBER 6932
+#define LIT_BYTECODE_END_NUMBER 2942
 
 const char* lit_read_file(const char* path);
 

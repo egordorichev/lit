@@ -1,4 +1,5 @@
 #include <lit/util/lit_fs.h>
+#include <lit/lit.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -260,7 +261,8 @@ bool lit_save_module(LitModule* module, const char* output_file) {
 		return false;
 	}
 
-	lit_write_uint16_t(file, BYTECODE_MAGICAL_NUMBER);
+	lit_write_uint16_t(file, LIT_BYTECODE_MAGIC_NUMBER);
+	lit_write_uint8_t(file, LIT_BYTECODE_VERSION);
 	lit_write_string(file, module->name);
 
 	LitTable* privates = &module->private_names;
@@ -274,6 +276,8 @@ bool lit_save_module(LitModule* module, const char* output_file) {
 	}
 
 	save_function(file, module->main_function);
+	lit_write_uint16_t(file, LIT_BYTECODE_END_NUMBER);
+
 	fclose(file);
 
 	return true;
@@ -283,7 +287,15 @@ LitModule* lit_load_module(LitState* state, const char* input) {
 	LitEmulatedFile file;
 	lit_init_emulated_file(&file, input);
 
-	if (lit_read_euint16_t(&file) != BYTECODE_MAGICAL_NUMBER) {
+	if (lit_read_euint16_t(&file) != LIT_BYTECODE_MAGIC_NUMBER) {
+		lit_error(state, COMPILE_ERROR, "Failed to read compiled code, unknown magic number");
+		return NULL;
+	}
+
+	uint8_t bytecode_version = lit_read_euint8_t(&file);
+
+	if (bytecode_version > LIT_BYTECODE_VERSION) {
+		lit_error(state, COMPILE_ERROR, "Failed to read compiled code, unknown bytecode version '%i'", (int) bytecode_version);
 		return NULL;
 	}
 
@@ -301,5 +313,11 @@ LitModule* lit_load_module(LitState* state, const char* input) {
 	}
 
 	module->main_function = load_function(state, &file, module);
+
+	if (lit_read_euint16_t(&file) != LIT_BYTECODE_END_NUMBER) {
+		lit_error(state, COMPILE_ERROR, "Failed to read compiled code, unknown end number");
+		return NULL;
+	}
+
 	return module;
 }
