@@ -1219,7 +1219,13 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 	module_name[length] = '.';
 
 	if (!file_exists(module_name)) {
-		return false;
+		// .lit -> .lbc
+		memcpy((void *) module_name + length + 2, "bc", 2);
+		memcpy((void *) module_name_dotted + length + 2, "bc", 2);
+
+		if (!file_exists(module_name)) {
+			return false;
+		}
 	}
 
 	LitString *name = lit_copy_string(vm->state, module_name_dotted, length);
