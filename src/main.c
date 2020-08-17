@@ -46,8 +46,8 @@ static void show_help() {
 static void show_optimization_help() {
 	printf("Lit has a lot of optimzations. You can turn each one on or off or use a predefined optimization level to set them to a default value.\n");
 	printf("The more optimizations are enabled, the longer it takes to compile, but the program should run better. So I recommend using low optimization for development and high optimization for release.\n");
-	printf("\nTo enable an optimization, run lit with argument -O[optimization], for example -Oconstant-folding.\n");
-	printf("To disable an optimization, run lit with argument -Ono-[optimization], for example -Ono-constant-folding.\n");
+	printf("\nTo enable an optimization, run lit with argument -O[optimization], for example -Oconstant-folding. Using flag -Oall will enable all optimizations.\n");
+	printf("To disable an optimization, run lit with argument -Ono-[optimization], for example -Ono-constant-folding. Using flag -Oall will disable all optimizations.\n");
 	printf("Here is a list of all supported optimizations:\n\n");
 
 	for (int i = 0; i < OPTIMIZATION_TOTAL; i++) {
@@ -112,6 +112,8 @@ int main(int argc, const char* argv[]) {
 
 			if (enable_optimization && strcmp(optimization_name, "help") == 0) {
 				show_optimization_help();
+			} else if (strcmp(optimization_name, "all") == 0) {
+				lit_set_all_optimization_enabled(enable_optimization);
 			} else {
 				bool found = false;
 

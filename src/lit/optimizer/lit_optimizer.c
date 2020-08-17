@@ -517,6 +517,14 @@ void lit_set_optimization_enabled(LitOptimization optimization, bool enabled) {
 	optimization_states[(int) optimization] = enabled;
 }
 
+void lit_set_all_optimization_enabled(bool enabled) {
+	optimization_states_setup = true;
+
+	for (uint i = 0; i < OPTIMIZATION_TOTAL; i++) {
+		optimization_states[i] = enabled;
+	}
+}
+
 const char* lit_get_optimization_name(LitOptimization optimization) {
 	if (!optimization_names_setup) {
 		setup_optimization_names();

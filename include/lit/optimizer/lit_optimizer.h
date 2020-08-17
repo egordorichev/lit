@@ -21,6 +21,7 @@ typedef enum {
 
 bool lit_is_optimization_enabled(LitOptimization optimization);
 void lit_set_optimization_enabled(LitOptimization optimization, bool enabled);
+void lit_set_all_optimization_enabled(bool enabled);
 
 const char* lit_get_optimization_name(LitOptimization optimization);
 const char* lit_get_optimization_description(LitOptimization optimization);
