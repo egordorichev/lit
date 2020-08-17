@@ -40,7 +40,7 @@ static void show_help() {
 	printf("\t-p --pass [args]\tPasses the rest of the arguments to the script.\n");
 	printf("\t-i --interactive\tStarts an interactive shell.\n");
 	printf("\t-h --help\t\tI wonder, what this option does.\n");
-	printf("\tIf no arguments are provided, lit will try to run either main.lbc or main.lit and, if fails, default to an interactive shell will start.\n");
+	printf("\tIf no code to run is provided, lit will try to run either main.lbc or main.lit and, if fails, default to an interactive shell will start.\n");
 }
 
 static void show_optimization_help() {
@@ -91,6 +91,7 @@ int main(int argc, const char* argv[]) {
 
 	LitArray* arg_array = NULL;
 	bool show_repl = false;
+	bool evaled = false;
 	char* bytecode_file = NULL;
 
 	for (int i = 1; i < argc; i++) {
@@ -130,6 +131,8 @@ int main(int argc, const char* argv[]) {
 				}
 			}
 		} else if (match_arg(arg, "-e", "--eval")) {
+			evaled = true;
+
 			if (args_left == 0) {
 				printf("Expected code to run for the eval argument.\n");
 				return EXIT_CODE_ARGUMENT_ERROR;
@@ -191,7 +194,7 @@ int main(int argc, const char* argv[]) {
 
 	if (show_repl) {
 		run_repl(state);
-	} else if (argc == 1) {
+	} else if (!evaled) {
 		if (lit_file_exists("main.lbc")) {
 			result = lit_interpret_file(state, "main.lbc").type;
 		} else if (lit_file_exists("main.lit")) {

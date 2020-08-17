@@ -14,6 +14,7 @@ void lit_optimize(LitOptimizer* optimizer, LitStatements* statements);
 
 typedef enum {
 	OPTIMIZATION_CONSTANT_FOLDING,
+	OPTIMIZATION_LITERAL_FOLDING,
 
 	OPTIMIZATION_TOTAL
 } LitOptimization;

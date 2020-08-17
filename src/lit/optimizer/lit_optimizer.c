@@ -171,11 +171,13 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 		case UNARY_EXPRESSION:
 		case GROUPING_EXPRESSION:
 		case BINARY_EXPRESSION: {
-			LitValue optimized = evaluate_expression(optimizer, expression);
+			if (lit_is_optimization_enabled(OPTIMIZATION_LITERAL_FOLDING)) {
+				LitValue optimized = evaluate_expression(optimizer, expression);
 
-			if (optimized != NULL_VALUE) {
-				*slot = (LitExpression *) lit_create_literal_expression(state, expression->line, optimized);
-				lit_free_expression(state, expression);
+				if (optimized != NULL_VALUE) {
+					*slot = (LitExpression *) lit_create_literal_expression(state, expression->line, optimized);
+					lit_free_expression(state, expression);
+				}
 			}
 
 			break;
@@ -489,11 +491,14 @@ void lit_optimize(LitOptimizer* optimizer, LitStatements* statements) {
 }
 
 static void setup_optimization_states() {
+	optimization_states_setup = true;
+
 	for (uint i = 0; i < OPTIMIZATION_TOTAL; i++) {
 		optimization_states[i] = false;
 	}
 
 	optimization_states[(int) OPTIMIZATION_CONSTANT_FOLDING] = true;
+	optimization_states[(int) OPTIMIZATION_LITERAL_FOLDING] = true;
 }
 
 bool lit_is_optimization_enabled(LitOptimization optimization) {
@@ -530,10 +535,14 @@ const char* lit_get_optimization_description(LitOptimization optimization) {
 
 static void setup_optimization_names() {
 	optimization_names_setup = true;
+
 	optimization_names[OPTIMIZATION_CONSTANT_FOLDING] = "constant-folding";
+	optimization_names[OPTIMIZATION_LITERAL_FOLDING] = "literal-folding";
 }
 
 static void setup_optimization_descriptions() {
 	optimization_descriptions_setup = true;
+
 	optimization_descriptions[OPTIMIZATION_CONSTANT_FOLDING] = "Replaces constants in code with their values.";
+	optimization_descriptions[OPTIMIZATION_LITERAL_FOLDING] = "Precalculates literal expressions (3 + 4 is replaced with 7).";
 }
