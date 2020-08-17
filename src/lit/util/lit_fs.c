@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 static uint8_t btmp;
 static uint16_t stmp;
@@ -26,6 +27,11 @@ const char* lit_read_file(const char* path) {
 
 	fclose(file);
 	return buffer;
+}
+
+bool lit_file_exists(const char* path) {
+	struct stat buffer;
+	return stat(path, &buffer) == 0 && S_ISREG(buffer.st_mode);
 }
 
 void lit_write_uint8_t(FILE* file, uint8_t byte) {

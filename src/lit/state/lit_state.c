@@ -283,7 +283,15 @@ bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, 
 	return true;
 }
 
-LitInterpretResult lit_interpret_file(LitState* state, char* file_name) {
+LitInterpretResult lit_interpret_file(LitState* state, const char* file) {
+	// We have to use this trick because we modify the file_name string, and if
+	// The user provides a string constant, he will get a SEGFAULT
+	// And who wants that?
+
+	size_t length = strlen(file) + 1;
+	char file_name[length];
+	memcpy(&file_name, file, length);
+
 	const char* source = lit_read_file(file_name);
 
 	if (source == NULL) {

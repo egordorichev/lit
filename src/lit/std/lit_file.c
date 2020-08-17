@@ -1,7 +1,6 @@
 #include <lit/std/lit_file.h>
 #include <lit/api/lit_api.h>
 #include <lit/vm/lit_vm.h>
-#include <lit/lit_config.h>
 #include <lit/util/lit_fs.h>
 
 #include <sys/types.h>
@@ -71,7 +70,6 @@ LIT_METHOD(file_close) {
 }
 
 LIT_METHOD(file_exists) {
-	struct stat buffer;
 	char* file_name = NULL;
 
 	if (IS_INSTANCE(instance)) {
@@ -80,7 +78,7 @@ LIT_METHOD(file_exists) {
 		file_name = (char*) LIT_CHECK_STRING(0);
 	}
 
-	return BOOL_VALUE(stat(file_name, &buffer) == 0 && S_ISREG(buffer.st_mode));
+	return BOOL_VALUE(lit_file_exists(file_name));
 }
 
 /*

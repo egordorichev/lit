@@ -4,6 +4,7 @@
 #include <lit/scanner/lit_scanner.h>
 
 #include <stdio.h>
+#include <lit/util/lit_fs.h>
 
 #define EXIT_CODE_ARGUMENT_ERROR 1
 #define EXIT_CODE_MEM_LEAK 2
@@ -37,7 +38,7 @@ static void show_help() {
 	printf("\t-p --pass [args]\tPasses the rest of the arguments to the script.\n");
 	printf("\t-i --interactive\tStarts an interactive shell.\n");
 	printf("\t-h --help\t\tI wonder, what this option does.\n");
-	printf("\tIf no arguments are provided, interactive shell will start.\n");
+	printf("\tIf no arguments are provided, lit will try to run either main.lbc or main.lit and, if fails, default to an interactive shell will start.\n");
 }
 
 static bool match_arg(const char* arg, const char* a, const char* b) {
@@ -72,7 +73,7 @@ int main(int argc, const char* argv[]) {
 	}
 
 	LitArray* arg_array = NULL;
-	bool show_repl = argc == 1;
+	bool show_repl = false;
 	char* bytecode_file = NULL;
 
 	for (int i = 1; i < argc; i++) {
@@ -141,6 +142,14 @@ int main(int argc, const char* argv[]) {
 
 	if (show_repl) {
 		run_repl(state);
+	} else if (argc == 1) {
+		if (lit_file_exists("main.lbc")) {
+			result = lit_interpret_file(state, "main.lbc").type;
+		} else if (lit_file_exists("main.lit")) {
+			result = lit_interpret_file(state, "main.lit").type;
+		} else {
+			run_repl(state);
+		}
 	}
 
 	int64_t amount = lit_free_state(state);

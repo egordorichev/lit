@@ -1,6 +1,5 @@
 # todo
 
-* try to run main.lit or main.lbc before defaulting to repl
 * optimization levels
 
 * optimizations {
