@@ -10,3 +10,4 @@ lens/*
 .idea/*
 Makefile
 venv
+*.lbc
