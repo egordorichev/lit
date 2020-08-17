@@ -1183,6 +1183,7 @@ static bool compile_and_interpret(LitVm* vm, LitString* module_name, const char*
 		return false;
 	}
 
+	module->ran = true;
 	return interpret(vm, module);
 }
 

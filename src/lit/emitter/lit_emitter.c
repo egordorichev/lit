@@ -1384,5 +1384,6 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 		lit_table_set(state, &state->vm->modules, module_name, OBJECT_VALUE(module));
 	}
 
+	module->ran = true;
 	return module;
 }

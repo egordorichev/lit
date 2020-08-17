@@ -334,7 +334,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	register LitChunk* current_chunk = &frame->function->chunk;
 
 	fiber->module = frame->function->module;
-	fiber->module->ran = true;
 
 	register uint8_t* ip = frame->ip;
 	register LitValue* slots = frame->slots;
