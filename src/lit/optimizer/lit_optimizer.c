@@ -8,6 +8,18 @@ static void optimize_expressions(LitOptimizer* optimizer, LitExpressions* expres
 static void optimize_statements(LitOptimizer* optimizer, LitStatements* statements);
 static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot);
 
+static const char* optimization_names[OPTIMIZATION_TOTAL];
+static const char* optimization_descriptions[OPTIMIZATION_TOTAL];
+static bool optimization_states[OPTIMIZATION_TOTAL];
+
+static bool optimization_names_setup;
+static bool optimization_descriptions_setup;
+static bool optimization_states_setup;
+
+static void setup_optimization_states();
+static void setup_optimization_names();
+static void setup_optimization_descriptions();
+
 void lit_init_optimizer(LitState* state, LitOptimizer* optimizer) {
 	optimizer->state = state;
 }
@@ -474,4 +486,54 @@ static void optimize_statements(LitOptimizer* optimizer, LitStatements* statemen
 
 void lit_optimize(LitOptimizer* optimizer, LitStatements* statements) {
 	optimize_statements(optimizer, statements);
+}
+
+static void setup_optimization_states() {
+	for (uint i = 0; i < OPTIMIZATION_TOTAL; i++) {
+		optimization_states[i] = false;
+	}
+
+	optimization_states[(int) OPTIMIZATION_CONSTANT_FOLDING] = true;
+}
+
+bool lit_is_optimization_enabled(LitOptimization optimization) {
+	if (!optimization_states_setup) {
+		setup_optimization_states();
+	}
+
+	return optimization_states[(int) optimization];
+}
+
+void lit_set_optimization_enabled(LitOptimization optimization, bool enabled) {
+	if (!optimization_states_setup) {
+		setup_optimization_states();
+	}
+
+	optimization_states[(int) optimization] = enabled;
+}
+
+const char* lit_get_optimization_name(LitOptimization optimization) {
+	if (!optimization_names_setup) {
+		setup_optimization_names();
+	}
+
+	return optimization_names[(int) optimization];
+}
+
+const char* lit_get_optimization_description(LitOptimization optimization) {
+	if (!optimization_descriptions_setup) {
+		setup_optimization_descriptions();
+	}
+
+	return optimization_descriptions[(int) optimization];
+}
+
+static void setup_optimization_names() {
+	optimization_names_setup = true;
+	optimization_names[OPTIMIZATION_CONSTANT_FOLDING] = "constant-folding";
+}
+
+static void setup_optimization_descriptions() {
+	optimization_descriptions_setup = true;
+	optimization_descriptions[OPTIMIZATION_CONSTANT_FOLDING] = "Replaces constants in code with their values.";
 }

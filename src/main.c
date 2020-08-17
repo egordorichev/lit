@@ -2,9 +2,10 @@
 #include <lit/vm/lit_vm.h>
 #include <lit/std/lit_core.h>
 #include <lit/scanner/lit_scanner.h>
+#include <lit/util/lit_fs.h>
+#include <lit/optimizer/lit_optimizer.h>
 
 #include <stdio.h>
-#include <lit/util/lit_fs.h>
 
 #define EXIT_CODE_ARGUMENT_ERROR 1
 #define EXIT_CODE_MEM_LEAK 2
@@ -34,11 +35,27 @@ static void run_repl(LitState* state) {
 static void show_help() {
 	printf("lit [options] [files]\n");
 	printf("\t-o --output [file]\tInstead of running the file the compiled bytecode will be saved.\n");
+	printf("\t-O[name] [string]\tEnables given optimization. For the list of aviable optimizations run with -Ohelp\n");
 	printf("\t-e --eval [string]\tRuns the given code string.\n");
 	printf("\t-p --pass [args]\tPasses the rest of the arguments to the script.\n");
 	printf("\t-i --interactive\tStarts an interactive shell.\n");
 	printf("\t-h --help\t\tI wonder, what this option does.\n");
 	printf("\tIf no arguments are provided, lit will try to run either main.lbc or main.lit and, if fails, default to an interactive shell will start.\n");
+}
+
+static void show_optimization_help() {
+	printf("Lit has a lot of optimzations. You can turn each one on or off or use a predefined optimization level to set them to a default value.\n");
+	printf("The more optimizations are enabled, the longer it takes to compile, but the program should run better. So I recommend using low optimization for development and high optimization for release.\n");
+	printf("\nTo enable an optimization, run lit with argument -O[optimization], for example -Oconstant-folding.\n");
+	printf("To disable an optimization, run lit with argument -Ono-[optimization], for example -Ono-constant-folding.\n");
+	printf("Here is a list of all supported optimizations:\n\n");
+
+	for (int i = 0; i < OPTIMIZATION_TOTAL; i++) {
+		printf("\t%s\t\t%s\n", lit_get_optimization_name((LitOptimization) i), lit_get_optimization_description((LitOptimization) i));
+	}
+
+	printf("\nIf you want to use a predefined optimization level (recommended), run lit with argument -O[optimization level], for example -O1.");
+	// TODO: list all levels
 }
 
 static bool match_arg(const char* arg, const char* a, const char* b) {
@@ -80,7 +97,39 @@ int main(int argc, const char* argv[]) {
 		int args_left = argc - i - 1;
 		const char* arg = argv[i];
 
-		if (match_arg(arg, "-e", "--eval")) {
+		if (strcmp(arg, "-O") > 0) {
+			bool enable_optimization = true;
+			char* optimization_name;
+
+			// -Ono-whatever
+			if (strcmp((char*) (arg + 2), "no-") > 0) {
+				enable_optimization = false;
+				optimization_name = (char*) (arg + 5);
+			} else {
+				optimization_name = (char*) (arg + 2);
+			}
+
+			if (enable_optimization && strcmp(optimization_name, "help") == 0) {
+				show_optimization_help();
+			} else {
+				bool found = false;
+
+				// Yes I know, this is not the fastest way, and what now?
+				for (uint j = 0; j < OPTIMIZATION_TOTAL; j++) {
+					if (strcmp(lit_get_optimization_name((LitOptimization) j), optimization_name) == 0) {
+						found = true;
+						lit_set_optimization_enabled((LitOptimization) j, enable_optimization);
+
+						break;
+					}
+				}
+
+				if (!found) {
+					printf("Unknown optimization '%s'. Run with -Ohelp for a list of all optimizations.\n", optimization_name);
+					return EXIT_CODE_ARGUMENT_ERROR;
+				}
+			}
+		} else if (match_arg(arg, "-e", "--eval")) {
 			if (args_left == 0) {
 				printf("Expected code to run for the eval argument.\n");
 				return EXIT_CODE_ARGUMENT_ERROR;

@@ -1,5 +1,6 @@
 # todo
 
+* we don't really need private names in bytecode (do an optimization flag that is on by default)
 * optimization levels
 
 * optimizations {
