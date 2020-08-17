@@ -74,7 +74,7 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, const cha
 LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code);
 LitInterpretResult lit_interpret(LitState* state, const char* module_name, const char* code);
 LitInterpretResult lit_interpret_file(LitState* state, char* file_name);
-bool lit_compile_and_save_file(LitState* state, char* file_name, const char* output_file);
+bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, const char* output_file);
 
 void lit_error(LitState* state, LitErrorType type, const char* message, ...);
 void lit_printf(LitState* state, const char* message, ...);

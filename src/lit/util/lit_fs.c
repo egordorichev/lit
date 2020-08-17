@@ -254,15 +254,7 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
 	}
 }
 
-bool lit_save_module(LitModule* module, const char* output_file) {
-	FILE* file = fopen(output_file, "w+b");
-
-	if (file == NULL) {
-		return false;
-	}
-
-	lit_write_uint16_t(file, LIT_BYTECODE_MAGIC_NUMBER);
-	lit_write_uint8_t(file, LIT_BYTECODE_VERSION);
+void lit_save_module(LitModule* module, FILE* file) {
 	lit_write_string(file, module->name);
 
 	LitTable* privates = &module->private_names;
@@ -276,11 +268,6 @@ bool lit_save_module(LitModule* module, const char* output_file) {
 	}
 
 	save_function(file, module->main_function);
-	lit_write_uint16_t(file, LIT_BYTECODE_END_NUMBER);
-
-	fclose(file);
-
-	return true;
 }
 
 LitModule* lit_load_module(LitState* state, const char* input) {
@@ -299,25 +286,35 @@ LitModule* lit_load_module(LitState* state, const char* input) {
 		return NULL;
 	}
 
-	LitModule* module = lit_create_module(state, lit_read_estring(state, &file));
-	LitTable* privates = &module->private_names;
+	uint16_t module_count = lit_read_euint16_t(&file);
+	LitModule* first = NULL;
 
-	uint16_t privates_count = lit_read_euint16_t(&file);
-	module->privates = LIT_ALLOCATE(state, LitValue, privates_count);
+	for (uint16_t j = 0; j < module_count; j++) {
+		LitModule *module = lit_create_module(state, lit_read_estring(state, &file));
+		LitTable *privates = &module->private_names;
 
-	for (uint16_t i = 0; i < privates_count; i++) {
-		LitString* name = lit_read_estring(state, &file);
-		uint16_t id = lit_read_euint16_t(&file);
+		uint16_t privates_count = lit_read_euint16_t(&file);
+		module->privates = LIT_ALLOCATE(state, LitValue, privates_count);
 
-		lit_table_set(state, privates, name, NUMBER_VALUE(id));
+		for (uint16_t i = 0; i < privates_count; i++) {
+			LitString *name = lit_read_estring(state, &file);
+			uint16_t id = lit_read_euint16_t(&file);
+
+			lit_table_set(state, privates, name, NUMBER_VALUE(id));
+		}
+
+		module->main_function = load_function(state, &file, module);
+		lit_table_set(state, &state->vm->modules, module->name, OBJECT_VALUE(module));
+
+		if (j == 0) {
+			first = module;
+		}
 	}
-
-	module->main_function = load_function(state, &file, module);
 
 	if (lit_read_euint16_t(&file) != LIT_BYTECODE_END_NUMBER) {
 		lit_error(state, COMPILE_ERROR, "Failed to read compiled code, unknown end number");
 		return NULL;
 	}
 
-	return module;
+	return first;
 }

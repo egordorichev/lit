@@ -31,7 +31,7 @@ static void run_repl(LitState* state) {
 }
 
 static void show_help() {
-	printf("lit [options] [file]\n");
+	printf("lit [options] [files]\n");
 	printf("\t-o --output [file]\tInstead of running the file the compiled bytecode will be saved.\n");
 	printf("\t-e --eval [string]\tRuns the given code string.\n");
 	printf("\t-p --pass [args]\tPasses the rest of the arguments to the script.\n");
@@ -48,7 +48,9 @@ int main(int argc, const char* argv[]) {
 	LitState* state = lit_new_state();
 	lit_open_libraries(state);
 
-	const char* file_to_run = NULL;
+	char* files_to_run[argc - 2];
+	uint num_files_to_run = 0;
+
 	LitInterpretResultType result = INTERPRET_OK;
 
 	for (int i = 1; i < argc; i++) {
@@ -66,12 +68,7 @@ int main(int argc, const char* argv[]) {
 			continue;
 		}
 
-		if (file_to_run != NULL) {
-			printf("File to run was already specified (%s).\n", file_to_run);
-			return EXIT_CODE_ARGUMENT_ERROR;
-		}
-
-		file_to_run = arg;
+		files_to_run[num_files_to_run++] = (char*) arg;
 	}
 
 	LitArray* arg_array = NULL;
@@ -88,7 +85,7 @@ int main(int argc, const char* argv[]) {
 				return EXIT_CODE_ARGUMENT_ERROR;
 			}
 
-			result = lit_interpret(state, file_to_run == NULL ? "repl" : file_to_run, argv[++i]).type;
+			result = lit_interpret(state, num_files_to_run == 0 ? "repl" : files_to_run[0], argv[++i]).type;
 
 			if (result != INTERPRET_OK) {
 				break;
@@ -120,9 +117,9 @@ int main(int argc, const char* argv[]) {
 		}
 	}
 
-	if (file_to_run != NULL) {
+	if (num_files_to_run > 0) {
 		if (bytecode_file != NULL) {
-			if (!lit_compile_and_save_file(state, (char*) file_to_run, bytecode_file)) {
+			if (!lit_compile_and_save_files(state, files_to_run, num_files_to_run, bytecode_file)) {
 				result = INTERPRET_COMPILE_ERROR;
 			}
 		} else {
@@ -131,7 +128,14 @@ int main(int argc, const char* argv[]) {
 			}
 
 			lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
-			result = lit_interpret_file(state, (char*) file_to_run).type;
+
+			for (uint i = 0; i < num_files_to_run; i++) {
+				result = lit_interpret_file(state, files_to_run[i]).type;
+
+				if (result != INTERPRET_OK) {
+					break;
+				}
+			}
 		}
 	}
 

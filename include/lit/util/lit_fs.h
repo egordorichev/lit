@@ -37,7 +37,7 @@ uint32_t lit_read_euint32_t(LitEmulatedFile* file);
 double lit_read_edouble(LitEmulatedFile* file);
 LitString* lit_read_estring(LitState* state, LitEmulatedFile* file);
 
-bool lit_save_module(LitModule* module, const char* output_file);
+void lit_save_module(LitModule* module, FILE* file);
 LitModule* lit_load_module(LitState* state, const char* input);
 
 #endif

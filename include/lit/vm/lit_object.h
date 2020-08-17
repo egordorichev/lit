@@ -231,6 +231,7 @@ typedef struct sLitModule {
 	LitTable private_names;
 
 	LitFunction* main_function;
+	bool ran;
 } LitModule;
 
 LitModule* lit_create_module(LitState* state, LitString* name);

@@ -237,23 +237,50 @@ void lit_patch_file_name(char* file_name) {
 	}
 }
 
-bool lit_compile_and_save_file(LitState* state, char* file_name, const char* output_file) {
-	const char* source = lit_read_file(file_name);
+bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, const char* output_file) {
+	LitModule* compiled_modules[num_files];
 
-	if (source == NULL) {
-		lit_error(state, RUNTIME_ERROR, "Failed to open file '%s'", file_name);
+	for (uint i = 0; i < num_files; i++) {
+		char* file_name = files[i];
+		const char* source = lit_read_file(file_name);
+
+		if (source == NULL) {
+			lit_error(state, COMPILE_ERROR, "Failed to open file '%s'", file_name);
+			return false;
+		}
+
+		lit_patch_file_name(file_name);
+
+		LitString *module_name = lit_copy_string(state, file_name, strlen(file_name));
+		LitModule* module = lit_compile_module(state, module_name, source);
+
+		compiled_modules[i] = module;
+		free((void *) source);
+
+		if (module == NULL) {
+			return false;
+		}
+	}
+
+	FILE* file = fopen(output_file, "w+b");
+
+	if (file == NULL) {
+		lit_error(state, COMPILE_ERROR, "Failed to open for writing file '%s'", output_file);
 		return false;
 	}
 
-	lit_patch_file_name(file_name);
+	lit_write_uint16_t(file, LIT_BYTECODE_MAGIC_NUMBER);
+	lit_write_uint8_t(file, LIT_BYTECODE_VERSION);
+	lit_write_uint16_t(file, num_files);
 
-	LitString* module_name = lit_copy_string(state, file_name, strlen(file_name));
-	LitModule* module = lit_compile_module(state, module_name, source);
+	for (uint i = 0; i < num_files; i++) {
+		lit_save_module(compiled_modules[i], file);
+	}
 
-	bool result = module != NULL && lit_save_module(module, output_file);
-	free((void*) source);
+	lit_write_uint16_t(file, LIT_BYTECODE_END_NUMBER);
+	fclose(file);
 
-	return result;
+	return true;
 }
 
 LitInterpretResult lit_interpret_file(LitState* state, char* file_name) {

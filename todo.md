@@ -1,13 +1,13 @@
 # todo
 
-* compile/run multiple files
+* try to run main.lit or main.lbc before defaulting to repl
+* optimization levels
 
 * optimizations {
  * unused locals / privates
  * constant folding
  * while loops with false condition
  * multiplication by 1
- * optimization levels
  * tail-call optimization?
 }
 

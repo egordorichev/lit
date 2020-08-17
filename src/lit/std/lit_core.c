@@ -1158,16 +1158,9 @@ LIT_NATIVE(print) {
 	return NULL_VALUE;
 }
 
-static bool interpret(LitVm* vm, LitString* module_name, const char* source) {
-	LitModule* module = lit_compile_module(vm->state, module_name, source);
-
-	if (module == NULL) {
-		return false;
-	}
-
+static bool interpret(LitVm* vm, LitModule* module) {
 	LitFunction* function = module->main_function;
 	LitFiber* fiber = lit_create_fiber(vm->state, module, function);
-	LitFiber* last_fiber = vm->fiber;
 
 	fiber->parent = vm->fiber;
 	vm->fiber = fiber;
@@ -1182,9 +1175,20 @@ static bool interpret(LitVm* vm, LitString* module_name, const char* source) {
 	return true;
 }
 
+
+static bool compile_and_interpret(LitVm* vm, LitString* module_name, const char* source) {
+	LitModule *module = lit_compile_module(vm->state, module_name, source);
+
+	if (module == NULL) {
+		return false;
+	}
+
+	return interpret(vm, module);
+}
+
 LIT_NATIVE_PRIMITIVE(eval) {
 	const char* code = LIT_CHECK_STRING(0);
-	return interpret(vm, vm->fiber->module->name, code);
+	return compile_and_interpret(vm, vm->fiber->module->name, code);
 }
 
 static bool file_exists(const char* filename) {
@@ -1234,8 +1238,16 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 		LitValue existing_module;
 
 		if (lit_table_get(&vm->modules, name, &existing_module)) {
-			vm->fiber->stack_top -= arg_count;
-			args[-1] = AS_MODULE(existing_module)->return_value;
+			LitModule* loaded_module = AS_MODULE(existing_module);
+
+			if (loaded_module->ran) {
+				vm->fiber->stack_top -= arg_count;
+				args[-1] = AS_MODULE(existing_module)->return_value;
+			} else {
+				if (interpret(vm, loaded_module)) {
+					should_update_locals = true;
+				}
+			}
 
 			return true;
 		}
@@ -1247,7 +1259,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 		return false;
 	}
 
-	if (interpret(vm, name, source)) {
+	if (compile_and_interpret(vm, name, source)) {
 		should_update_locals = true;
 	}
 
