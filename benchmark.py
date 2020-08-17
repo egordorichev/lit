@@ -31,7 +31,8 @@ BENCHMARK("fib", r"""317811
 317811""")
 
 LANGUAGES = [
-	("lit",            ["./dist/lit"],                   ".lit"),
+	("lit",            ["./dist/lit", "-Oall"],          ".lit"),
+	("lit (-Ono-all)", ["./dist/lit", "-Ono-all"],       ".lit"),
 	("python",         ["python"],                       ".py"),
 	("lua",            ["lua"],                          ".lua"),
 	("luajit (-joff)", ["luajit", "-joff"],              ".lua"),

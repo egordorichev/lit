@@ -98,7 +98,7 @@ int main(int argc, const char* argv[]) {
 		int args_left = argc - i - 1;
 		const char* arg = argv[i];
 
-		if (strcmp(arg, "-O") > 0) {
+		if (arg[0] == '-' && arg[1] == 'O') {
 			bool enable_optimization = true;
 			char* optimization_name;
 
