@@ -16,71 +16,103 @@
 			padding: 10px;
 			margin-top: 10px;
 		}
+
+		#container {
+			max-width: 800px;
+			margin: 100px auto;
+		}
 	</style>
 </head>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.7/ace.js" type="text/javascript" charset="utf-8"></script>
 <body>
 
-<div id="editor">function foo(items) {
-	var x = "All this is syntax highlighted"
-	return x
-}
+<div id="container">
+	<h1><a href="https://github.com/egordorichev/lit">Lit</a></h1>
+	<div id="editor">print("Hello, world!")</div>
 
-print(foo())</div>
+	<button id="run" onclick="run_input()">Run</button>
+	<button id="clear" onclick="clear_output()">Clear</button>
+	<button id="share" onclick="share()">Share Code</button>
 
-<button id="run" onclick="run_input()">Run</button>
-<div id="output"></div>
-<script>
-	var editor = ace.edit("editor", {
-		theme: "ace/theme/monokai",
-		mode: "ace/mode/javascript",
-		maxLines: 30,
-		minLines: 10,
-		wrap: true,
-		autoScrollEditorIntoView: true
-	});
+	<h5>Output</h5>
+	<div id="output"></div>
+	<script>
+		var code = new URLSearchParams(window.location.search).get("code");
 
-	var Module = {
-		print: (function () {
-			var element = document.getElementById('output');
+		if (code != null) {
+			var editor_div = document.getElementById("editor");
+			editor_div.innerHTML = code;
+		}
 
-			return function (text) {
-				element.innerHTML += text + "<br>";
-			};
-		})(),
+		var editor = ace.edit("editor", {
+			theme: "ace/theme/monokai",
+			mode: "ace/mode/javascript",
+			maxLines: 30,
+			minLines: 10,
+			wrap: true,
+			autoScrollEditorIntoView: true
+		});
 
-		printErr: function (text) {
-			if (arguments.length > 1) {
-				text = Array.prototype.slice.call(arguments).join(' ');
-			}
+		editor.getSession().setUseWorker(false);
+		editor.renderer.setScrollMargin(10, 10);
 
-			console.log(text);
-		},
+		var Module = {
+			print: (function () {
+				var element = document.getElementById('output');
 
-		canvas: (function () {
-			return document.getElementById('canvas');
-		})()
-	};
+				return function (text) {
+					element.innerHTML += text + "<br>";
+				};
+			})(),
 
-	var interpret, create_state, free_state;
+			printErr: function (text) {
+				if (arguments.length > 1) {
+					text = Array.prototype.slice.call(arguments).join(' ');
+				}
 
-	Module['onRuntimeInitialized'] = function() {
-		create_state = Module.cwrap('create_state', null, []);
-		free_state = Module.cwrap('free_state', null, []);
-		interpret = Module.cwrap('interpret', null, ['string']);
+				console.log(text);
+			},
 
-		create_state();
-	};
+			canvas: (function () {
+				return document.getElementById('canvas');
+			})()
+		};
 
-	window.onbeforeunload = function() {
-		free_state();
-	};
+		var interpret, create_state, free_state;
 
-	function run_input() {
-		document.getElementById("output").innerHTML = "";
-		interpret(editor.getValue());
-	}
-</script>
+		Module['onRuntimeInitialized'] = function() {
+			create_state = Module.cwrap('create_state', null, []);
+			free_state = Module.cwrap('free_state', null, []);
+			interpret = Module.cwrap('interpret', null, ['string']);
+
+			create_state();
+		};
+
+		window.onbeforeunload = function() {
+			free_state();
+		};
+
+		function clear_output() {
+			document.getElementById("output").innerHTML = "";
+		}
+
+		function run_input() {
+			clear_output();
+			interpret(editor.getValue());
+		}
+
+		function share() {
+			var arg = `?code=${encodeURIComponent(editor.getValue())}`;
+			var clipboard = `${location.protocol + '//' + location.host + location.pathname}${arg}`;
+			navigator.clipboard.writeText(clipboard).then(function() {
+				alert("Link to the snippet is in your clipboard now");
+				window.history.pushState("", "", arg);
+			}, function() {
+				alert("Failed to copy the link to clipboard");
+			});
+		}
+	</script>
+</div>	
 {{{ SCRIPT }}}
 </body>
 </html>
