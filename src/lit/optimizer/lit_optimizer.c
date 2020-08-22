@@ -431,6 +431,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case IF_STATEMENT: {
+			// FIXME: implement
 			break;
 		}
 
