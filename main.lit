@@ -1,1 +1,6 @@
-10 + 3
+var a
+
+{
+ const b = 32 + 48
+ print(b)
+}

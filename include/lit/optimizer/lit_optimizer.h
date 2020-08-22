@@ -5,8 +5,25 @@
 #include <lit/lit_predefines.h>
 #include <lit/parser/lit_ast.h>
 
+typedef struct {
+	const char* name;
+	uint length;
+	int depth;
+
+	bool constant;
+	bool used;
+
+	LitValue constant_value;
+	LitStatement** declaration;
+} LitVariable;
+
+DECLARE_ARRAY(LitVariables, LitVariable, variables)
+
 typedef struct sLitOptimizer {
 	LitState* state;
+
+	LitVariables variables;
+	int depth;
 } sLitOptimizer;
 
 void lit_init_optimizer(LitState* state, LitOptimizer* optimizer);
@@ -15,6 +32,7 @@ void lit_optimize(LitOptimizer* optimizer, LitStatements* statements);
 typedef enum {
 	OPTIMIZATION_CONSTANT_FOLDING,
 	OPTIMIZATION_LITERAL_FOLDING,
+	OPTIMIZATION_UNUSED_VAR,
 
 	OPTIMIZATION_TOTAL
 } LitOptimization;
