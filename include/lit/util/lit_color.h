@@ -1,7 +1,7 @@
 #ifndef LIT_COLOR_H
 #define LIT_COLOR_H
 
-#ifdef LIT_OS_WINDOWS
+#if defined(LIT_OS_WINDOWS) || defined(EMSCRIPTEN)
 
 #define COLOR_RESET ""
 #define COLOR_RED ""
