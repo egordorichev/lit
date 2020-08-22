@@ -1,1 +1,1 @@
-for(var i in 1..100){print([i,"Fizz","Buzz","FizzBuzz"][(i%3==0?1:0)+(i%5==0?2:0)])}
+for var i in 1..100print([i,"Fizz","Buzz","FizzBuzz"][(i%3==0?1:0)+(i%5==0?2:0)])

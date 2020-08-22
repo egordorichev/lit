@@ -613,9 +613,12 @@ static LitStatement* parse_if(LitParser* parser) {
 	uint line = parser->previous.line;
 	bool invert = match(parser, TOKEN_BANG);
 
-	consume(parser, TOKEN_LEFT_PAREN, "'('");
+	bool had_paren = match(parser, TOKEN_LEFT_PAREN);
 	LitExpression* condition = parse_expression(parser);
-	consume(parser, TOKEN_RIGHT_PAREN, "')'");
+
+	if (had_paren) {
+		consume(parser, TOKEN_RIGHT_PAREN, "')'");
+	}
 
 	if (invert) {
 		condition = (LitExpression*) lit_create_unary_expression(parser->state, condition->line, condition, TOKEN_BANG);
@@ -636,9 +639,12 @@ static LitStatement* parse_if(LitParser* parser) {
 			}
 
 			invert = match(parser, TOKEN_BANG);
-			consume(parser, TOKEN_LEFT_PAREN, "'('");
+			had_paren = match(parser, TOKEN_LEFT_PAREN);
 			LitExpression* e = parse_expression(parser);
-			consume(parser, TOKEN_RIGHT_PAREN, "')'");
+
+			if (had_paren) {
+				consume(parser, TOKEN_RIGHT_PAREN, "')'");
+			}
 
 			if (invert) {
 				e = (LitExpression*) lit_create_unary_expression(parser->state, condition->line, e, TOKEN_BANG);
@@ -664,8 +670,7 @@ static LitStatement* parse_if(LitParser* parser) {
 
 static LitStatement* parse_for(LitParser* parser) {
 	uint line = parser->previous.line;
-
-	consume(parser, TOKEN_LEFT_PAREN, "'('");
+	bool had_paren = match(parser, TOKEN_LEFT_PAREN);
 
 	LitStatement* var = NULL;
 	LitExpression* init = NULL;
@@ -696,7 +701,9 @@ static LitStatement* parse_for(LitParser* parser) {
 		}
 	}
 
-	consume(parser, TOKEN_RIGHT_PAREN, "')'");
+	if (had_paren) {
+		consume(parser, TOKEN_RIGHT_PAREN, "')'");
+	}
 
 	return (LitStatement*) lit_create_for_statement(parser->state, line, init, var, condition, increment, parse_statement(parser), c_style);
 }
@@ -704,9 +711,12 @@ static LitStatement* parse_for(LitParser* parser) {
 static LitStatement* parse_while(LitParser* parser) {
 	uint line = parser->previous.line;
 
-	consume(parser, TOKEN_LEFT_PAREN, "'('");
+	bool had_paren = match(parser, TOKEN_LEFT_PAREN);
 	LitExpression* condition = parse_expression(parser);
-	consume(parser, TOKEN_RIGHT_PAREN, "')'");
+
+	if (had_paren) {
+		consume(parser, TOKEN_RIGHT_PAREN, "')'");
+	}
 
 	LitStatement* body = parse_statement(parser);
 
