@@ -24,6 +24,7 @@ typedef struct sLitOptimizer {
 
 	LitVariables variables;
 	int depth;
+	bool mark_used;
 } sLitOptimizer;
 
 void lit_init_optimizer(LitState* state, LitOptimizer* optimizer);

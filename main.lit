@@ -1,6 +1,5 @@
-var a
+const b = 10
 
-{
- const b = 32 + 48
- print(b)
+for (var i = 0; i < b; i++) {
+
 }

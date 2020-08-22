@@ -25,6 +25,7 @@ static void setup_optimization_descriptions();
 void lit_init_optimizer(LitState* state, LitOptimizer* optimizer) {
 	optimizer->state = state;
 	optimizer->depth = -1;
+	optimizer->mark_used = false;
 
 	lit_init_variables(&optimizer->variables);
 }
@@ -53,7 +54,7 @@ static void end_scope(LitOptimizer* optimizer) {
 
 static LitVariable* add_variable(LitOptimizer* optimizer, const char* name, uint length, bool constant) {
 	lit_variables_write(optimizer->state, &optimizer->variables, (LitVariable) {
-		name, length, optimizer->depth, constant, false, NULL_VALUE, NULL
+		name, length, optimizer->depth, constant, optimizer->mark_used, NULL_VALUE, NULL
 	});
 
 	return &optimizer->variables.values[optimizer->variables.count - 1];
@@ -194,6 +195,9 @@ static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expr
 
 			if (a != NULL_VALUE && b != NULL_VALUE) {
 				return evaluate_binary_op(a, b, expr->operator);
+			} else {
+				optimize_expression(optimizer, &expr->left);
+				optimize_expression(optimizer, &expr->right);
 			}
 
 			break;
@@ -265,7 +269,10 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 		}
 
 		case LAMBDA_EXPRESSION: {
+			begin_scope(optimizer);
 			optimize_statement(optimizer, &((LitLambdaExpression*) expression)->body);
+			end_scope(optimizer);
+
 			break;
 		}
 
@@ -514,6 +521,22 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case FOR_STATEMENT: {
+			LitForStatement* stmt = (LitForStatement *) statement;
+
+			begin_scope(optimizer);
+			// This is required, so that optimizer doesn't optimize out our i variable (and such)
+			optimizer->mark_used = true;
+
+			optimize_expression(optimizer, &stmt->init);
+			optimize_expression(optimizer, &stmt->condition);
+			optimize_expression(optimizer, &stmt->increment);
+
+			optimize_statement(optimizer, &stmt->var);
+			optimizer->mark_used = false;
+
+			optimize_statement(optimizer, &stmt->body);
+			end_scope(optimizer);
+
 			break;
 		}
 
