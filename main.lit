@@ -1,15 +1,8 @@
-function test() {
- var a = 32
- print(a)
+class Test {
+	a {
+		get => 32
+	}
 }
 
-export function bla() {
-
-}
-
-function foo() {
-
-}
-
-print(a)
-print(test())
+var t = new Test()
+t.a = 48

@@ -1282,7 +1282,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitFunction* getter = NULL;
 			LitFunction* setter = NULL;
 
-			{
+			if (stmt->getter != NULL) {
 				begin_scope(emitter);
 
 				LitCompiler compiler;
@@ -1293,7 +1293,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				end_scope(emitter, emitter->last_line);
 			}
 
-			{
+			if (stmt->setter != NULL) {
 				begin_scope(emitter);
 
 				LitCompiler compiler;

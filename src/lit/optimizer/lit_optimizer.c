@@ -423,96 +423,6 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case IF_STATEMENT: {
-			if (true) {
-				break;
-			}
-
-			LitIfStatement *stmt = (LitIfStatement*) statement;
-			// LitStatement *branch = stmt->if_branch;
-
-			// bool removed = false;
-
-			// Removes all the dead if-else condition/branch pairs
-			if (stmt->elseif_conditions != NULL) {
-				for (uint i = 0; i < stmt->elseif_conditions->count; i++) {
-					LitValue optimized = evaluate_expression(optimizer, stmt->elseif_conditions->values[i]);
-
-					if (optimized != NULL_VALUE && lit_is_falsey(optimized)) {
-						lit_free_expression(state, stmt->elseif_conditions->values[i]);
-						lit_free_statement(state, stmt->elseif_branches->values[i]);
-
-						stmt->elseif_conditions->values[i] = NULL;
-						stmt->elseif_branches->values[i] = NULL;
-
-						// removed = true;
-					}
-				}
-			}
-
-			/*if (removed) {
-				uint last_stable = 0;
-
-				for (uint i = 0; i < stmt->elseif_conditions->count; i++) {
-					if (stmt->elseif_conditions->values[i] != NULL) {
-						last_stable = i;
-					}
-				}
-			}*/
-
-			// This complex piece of code basically sets the if condition/branch pair to the first non-NULL one
-			{
-				uint offset = 0;
-				bool first_cycle = true;
-				bool null_condition = false;
-
-				while ((null_condition = stmt->condition != NULL) || first_cycle) {
-					first_cycle = false;
-					LitValue optimized;
-
-					if (null_condition || ((optimized = evaluate_expression(optimizer, stmt->condition)) != NULL_VALUE && lit_is_falsey(optimized))) {
-						if (!null_condition) {
-							lit_free_expression(state, stmt->condition);
-							lit_free_statement(state, stmt->if_branch);
-						}
-
-						if (stmt->elseif_conditions != NULL && offset < stmt->elseif_conditions->count) {
-							stmt->condition = stmt->elseif_conditions->values[offset];
-							stmt->if_branch = stmt->elseif_branches->values[offset];
-
-							stmt->elseif_conditions->values[offset] = NULL;
-							stmt->elseif_branches->values[offset] = NULL;
-
-							offset++;
-						} else {
-							if (stmt->else_branch != NULL) {
-								optimize_statement(optimizer, &stmt->else_branch);
-							}
-
-							*slot = stmt->else_branch;
-
-							stmt->condition = NULL;
-							stmt->if_branch = NULL;
-							stmt->else_branch = NULL;
-
-							lit_free_statement(state, statement);
-							break;
-						}
-					} else {
-						break;
-					}
-				}
-
-				if (stmt->elseif_conditions != NULL && offset > 0) {
-					for (uint i = offset; i < stmt->elseif_conditions->count; i++) {
-						stmt->elseif_conditions->values[i - offset] = stmt->elseif_conditions->values[i];
-						stmt->elseif_branches->values[i - offset] = stmt->elseif_branches->values[i];
-					}
-
-					stmt->elseif_conditions->count -= offset;
-					stmt->elseif_branches->count -= offset;
-				}
-			}
-
 			break;
 		}
 
@@ -574,14 +484,20 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case RETURN_STATEMENT: {
+			optimize_expression(optimizer, &((LitReturnStatement*) statement)->expression);
 			break;
 		}
 
 		case METHOD_STATEMENT: {
+			begin_scope(optimizer);
+			optimize_statement(optimizer, &((LitMethodStatement*) statement)->body);
+			end_scope(optimizer);
+
 			break;
 		}
 
 		case CLASS_STATEMENT: {
+			optimize_statements(optimizer, &((LitClassStatement*) statement)->fields);
 			break;
 		}
 
@@ -589,6 +505,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 			break;
 		}
 
+		// Nothing to optimize there
 		case CONTINUE_STATEMENT:
 		case BREAK_STATEMENT: {
 			break;
