@@ -6,7 +6,7 @@
 * optimization levels (special one for repl, where unused vars stick around)
 
 * optimizations {
- * dead if branches
+ * dead if branchess
  * multiplication by 1
  * tail-call optimization?
  * for (var a in 1 .. 3) -> for (var a = 1; a < 4; i++)

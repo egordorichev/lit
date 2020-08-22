@@ -510,6 +510,10 @@ static LitExpression* parse_array(LitParser* parser, bool can_assign) {
 	ignore_new_lines(parser);
 	consume(parser, TOKEN_RIGHT_BRACKET, "']' after array");
 
+	if (match(parser, TOKEN_LEFT_BRACKET)) {
+		return parse_subscript(parser, (LitExpression*) array, can_assign);
+	}
+
 	return (LitExpression*) array;
 }
 
