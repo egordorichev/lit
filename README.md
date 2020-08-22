@@ -39,3 +39,7 @@ lit hello.lit
 ```
 
 That's it! Now you are ready to face a more serious challenge, like the [docs]() or [examples](https://github.com/egordorichev/lit/tree/master/test/challenges)!
+
+### Syntax Highlighting
+
+If you want syntax highlighting in Visual Studio Code, see [lit-vscode](https://github.com/egordorichev/lit-vscode).
