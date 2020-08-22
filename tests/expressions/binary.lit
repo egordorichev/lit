@@ -40,7 +40,8 @@ print(true is Object) // Expected: true
 
 print(() => {} is Function) // Expected: true
 
-function a() {}
+// We have to export it or it will get optimized out
+export function a() {}
 
 print(a is Function) // Expected: true
 print(a is Object) // Expected: true

@@ -203,9 +203,6 @@ static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expr
 
 			if (a != NULL_VALUE && b != NULL_VALUE) {
 				return evaluate_binary_op(a, b, expr->operator);
-			} else {
-				optimize_expression(optimizer, &expr->left);
-				optimize_expression(optimizer, &expr->right);
 			}
 
 			break;
@@ -238,6 +235,28 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 				if (optimized != NULL_VALUE) {
 					*slot = (LitExpression*) lit_create_literal_expression(state, expression->line, optimized);
 					lit_free_expression(state, expression);
+					break;
+				}
+			}
+
+			switch (expression->type) {
+				case UNARY_EXPRESSION: {
+					optimize_expression(optimizer, &((LitUnaryExpression*) expression)->right);
+					break;
+				}
+
+				case GROUPING_EXPRESSION: {
+					optimize_expression(optimizer, &((LitGroupingExpression*) expression)->child);
+					break;
+				}
+
+				case BINARY_EXPRESSION: {
+					LitBinaryExpression* expr = (LitBinaryExpression*) expression;
+
+					optimize_expression(optimizer, &expr->left);
+					optimize_expression(optimizer, &expr->right);
+
+					break;
 				}
 			}
 
@@ -431,7 +450,19 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case IF_STATEMENT: {
-			// FIXME: implement
+			// FIXME: remove dead branches
+			LitIfStatement* stmt = (LitIfStatement*) statement;
+
+			optimize_expression(optimizer, &stmt->condition);
+			optimize_statement(optimizer, &stmt->if_branch);
+
+			if (stmt->elseif_conditions != NULL) {
+				optimize_expressions(optimizer, stmt->elseif_conditions);
+				optimize_statements(optimizer, stmt->elseif_branches);
+			}
+
+			optimize_statement(optimizer, &stmt->else_branch);
+
 			break;
 		}
 

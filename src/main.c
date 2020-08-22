@@ -196,7 +196,7 @@ int main(int argc, const char* argv[]) {
 
 	if (show_repl) {
 		run_repl(state);
-	} else if (!evaled) {
+	} else if (!evaled && num_files_to_run == 0) {
 		if (lit_file_exists("main.lbc")) {
 			result = lit_interpret_file(state, "main.lbc").type;
 		} else if (lit_file_exists("main.lit")) {

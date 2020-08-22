@@ -716,17 +716,19 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, expression->line, false));
 			}
 
-			bool single_expression = expr->body->type == EXPRESSION_STATEMENT;
+			if (expr->body != NULL) {
+				bool single_expression = expr->body->type == EXPRESSION_STATEMENT;
 
-			if (single_expression) {
-				compiler.skip_return = true;
-				((LitExpressionStatement*) expr->body)->pop = false;
-			}
+				if (single_expression) {
+					compiler.skip_return = true;
+					((LitExpressionStatement*) expr->body)->pop = false;
+				}
 
-			emit_statement(emitter, expr->body);
+				emit_statement(emitter, expr->body);
 
-			if (single_expression) {
-				emit_byte(emitter, emitter->last_line, OP_RETURN);
+				if (single_expression) {
+					emit_byte(emitter, emitter->last_line, OP_RETURN);
+				}
 			}
 
 			LitFunction* function = end_compiler(emitter, name);
