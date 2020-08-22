@@ -939,7 +939,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			DROP(); // Pop the class name
 
-			lit_push_root(state, (LitObject *) klass);
+			lit_push_root(state, (LitObject*) klass);
 			lit_table_set(state, &vm->globals, name, OBJECT_VALUE(klass));
 			lit_pop_root(state);
 
@@ -1280,7 +1280,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					break;
 				}
 
-				instance_klass = (LitClass *) instance_klass->super;
+				instance_klass = (LitClass*) instance_klass->super;
 			}
 
 			DROP_MULTIPLE(2); // Drop the instance and class

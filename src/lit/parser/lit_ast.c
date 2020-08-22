@@ -77,7 +77,7 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 		}
 
 		case ASSIGN_EXPRESSION: {
-			LitAssignExpression *expr = (LitAssignExpression *) expression;
+			LitAssignExpression *expr = (LitAssignExpression*) expression;
 
 			lit_free_expression(state, expr->to);
 			lit_free_expression(state, expr->value);
@@ -180,7 +180,7 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 		}
 
 		case INTERPOLATION_EXPRESSION: {
-			free_expressions(state, &((LitInterpolationExpression *) expression)->expressions);
+			free_expressions(state, &((LitInterpolationExpression*) expression)->expressions);
 			FREE_EXPRESSION(LitInterpolationExpression)
 
 			break;

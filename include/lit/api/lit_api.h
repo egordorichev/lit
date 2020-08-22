@@ -16,7 +16,7 @@
 	LitString* klass_name = lit_copy_string(state, name, strlen(name)); \
 	LitClass* klass = lit_create_class(state, klass_name);
 
-#define LIT_INHERIT_CLASS(super_klass) klass->super = (LitClass *) super_klass; \
+#define LIT_INHERIT_CLASS(super_klass) klass->super = (LitClass*) super_klass; \
 	klass->init_method = super_klass->init_method; \
 	lit_table_add_all(state, &super_klass->methods, &klass->methods); \
 	lit_table_add_all(state, &super_klass->static_fields, &klass->static_fields);

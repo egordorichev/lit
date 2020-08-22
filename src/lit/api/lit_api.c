@@ -51,7 +51,7 @@ LitFunction* lit_get_global_function(LitState* state, LitString* name) {
 }
 
 void lit_set_global(LitState* state, LitString* name, LitValue value) {
-	lit_push_root(state, (LitObject *) name);
+	lit_push_root(state, (LitObject*) name);
 	lit_push_value_root(state, value);
 	lit_table_set(state, &state->vm->globals, name, value);
 	lit_pop_roots(state, 2);
@@ -63,15 +63,15 @@ bool lit_global_exists(LitState* state, LitString* name) {
 }
 
 void lit_define_native(LitState* state, const char* name, LitNativeFunctionFn native) {
-	lit_push_root(state, (LitObject *) CONST_STRING(state, name));
-	lit_push_root(state, (LitObject *) lit_create_native_function(state, native, AS_STRING(lit_peek_root(state, 0))));
+	lit_push_root(state, (LitObject*) CONST_STRING(state, name));
+	lit_push_root(state, (LitObject*) lit_create_native_function(state, native, AS_STRING(lit_peek_root(state, 0))));
 	lit_table_set(state, &state->vm->globals, AS_STRING(lit_peek_root(state, 1)), lit_peek_root(state, 0));
 	lit_pop_roots(state, 2);
 }
 
 void lit_define_native_primitive(LitState* state, const char* name, LitNativePrimitiveFn native) {
-	lit_push_root(state, (LitObject *) CONST_STRING(state, name));
-	lit_push_root(state, (LitObject *) lit_create_native_primitive(state, native, AS_STRING(lit_peek_root(state, 0))));
+	lit_push_root(state, (LitObject*) CONST_STRING(state, name));
+	lit_push_root(state, (LitObject*) lit_create_native_primitive(state, native, AS_STRING(lit_peek_root(state, 0))));
 	lit_table_set(state, &state->vm->globals, AS_STRING(lit_peek_root(state, 1)), lit_peek_root(state, 0));
 	lit_pop_roots(state, 2);
 }

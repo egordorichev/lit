@@ -12,7 +12,7 @@ LitString* lit_allocate_empty_string(LitState* state, uint length) {
 }
 
 void lit_register_string(LitState* state, LitString* string) {
-	lit_push_root(state, (LitObject *) string);
+	lit_push_root(state, (LitObject*) string);
 	lit_table_set(state, &state->vm->strings, string, NULL_VALUE);
 	lit_pop_root(state);
 }
@@ -283,7 +283,7 @@ LitValue lit_get_function_name(LitVm* vm, LitValue instance) {
 	}
 
 	if (name == NULL) {
-		return OBJECT_VALUE(lit_string_format(vm->state, "function #", *((double *) AS_OBJECT(instance))));
+		return OBJECT_VALUE(lit_string_format(vm->state, "function #", *((double*) AS_OBJECT(instance))));
 	}
 
 	return OBJECT_VALUE(lit_string_format(vm->state, "function @", name));
@@ -302,7 +302,7 @@ LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot) {
 LitClosure* lit_create_closure(LitState* state, LitFunction* function) {
 	LitClosure* closure = ALLOCATE_OBJECT(state, LitClosure, OBJECT_CLOSURE);
 
-	lit_push_root(state, (LitObject *) closure);
+	lit_push_root(state, (LitObject*) closure);
 	LitUpvalue** upvalues = LIT_ALLOCATE(state, LitUpvalue*, function->upvalue_count);
 	lit_pop_root(state);
 

@@ -1206,8 +1206,8 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 	char module_name[length + 5];
 	char module_name_dotted[length + 5];
 
-	memcpy((void *) module_name_dotted, path, length);
-	memcpy((void *) module_name_dotted + length, ".lit", 4);
+	memcpy((void*) module_name_dotted, path, length);
+	memcpy((void*) module_name_dotted + length, ".lit", 4);
 
 	module_name_dotted[length + 4] = '\0';
 
@@ -1225,8 +1225,8 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 
 	if (!file_exists(module_name)) {
 		// .lit -> .lbc
-		memcpy((void *) module_name + length + 2, "bc", 2);
-		memcpy((void *) module_name_dotted + length + 2, "bc", 2);
+		memcpy((void*) module_name + length + 2, "bc", 2);
+		memcpy((void*) module_name_dotted + length + 2, "bc", 2);
 
 		if (!file_exists(module_name)) {
 			return false;
@@ -1274,8 +1274,8 @@ static bool attempt_to_require_combined(LitVm* vm, LitValue* args, uint arg_coun
 
 	char path[total_length + 1];
 
-	memcpy((void *) path, a, a_length);
-	memcpy((void *) path + a_length + 1, b, b_length);
+	memcpy((void*) path, a, a_length);
+	memcpy((void*) path + a_length + 1, b, b_length);
 
 	path[a_length] = '.';
 	path[total_length] = '\0';
@@ -1302,10 +1302,10 @@ LIT_NATIVE_PRIMITIVE(require) {
 		size_t length = index - module_name->chars;
 
 		char buffer[length + 1];
-		memcpy((void *) buffer, module_name->chars, length);
+		memcpy((void*) buffer, module_name->chars, length);
 		buffer[length] = '\0';
 
-		if (attempt_to_require_combined(vm, args, arg_count, (const char *) &buffer, name->chars, ignore_previous)) {
+		if (attempt_to_require_combined(vm, args, arg_count, (const char*) &buffer, name->chars, ignore_previous)) {
 			return should_update_locals;
 		}
 	}

@@ -9,13 +9,13 @@
 static void init_compiler(LitParser* parser, LitCompiler* compiler) {
 	compiler->scope_depth = 0;
 	compiler->function = NULL;
-	compiler->enclosing = (struct LitCompiler *) parser->compiler;
+	compiler->enclosing = (struct LitCompiler*) parser->compiler;
 
 	parser->compiler = compiler;
 }
 
 static void end_compiler(LitParser* parser, LitCompiler* compiler) {
-	parser->compiler = (LitCompiler *) compiler->enclosing;
+	parser->compiler = (LitCompiler*) compiler->enclosing;
 }
 
 static void begin_scope(LitParser* parser) {
@@ -190,7 +190,7 @@ static LitExpression* parse_number(LitParser* parser, bool can_assign) {
 static LitExpression* parse_lambda(LitParser* parser, LitLambdaExpression* lambda) {
 	lambda->body = parse_statement(parser);
 
-	return (LitExpression *) lambda;
+	return (LitExpression*) lambda;
 }
 
 static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assign) {
@@ -399,7 +399,7 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign) {
 
 	do {
 		if (AS_STRING(parser->previous.value)->length > 0) {
-			lit_expressions_write(parser->state, &expression->expressions, (LitExpression *) lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value));
+			lit_expressions_write(parser->state, &expression->expressions, (LitExpression*) lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value));
 		}
 
 		lit_expressions_write(parser->state, &expression->expressions, parse_expression(parser));
@@ -408,7 +408,7 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign) {
 	consume(parser, TOKEN_STRING, "end of interpolation");
 
 	if (AS_STRING(parser->previous.value)->length > 0) {
-		lit_expressions_write(parser->state, &expression->expressions, (LitExpression *) lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value));
+		lit_expressions_write(parser->state, &expression->expressions, (LitExpression*) lit_create_literal_expression(parser->state, parser->previous.line, parser->previous.value));
 	}
 
 	if (match(parser, TOKEN_LEFT_BRACKET)) {
@@ -461,7 +461,7 @@ static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool
 	uint length = parser->previous.length;
 
 	if (!ignored && can_assign && match(parser, TOKEN_EQUAL)) {
-		return (LitExpression *) lit_create_set_expression(parser->state, line, previous, name, length, parse_expression(parser));
+		return (LitExpression*) lit_create_set_expression(parser->state, line, previous, name, length, parse_expression(parser));
 	} else {
 		LitExpression* expression = (LitExpression*) lit_create_get_expression(parser->state, line, previous, name, length, false, ignored);
 
@@ -491,7 +491,7 @@ static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression
 	consume(parser, TOKEN_COLON, "':' after expression");
 	LitExpression* else_branch = parse_expression(parser);
 
-	return (LitExpression *) lit_create_if_experssion(parser->state, line, previous, if_branch, else_branch);
+	return (LitExpression*) lit_create_if_experssion(parser->state, line, previous, if_branch, else_branch);
 }
 
 static LitExpression* parse_array(LitParser* parser, bool can_assign) {
@@ -798,7 +798,7 @@ static LitStatement* parse_field(LitParser* parser, LitString* name, bool is_sta
 		consume(parser, TOKEN_RIGHT_BRACE, "'}' after field declaration");
 	}
 
-	return (LitStatement *) lit_create_field_statement(parser->state, line, name, getter, setter, is_static);
+	return (LitStatement*) lit_create_field_statement(parser->state, line, name, getter, setter, is_static);
 }
 
 static LitTokenType operators[] = {

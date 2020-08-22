@@ -52,9 +52,9 @@ static void end_scope(LitOptimizer* optimizer) {
 	}
 }
 
-static LitVariable* add_variable(LitOptimizer* optimizer, const char* name, uint length, bool constant) {
+static LitVariable* add_variable(LitOptimizer* optimizer, const char* name, uint length, bool constant, LitStatement** declaration) {
 	lit_variables_write(optimizer->state, &optimizer->variables, (LitVariable) {
-		name, length, optimizer->depth, constant, optimizer->mark_used, NULL_VALUE, NULL
+		name, length, optimizer->depth, constant, optimizer->mark_used, NULL_VALUE, declaration
 	});
 
 	return &optimizer->variables.values[optimizer->variables.count - 1];
@@ -228,7 +228,7 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 				LitValue optimized = evaluate_expression(optimizer, expression);
 
 				if (optimized != NULL_VALUE) {
-					*slot = (LitExpression *) lit_create_literal_expression(state, expression->line, optimized);
+					*slot = (LitExpression*) lit_create_literal_expression(state, expression->line, optimized);
 					lit_free_expression(state, expression);
 				}
 			}
@@ -342,7 +342,7 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 				// Not checking here for the enable-ness of constant-folding, since if its off
 				// the constant_value would be NULL_VALUE anyway (:thinkaboutit:)
 				if (variable->constant && variable->constant_value != NULL_VALUE) {
-					*slot = (LitExpression *) lit_create_literal_expression(state, expression->line, variable->constant_value);
+					*slot = (LitExpression*) lit_create_literal_expression(state, expression->line, variable->constant_value);
 					lit_free_expression(state, expression);
 				}
 			}
@@ -427,7 +427,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 				break;
 			}
 
-			LitIfStatement *stmt = (LitIfStatement *) statement;
+			LitIfStatement *stmt = (LitIfStatement*) statement;
 			// LitStatement *branch = stmt->if_branch;
 
 			// bool removed = false;
@@ -521,7 +521,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case FOR_STATEMENT: {
-			LitForStatement* stmt = (LitForStatement *) statement;
+			LitForStatement* stmt = (LitForStatement*) statement;
 
 			begin_scope(optimizer);
 			// This is required, so that optimizer doesn't optimize out our i variable (and such)
@@ -541,10 +541,9 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case VAR_STATEMENT: {
-			LitVarStatement* stmt = (LitVarStatement *) statement;
-			LitVariable* variable = add_variable(optimizer, stmt->name, stmt->length, stmt->constant);
+			LitVarStatement* stmt = (LitVarStatement*) statement;
+			LitVariable* variable = add_variable(optimizer, stmt->name, stmt->length, stmt->constant, slot);
 
-			variable->declaration = slot;
 			optimize_expression(optimizer, &stmt->init);
 
 			if (stmt->constant && lit_is_optimization_enabled(OPTIMIZATION_CONSTANT_FOLDING)) {
@@ -559,6 +558,18 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case FUNCTION_STATEMENT: {
+			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
+			LitVariable* variable = add_variable(optimizer, stmt->name, stmt->length, false, slot);
+
+			if (stmt->export) {
+				// Otherwise it will get optimized-out with a big chance
+				variable->used = true;
+			}
+
+			begin_scope(optimizer);
+			optimize_statement(optimizer, &stmt->body);
+			end_scope(optimizer);
+
 			break;
 		}
 

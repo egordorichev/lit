@@ -221,7 +221,7 @@ static void mark_roots(LitVm* vm) {
 	LitState* state = vm->state;
 
 	while (fiber != NULL) {
-		lit_mark_object(vm, (LitObject *) fiber);
+		lit_mark_object(vm, (LitObject*) fiber);
 
 		for (LitValue *slot = fiber->stack; slot < fiber->stack_top; slot++) {
 			lit_mark_value(vm, *slot);
@@ -231,9 +231,9 @@ static void mark_roots(LitVm* vm) {
 			LitCallFrame *frame = &fiber->frames[i];
 
 			if (frame->closure != NULL) {
-				lit_mark_object(vm, (LitObject *) frame->closure);
+				lit_mark_object(vm, (LitObject*) frame->closure);
 			} else {
-				lit_mark_object(vm, (LitObject *) frame->function);
+				lit_mark_object(vm, (LitObject*) frame->function);
 			}
 		}
 
@@ -248,18 +248,18 @@ static void mark_roots(LitVm* vm) {
 		lit_mark_value(vm, state->roots[i]);
 	}
 
-	lit_mark_object(vm, (LitObject *) state->api_module);
+	lit_mark_object(vm, (LitObject*) state->api_module);
 
-	lit_mark_object(vm, (LitObject *) state->class_class);
-	lit_mark_object(vm, (LitObject *) state->object_class);
-	lit_mark_object(vm, (LitObject *) state->number_class);
-	lit_mark_object(vm, (LitObject *) state->string_class);
-	lit_mark_object(vm, (LitObject *) state->bool_class);
-	lit_mark_object(vm, (LitObject *) state->function_class);
-	lit_mark_object(vm, (LitObject *) state->fiber_class);
-	lit_mark_object(vm, (LitObject *) state->module_class);
-	lit_mark_object(vm, (LitObject *) state->array_class);
-	lit_mark_object(vm, (LitObject *) state->map_class);
+	lit_mark_object(vm, (LitObject*) state->class_class);
+	lit_mark_object(vm, (LitObject*) state->object_class);
+	lit_mark_object(vm, (LitObject*) state->number_class);
+	lit_mark_object(vm, (LitObject*) state->string_class);
+	lit_mark_object(vm, (LitObject*) state->bool_class);
+	lit_mark_object(vm, (LitObject*) state->function_class);
+	lit_mark_object(vm, (LitObject*) state->fiber_class);
+	lit_mark_object(vm, (LitObject*) state->module_class);
+	lit_mark_object(vm, (LitObject*) state->array_class);
+	lit_mark_object(vm, (LitObject*) state->map_class);
 
 	lit_mark_table(vm, &vm->globals);
 	lit_mark_table(vm, &vm->modules);
@@ -301,8 +301,8 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		case OBJECT_FIBER: {
 			LitFiber* fiber = (LitFiber*) object;
 
-			lit_mark_object(vm, (LitObject *) fiber->module);
-			lit_mark_object(vm, (LitObject *) fiber->parent);
+			lit_mark_object(vm, (LitObject*) fiber->module);
+			lit_mark_object(vm, (LitObject*) fiber->parent);
 
 			break;
 		}
@@ -312,8 +312,8 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 
 			lit_mark_value(vm, module->return_value);
 
-			lit_mark_object(vm, (LitObject *) module->name);
-			lit_mark_object(vm, (LitObject *) module->main_function);
+			lit_mark_object(vm, (LitObject*) module->name);
+			lit_mark_object(vm, (LitObject*) module->main_function);
 
 			for (int i = 0; i < module->private_names.count; i++) {
 				lit_mark_value(vm, module->privates[i]);
@@ -330,7 +330,7 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 			// Check for NULL is needed for a really specific gc-case
 			if (closure->upvalues != NULL) {
 				for (uint i = 0; i < closure->upvalue_count; i++) {
-					lit_mark_object(vm, (LitObject *) closure->upvalues[i]);
+					lit_mark_object(vm, (LitObject*) closure->upvalues[i]);
 				}
 			}
 
@@ -345,8 +345,8 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		case OBJECT_CLASS: {
 			LitClass* klass = (LitClass*) object;
 
-			lit_mark_object(vm, (LitObject *) klass->name);
-			lit_mark_object(vm, (LitObject *) klass->super);
+			lit_mark_object(vm, (LitObject*) klass->name);
+			lit_mark_object(vm, (LitObject*) klass->super);
 
 			lit_mark_table(vm, &klass->methods);
 			lit_mark_table(vm, &klass->static_fields);
@@ -357,7 +357,7 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		case OBJECT_INSTANCE: {
 			LitInstance* instance = (LitInstance*) object;
 
-			lit_mark_object(vm, (LitObject *) instance->klass);
+			lit_mark_object(vm, (LitObject*) instance->klass);
 			lit_mark_table(vm, &instance->fields);
 
 			break;
@@ -385,8 +385,8 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		case OBJECT_FIELD: {
 			LitField* field = (LitField*) object;
 
-			lit_mark_object(vm, (LitObject *) field->getter);
-			lit_mark_object(vm, (LitObject *) field->setter);
+			lit_mark_object(vm, (LitObject*) field->getter);
+			lit_mark_object(vm, (LitObject*) field->setter);
 
 			break;
 		}

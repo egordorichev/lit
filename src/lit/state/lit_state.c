@@ -58,7 +58,7 @@ LitState* lit_new_state() {
 	state->emitter = (LitEmitter*) malloc(sizeof(LitEmitter));
 	lit_init_emitter(state, state->emitter);
 
-	state->optimizer = (LitOptimizer *) malloc(sizeof(LitOptimizer));
+	state->optimizer = (LitOptimizer*) malloc(sizeof(LitOptimizer));
 	lit_init_optimizer(state, state->optimizer);
 
 	state->vm = (LitVm*) malloc(sizeof(LitVm));
@@ -255,7 +255,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, 
 		LitModule* module = lit_compile_module(state, module_name, source);
 
 		compiled_modules[i] = module;
-		free((void *) source);
+		free((void*) source);
 
 		if (module == NULL) {
 			return false;

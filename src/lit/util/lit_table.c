@@ -170,7 +170,7 @@ void lit_mark_table(LitVm* vm, LitTable* table) {
 	for (int i = 0; i <= table->capacity; i++) {
 		LitTableEntry* entry = &table->entries[i];
 
-		lit_mark_object(vm, (LitObject *) entry->key);
+		lit_mark_object(vm, (LitObject*) entry->key);
 		lit_mark_value(vm, entry->value);
 	}
 }
