@@ -1,6 +1,7 @@
 # lit
 
 Lit is a dynamicaly-typed language, inspired by highly-hackable Lua and familiar C-styled JavaScipt.
+You can try it out [in your browser](https://github.com/egordorichev/lit-html)!
 
 |  | Lua | JavaScript | Lit | |
 |-|-|-|-|-|
@@ -39,6 +40,7 @@ lit hello.lit
 ```
 
 That's it! Now you are ready to face a more serious challenge, like the [docs]() or [examples](https://github.com/egordorichev/lit/tree/master/test/challenges)!
+Or alternatively, [lit runs just fine in browsers](https://github.com/egordorichev/lit-html).
 
 ### Syntax Highlighting
 
