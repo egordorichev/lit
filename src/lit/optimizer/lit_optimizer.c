@@ -74,6 +74,10 @@ static LitVariable* resolve_variable(LitOptimizer* optimizer, const char* name, 
 	return NULL;
 }
 
+static bool is_empty(LitStatement* statement) {
+	return statement == NULL || (statement->type == BLOCK_STATEMENT && ((LitBlockStatement*) statement)->statements.count == 0);
+}
+
 static LitValue evaluate_unary_op(LitValue value, LitTokenType operator) {
 	switch (operator) {
 		case TOKEN_MINUS: {
@@ -171,6 +175,10 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType operator
 }
 
 static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expression) {
+	if (expression == NULL) {
+		return NULL_VALUE;
+	}
+
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
 			return ((LitLiteralExpression*) expression)->value;
@@ -384,8 +392,8 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 			LitBlockStatement* stmt = (LitBlockStatement*) statement;
 
 			if (stmt->statements.count == 0) {
-				*slot = NULL;
 				lit_free_statement(state, statement);
+				*slot = NULL;
 
 				break;
 			}
@@ -427,6 +435,26 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case WHILE_STATEMENT: {
+			LitWhileStatement* stmt = (LitWhileStatement*) statement;
+			optimize_expression(optimizer, &stmt->condition);
+
+			if (lit_is_optimization_enabled(OPTIMIZATION_UNREACHABLE_CODE)) {
+				LitValue optimized = evaluate_expression(optimizer, stmt->condition);
+
+				if (optimized != NULL_VALUE && lit_is_falsey(optimized)) {
+					lit_free_statement(optimizer->state, statement);
+					*slot = NULL;
+					break;
+				}
+			}
+
+			optimize_statement(optimizer, &stmt->body);
+
+			if (lit_is_optimization_enabled(OPTIMIZATION_EMPTY_BODY) && is_empty(stmt->body)) {
+				lit_free_statement(optimizer->state, statement);
+				*slot = NULL;
+			}
+
 			break;
 		}
 
@@ -446,6 +474,11 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 
 			optimize_statement(optimizer, &stmt->body);
 			end_scope(optimizer);
+
+			if (lit_is_optimization_enabled(OPTIMIZATION_EMPTY_BODY) && is_empty(stmt->body)) {
+				lit_free_statement(optimizer->state, statement);
+				*slot = NULL;
+			}
 
 			break;
 		}
@@ -502,6 +535,20 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case FIELD_STATEMENT: {
+			LitFieldStatement* stmt = (LitFieldStatement*) statement;
+
+			if (stmt->getter != NULL) {
+				begin_scope(optimizer);
+				optimize_statement(optimizer, &stmt->getter);
+				end_scope(optimizer);
+			}
+
+			if (stmt->setter != NULL) {
+				begin_scope(optimizer);
+				optimize_statement(optimizer, &stmt->setter);
+				end_scope(optimizer);
+			}
+
 			break;
 		}
 
@@ -581,6 +628,8 @@ static void setup_optimization_names() {
 	optimization_names[OPTIMIZATION_CONSTANT_FOLDING] = "constant-folding";
 	optimization_names[OPTIMIZATION_LITERAL_FOLDING] = "literal-folding";
 	optimization_names[OPTIMIZATION_UNUSED_VAR] = "unused-var";
+	optimization_names[OPTIMIZATION_UNREACHABLE_CODE] = "unreachable-code";
+	optimization_names[OPTIMIZATION_EMPTY_BODY] = "empty-body";
 }
 
 static void setup_optimization_descriptions() {
@@ -589,4 +638,6 @@ static void setup_optimization_descriptions() {
 	optimization_descriptions[OPTIMIZATION_CONSTANT_FOLDING] = "Replaces constants in code with their values.";
 	optimization_descriptions[OPTIMIZATION_LITERAL_FOLDING] = "Precalculates literal expressions (3 + 4 is replaced with 7).";
 	optimization_descriptions[OPTIMIZATION_UNUSED_VAR] = "Removes user-declared all variables, that were not used.";
+	optimization_descriptions[OPTIMIZATION_UNREACHABLE_CODE] = "Removes code that will never be reached.";
+	optimization_descriptions[OPTIMIZATION_EMPTY_BODY] = "Removes loops with empty bodies.";
 }

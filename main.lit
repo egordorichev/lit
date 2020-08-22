@@ -1,8 +1,3 @@
-class Test {
-	a {
-		get => 32
-	}
+while (false) {
+	print(32)
 }
-
-var t = new Test()
-t.a = 48
