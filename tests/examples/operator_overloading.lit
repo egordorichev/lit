@@ -50,3 +50,6 @@ var b = new Vector(4, 4)
 
 print(b) // Expected: (4, 4)
 print(a + b) // Expected: (6, 7)
+
+a[0] = 1
+print(a[0]) // Expected: 1

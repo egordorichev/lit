@@ -7,8 +7,8 @@ You can try it out [in your browser](https://github.com/egordorichev/lit-html)!
 |-|-|-|-|-|
 | Easy classes | &#x274C; | &#10004; | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/oop.lit) |
 | Arrays start from | 1 (WHAT) | 0 | 0 | Balance in the universe is restored |
-| String interpolation | &#x274C; | &#10004; | &#10004; | [Example]() |
-| Operator overloading | &#10004; | &#x274C; | &#10004; | [Example]() |
+| String interpolation | &#x274C; | &#10004; | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/interpolation.lit) |
+| Operator overloading | &#10004; | &#x274C; | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/operator_overloading.lit) |
 | Easy to embed | &#10004; | &#x274C; | &#10004; | [Example]() |
 | Has no `undefined` | &#10004; | &#x274C; | &#10004; | Seriously, why, JS?? |
 | Syntax sugar like `+=` | &#x274C; | &#10004; | &#10004; | [Example]() |
@@ -39,7 +39,7 @@ Just run it, and you should see the familiar message in your terminal:
 lit hello.lit
 ```
 
-That's it! Now you are ready to face a more serious challenge, like the [docs]() or [examples](https://github.com/egordorichev/lit/tree/master/test/challenges)!
+That's it! Now you are ready to face a more serious challenge, like the [examples](https://github.com/egordorichev/lit/tree/master/test/examples) or [challenges](https://github.com/egordorichev/lit/tree/master/test/challenges)!
 Or alternatively, [lit runs just fine in browsers](https://github.com/egordorichev/lit-html).
 
 ### Syntax Highlighting

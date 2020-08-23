@@ -561,7 +561,13 @@ static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous
 }
 
 static LitExpression* parse_this(LitParser* parser, bool can_assign) {
-	return (LitExpression*) lit_create_this_expression(parser->state, parser->previous.line);
+	LitExpression* expression = (LitExpression*) lit_create_this_expression(parser->state, parser->previous.line);
+
+	if (match(parser, TOKEN_LEFT_BRACKET)) {
+		return parse_subscript(parser, expression, can_assign);
+	}
+
+	return expression;
 }
 
 static LitExpression* parse_super(LitParser* parser, bool can_assign) {
