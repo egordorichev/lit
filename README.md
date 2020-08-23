@@ -5,7 +5,7 @@ You can try it out [in your browser](https://github.com/egordorichev/lit-html)!
 
 |  | Lua | JavaScript | Lit | |
 |-|-|-|-|-|
-| Easy classes | &#x274C; | &#10004; | &#10004; | [Example]() |
+| Easy classes | &#x274C; | &#10004; | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/oop.lit) |
 | Arrays start from | 1 (WHAT) | 0 | 0 | Balance in the universe is restored |
 | String interpolation | &#x274C; | &#10004; | &#10004; | [Example]() |
 | Operator overloading | &#10004; | &#x274C; | &#10004; | [Example]() |

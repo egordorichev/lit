@@ -1,2 +1,18 @@
+/*
+ * You can require other lit files at any time. Require is just a function, so you can pass generated
+ * strings to it, and it will be just fine.
+ *
+ * Lit will add path to the current module with the module name, that you provide, and look there.
+ * It searches for either .lit or .lbc (compiled lit bytecode file).
+ * If it doesn't find them there, it will try to take your words literally.
+ */
 require("libs.example_library")
+
+// Since this function is defined without the export keyword, it won't be visible in this module
+print(moneyPrinter) // Expected: null
+
+// But this function will be
 exampleFunction() // Expected: Hello, from the library!
+
+// You can also return values from modules:
+print(require("libs.example_library")) // Expected: 1
