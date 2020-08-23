@@ -34,13 +34,25 @@ void lit_free_emitter(LitEmitter* emitter) {
 }
 
 static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte) {
+	if (line < emitter->last_line) {
+		// Egor-fail proofing
+		line = emitter->last_line;
+	}
+
 	lit_write_chunk(emitter->state, emitter->chunk, byte, line);
 	emitter->last_line = line;
 }
 
 static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b) {
+	if (line < emitter->last_line) {
+		// Egor-fail proofing
+		line = emitter->last_line;
+	}
+
 	lit_write_chunk(emitter->state, emitter->chunk, a, line);
 	lit_write_chunk(emitter->state, emitter->chunk, b, line);
+
+	emitter->last_line = line;
 }
 
 static void emit_short(LitEmitter* emitter, uint16_t line, uint16_t value) {
@@ -117,7 +129,7 @@ static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
 	}
 
 #ifdef LIT_TRACE_CHUNK
-	lit_disassemble_chunk(&function->chunk, function->name->chars);
+	lit_disassemble_chunk(&function->chunk, function->name->chars, NULL);
 #endif
 
 	return function;
@@ -1234,8 +1246,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
 
-			emit_byte(emitter, statement->line, stmt->is_static ? OP_STATIC_FIELD : OP_METHOD);
-			emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
+			emit_byte(emitter, emitter->last_line, stmt->is_static ? OP_STATIC_FIELD : OP_METHOD);
+			emit_short(emitter, emitter->last_line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
 
 			end_scope(emitter, emitter->last_line);
 

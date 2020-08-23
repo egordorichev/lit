@@ -283,7 +283,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, 
 	return true;
 }
 
-LitInterpretResult lit_interpret_file(LitState* state, const char* file) {
+LitInterpretResult lit_interpret_file(LitState* state, const char* file, bool dump_only) {
 	// We have to use this trick because we modify the file_name string, and if
 	// The user provides a string constant, he will get a SEGFAULT
 	// And who wants that?
@@ -301,9 +301,23 @@ LitInterpretResult lit_interpret_file(LitState* state, const char* file) {
 
 	lit_patch_file_name(file_name);
 
-	LitInterpretResult result = lit_interpret(state, file_name, source);
-	free((void*) source);
+	LitInterpretResult result;
 
+	if (dump_only) {
+		LitString* module_name = lit_copy_string(state, file_name, strlen(file_name));
+		LitModule* module = lit_compile_module(state, module_name, source);
+
+		if (module == NULL) {
+			result = INTERPRET_RUNTIME_FAIL;
+		} else {
+			lit_disassemble_module(module, source);
+			result = (LitInterpretResult) {INTERPRET_OK, NULL_VALUE};
+		}
+	} else {
+		result = lit_interpret(state, file_name, source);
+	}
+
+	free((void*) source);
 	return result;
 }
 

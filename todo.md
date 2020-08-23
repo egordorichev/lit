@@ -1,8 +1,6 @@
 # todo
 
-* DOCS AND EXAMPLES FAST
 * keep classes as privates and then allow to export them?
-* command line option to dump the chunks
 * we don't really need private names in bytecode (do an optimization flag that is on by default)
 * optimization levels (special one for repl, where unused vars stick around)
 * fix how error syncing works (=== for example)
@@ -15,9 +13,7 @@
 }
 
 * more benchmarks
-* update readme with proper example links (and docs links)
 * enums
-* html5 version auto-build & demo
 
 * if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)
 * table with globals? module.privates?

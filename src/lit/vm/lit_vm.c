@@ -506,7 +506,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 #ifdef LIT_TRACE_EXECUTION
 		instruction = *ip++;
-		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1));
+		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
 		goto *dispatch_table[instruction];
 #else
 		goto *dispatch_table[*ip++];

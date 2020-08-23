@@ -39,6 +39,7 @@ static void show_help() {
 	printf("\t-e --eval [string]\tRuns the given code string.\n");
 	printf("\t-p --pass [args]\tPasses the rest of the arguments to the script.\n");
 	printf("\t-i --interactive\tStarts an interactive shell.\n");
+	printf("\t-d --dump\t\tDumps all the bytecode chunks from the given file.\n");
 	printf("\t-h --help\t\tI wonder, what this option does.\n");
 	printf("\tIf no code to run is provided, lit will try to run either main.lbc or main.lit and, if fails, default to an interactive shell will start.\n");
 }
@@ -92,6 +93,7 @@ int main(int argc, const char* argv[]) {
 	LitArray* arg_array = NULL;
 	bool show_repl = false;
 	bool evaled = false;
+	bool dump = false;
 	char* bytecode_file = NULL;
 
 	for (int i = 1; i < argc; i++) {
@@ -149,6 +151,8 @@ int main(int argc, const char* argv[]) {
 			show_help();
 		} else if (match_arg(arg, "-i", "--interactive")) {
 			show_repl = true;
+		} else if (match_arg(arg, "-d", "--dump")) {
+			dump = true;
 		} else if (match_arg(arg, "-o", "--output")) {
 			if (args_left == 0) {
 				printf("Expected file name where to save the bytecode.\n");
@@ -185,7 +189,7 @@ int main(int argc, const char* argv[]) {
 			lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
 
 			for (uint i = 0; i < num_files_to_run; i++) {
-				result = lit_interpret_file(state, files_to_run[i]).type;
+				result = lit_interpret_file(state, files_to_run[i], dump).type;
 
 				if (result != INTERPRET_OK) {
 					break;
@@ -198,9 +202,9 @@ int main(int argc, const char* argv[]) {
 		run_repl(state);
 	} else if (!evaled && num_files_to_run == 0) {
 		if (lit_file_exists("main.lbc")) {
-			result = lit_interpret_file(state, "main.lbc").type;
+			result = lit_interpret_file(state, "main.lbc", false).type;
 		} else if (lit_file_exists("main.lit")) {
-			result = lit_interpret_file(state, "main.lit").type;
+			result = lit_interpret_file(state, "main.lit", false).type;
 		} else {
 			run_repl(state);
 		}

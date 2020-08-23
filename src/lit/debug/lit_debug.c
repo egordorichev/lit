@@ -2,11 +2,26 @@
 #include <lit/vm/lit_object.h>
 #include <stdio.h>
 
-void lit_disassemble_chunk(LitChunk* chunk, const char* name) {
+void lit_disassemble_module(LitModule* module, const char* source) {
+	lit_disassemble_chunk(&module->main_function->chunk, module->main_function->name->chars, source);
+}
+
+void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source) {
+	LitValues* values = &chunk->constants;
+
+	for (uint i = 0; i < values->count; i++) {
+		LitValue value = values->values[i];
+
+		if (IS_FUNCTION(value)) {
+			LitFunction* function = AS_FUNCTION(value);
+			lit_disassemble_chunk(&function->chunk, function->name->chars, source);
+		}
+	}
+
 	printf("== %s ==\n", name);
 
 	for (uint offset = 0; offset < chunk->count;) {
-		offset = lit_disassemble_instruction(chunk, offset);
+		offset = lit_disassemble_instruction(chunk, offset, source);
 	}
 }
 
@@ -68,11 +83,38 @@ static uint print_invoke_op(const char* name, LitChunk* chunk, uint offset) {
 	return offset + 3;
 }
 
-uint lit_disassemble_instruction(LitChunk* chunk, uint offset) {
-	printf("%04d ", offset);
+uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* source) {
 	uint line = lit_chunk_get_line(chunk, offset);
+	bool same = offset > 0 && line == lit_chunk_get_line(chunk, offset - 1);
 
-	if (offset > 0 && line == lit_chunk_get_line(chunk, offset - 1)) {
+	if (!same && source != NULL) {
+		uint index = 0;
+		char* current_line = (char*) source;
+
+		while (current_line) {
+			char* next_line = strchr(current_line, '\n');
+			char* prev_line = current_line;
+
+			index++;
+			current_line = next_line ? (next_line + 1) : NULL;
+
+			if (index == line && current_line != NULL) {
+				char* output_line = prev_line ? prev_line : next_line;
+				char c;
+
+				while ((c = *output_line) && (c == '\t' || c == ' ')) {
+					output_line++;
+				}
+
+				printf("%s        %.*s%s\n", COLOR_RED, (int) (next_line ? (next_line - output_line) : strlen(current_line)), output_line, COLOR_RESET);
+				break;
+			}
+		}
+	}
+
+	printf("%04d ", offset);
+
+	if (same) {
 		printf("   | ");
 	} else {
 		printf("%s%4d%s ", COLOR_BLUE, line, COLOR_RESET);
