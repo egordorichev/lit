@@ -1,0 +1,29 @@
+var a = 32
+
+/*
+ * Yes, I know, this is super bare-bones stuff, but I hope this doc might help someone in the future.
+ * Let's say, you have the variable 'a', and you want to add 4 to it and remember. What do you do?
+ */
+
+a = a + 4
+print(a) // Expected: 36
+
+/*
+ * Of course, this works, but it's kind-of long and bulky.
+ * And like in most modern languages, you can use += and ++ in lit!
+ */
+
+a += 6
+print(a) // Expected: 42
+
+a++
+print(a) // Expected: 43
+
+/*
+ * This stands true for most operators.
+ * -= -- *= /= #= %= !=
+ * Be careful with ** tho, it's the power operator, not multiplication!
+ * (so 2 ** 3 == 8)
+ */
+
+print(a -= 4) // Expected: 39

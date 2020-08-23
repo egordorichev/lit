@@ -9,10 +9,10 @@ You can try it out [in your browser](https://github.com/egordorichev/lit-html)!
 | Arrays start from | 1 (WHAT) | 0 | 0 | Balance in the universe is restored |
 | String interpolation | &#x274C; | &#10004; | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/interpolation.lit) |
 | Operator overloading | &#10004; | &#x274C; | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/operator_overloading.lit) |
-| Easy to embed | &#10004; | &#x274C; | &#10004; | [Example]() |
+| Easy to embed | &#10004; | &#x274C; | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/html/glue/glue.c) |
 | Has no `undefined` | &#10004; | &#x274C; | &#10004; | Seriously, why, JS?? |
-| Syntax sugar like `+=` | &#x274C; | &#10004; | &#10004; | [Example]() |
-| Coroutines (fibers) | &#10004; | &#x274C; | &#10004; | [Example]() |
+| Syntax sugar like `+=` | &#x274C; | &#10004; | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/syntax_sugar.lit) |
+| Coroutines (fibers) | &#10004; | &#x274C; | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/fibers.lit) |
 
 Sounds good? [Check out some challenge solutions](https://github.com/egordorichev/lit/tree/master/test/challenges) or try lit for yourself!
 

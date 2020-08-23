@@ -1,6 +1,5 @@
 # todo
 
-* fix interpolation syntax in lit-vscode ($ goes before string)
 * DOCS AND EXAMPLES FAST
 * keep classes as privates and then allow to export them?
 * command line option to dump the chunks

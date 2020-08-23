@@ -1,5 +1,5 @@
 // Using a plus with two strings is just fine.
-print("Hello, " + " World!") // Expected: Hello, World!
+print("Hello, " + "World!") // Expected: Hello, World!
 
 /*
  * But when there is more stuff to it, it gets a bit memory-allocation-heavy.
@@ -21,4 +21,4 @@ print([ name, " went out for ", target, " and spent ", amount, " dollars"].join(
  * If you want your { be just printed out, use \{
  */
 
-print($"\{} \{ {name}") // Expected: {} { name
+print($"\{} \{ {name}") // Expected: {} { Tim

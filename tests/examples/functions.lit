@@ -1,0 +1,61 @@
+/*
+ * Functions are blocks of code with a name, that you can call.
+ * They can take arguments (up to 255) and return something back to you (or null by default).
+ */
+
+function welcome() {
+	print("Hello, World!")
+}
+
+welcome() // Expected: Hello, World!
+var result = welcome() // Expected: Hello, World!
+
+print(result) // Expected: null
+
+/*
+ * This function takes two arguments, a and b. If you provide more than that,
+ * the left over arguments will be ignored. But if you forget to provide some of the arguments,
+ * they will default to null.
+ */
+function sum(a, b) {
+	return a + b
+}
+
+print(sum(10, 20)) // Expected: 30
+
+// Functions are variables too, and you can use that to your advantage!
+var totallyNotSumFunction = sum
+print(totallyNotSumFunction(1, 2)) // Expected: 3
+
+// You can even pass functions to other functions!
+function caller(callback) {
+	callback("test")
+}
+
+function tester(arg) {
+	print(arg)
+}
+
+caller(tester) // Expected: test
+
+// For cases like this, you can use lambdas - functions, without names:
+
+caller((arg) => print(arg)) // Expected: test
+
+caller((arg) => {
+	print("Whatever")
+	return 3
+}) // Expected: Whatever
+
+// Warning: we are entering advaned territory here: upvalues!
+function makePrinter(text) {
+	return () => {
+		print($"Printer goes brr and prints {text}")
+	}
+}
+
+var moneyPrinter = makePrinter("money")
+moneyPrinter() // Expected: Printer goes brr and prints money
+
+var issuePrinter = makePrinter("issues")
+issuePrinter() // Expected: Printer goes brr and prints issues
