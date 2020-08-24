@@ -57,6 +57,7 @@ static void setup_errors() {
 	error_messages[ERROR_SELF_INHERITED_CLASS] = "Class can't inherit itself";
 	error_messages[ERROR_STATIC_FIELDS_AFTER_METHODS] = "All static fields must be defined before the methods";
 	error_messages[ERROR_MISSING_STATEMENT] = "Expected statement but got nothing";
+	error_messages[ERROR_EXPECTED_EXPRESSION] = "Expected expression after '%.*s', got '%.*s'";
 
 	// Emitter errors
 	error_messages[ERROR_TOO_MANY_CONSTANTS] = "Too many constants for one chunk";

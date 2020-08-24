@@ -212,7 +212,7 @@ int main(int argc, const char* argv[]) {
 
 	int64_t amount = lit_free_state(state);
 
-	if (amount != 0) {
+	if (result != INTERPRET_COMPILE_ERROR && amount != 0) {
 		fprintf(stderr, "Error: memory leak of %ld bytes!\n", amount);
 		return EXIT_CODE_MEM_LEAK;
 	}

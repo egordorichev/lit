@@ -5,6 +5,10 @@
 #include <lit/lit_predefines.h>
 
 #include <stdlib.h>
+#include <setjmp.h>
+
+static void sync(LitParser* parser);
+static jmp_buf jump_buffer;
 
 static void init_compiler(LitParser* parser, LitCompiler* compiler) {
 	compiler->scope_depth = 0;
@@ -67,6 +71,7 @@ static void string_error(LitParser* parser, LitToken* token, const char* message
 
 	lit_error(parser->state, COMPILE_ERROR, message);
 	parser->had_error = true;
+	sync(parser);
 }
 
 static void error_at(LitParser* parser, LitToken* token, LitError error, va_list args) {
@@ -159,11 +164,13 @@ static LitStatement* parse_block(LitParser* parser) {
 }
 
 static LitExpression* parse_precedence(LitParser* parser, LitPrecedence precedence) {
+	LitToken previous = parser->previous;
+
 	advance(parser);
 	LitPrefixParseFn prefix_rule = get_rule(parser->previous.type)->prefix;
 
 	if (prefix_rule == NULL) {
-		error(parser, ERROR_EXPECTION_UNMET, "expression");
+		error(parser, ERROR_EXPECTED_EXPRESSION, previous.length, previous.start, parser->previous.length, parser->previous.start);
 		return NULL;
 	}
 
@@ -913,6 +920,10 @@ static LitStatement* parse_method(LitParser* parser, bool is_static) {
 }
 
 static LitStatement* parse_class(LitParser* parser) {
+	if (setjmp(jump_buffer)) {
+		return NULL;
+	}
+
 	uint line = parser->previous.line;
 
 	bool is_static = parser->previous.type == TOKEN_STATIC;
@@ -976,11 +987,45 @@ static LitStatement* parse_class(LitParser* parser) {
 	}
 
 	consume(parser, TOKEN_RIGHT_BRACE, "'}' after class body");
-
 	return (LitStatement*) klass;
 }
 
+static void sync(LitParser* parser) {
+	parser->panic_mode = false;
+
+	while (parser->current.type != TOKEN_EOF) {
+		if (parser->previous.type == TOKEN_NEW_LINE) {
+			longjmp(jump_buffer, 1);
+			return;
+		}
+
+		switch (parser->current.type) {
+			case TOKEN_CLASS:
+			case TOKEN_FUNCTION:
+			case TOKEN_EXPORT:
+			case TOKEN_VAR:
+			case TOKEN_CONST:
+			case TOKEN_FOR:
+			case TOKEN_STATIC:
+			case TOKEN_IF:
+			case TOKEN_WHILE:
+			case TOKEN_RETURN: {
+				longjmp(jump_buffer, 1);
+				return;
+			}
+
+			default: {
+				advance(parser);
+			}
+		}
+	}
+}
+
 static LitStatement* parse_statement(LitParser* parser) {
+	if (setjmp(jump_buffer)) {
+		return NULL;
+	}
+
 	if (match(parser, TOKEN_VAR) || match(parser, TOKEN_CONST)) {
 		return parse_var_declaration(parser);
 	} else if (match(parser, TOKEN_IF)) {
@@ -1005,34 +1050,6 @@ static LitStatement* parse_statement(LitParser* parser) {
 	return expression == NULL ? NULL : (LitStatement*) lit_create_expression_statement(parser->state, parser->previous.line, expression);
 }
 
-static void sync(LitParser* parser) {
-	parser->panic_mode = false;
-
-	while (parser->current.type != TOKEN_EOF) {
-		if (parser->previous.type == TOKEN_NEW_LINE) {
-			return;
-		}
-
-		switch (parser->current.type) {
-			case TOKEN_CLASS:
-			case TOKEN_FUNCTION:
-			case TOKEN_VAR:
-			case TOKEN_CONST:
-			case TOKEN_FOR:
-			case TOKEN_STATIC:
-			case TOKEN_IF:
-			case TOKEN_WHILE:
-			case TOKEN_RETURN: {
-				return;
-			}
-
-			default: {
-				advance(parser);
-			}
-		}
-	}
-}
-
 static LitStatement* parse_declaration(LitParser* parser) {
 	LitStatement* statement = NULL;
 
@@ -1040,10 +1057,6 @@ static LitStatement* parse_declaration(LitParser* parser) {
 		statement = parse_class(parser);
 	} else {
 		statement = parse_statement(parser);
-	}
-
-	if (parser->panic_mode) {
-		sync(parser);
 	}
 
 	return statement;
