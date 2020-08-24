@@ -43,16 +43,11 @@ static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte) {
 	emitter->last_line = line;
 }
 
-static void emit_op(LitEmitter* emitter, uint16_t line, LitOpCode op) {
-	LitCompiler* compiler = emitter->compiler;
-
-	emit_byte(emitter, line, (uint8_t) op);
-	// compiler->slots += stack_effects[(int) op];
-
-	if (compiler->slots > compiler->function->max_slots) {
-		compiler->function->max_slots = compiler->slots;
-	}
-}
+static const int8_t stack_effects[] = {
+	#define OPCODE(_, effect) effect,
+	#include <lit/vm/lit_opcodes.h>
+	#undef OPCODE
+};
 
 static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b) {
 	if (line < emitter->last_line) {
@@ -66,16 +61,60 @@ static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b)
 	emitter->last_line = line;
 }
 
+static void emit_op(LitEmitter* emitter, uint16_t line, LitOpCode op) {
+	LitCompiler* compiler = emitter->compiler;
+
+	emit_byte(emitter, line, (uint8_t) op);
+	compiler->slots += stack_effects[(int) op];
+
+	if (compiler->slots > compiler->function->max_slots) {
+		compiler->function->max_slots = compiler->slots;
+	}
+}
+
+static void emit_ops(LitEmitter* emitter, uint16_t line, LitOpCode a, LitOpCode b) {
+	LitCompiler* compiler = emitter->compiler;
+
+	emit_bytes(emitter, line, (uint8_t) a, (uint8_t) b);
+	compiler->slots += stack_effects[(int) a] + stack_effects[(int) b];
+
+	if (compiler->slots > compiler->function->max_slots) {
+		compiler->function->max_slots = compiler->slots;
+	}
+}
+
+static void emit_varying_op(LitEmitter* emitter, uint16_t line, LitOpCode op, uint8_t arg) {
+	LitCompiler* compiler = emitter->compiler;
+
+	emit_bytes(emitter, line, (uint8_t) op, arg);
+	compiler->slots -= arg;
+
+	if (compiler->slots > compiler->function->max_slots) {
+		compiler->function->max_slots = compiler->slots;
+	}
+}
+
+static void emit_arged_op(LitEmitter* emitter, uint16_t line, LitOpCode op, uint8_t arg) {
+	LitCompiler* compiler = emitter->compiler;
+
+	emit_bytes(emitter, line, (uint8_t) op, arg);
+	compiler->slots += stack_effects[(int) op];
+
+	if (compiler->slots > compiler->function->max_slots) {
+		compiler->function->max_slots = compiler->slots;
+	}
+}
+
 static void emit_short(LitEmitter* emitter, uint16_t line, uint16_t value) {
 	emit_bytes(emitter, line, (uint8_t) ((value >> 8) & 0xff), (uint8_t) (value & 0xff));
 }
 
 static void emit_byte_or_short(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b, uint16_t index) {
 	if (index > UINT8_MAX) {
-		emit_byte(emitter, line, b);
+		emit_op(emitter, line, b);
 		emit_short(emitter, line, (uint16_t) index);
 	} else {
-		emit_bytes(emitter, line, a, (uint8_t) index);
+		emit_arged_op(emitter, line, a, (uint8_t) index);
 	}
 }
 
@@ -115,13 +154,13 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 
 static void emit_return(LitEmitter* emitter, uint line) {
 	if (emitter->compiler->type == FUNCTION_CONSTRUCTOR) {
-		emit_bytes(emitter, line, OP_GET_LOCAL, 0);
-		emit_byte(emitter, line, OP_RETURN);
+		emit_arged_op(emitter, line, OP_GET_LOCAL, 0);
+		emit_op(emitter, line, OP_RETURN);
 	} else if (emitter->previous_was_expression_statement && emitter->chunk->count > 0) {
 		emitter->chunk->count--; // Remove the OP_POP
-		emit_byte(emitter, line, OP_RETURN);
+		emit_op(emitter, line, OP_RETURN);
 	} else {
-		emit_bytes(emitter, line, OP_NULL, OP_RETURN);
+		emit_ops(emitter, line, OP_NULL, OP_RETURN);
 	}
 }
 
@@ -161,9 +200,9 @@ static void end_scope(LitEmitter* emitter, uint16_t line) {
 
 	while (locals->count > 0 && locals->values[locals->count - 1].depth > compiler->scope_depth) {
 		if (locals->values[locals->count - 1].captured) {
-			emit_byte(emitter, line, OP_CLOSE_UPVALUE);
+			emit_op(emitter, line, OP_CLOSE_UPVALUE);
 		} else {
-			emit_byte(emitter, line, OP_POP);
+			emit_op(emitter, line, OP_POP);
 		}
 
 		locals->count--;
@@ -191,9 +230,9 @@ static uint emit_constant(LitEmitter* emitter, uint line, LitValue value) {
 	uint constant = lit_chunk_add_constant(emitter->state, emitter->chunk, value);
 
 	if (constant < UINT8_MAX) {
-		emit_bytes(emitter, line, OP_CONSTANT, constant);
+		emit_arged_op(emitter, line, OP_CONSTANT, constant);
 	} else if (constant < UINT16_MAX) {
-		emit_byte(emitter, line, OP_CONSTANT_LONG);
+		emit_op(emitter, line, OP_CONSTANT_LONG);
 		emit_short(emitter, line, constant);
 	} else {
 		error(emitter, line, ERROR_TOO_MANY_CONSTANTS);
@@ -350,7 +389,7 @@ static void mark_private_initialized(LitEmitter* emitter, uint index) {
 }
 
 static uint emit_jump(LitEmitter* emitter, LitOpCode code, uint line) {
-	emit_byte(emitter, line, code);
+	emit_op(emitter, line, code);
 	emit_bytes(emitter, line, 0xff, 0xff);
 
 	return emitter->chunk->count - 2;
@@ -368,7 +407,7 @@ static void patch_jump(LitEmitter* emitter, uint offset, uint line) {
 }
 
 static void emit_loop(LitEmitter* emitter, uint start, uint line) {
-	emit_byte(emitter, line, OP_JUMP_BACK);
+	emit_op(emitter, line, OP_JUMP_BACK);
 	uint offset = emitter->chunk->count - start + 2;
 
 	if (offset > UINT16_MAX) {
@@ -394,9 +433,9 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			if (IS_NUMBER(value) || IS_STRING(value)) {
 				emit_constant(emitter, expression->line, value);
 			} else if (IS_BOOL(value)) {
-				emit_byte(emitter, expression->line, AS_BOOL(value) ? OP_TRUE : OP_FALSE);
+				emit_op(emitter, expression->line, AS_BOOL(value) ? OP_TRUE : OP_FALSE);
 			} else if (IS_NULL(value)) {
-				emit_byte(emitter, expression->line, OP_NULL);
+				emit_op(emitter, expression->line, OP_NULL);
 			} else {
 				UNREACHABLE
 			}
@@ -412,7 +451,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			if (expr->operator == TOKEN_AMPERSAND_AMPERSAND) {
 				uint jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
 
-				emit_byte(emitter, emitter->last_line, OP_POP);
+				emit_op(emitter, emitter->last_line, OP_POP);
 				emit_expression(emitter, expr->right);
 
 				patch_jump(emitter, jump, emitter->last_line);
@@ -422,7 +461,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				uint end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
 
 				patch_jump(emitter, else_jump, emitter->last_line);
-				emit_byte(emitter, emitter->last_line, OP_POP);
+				emit_op(emitter, emitter->last_line, OP_POP);
 
 				emit_expression(emitter, expr->right);
 				patch_jump(emitter, end_jump, emitter->last_line);
@@ -434,97 +473,97 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 			switch (expr->operator) {
 				case TOKEN_PLUS: {
-					emit_byte(emitter, expression->line, OP_ADD);
+					emit_op(emitter, expression->line, OP_ADD);
 					break;
 				}
 
 				case TOKEN_MINUS: {
-					emit_byte(emitter, expression->line, OP_SUBTRACT);
+					emit_op(emitter, expression->line, OP_SUBTRACT);
 					break;
 				}
 
 				case TOKEN_STAR: {
-					emit_byte(emitter, expression->line, OP_MULTIPLY);
+					emit_op(emitter, expression->line, OP_MULTIPLY);
 					break;
 				}
 
 				case TOKEN_STAR_STAR: {
-					emit_byte(emitter, expression->line, OP_POWER);
+					emit_op(emitter, expression->line, OP_POWER);
 					break;
 				}
 
 				case TOKEN_SLASH: {
-					emit_byte(emitter, expression->line, OP_DIVIDE);
+					emit_op(emitter, expression->line, OP_DIVIDE);
 					break;
 				}
 
 				case TOKEN_SHARP: {
-					emit_byte(emitter, expression->line, OP_FLOOR_DIVIDE);
+					emit_op(emitter, expression->line, OP_FLOOR_DIVIDE);
 					break;
 				}
 
 				case TOKEN_PERCENT: {
-					emit_byte(emitter, expression->line, OP_MOD);
+					emit_op(emitter, expression->line, OP_MOD);
 					break;
 				}
 
 				case TOKEN_IS: {
-					emit_byte(emitter, expression->line, OP_IS);
+					emit_op(emitter, expression->line, OP_IS);
 					break;
 				}
 
 				case TOKEN_EQUAL_EQUAL: {
-					emit_byte(emitter, expression->line, OP_EQUAL);
+					emit_op(emitter, expression->line, OP_EQUAL);
 					break;
 				}
 
 				case TOKEN_BANG_EQUAL: {
-					emit_bytes(emitter, expression->line, OP_EQUAL, OP_NOT);
+					emit_ops(emitter, expression->line, OP_EQUAL, OP_NOT);
 					break;
 				}
 
 				case TOKEN_GREATER: {
-					emit_byte(emitter, expression->line, OP_GREATER);
+					emit_op(emitter, expression->line, OP_GREATER);
 					break;
 				}
 
 				case TOKEN_GREATER_EQUAL: {
-					emit_byte(emitter, expression->line, OP_GREATER_EQUAL);
+					emit_op(emitter, expression->line, OP_GREATER_EQUAL);
 					break;
 				}
 
 				case TOKEN_LESS: {
-					emit_byte(emitter, expression->line, OP_LESS);
+					emit_op(emitter, expression->line, OP_LESS);
 					break;
 				}
 
 				case TOKEN_LESS_EQUAL: {
-					emit_byte(emitter, expression->line, OP_LESS_EQUAL);
+					emit_op(emitter, expression->line, OP_LESS_EQUAL);
 					break;
 				}
 
 				case TOKEN_LESS_LESS: {
-					emit_byte(emitter, expression->line, OP_LSHIFT);
+					emit_op(emitter, expression->line, OP_LSHIFT);
 					break;
 				}
 
 				case TOKEN_GREATER_GREATER: {
-					emit_byte(emitter, expression->line, OP_RSHIFT);
+					emit_op(emitter, expression->line, OP_RSHIFT);
 					break;
 				}
 
 				case TOKEN_BAR: {
-					emit_byte(emitter, expression->line, OP_BOR);
+					emit_op(emitter, expression->line, OP_BOR);
 					break;
 				}
 
 				case TOKEN_AMPERSAND: {
-					emit_byte(emitter, expression->line, OP_BAND);
+					emit_op(emitter, expression->line, OP_BAND);
 					break;
 				}
 
 				case TOKEN_CARET: {
-					emit_byte(emitter, expression->line, OP_BXOR);
+					emit_op(emitter, expression->line, OP_BXOR);
 					break;
 				}
 
@@ -542,17 +581,17 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 			switch (expr->operator) {
 				case TOKEN_MINUS: {
-					emit_byte(emitter, expression->line, OP_NEGATE);
+					emit_op(emitter, expression->line, OP_NEGATE);
 					break;
 				}
 
 				case TOKEN_BANG: {
-					emit_byte(emitter, expression->line, OP_NOT);
+					emit_op(emitter, expression->line, OP_NOT);
 					break;
 				}
 
 				case TOKEN_TILDE: {
-					emit_byte(emitter, expression->line, OP_BNOT);
+					emit_op(emitter, expression->line, OP_BNOT);
 					break;
 				}
 
@@ -580,13 +619,13 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					index = resolve_private(emitter, expr->name, expr->length, expression->line);
 
 					if (index == -1) {
-						emit_byte(emitter, expression->line, OP_GET_GLOBAL);
+						emit_op(emitter, expression->line, OP_GET_GLOBAL);
 						emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length))));
 					} else {
 						emit_byte_or_short(emitter, expression->line, OP_GET_PRIVATE, OP_GET_PRIVATE_LONG, index);
 					}
 				} else {
-					emit_bytes(emitter, expression->line, OP_GET_UPVALUE, (uint8_t) index);
+					emit_arged_op(emitter, expression->line, OP_GET_UPVALUE, (uint8_t) index);
 				}
 			} else {
 				emit_byte_or_short(emitter, expression->line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, index);
@@ -610,7 +649,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 						index = resolve_private(emitter, e->name, e->length, expr->to->line);
 
 						if (index == -1) {
-							emit_byte(emitter, expression->line, OP_SET_GLOBAL);
+							emit_op(emitter, expression->line, OP_SET_GLOBAL);
 							emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
 						} else {
 							if (emitter->privates.values[index].constant) {
@@ -620,7 +659,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 							emit_byte_or_short(emitter, expression->line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
 						}
 					} else {
-						emit_bytes(emitter, expression->line, OP_SET_UPVALUE, (uint8_t) index);
+						emit_arged_op(emitter, expression->line, OP_SET_UPVALUE, (uint8_t) index);
 					}
 
 					break;
@@ -639,7 +678,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				emit_expression(emitter, expr->value);
 				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length)));
 
-				emit_bytes(emitter, emitter->last_line, OP_SET_FIELD, OP_POP);
+				emit_ops(emitter, emitter->last_line, OP_SET_FIELD, OP_POP);
 			} else if (expr->to->type == SUBSCRIPT_EXPRESSION) {
 				LitSubscriptExpression *e = (LitSubscriptExpression*) expr->to;
 
@@ -647,7 +686,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				emit_expression(emitter, e->index);
 				emit_expression(emitter, expr->value);
 
-				emit_byte(emitter, emitter->last_line, OP_SUBSCRIPT_SET);
+				emit_op(emitter, emitter->last_line, OP_SUBSCRIPT_SET);
 			} else {
 				error(emitter, expression->line, ERROR_INVALID_ASSIGMENT_TARGET);
 			}
@@ -669,7 +708,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			emit_expression(emitter, expr->callee);
 
 			if (super) {
-				emit_bytes(emitter, expression->line, OP_GET_LOCAL, 0);
+				emit_arged_op(emitter, expression->line, OP_GET_LOCAL, 0);
 			}
 
 			for (uint i = 0; i < expr->args.count; i++) {
@@ -680,16 +719,16 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				if (method) {
 					LitGetExpression *e = (LitGetExpression*) expr->callee;
 
-					emit_bytes(emitter, expression->line, ((LitGetExpression*) expr->callee)->ignore_result ? OP_INVOKE_IGNORING : OP_INVOKE, (uint8_t) expr->args.count);
+					emit_varying_op(emitter, expression->line, ((LitGetExpression*) expr->callee)->ignore_result ? OP_INVOKE_IGNORING : OP_INVOKE, (uint8_t) expr->args.count);
 					emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
 				} else {
 					LitSuperExpression *e = (LitSuperExpression*) expr->callee;
 
-					emit_bytes(emitter, emitter->last_line, ((LitSuperExpression*) expr->callee)->ignore_result ? OP_INVOKE_SUPER_IGNORING : OP_INVOKE_SUPER, (uint8_t) expr->args.count);
+					emit_varying_op(emitter, emitter->last_line, ((LitSuperExpression*) expr->callee)->ignore_result ? OP_INVOKE_SUPER_IGNORING : OP_INVOKE_SUPER, (uint8_t) expr->args.count);
 					emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(e->method)));
 				}
 			} else {
-				emit_bytes(emitter, expression->line, OP_CALL, (uint8_t) expr->args.count);
+				emit_varying_op(emitter, expression->line, OP_CALL, (uint8_t) expr->args.count);
 			}
 
 			break;
@@ -703,12 +742,12 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				uint end_jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
 
 				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
-				emit_byte(emitter, emitter->last_line, OP_GET_FIELD);
+				emit_op(emitter, emitter->last_line, OP_GET_FIELD);
 
 				patch_jump(emitter, end_jump, emitter->last_line);
 			} else if (!expr->ignore_emit) {
 				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
-				emit_byte(emitter, emitter->last_line, OP_GET_FIELD);
+				emit_op(emitter, emitter->last_line, OP_GET_FIELD);
 			}
 
 			break;
@@ -721,7 +760,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			emit_expression(emitter, expr->value);
 			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 
-			emit_byte(emitter, emitter->last_line, OP_SET_FIELD);
+			emit_op(emitter, emitter->last_line, OP_SET_FIELD);
 
 			break;
 		}
@@ -751,7 +790,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				emit_statement(emitter, expr->body);
 
 				if (single_expression) {
-					emit_byte(emitter, emitter->last_line, OP_RETURN);
+					emit_op(emitter, emitter->last_line, OP_RETURN);
 				}
 			}
 
@@ -759,7 +798,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			function->arg_count = expr->parameters.count;
 
 			if (function->upvalue_count > 0) {
-				emit_byte(emitter, emitter->last_line, OP_CLOSURE);
+				emit_op(emitter, emitter->last_line, OP_CLOSURE);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
 
 				for (uint i = 0; i < function->upvalue_count; i++) {
@@ -775,11 +814,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case ARRAY_EXPRESSION: {
 			LitArrayExpression* expr = (LitArrayExpression*) expression;
-			emit_byte(emitter, expression->line, OP_ARRAY);
+			emit_op(emitter, expression->line, OP_ARRAY);
 
 			for (uint i = 0; i < expr->values.count; i++) {
 				emit_expression(emitter, expr->values.values[i]);
-				emit_byte(emitter, emitter->last_line, OP_PUSH_ARRAY_ELEMENT);
+				emit_op(emitter, emitter->last_line, OP_PUSH_ARRAY_ELEMENT);
 			}
 
 			break;
@@ -787,12 +826,12 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case MAP_EXPRESSION: {
 			LitMapExpression* expr = (LitMapExpression*) expression;
-			emit_byte(emitter, expression->line, OP_MAP);
+			emit_op(emitter, expression->line, OP_MAP);
 
 			for (uint i = 0; i < expr->values.count; i++) {
 				emit_constant(emitter, emitter->last_line, expr->keys.values[i]);
 				emit_expression(emitter, expr->values.values[i]);
-				emit_byte(emitter, emitter->last_line, OP_PUSH_MAP_ELEMENT);
+				emit_op(emitter, emitter->last_line, OP_PUSH_MAP_ELEMENT);
 			}
 
 			break;
@@ -804,7 +843,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			emit_expression(emitter, expr->array);
 			emit_expression(emitter, expr->index);
 
-			emit_byte(emitter, expression->line, OP_SUBSCRIPT_GET);
+			emit_op(emitter, expression->line, OP_SUBSCRIPT_GET);
 
 			break;
 		}
@@ -814,7 +853,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				error(emitter, expression->line, ERROR_THIS_MISSUSE, "in static methods");
 			}
 
-			emit_bytes(emitter, expression->line, OP_GET_LOCAL, 0);
+			emit_arged_op(emitter, expression->line, OP_GET_LOCAL, 0);
 			break;
 		}
 
@@ -828,8 +867,8 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitSuperExpression* expr = (LitSuperExpression*) expression;
 
 			if (!expr->ignore_emit) {
-				emit_bytes(emitter, expression->line, OP_GET_LOCAL, 0);
-				emit_byte(emitter, expression->line, OP_GET_SUPER_METHOD);
+				emit_arged_op(emitter, expression->line, OP_GET_LOCAL, 0);
+				emit_op(emitter, expression->line, OP_GET_SUPER_METHOD);
 				emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(expr->method)));
 			}
 
@@ -842,7 +881,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			emit_expression(emitter, expr->to);
 			emit_expression(emitter, expr->from);
 
-			emit_byte(emitter, expression->line, OP_RANGE);
+			emit_op(emitter, expression->line, OP_RANGE);
 			break;
 		}
 
@@ -851,13 +890,13 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			emit_expression(emitter, expr->condition);
 
 			uint64_t else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, expression->line);
-			emit_byte(emitter, expression->line, OP_POP); // Pop the condition
+			emit_op(emitter, expression->line, OP_POP); // Pop the condition
 			emit_expression(emitter, expr->if_branch);
 
 			uint64_t end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
 
 			patch_jump(emitter, else_jump, expr->else_branch->line);
-			emit_byte(emitter, expr->else_branch->line, OP_POP); // Pop the old condition
+			emit_op(emitter, expr->else_branch->line, OP_POP); // Pop the old condition
 			emit_expression(emitter, expr->else_branch);
 
 			patch_jump(emitter, end_jump, emitter->last_line);
@@ -866,14 +905,14 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case INTERPOLATION_EXPRESSION: {
 			LitInterpolationExpression* expr = (LitInterpolationExpression*) expression;
-			emit_byte(emitter, expression->line, OP_ARRAY);
+			emit_op(emitter, expression->line, OP_ARRAY);
 
 			for (uint i = 0; i < expr->expressions.count; i++) {
 				emit_expression(emitter, expr->expressions.values[i]);
-				emit_byte(emitter, emitter->last_line, OP_PUSH_ARRAY_ELEMENT);
+				emit_op(emitter, emitter->last_line, OP_PUSH_ARRAY_ELEMENT);
 			}
 
-			emit_bytes(emitter, emitter->last_line, OP_INVOKE, 0);
+			emit_varying_op(emitter, emitter->last_line, OP_INVOKE, 0);
 			emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "join")));
 
 			break;
@@ -897,7 +936,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_expression(emitter, expr->expression);
 
 			if (expr->pop) {
-				emit_byte(emitter, statement->line, OP_POP);
+				emit_op(emitter, statement->line, OP_POP);
 			}
 
 			break;
@@ -930,7 +969,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				add_local(emitter, stmt->name, stmt->length, statement->line, stmt->constant);
 
 			if (stmt->init == NULL) {
-				emit_byte(emitter, line, OP_NULL);
+				emit_op(emitter, line, OP_NULL);
 			} else {
 				emit_expression(emitter, stmt->init);
 			}
@@ -945,7 +984,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			if (private) {
 				// Privates don't live on stack, so we need to pop them manually
-				emit_byte(emitter, statement->line, OP_POP);
+				emit_op(emitter, statement->line, OP_POP);
 			}
 
 			break;
@@ -957,7 +996,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_expression(emitter, stmt->condition);
 
 			uint64_t else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
-			emit_byte(emitter, statement->line, OP_POP); // Pop the condition
+			emit_op(emitter, statement->line, OP_POP); // Pop the condition
 			emit_statement(emitter, stmt->if_branch);
 
 			uint64_t end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
@@ -968,10 +1007,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 					LitExpression *e = stmt->elseif_conditions->values[i];
 
 					patch_jump(emitter, else_jump, e->line);
-					emit_byte(emitter, e->line, OP_POP); // Pop the old condition
+					emit_op(emitter, e->line, OP_POP); // Pop the old condition
 					emit_expression(emitter, e);
 					else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
-					emit_byte(emitter, e->line, OP_POP); // Pop the condition
+					emit_op(emitter, e->line, OP_POP); // Pop the condition
 					emit_statement(emitter, stmt->elseif_branches->values[i]);
 
 					end_jumps[i] = emit_jump(emitter, OP_JUMP, emitter->last_line);
@@ -980,11 +1019,11 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			if (stmt->else_branch != NULL) {
 				patch_jump(emitter, else_jump, stmt->else_branch->line);
-				emit_byte(emitter, stmt->else_branch->line, OP_POP); // Pop the old condition
+				emit_op(emitter, stmt->else_branch->line, OP_POP); // Pop the old condition
 				emit_statement(emitter, stmt->else_branch);
 			} else {
 				patch_jump(emitter, else_jump, emitter->last_line);
-				emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+				emit_op(emitter, emitter->last_line, OP_POP); // Pop the condition
 			}
 
 			patch_jump(emitter, end_jump, emitter->last_line);
@@ -1008,12 +1047,12 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_expression(emitter, stmt->condition);
 
 			uint64_t exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
-			emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+			emit_op(emitter, emitter->last_line, OP_POP); // Pop the condition
 			emit_statement(emitter, stmt->body);
 
 			emit_loop(emitter, start, emitter->last_line);
 			patch_jump(emitter, exit_jump, emitter->last_line);
-			emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+			emit_op(emitter, emitter->last_line, OP_POP); // Pop the condition
 			patch_breaks(emitter, emitter->last_line);
 			emitter->compiler->loop_depth--;
 
@@ -1038,7 +1077,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				if (stmt->condition != NULL) {
 					emit_expression(emitter, stmt->condition);
 					exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
-					emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+					emit_op(emitter, emitter->last_line, OP_POP); // Pop the condition
 				}
 
 				if (stmt->increment != NULL) {
@@ -1046,7 +1085,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 					uint increment_start = emitter->chunk->count;
 
 					emit_expression(emitter, stmt->increment);
-					emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+					emit_op(emitter, emitter->last_line, OP_POP); // Pop the condition
 
 					emit_loop(emitter, start, emitter->last_line);
 					start = increment_start;
@@ -1059,7 +1098,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 				if (stmt->condition != NULL) {
 					patch_jump(emitter, exit_jump, emitter->last_line);
-					emit_byte(emitter, emitter->last_line, OP_POP); // Pop the condition
+					emit_op(emitter, emitter->last_line, OP_POP); // Pop the condition
 				}
 			} else {
 				bool old = emitter->emit_pop_continue;
@@ -1071,7 +1110,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, sequence);
 
 				uint iterator = add_local(emitter, "iter ", 5, statement->line, false);
-				emit_byte(emitter, emitter->last_line, OP_NULL);
+				emit_op(emitter, emitter->last_line, OP_NULL);
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
 
 				uint start = emitter->chunk->count;
@@ -1080,14 +1119,14 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
 				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
 				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, iterator);
-				emit_bytes(emitter, emitter->last_line, OP_INVOKE, 1);
+				emit_varying_op(emitter, emitter->last_line, OP_INVOKE, 1);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iterator")));
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
 
 				uint exit_jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
 
 				uint local = add_local(emitter, var->name, var->length, statement->line, false);
-				emit_bytes(emitter, emitter->last_line, OP_INVOKE, 1);
+				emit_varying_op(emitter, emitter->last_line, OP_INVOKE, 1);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iteratorValue")));
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, local);
 
@@ -1108,10 +1147,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 				end_scope(emitter, emitter->last_line);
 
-				emit_byte(emitter, emitter->last_line, OP_POP);
+				emit_op(emitter, emitter->last_line, OP_POP);
 				emit_loop(emitter, start, emitter->last_line);
 				patch_jump(emitter, exit_jump, emitter->last_line);
-				emit_byte(emitter, emitter->last_line, OP_POP);
+				emit_op(emitter, emitter->last_line, OP_POP);
 				emitter->emit_pop_continue = old;
 			}
 
@@ -1128,7 +1167,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			if (emitter->emit_pop_continue) {
-				emit_byte(emitter, statement->line, OP_POP);
+				emit_op(emitter, statement->line, OP_POP);
 			}
 
 			emit_loop(emitter, emitter->loop_start, statement->line);
@@ -1183,7 +1222,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			function->arg_count = stmt->parameters.count;
 
 			if (function->upvalue_count > 0) {
-				emit_byte(emitter, emitter->last_line, OP_CLOSURE);
+				emit_op(emitter, emitter->last_line, OP_CLOSURE);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
 
 				for (uint i = 0; i < function->upvalue_count; i++) {
@@ -1194,7 +1233,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			if (export) {
-				emit_byte(emitter, emitter->last_line, OP_SET_GLOBAL);
+				emit_op(emitter, emitter->last_line, OP_SET_GLOBAL);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(name)));
 			} else if (private) {
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
@@ -1202,7 +1241,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, index);
 			}
 
-			emit_byte(emitter, emitter->last_line, OP_POP);
+			emit_op(emitter, emitter->last_line, OP_POP);
 			end_scope(emitter, emitter->last_line);
 
 			break;
@@ -1216,12 +1255,12 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitExpression* expression = ((LitReturnStatement*) statement)->expression;
 
 			if (expression == NULL) {
-				emit_byte(emitter, emitter->last_line, OP_NULL);
+				emit_op(emitter, emitter->last_line, OP_NULL);
 			} else {
 				emit_expression(emitter, expression);
 			}
 
-			emit_byte(emitter, emitter->last_line, OP_RETURN);
+			emit_op(emitter, emitter->last_line, OP_RETURN);
 
 			if (emitter->compiler->scope_depth == 0) {
 				emitter->compiler->skip_return = true;
@@ -1255,7 +1294,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
 
-			emit_byte(emitter, emitter->last_line, stmt->is_static ? OP_STATIC_FIELD : OP_METHOD);
+			emit_op(emitter, emitter->last_line, stmt->is_static ? OP_STATIC_FIELD : OP_METHOD);
 			emit_short(emitter, emitter->last_line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
 
 			end_scope(emitter, emitter->last_line);
@@ -1268,12 +1307,12 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emitter->class_name = stmt->name;
 
 			emit_constant(emitter, statement->line, OBJECT_VALUE(stmt->name));
-			emit_byte(emitter, statement->line, OP_CLASS);
+			emit_op(emitter, statement->line, OP_CLASS);
 
 			if (stmt->parent != NULL) {
-				emit_byte(emitter, emitter->last_line, OP_GET_GLOBAL);
+				emit_op(emitter, emitter->last_line, OP_GET_GLOBAL);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->parent)));
-				emit_byte(emitter, emitter->last_line, OP_INHERIT);
+				emit_op(emitter, emitter->last_line, OP_INHERIT);
 
 				emitter->class_has_super = true;
 			}
@@ -1286,14 +1325,14 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 					emit_expression(emitter, var->init);
 
-					emit_byte(emitter, statement->line, OP_STATIC_FIELD);
+					emit_op(emitter, statement->line, OP_STATIC_FIELD);
 					emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(lit_copy_string(emitter->state, var->name, var->length))));
 				} else {
 					emit_statement(emitter, s);
 				}
 			}
 
-			emit_byte(emitter, emitter->last_line, OP_POP);
+			emit_op(emitter, emitter->last_line, OP_POP);
 			emitter->class_name = NULL;
 			emitter->class_has_super = false;
 
@@ -1332,7 +1371,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			LitField* field = lit_create_field(emitter->state, (LitObject*) getter, (LitObject*) setter);
 			emit_constant(emitter, statement->line, OBJECT_VALUE(field));
-			emit_byte(emitter, statement->line, stmt->is_static ? OP_STATIC_FIELD : OP_DEFINE_FIELD);
+			emit_op(emitter, statement->line, stmt->is_static ? OP_STATIC_FIELD : OP_DEFINE_FIELD);
 			emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
 
 			break;
