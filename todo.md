@@ -20,7 +20,6 @@
 * ffi?
 
 * make var statements into expressions to allow stuff like if (var a = test()) { print(a) }
-* emit_pop_continue needs to work with nested loops
 
 # feature creep
 

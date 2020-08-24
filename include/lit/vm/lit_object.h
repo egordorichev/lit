@@ -253,7 +253,7 @@ typedef struct LitFiber {
 	LitValue error;
 
 	bool abort;
-	bool try;
+	bool catcher;
 } LitFiber;
 
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function);

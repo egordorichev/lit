@@ -1,6 +1,10 @@
 var total = 0
 
-for (var i = 0; i < 10; i++) {
+for (var i = 0; i < 12; i++) {
+	if (i > 9) {
+		continue
+	}
+
 	if (i % 2 == 0) {
 		total++
 	}

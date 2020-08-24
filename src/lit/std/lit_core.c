@@ -513,14 +513,14 @@ LIT_METHOD(fiber_current) {
 	return OBJECT_VALUE(vm->fiber);
 }
 
-static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count, bool try) {
+static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count, bool catcher) {
 	if (is_fiber_done(fiber)) {
 		lit_runtime_error(vm, "Fiber already finished executing");
 		return;
 	}
 
 	fiber->parent = vm->fiber;
-	fiber->try = try;
+	fiber->catcher = catcher;
 	fiber->arg_count = arg_count;
 
 	vm->fiber = fiber;

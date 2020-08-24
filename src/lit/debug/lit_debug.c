@@ -80,7 +80,7 @@ static uint print_invoke_op(const char* name, LitChunk* chunk, uint offset) {
 	lit_print_value(chunk->constants.values[constant]);
 	printf("'\n");
 
-	return offset + 3;
+	return offset + 4;
 }
 
 uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* source) {

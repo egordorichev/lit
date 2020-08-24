@@ -23,14 +23,15 @@ void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->module = NULL;
 	emitter->previous_was_expression_statement = false;
 	emitter->class_has_super = false;
-	emitter->emit_pop_continue = false;
 
 	lit_init_privates(&emitter->privates);
 	lit_init_uints(&emitter->breaks);
+	lit_init_uints(&emitter->continues);
 }
 
 void lit_free_emitter(LitEmitter* emitter) {
 	lit_free_uints(emitter->state, &emitter->breaks);
+	lit_free_uints(emitter->state, &emitter->continues);
 }
 
 static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte) {
@@ -417,12 +418,12 @@ static void emit_loop(LitEmitter* emitter, uint start, uint line) {
 	emit_short(emitter, line, offset);
 }
 
-static void patch_breaks(LitEmitter* emitter, uint line) {
-	for (uint i = 0; i < emitter->breaks.count; i++) {
-		patch_jump(emitter, emitter->breaks.values[i], line);
+static void patch_breaks(LitEmitter* emitter, LitUInts* breaks, uint line) {
+	for (uint i = 0; i < breaks->count; i++) {
+		patch_jump(emitter, breaks->values[i], line);
 	}
 
-	lit_free_uints(emitter->state, &emitter->breaks);
+	lit_free_uints(emitter->state, breaks);
 }
 
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
@@ -1033,9 +1034,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			uint64_t exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
 			emit_statement(emitter, stmt->body);
 
+			patch_breaks(emitter, &emitter->continues, emitter->last_line);
 			emit_loop(emitter, start, emitter->last_line);
 			patch_jump(emitter, exit_jump, emitter->last_line);
-			patch_breaks(emitter, emitter->last_line);
+			patch_breaks(emitter, &emitter->breaks, emitter->last_line);
 			emitter->compiler->loop_depth--;
 
 			break;
@@ -1066,6 +1068,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 					uint increment_start = emitter->chunk->count;
 
 					emit_expression(emitter, stmt->increment);
+					emit_op(emitter, emitter->last_line, OP_POP);
 
 					emit_loop(emitter, start, emitter->last_line);
 					start = increment_start;
@@ -1074,43 +1077,48 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 				emitter->loop_start = start;
 				emit_statement(emitter, stmt->body);
+				patch_breaks(emitter, &emitter->continues, emitter->last_line);
 				emit_loop(emitter, start, emitter->last_line);
 
 				if (stmt->condition != NULL) {
 					patch_jump(emitter, exit_jump, emitter->last_line);
 				}
 			} else {
-				bool old = emitter->emit_pop_continue;
-				emitter->emit_pop_continue = true;
-
-				LitVarStatement* var = (LitVarStatement*) stmt->var;
 				uint sequence = add_local(emitter, "seq ", 4, statement->line, false);
+				mark_local_initialized(emitter, sequence);
 				emit_expression(emitter, stmt->condition);
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, sequence);
 
 				uint iterator = add_local(emitter, "iter ", 5, statement->line, false);
+				mark_local_initialized(emitter, iterator);
 				emit_op(emitter, emitter->last_line, OP_NULL);
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
 
 				uint start = emitter->chunk->count;
 				emitter->loop_start = emitter->chunk->count;
 
-				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
+				// iter = seq.iterator(iter)
 				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
 				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, iterator);
 				emit_varying_op(emitter, emitter->last_line, OP_INVOKE, 1);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iterator")));
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
 
+				// If iter is null, just get out of the loop
 				uint exit_jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
 
+				begin_scope(emitter);
+
+				// var i = seq.iteratorValue(iter)
+				LitVarStatement* var = (LitVarStatement*) stmt->var;
 				uint local = add_local(emitter, var->name, var->length, statement->line, false);
+				mark_local_initialized(emitter, local);
+
+				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
+				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, iterator);
 				emit_varying_op(emitter, emitter->last_line, OP_INVOKE, 1);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iteratorValue")));
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, local);
-
-				mark_local_initialized(emitter, local);
-				begin_scope(emitter);
 
 				if (stmt->body != NULL) {
 					if (stmt->body->type == BLOCK_STATEMENT) {
@@ -1124,16 +1132,13 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 					}
 				}
 
+				patch_breaks(emitter, &emitter->continues, emitter->last_line);
 				end_scope(emitter, emitter->last_line);
-
-				emit_op(emitter, emitter->last_line, OP_POP);
 				emit_loop(emitter, start, emitter->last_line);
 				patch_jump(emitter, exit_jump, emitter->last_line);
-				emit_op(emitter, emitter->last_line, OP_POP);
-				emitter->emit_pop_continue = old;
 			}
 
-			patch_breaks(emitter, emitter->last_line);
+			patch_breaks(emitter, &emitter->breaks, emitter->last_line);
 			end_scope(emitter, emitter->last_line);
 			emitter->compiler->loop_depth--;
 
@@ -1145,11 +1150,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				error(emitter, statement->line, ERROR_LOOP_JUMP_MISSUSE, "continue");
 			}
 
-			if (emitter->emit_pop_continue) {
-				emit_op(emitter, statement->line, OP_POP);
-			}
-
-			emit_loop(emitter, emitter->loop_start, statement->line);
+			lit_uints_write(emitter->state, &emitter->continues, emit_jump(emitter, OP_JUMP, statement->line));
 			break;
 		}
 

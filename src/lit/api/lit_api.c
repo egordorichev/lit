@@ -98,6 +98,7 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 
 #undef PUSH
 
+	function->max_slots = 2 + argument_count;
 	fiber->frames[0].ip = chunk->code;
 
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
@@ -215,6 +216,7 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 
 #undef PUSH
 
+	function->max_slots = 2 + function->arg_count;
 	fiber->frames[0].ip = chunk->code;
 
 	LitFiber* last_fiber = state->vm->fiber;

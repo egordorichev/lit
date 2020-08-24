@@ -508,14 +508,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		instruction = *ip++;
 
 		if ((fiber->stack_top - frame->slots) > frame->function->max_slots) {
-			RUNTIME_ERROR("STACK ENDED")
+			RUNTIME_ERROR_VARG("STACK ENDED (%i > %i)", (int) (fiber->stack_top - frame->slots), frame->function->max_slots)
 		}
 
 		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
 		goto *dispatch_table[instruction];
 #else
 		if ((fiber->stack_top - frame->slots) > frame->function->max_slots) {
-			RUNTIME_ERROR("STACK ENDED")
+			RUNTIME_ERROR_VARG("STACK ENDED (%i > %i)", (int) (fiber->stack_top - frame->slots), frame->function->max_slots)
 		}
 
 		goto *dispatch_table[*ip++];
@@ -876,7 +876,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(JUMP_IF_NULL) {
 			uint16_t offset = READ_SHORT();
 
-			if (IS_NULL(PEEK(0))) {
+			if (IS_NULL(POP())) {
 				ip += offset;
 			}
 
