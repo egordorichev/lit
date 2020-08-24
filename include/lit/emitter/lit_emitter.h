@@ -44,6 +44,9 @@ typedef struct {
 
 	bool skip_return;
 	uint loop_depth;
+
+	uint slots;
+	uint max_slots;
 } LitCompiler;
 
 typedef struct sLitEmitter {

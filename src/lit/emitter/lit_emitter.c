@@ -43,6 +43,17 @@ static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte) {
 	emitter->last_line = line;
 }
 
+static void emit_op(LitEmitter* emitter, uint16_t line, LitOpCode op) {
+	LitCompiler* compiler = emitter->compiler;
+
+	emit_byte(emitter, line, (uint8_t) op);
+	// compiler->slots += stack_effects[(int) op];
+
+	if (compiler->slots > compiler->function->max_slots) {
+		compiler->function->max_slots = compiler->slots;
+	}
+}
+
 static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b) {
 	if (line < emitter->last_line) {
 		// Egor-fail proofing
@@ -97,6 +108,9 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 			"", 0, -1, false, false
 		});
 	}
+
+	compiler->slots = 1;
+	compiler->max_slots = 1;
 }
 
 static void emit_return(LitEmitter* emitter, uint line) {
@@ -666,15 +680,13 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				if (method) {
 					LitGetExpression *e = (LitGetExpression*) expr->callee;
 
-					emit_byte(emitter, expression->line, ((LitGetExpression*) expr->callee)->ignore_result ? OP_INVOKE_IGNORING : OP_INVOKE);
+					emit_bytes(emitter, expression->line, ((LitGetExpression*) expr->callee)->ignore_result ? OP_INVOKE_IGNORING : OP_INVOKE, (uint8_t) expr->args.count);
 					emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
-					emit_byte(emitter, expression->line, (uint8_t) expr->args.count);
 				} else {
 					LitSuperExpression *e = (LitSuperExpression*) expr->callee;
 
-					emit_byte(emitter, emitter->last_line, ((LitSuperExpression*) expr->callee)->ignore_result ? OP_INVOKE_SUPER_IGNORING : OP_INVOKE_SUPER);
+					emit_bytes(emitter, emitter->last_line, ((LitSuperExpression*) expr->callee)->ignore_result ? OP_INVOKE_SUPER_IGNORING : OP_INVOKE_SUPER, (uint8_t) expr->args.count);
 					emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(e->method)));
-					emit_byte(emitter, expression->line, (uint8_t) expr->args.count);
 				}
 			} else {
 				emit_bytes(emitter, expression->line, OP_CALL, (uint8_t) expr->args.count);
@@ -861,9 +873,8 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				emit_byte(emitter, emitter->last_line, OP_PUSH_ARRAY_ELEMENT);
 			}
 
-			emit_byte(emitter, emitter->last_line, OP_INVOKE);
+			emit_bytes(emitter, emitter->last_line, OP_INVOKE, 0);
 			emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "join")));
-			emit_byte(emitter, emitter->last_line, 0);
 
 			break;
 		}
@@ -1069,17 +1080,15 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
 				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, sequence);
 				emit_byte_or_short(emitter, emitter->last_line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, iterator);
-				emit_byte(emitter, emitter->last_line, OP_INVOKE);
+				emit_bytes(emitter, emitter->last_line, OP_INVOKE, 1);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iterator")));
-				emit_byte(emitter, emitter->last_line, 1);
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
 
 				uint exit_jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
 
 				uint local = add_local(emitter, var->name, var->length, statement->line, false);
-				emit_byte(emitter, emitter->last_line, OP_INVOKE);
+				emit_bytes(emitter, emitter->last_line, OP_INVOKE, 1);
 				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iteratorValue")));
-				emit_byte(emitter, emitter->last_line, 1);
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, local);
 
 				mark_local_initialized(emitter, local);

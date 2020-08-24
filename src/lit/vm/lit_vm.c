@@ -466,8 +466,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	*(fiber->stack_top - 1) = (NUMBER_VALUE((int) AS_NUMBER(a) op (int) AS_NUMBER(b)));
 
 #define INVOKE_OPERATION(ignoring) \
-	LitString* method_name = READ_STRING_LONG(); \
 	uint8_t arg_count = READ_BYTE(); \
+	LitString* method_name = READ_STRING_LONG(); \
 	LitValue receiver = PEEK(arg_count); \
 	if (IS_NULL(receiver)) { \
 		RUNTIME_ERROR("Attempt to index a null value") \
@@ -514,11 +514,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(POP) {
 			DROP();
-			continue;
-		}
-
-		CASE_CODE(POP_MULTIPLE) {
-			DROP_MULTIPLE(READ_BYTE());
 			continue;
 		}
 
@@ -1199,8 +1194,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(INVOKE_SUPER) {
-			LitString* method_name = READ_STRING_LONG();
 			uint8_t arg_count = READ_BYTE();
+			LitString* method_name = READ_STRING_LONG();
 			LitClass* klass = AS_INSTANCE(PEEK(arg_count))->klass->super;
 
 			WRITE_FRAME()
@@ -1209,8 +1204,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(INVOKE_SUPER_IGNORING) {
-			LitString* method_name = READ_STRING_LONG();
 			uint8_t arg_count = READ_BYTE();
+			LitString* method_name = READ_STRING_LONG();
 			LitClass* klass = AS_INSTANCE(PEEK(0))->klass->super;
 
 			WRITE_FRAME()

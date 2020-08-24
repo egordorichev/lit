@@ -1,5 +1,4 @@
 OPCODE(POP, -1)
-OPCODE(POP_MULTIPLE, 0) // Variyng stack effect
 OPCODE(RETURN, -2)
 OPCODE(CONSTANT, 1)
 OPCODE(CONSTANT_LONG, 1)
@@ -53,8 +52,6 @@ OPCODE(JUMP_IF_NULL, 0)
 OPCODE(JUMP, 0)
 OPCODE(JUMP_BACK, 0)
 
-OPCODE(CALL, 0) // Varying stack effect
-
 OPCODE(CLOSURE, 0)
 OPCODE(CLOSE_UPVALUE, -1)
 
@@ -80,6 +77,8 @@ OPCODE(INHERIT, -1)
 // [instance] [class] -> [bool]
 OPCODE(IS, -1)
 OPCODE(GET_SUPER_METHOD, 0)
+
+OPCODE(CALL, 0) // Varying stack effect
 OPCODE(INVOKE, 0) // Varying stack effect
 OPCODE(INVOKE_SUPER, 0) // Varying stack effect
 OPCODE(INVOKE_IGNORING, 0) // Varying stack effect

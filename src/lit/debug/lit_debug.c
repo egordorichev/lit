@@ -124,7 +124,6 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 
 	switch (instruction) {
 		case OP_POP: return print_simple_op("OP_POP", offset);
-		case OP_POP_MULTIPLE: return print_byte_op("OP_POP_MULTIPLE", chunk, offset);
 		case OP_RETURN: return print_simple_op("OP_RETURN", offset);
 		case OP_CONSTANT: return print_constant_op("OP_CONSTANT", chunk, offset, false);
 		case OP_CONSTANT_LONG: return print_constant_op("OP_CONSTANT_LONG", chunk, offset, true);

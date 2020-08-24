@@ -139,6 +139,7 @@ typedef struct {
 
 	uint8_t arg_count;
 	uint16_t upvalue_count;
+	uint16_t max_slots;
 
 	struct sLitModule* module;
 } LitFunction;
