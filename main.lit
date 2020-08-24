@@ -1,1 +1,3 @@
-print(32)
+print(null ?? true) // Expected: true
+print(10 ?? true) // Expected: 10
+print(null ?? null) // Expected: null

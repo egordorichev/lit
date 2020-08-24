@@ -447,31 +447,20 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitBinaryExpression* expr = (LitBinaryExpression*) expression;
 
 			emit_expression(emitter, expr->left);
+			LitTokenType op = expr->operator;
 
-			if (expr->operator == TOKEN_AMPERSAND_AMPERSAND) {
-				uint jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
+			if (op == TOKEN_AMPERSAND_AMPERSAND || op == TOKEN_BAR_BAR || op == TOKEN_QUESTION_QUESTION) {
+				uint jump = emit_jump(emitter, op == TOKEN_BAR_BAR ? OP_OR : (op == TOKEN_QUESTION_QUESTION ? OP_NULL_OR : OP_AND), emitter->last_line);
 
-				emit_op(emitter, emitter->last_line, OP_POP);
 				emit_expression(emitter, expr->right);
-
 				patch_jump(emitter, jump, emitter->last_line);
-				break;
-			} else if (expr->operator == TOKEN_BAR_BAR || expr->operator == TOKEN_QUESTION_QUESTION) {
-				uint else_jump = emit_jump(emitter, expr->operator == TOKEN_BAR_BAR ? OP_JUMP_IF_FALSE : OP_JUMP_IF_NULL, emitter->last_line);
-				uint end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
-
-				patch_jump(emitter, else_jump, emitter->last_line);
-				emit_op(emitter, emitter->last_line, OP_POP);
-
-				emit_expression(emitter, expr->right);
-				patch_jump(emitter, end_jump, emitter->last_line);
 
 				break;
 			}
 
 			emit_expression(emitter, expr->right);
 
-			switch (expr->operator) {
+			switch (op) {
 				case TOKEN_PLUS: {
 					emit_op(emitter, expression->line, OP_ADD);
 					break;
@@ -796,6 +785,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 			LitFunction* function = end_compiler(emitter, name);
 			function->arg_count = expr->parameters.count;
+			function->max_slots += function->arg_count;
 
 			if (function->upvalue_count > 0) {
 				emit_op(emitter, emitter->last_line, OP_CLOSURE);
@@ -890,13 +880,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			emit_expression(emitter, expr->condition);
 
 			uint64_t else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, expression->line);
-			emit_op(emitter, expression->line, OP_POP); // Pop the condition
 			emit_expression(emitter, expr->if_branch);
 
 			uint64_t end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
 
 			patch_jump(emitter, else_jump, expr->else_branch->line);
-			emit_op(emitter, expr->else_branch->line, OP_POP); // Pop the old condition
 			emit_expression(emitter, expr->else_branch);
 
 			patch_jump(emitter, end_jump, emitter->last_line);
@@ -996,7 +984,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_expression(emitter, stmt->condition);
 
 			uint64_t else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
-			emit_op(emitter, statement->line, OP_POP); // Pop the condition
 			emit_statement(emitter, stmt->if_branch);
 
 			uint64_t end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
@@ -1007,10 +994,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 					LitExpression *e = stmt->elseif_conditions->values[i];
 
 					patch_jump(emitter, else_jump, e->line);
-					emit_op(emitter, e->line, OP_POP); // Pop the old condition
 					emit_expression(emitter, e);
 					else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
-					emit_op(emitter, e->line, OP_POP); // Pop the condition
 					emit_statement(emitter, stmt->elseif_branches->values[i]);
 
 					end_jumps[i] = emit_jump(emitter, OP_JUMP, emitter->last_line);
@@ -1019,11 +1004,9 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			if (stmt->else_branch != NULL) {
 				patch_jump(emitter, else_jump, stmt->else_branch->line);
-				emit_op(emitter, stmt->else_branch->line, OP_POP); // Pop the old condition
 				emit_statement(emitter, stmt->else_branch);
 			} else {
 				patch_jump(emitter, else_jump, emitter->last_line);
-				emit_op(emitter, emitter->last_line, OP_POP); // Pop the condition
 			}
 
 			patch_jump(emitter, end_jump, emitter->last_line);
@@ -1220,6 +1203,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			LitFunction* function = end_compiler(emitter, name);
 			function->arg_count = stmt->parameters.count;
+			function->max_slots += function->arg_count;
 
 			if (function->upvalue_count > 0) {
 				emit_op(emitter, emitter->last_line, OP_CLOSURE);
@@ -1291,6 +1275,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			LitFunction* function = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:@", emitter->class_name, stmt->name)));
 			function->arg_count = stmt->parameters.count;
+			function->max_slots += function->arg_count;
 
 			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
 
@@ -1365,6 +1350,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_statement(emitter, stmt->setter);
 				setter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:set @", emitter->class_name, stmt->name)));
 				setter->arg_count = 1;
+				setter->max_slots++;
 
 				end_scope(emitter, emitter->last_line);
 			}

@@ -8,7 +8,7 @@
 #include <string.h>
 
 #ifdef LIT_TRACE_EXECUTION
-	#define TRACE_FRAME() printf("== f%i %s ==\n", fiber->frame_count - 1, frame->function->name->chars);
+	#define TRACE_FRAME() printf("== f%i %s (max %i) ==\n", fiber->frame_count - 1, frame->function->name->chars, frame->function->max_slots);
 #else
 	#define TRACE_FRAME() do {} while (0);
 #endif
@@ -506,9 +506,18 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 #ifdef LIT_TRACE_EXECUTION
 		instruction = *ip++;
+
+		if ((fiber->stack_top - frame->slots) > frame->function->max_slots) {
+			RUNTIME_ERROR("STACK ENDED")
+		}
+
 		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
 		goto *dispatch_table[instruction];
 #else
+		if ((fiber->stack_top - frame->slots) > frame->function->max_slots) {
+			RUNTIME_ERROR("STACK ENDED")
+		}
+
 		goto *dispatch_table[*ip++];
 #endif
 
@@ -857,7 +866,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(JUMP_IF_FALSE) {
 			uint16_t offset = READ_SHORT();
 
-			if (lit_is_falsey(PEEK(0))) {
+			if (lit_is_falsey(POP())) {
 				ip += offset;
 			}
 
@@ -867,7 +876,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(JUMP_IF_NULL) {
 			uint16_t offset = READ_SHORT();
 
-			if (IS_NULL(PEEK(0))) {
+			if (IS_NULL(POP())) {
 				ip += offset;
 			}
 
@@ -884,6 +893,42 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(JUMP_BACK) {
 			uint16_t offset = READ_SHORT();
 			ip -= offset;
+
+			continue;
+		}
+
+		CASE_CODE(AND) {
+			uint16_t offset = READ_SHORT();
+
+			if (lit_is_falsey(PEEK(0))) {
+				ip += offset;
+			} else {
+				DROP();
+			}
+
+			continue;
+		}
+
+		CASE_CODE(OR) {
+			uint16_t offset = READ_SHORT();
+
+			if (lit_is_falsey(PEEK(0))) {
+				DROP();
+			} else {
+				ip += offset;
+			}
+
+			continue;
+		}
+
+		CASE_CODE(NULL_OR) {
+			uint16_t offset = READ_SHORT();
+
+			if (IS_NULL(PEEK(0))) {
+				DROP();
+			} else {
+				ip += offset;
+			}
 
 			continue;
 		}

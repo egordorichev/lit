@@ -141,7 +141,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 		case OP_MOD: return print_simple_op("OP_MOD", offset);
 		case OP_BAND: return print_simple_op("OP_BAND", offset);
 		case OP_BOR: return print_simple_op("OP_BOR", offset);
-		case OP_BXOR: return print_simple_op("OP_XOR", offset);
+		case OP_BXOR: return print_simple_op("OP_BXOR", offset);
 		case OP_LSHIFT: return print_simple_op("OP_LSHIFT", offset);
 		case OP_RSHIFT: return print_simple_op("OP_RSHIFT", offset);
 		case OP_BNOT: return print_simple_op("OP_BNOT", offset);
@@ -171,6 +171,9 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 		case OP_JUMP_IF_NULL: return print_jump_op("OP_JUMP_IF_NULL", 1, chunk, offset);
 		case OP_JUMP: return print_jump_op("OP_JUMP", 1, chunk, offset);
 		case OP_JUMP_BACK: return print_jump_op("OP_JUMP_BACK", -1, chunk, offset);
+		case OP_AND: return print_jump_op("OP_AND", 1, chunk, offset);
+		case OP_OR: return print_jump_op("OP_OR", 1, chunk, offset);
+		case OP_NULL_OR: return print_jump_op("OP_NULL_OR", 1, chunk, offset);
 
 		case OP_CALL: return print_byte_op("OP_CALL", chunk, offset);
 
