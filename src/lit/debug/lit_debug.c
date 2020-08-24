@@ -71,10 +71,10 @@ static uint print_jump_op(const char* name, int sign, LitChunk* chunk, uint offs
 }
 
 static uint print_invoke_op(const char* name, LitChunk* chunk, uint offset) {
-	uint8_t constant = chunk->code[offset + 1];
-	constant |= chunk->code[offset + 2];
+	uint8_t arg_count = chunk->code[offset + 1];
 
-	uint8_t arg_count = chunk->code[offset + 3];
+	uint8_t constant = chunk->code[offset + 2];
+	constant |= chunk->code[offset + 3];
 
 	printf("%s%-16s%s (%d args) %4d '", COLOR_YELLOW, name, COLOR_RESET, arg_count, constant);
 	lit_print_value(chunk->constants.values[constant]);

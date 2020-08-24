@@ -876,7 +876,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(JUMP_IF_NULL) {
 			uint16_t offset = READ_SHORT();
 
-			if (IS_NULL(POP())) {
+			if (IS_NULL(PEEK(0))) {
 				ip += offset;
 			}
 

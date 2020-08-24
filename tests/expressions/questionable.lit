@@ -1,0 +1,11 @@
+var a = null
+a?.test()
+
+class Awesome {
+	test() {
+		print("Yes")
+	}
+}
+
+a = new Awesome()
+a?.test() // Expected: Yes

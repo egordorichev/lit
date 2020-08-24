@@ -1,3 +1,13 @@
-print(null ?? true) // Expected: true
-print(10 ?? true) // Expected: 10
-print(null ?? null) // Expected: null
+var count = 0
+
+for (var j = 0; j < 2; j++) {
+	for (var i = 0; i < 10; i++) {
+		if (i > 4) {
+			break
+		}
+
+		count++
+	}
+}
+
+print(count) // Expected: 10

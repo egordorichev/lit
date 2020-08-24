@@ -685,6 +685,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case CALL_EXPRESSION: {
 			LitCallExpression* expr = (LitCallExpression*) expression;
+
 			bool method = expr->callee->type == GET_EXPRESSION;
 			bool super = expr->callee->type == SUPER_EXPRESSION;
 
@@ -1030,12 +1031,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_expression(emitter, stmt->condition);
 
 			uint64_t exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
-			emit_op(emitter, emitter->last_line, OP_POP); // Pop the condition
 			emit_statement(emitter, stmt->body);
 
 			emit_loop(emitter, start, emitter->last_line);
 			patch_jump(emitter, exit_jump, emitter->last_line);
-			emit_op(emitter, emitter->last_line, OP_POP); // Pop the condition
 			patch_breaks(emitter, emitter->last_line);
 			emitter->compiler->loop_depth--;
 
@@ -1060,7 +1059,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				if (stmt->condition != NULL) {
 					emit_expression(emitter, stmt->condition);
 					exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, emitter->last_line);
-					emit_op(emitter, emitter->last_line, OP_POP); // Pop the condition
 				}
 
 				if (stmt->increment != NULL) {
@@ -1068,7 +1066,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 					uint increment_start = emitter->chunk->count;
 
 					emit_expression(emitter, stmt->increment);
-					emit_op(emitter, emitter->last_line, OP_POP); // Pop the condition
 
 					emit_loop(emitter, start, emitter->last_line);
 					start = increment_start;
@@ -1081,7 +1078,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 				if (stmt->condition != NULL) {
 					patch_jump(emitter, exit_jump, emitter->last_line);
-					emit_op(emitter, emitter->last_line, OP_POP); // Pop the condition
 				}
 			} else {
 				bool old = emitter->emit_pop_continue;
