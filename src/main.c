@@ -6,13 +6,29 @@
 #include <lit/optimizer/lit_optimizer.h>
 
 #include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
 
 #define EXIT_CODE_ARGUMENT_ERROR 1
 #define EXIT_CODE_MEM_LEAK 2
 #define EXIT_CODE_RUNTIME_ERROR 70
 #define EXIT_CODE_COMPILE_ERROR 65
 
+// Used for clean up on Ctrl+C / Ctrl+Z
+static LitState* repl_state;
+
+void interupt_handler(int signal_id) {
+	lit_free_state(repl_state);
+	printf("\nExiting.\n");
+
+	exit(0);
+}
+
 static void run_repl(LitState* state) {
+	repl_state = state;
+	signal(SIGINT, interupt_handler);
+	signal(SIGTSTP, interupt_handler);
+
 	lit_set_optimization_level(OPTIMIZATION_LEVEL_REPL);
 	printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
 	char line[1024];
