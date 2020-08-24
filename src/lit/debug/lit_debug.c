@@ -98,7 +98,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 			index++;
 			current_line = next_line ? (next_line + 1) : NULL;
 
-			if (index == line && current_line != NULL) {
+			if (index == line) {
 				char* output_line = prev_line ? prev_line : next_line;
 				char c;
 
@@ -106,7 +106,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 					output_line++;
 				}
 
-				printf("%s        %.*s%s\n", COLOR_RED, (int) (next_line ? (next_line - output_line) : strlen(current_line)), output_line, COLOR_RESET);
+				printf("%s        %.*s%s\n", COLOR_RED, (int) (next_line ? (next_line - output_line) : strlen(prev_line)), output_line, COLOR_RESET);
 				break;
 			}
 		}

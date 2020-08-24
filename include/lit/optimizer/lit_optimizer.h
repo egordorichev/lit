@@ -31,6 +31,18 @@ void lit_init_optimizer(LitState* state, LitOptimizer* optimizer);
 void lit_optimize(LitOptimizer* optimizer, LitStatements* statements);
 
 typedef enum {
+	OPTIMIZATION_LEVEL_NONE,
+	OPTIMIZATION_LEVEL_REPL,
+	OPTIMIZATION_LEVEL_DEBUG,
+	OPTIMIZATION_LEVEL_RELEASE,
+	OPTIMIZATION_LEVEL_EXTREME,
+
+	OPTIMIZATION_LEVEL_TOTAL
+} LitOptimizationLevel;
+
+const char* lit_get_optimization_level_description(LitOptimizationLevel level);
+
+typedef enum {
 	OPTIMIZATION_CONSTANT_FOLDING,
 	OPTIMIZATION_LITERAL_FOLDING,
 	OPTIMIZATION_UNUSED_VAR,
@@ -43,6 +55,7 @@ typedef enum {
 bool lit_is_optimization_enabled(LitOptimization optimization);
 void lit_set_optimization_enabled(LitOptimization optimization, bool enabled);
 void lit_set_all_optimization_enabled(bool enabled);
+void lit_set_optimization_level(LitOptimizationLevel level);
 
 const char* lit_get_optimization_name(LitOptimization optimization);
 const char* lit_get_optimization_description(LitOptimization optimization);

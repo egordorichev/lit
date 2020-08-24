@@ -238,6 +238,7 @@ void lit_patch_file_name(char* file_name) {
 }
 
 bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, const char* output_file) {
+	lit_set_optimization_level(OPTIMIZATION_LEVEL_EXTREME);
 	LitModule* compiled_modules[num_files];
 
 	for (uint i = 0; i < num_files; i++) {

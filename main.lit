@@ -1,5 +1,7 @@
-print(32 == = 3)
+while (false) {
 
-function test() {
-	print(32*)
 }
+
+var a
+
+print(32)

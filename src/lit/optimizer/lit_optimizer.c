@@ -10,17 +10,36 @@ static void optimize_expressions(LitOptimizer* optimizer, LitExpressions* expres
 static void optimize_statements(LitOptimizer* optimizer, LitStatements* statements);
 static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot);
 
-static const char* optimization_names[OPTIMIZATION_TOTAL];
-static const char* optimization_descriptions[OPTIMIZATION_TOTAL];
+static const char* optimization_level_descriptions[OPTIMIZATION_LEVEL_TOTAL] = {
+	"No optimizations (same as -Ono-all)",
+	"Super light optimizations, sepcific to interactive shell.",
+	"(default) Recommended optimization level for the development.",
+	"Medium optimization, recommended for the release.",
+	"(default for bytecode) Extreme optimization, throws out most of the variable/function names, used for bytecode compilation."
+};
+
+static const char* optimization_names[OPTIMIZATION_TOTAL] = {
+	"constant-folding",
+	"literal-folding",
+	"unused-var",
+	"unreachable-code",
+	"empty-body"
+};
+
+static const char* optimization_descriptions[OPTIMIZATION_TOTAL] = {
+	"Replaces constants in code with their values.",
+	"Precalculates literal expressions (3 + 4 is replaced with 7).",
+	"Removes user-declared all variables, that were not used.",
+	"Removes code that will never be reached.",
+	"Removes loops with empty bodies."
+};
+
 static bool optimization_states[OPTIMIZATION_TOTAL];
 
-static bool optimization_names_setup;
-static bool optimization_descriptions_setup;
 static bool optimization_states_setup;
+static bool any_optimization_enabled;
 
 static void setup_optimization_states();
-static void setup_optimization_names();
-static void setup_optimization_descriptions();
 
 void lit_init_optimizer(LitState* state, LitOptimizer* optimizer) {
 	optimizer->state = state;
@@ -257,6 +276,10 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 					optimize_expression(optimizer, &expr->right);
 
 					break;
+				}
+
+				default: {
+					UNREACHABLE
 				}
 			}
 
@@ -599,6 +622,10 @@ static void optimize_statements(LitOptimizer* optimizer, LitStatements* statemen
 }
 
 void lit_optimize(LitOptimizer* optimizer, LitStatements* statements) {
+	if (!any_optimization_enabled) {
+		return;
+	}
+
 	begin_scope(optimizer);
 	optimize_statements(optimizer, statements);
 	end_scope(optimizer);
@@ -607,11 +634,7 @@ void lit_optimize(LitOptimizer* optimizer, LitStatements* statements) {
 }
 
 static void setup_optimization_states() {
-	optimization_states_setup = true;
-
-	for (uint i = 0; i < OPTIMIZATION_TOTAL; i++) {
-		optimization_states[i] = true;
-	}
+	lit_set_optimization_level(OPTIMIZATION_LEVEL_DEBUG);
 }
 
 bool lit_is_optimization_enabled(LitOptimization optimization) {
@@ -628,48 +651,77 @@ void lit_set_optimization_enabled(LitOptimization optimization, bool enabled) {
 	}
 
 	optimization_states[(int) optimization] = enabled;
+
+	if (enabled) {
+		any_optimization_enabled = true;
+	} else {
+		for (uint i = 0; i < OPTIMIZATION_TOTAL; i++) {
+			if (optimization_states[i]) {
+				return;
+			}
+		}
+
+		any_optimization_enabled = false;
+	}
 }
 
 void lit_set_all_optimization_enabled(bool enabled) {
 	optimization_states_setup = true;
+	any_optimization_enabled = enabled;
 
 	for (uint i = 0; i < OPTIMIZATION_TOTAL; i++) {
 		optimization_states[i] = enabled;
 	}
 }
 
-const char* lit_get_optimization_name(LitOptimization optimization) {
-	if (!optimization_names_setup) {
-		setup_optimization_names();
-	}
+void lit_set_optimization_level(LitOptimizationLevel level) {
+	switch (level) {
+		case OPTIMIZATION_LEVEL_NONE: {
+			lit_set_all_optimization_enabled(false);
+			break;
+		}
 
+		case OPTIMIZATION_LEVEL_REPL: {
+			lit_set_all_optimization_enabled(true);
+
+			lit_set_optimization_enabled(OPTIMIZATION_UNUSED_VAR, false);
+			lit_set_optimization_enabled(OPTIMIZATION_UNREACHABLE_CODE, false);
+			lit_set_optimization_enabled(OPTIMIZATION_EMPTY_BODY, false);
+
+			break;
+		}
+
+		case OPTIMIZATION_LEVEL_DEBUG: {
+			lit_set_all_optimization_enabled(true);
+			lit_set_optimization_enabled(OPTIMIZATION_UNUSED_VAR, false);
+
+			break;
+		}
+
+		case OPTIMIZATION_LEVEL_RELEASE: {
+			lit_set_all_optimization_enabled(true);
+			break;
+		}
+
+		case OPTIMIZATION_LEVEL_EXTREME: {
+			lit_set_all_optimization_enabled(true);
+			break;
+		}
+
+		case OPTIMIZATION_LEVEL_TOTAL: {
+			break;
+		}
+	}
+}
+
+const char* lit_get_optimization_name(LitOptimization optimization) {
 	return optimization_names[(int) optimization];
 }
 
 const char* lit_get_optimization_description(LitOptimization optimization) {
-	if (!optimization_descriptions_setup) {
-		setup_optimization_descriptions();
-	}
-
 	return optimization_descriptions[(int) optimization];
 }
 
-static void setup_optimization_names() {
-	optimization_names_setup = true;
-
-	optimization_names[OPTIMIZATION_CONSTANT_FOLDING] = "constant-folding";
-	optimization_names[OPTIMIZATION_LITERAL_FOLDING] = "literal-folding";
-	optimization_names[OPTIMIZATION_UNUSED_VAR] = "unused-var";
-	optimization_names[OPTIMIZATION_UNREACHABLE_CODE] = "unreachable-code";
-	optimization_names[OPTIMIZATION_EMPTY_BODY] = "empty-body";
-}
-
-static void setup_optimization_descriptions() {
-	optimization_descriptions_setup = true;
-
-	optimization_descriptions[OPTIMIZATION_CONSTANT_FOLDING] = "Replaces constants in code with their values.";
-	optimization_descriptions[OPTIMIZATION_LITERAL_FOLDING] = "Precalculates literal expressions (3 + 4 is replaced with 7).";
-	optimization_descriptions[OPTIMIZATION_UNUSED_VAR] = "Removes user-declared all variables, that were not used.";
-	optimization_descriptions[OPTIMIZATION_UNREACHABLE_CODE] = "Removes code that will never be reached.";
-	optimization_descriptions[OPTIMIZATION_EMPTY_BODY] = "Removes loops with empty bodies.";
+const char* lit_get_optimization_level_description(LitOptimizationLevel level) {
+	return optimization_level_descriptions[(int) level];
 }

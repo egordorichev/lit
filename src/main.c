@@ -13,6 +13,7 @@
 #define EXIT_CODE_COMPILE_ERROR 65
 
 static void run_repl(LitState* state) {
+	lit_set_optimization_level(OPTIMIZATION_LEVEL_REPL);
 	printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
 	char line[1024];
 
@@ -55,8 +56,11 @@ static void show_optimization_help() {
 		printf("\t%s\t\t%s\n", lit_get_optimization_name((LitOptimization) i), lit_get_optimization_description((LitOptimization) i));
 	}
 
-	printf("\nIf you want to use a predefined optimization level (recommended), run lit with argument -O[optimization level], for example -O1.");
-	// TODO: list all levels
+	printf("\nIf you want to use a predefined optimization level (recommended), run lit with argument -O[optimization level], for example -O1.\n\n");
+
+	for (int i = 0; i < OPTIMIZATION_LEVEL_TOTAL; i++) {
+		printf("\t-O%i\t\t%s\n", i, lit_get_optimization_level_description((LitOptimizationLevel) i));
+	}
 }
 
 static bool match_arg(const char* arg, const char* a, const char* b) {
@@ -94,6 +98,7 @@ int main(int argc, const char* argv[]) {
 	bool show_repl = false;
 	bool evaled = false;
 	bool dump = false;
+	bool showed_help = false;
 	char* bytecode_file = NULL;
 
 	for (int i = 1; i < argc; i++) {
@@ -112,8 +117,18 @@ int main(int argc, const char* argv[]) {
 				optimization_name = (char*) (arg + 2);
 			}
 
+			if (strlen(optimization_name) == 1) {
+				char c = optimization_name[0];
+
+				if (c >= '0' && c <= '4') {
+					lit_set_optimization_level((LitOptimizationLevel) (c - '0'));
+					continue;
+				}
+			}
+
 			if (enable_optimization && strcmp(optimization_name, "help") == 0) {
 				show_optimization_help();
+				showed_help = true;
 			} else if (strcmp(optimization_name, "all") == 0) {
 				lit_set_all_optimization_enabled(enable_optimization);
 			} else {
@@ -149,6 +164,7 @@ int main(int argc, const char* argv[]) {
 			}
 		} else if (match_arg(arg, "-h", "--help")) {
 			show_help();
+			showed_help = true;
 		} else if (match_arg(arg, "-i", "--interactive")) {
 			show_repl = true;
 		} else if (match_arg(arg, "-d", "--dump")) {
@@ -200,7 +216,7 @@ int main(int argc, const char* argv[]) {
 
 	if (show_repl) {
 		run_repl(state);
-	} else if (!evaled && num_files_to_run == 0) {
+	} else if (!showed_help && !evaled && num_files_to_run == 0) {
 		if (lit_file_exists("main.lbc")) {
 			result = lit_interpret_file(state, "main.lbc", false).type;
 		} else if (lit_file_exists("main.lit")) {
