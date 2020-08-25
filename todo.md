@@ -15,11 +15,10 @@
 
 * if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)
 * table with globals? module.privates?
-* resizeable stack
 * ffi?
-
-* make var statements into expressions to allow stuff like if (var a = test()) { print(a) }
+* gc prooof testing
 
 # feature creep
 
+* make var statements into expressions to allow stuff like if (var a = test()) { print(a) }
 * switch statement?

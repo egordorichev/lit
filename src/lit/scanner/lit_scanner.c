@@ -174,6 +174,8 @@ static LitToken parse_string(LitScanner* scanner, bool interpolation) {
 
 			case '\n': {
 				scanner->line++;
+				lit_bytes_write(state, &bytes, c);
+				
 				break;
 			}
 
