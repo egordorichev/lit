@@ -418,7 +418,7 @@ static void emit_loop(LitEmitter* emitter, uint start, uint line) {
 	emit_short(emitter, line, offset);
 }
 
-static void patch_breaks(LitEmitter* emitter, LitUInts* breaks, uint line) {
+static void patch_loop_jumps(LitEmitter* emitter, LitUInts* breaks, uint line) {
 	for (uint i = 0; i < breaks->count; i++) {
 		patch_jump(emitter, breaks->values[i], line);
 	}
@@ -722,6 +722,26 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				emit_varying_op(emitter, expression->line, OP_CALL, (uint8_t) expr->args.count);
 			}
 
+			if (method) {
+				LitExpression* get = expr->callee;
+
+				while (get != NULL) {
+					if (get->type == GET_EXPRESSION) {
+						LitGetExpression* getter = (LitGetExpression*) get;
+
+						if (getter->jump > 0) {
+							patch_jump(emitter, getter->jump, emitter->last_line);
+						}
+
+						get = getter->where;
+					} else if (get->type == SUBSCRIPT_EXPRESSION) {
+						get = ((LitSubscriptExpression*) get)->array;
+					} else {
+						break;
+					}
+				}
+			}
+
 			break;
 		}
 
@@ -729,13 +749,15 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitGetExpression* expr = (LitGetExpression*) expression;
 			emit_expression(emitter, expr->where);
 
-			if (expr->questionable) {
-				uint end_jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
+			if (expr->jump == 0) {
+				expr->jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
 
-				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
-				emit_op(emitter, emitter->last_line, OP_GET_FIELD);
+				if (!expr->ignore_emit) {
+					emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+					emit_op(emitter, emitter->last_line, OP_GET_FIELD);
+				}
 
-				patch_jump(emitter, end_jump, emitter->last_line);
+				patch_jump(emitter, expr->jump, emitter->last_line);
 			} else if (!expr->ignore_emit) {
 				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 				emit_op(emitter, emitter->last_line, OP_GET_FIELD);
@@ -1034,10 +1056,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			uint64_t exit_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
 			emit_statement(emitter, stmt->body);
 
-			patch_breaks(emitter, &emitter->continues, emitter->last_line);
+			patch_loop_jumps(emitter, &emitter->continues, emitter->last_line);
 			emit_loop(emitter, start, emitter->last_line);
 			patch_jump(emitter, exit_jump, emitter->last_line);
-			patch_breaks(emitter, &emitter->breaks, emitter->last_line);
+			patch_loop_jumps(emitter, &emitter->breaks, emitter->last_line);
 			emitter->compiler->loop_depth--;
 
 			break;
@@ -1076,8 +1098,23 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				}
 
 				emitter->loop_start = start;
-				emit_statement(emitter, stmt->body);
-				patch_breaks(emitter, &emitter->continues, emitter->last_line);
+				begin_scope(emitter);
+
+				if (stmt->body != NULL) {
+					if (stmt->body->type == BLOCK_STATEMENT) {
+						LitStatements *statements = &((LitBlockStatement*) stmt->body)->statements;
+
+						for (uint i = 0; i < statements->count; i++) {
+							emit_statement(emitter, statements->values[i]);
+						}
+					} else {
+						emit_statement(emitter, stmt->body);
+					}
+				}
+
+				patch_loop_jumps(emitter, &emitter->continues, emitter->last_line);
+				end_scope(emitter, emitter->last_line);
+
 				emit_loop(emitter, start, emitter->last_line);
 
 				if (stmt->condition != NULL) {
@@ -1105,7 +1142,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_byte_or_short(emitter, emitter->last_line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, iterator);
 
 				// If iter is null, just get out of the loop
-				uint exit_jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
+				uint exit_jump = emit_jump(emitter, OP_JUMP_IF_NULL_POPPING, emitter->last_line);
 
 				begin_scope(emitter);
 
@@ -1132,13 +1169,13 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 					}
 				}
 
-				patch_breaks(emitter, &emitter->continues, emitter->last_line);
+				patch_loop_jumps(emitter, &emitter->continues, emitter->last_line);
 				end_scope(emitter, emitter->last_line);
 				emit_loop(emitter, start, emitter->last_line);
 				patch_jump(emitter, exit_jump, emitter->last_line);
 			}
 
-			patch_breaks(emitter, &emitter->breaks, emitter->last_line);
+			patch_loop_jumps(emitter, &emitter->breaks, emitter->last_line);
 			end_scope(emitter, emitter->last_line);
 			emitter->compiler->loop_depth--;
 

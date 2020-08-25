@@ -1,6 +1,9 @@
 var total = 0
 
 for (var i = 0; i < 12; i++) {
+	var a = 32
+	var b = 48
+
 	if (i > 9) {
 		continue
 	}

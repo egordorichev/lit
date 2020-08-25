@@ -449,7 +449,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 			for (uint i = 0; i < stmt->statements.count; i++) {
 				LitStatement* step = stmt->statements.values[i];
 
-				if (step != NULL) {
+				if (!is_empty(step)) {
 					found = true;
 
 					if (step->type == RETURN_STATEMENT) {
@@ -467,6 +467,11 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 						break;
 					}
 				}
+			}
+
+			if (!found && lit_is_optimization_enabled(OPTIMIZATION_EMPTY_BODY)) {
+				lit_free_statement(optimizer->state, statement);
+				*slot = NULL;
 			}
 
 			break;

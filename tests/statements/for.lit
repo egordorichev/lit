@@ -25,6 +25,9 @@ print(i) // Expected: 21
 i = 0
 
 for (var z in 0 .. 100) {
+	var a = 32
+	var b = 48
+
 	if (z == 0) {
 		continue
 	}

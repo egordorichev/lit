@@ -271,7 +271,7 @@ LitGetExpression *lit_create_get_expression(LitState* state, uint line, LitExpre
 	expression->name = name;
 	expression->length = length;
 	expression->ignore_emit = false;
-	expression->questionable = questionable;
+	expression->jump = questionable ? 0 : -1;
 	expression->ignore_result = ignore_result;
 
 	return expression;

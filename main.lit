@@ -1,20 +1,15 @@
-for (var z in 0 .. 3) {
+var total = 0
+
+for (var i = 0; i < 12; i++) {
 	var a = 32
-	var b = 48
-	var d = 4888
 
-	break
+	if (i > 9) {
+		continue
+	}
+
+	if (i % 2 == 0) {
+		total++
+	}
 }
 
-var pairs = [
-	[ 0, 1 ],
-	[ 2, 3 ]
-]
-
-var sum = 0
-
-for (var pair in pairs) {
-	sum += pair[0] + pair[1]
-}
-
-print(sum) // Expected: 6
+print(total) // Expected: 5

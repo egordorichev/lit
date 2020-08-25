@@ -127,8 +127,8 @@ typedef struct {
 	const char* name;
 	uint length;
 
+	int jump;
 	bool ignore_emit;
-	bool questionable;
 	bool ignore_result;
 } LitGetExpression;
 

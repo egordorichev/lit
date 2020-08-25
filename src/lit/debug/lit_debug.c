@@ -41,11 +41,7 @@ static uint print_constant_op(const char* name, LitChunk* chunk, uint offset, bo
 	}
 
 	printf("%s%-16s%s %4d '", COLOR_YELLOW, name, COLOR_RESET, constant);
-
-	if (chunk->constants.count <= (int) constant + 1) {
-		lit_print_value(chunk->constants.values[constant]);
-	}
-
+	lit_print_value(chunk->constants.values[constant]);
 	printf("'\n");
 
 	return offset + (big ? 3 : 2);
@@ -174,6 +170,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 
 		case OP_JUMP_IF_FALSE: return print_jump_op("OP_JUMP_IF_FALSE", 1, chunk, offset);
 		case OP_JUMP_IF_NULL: return print_jump_op("OP_JUMP_IF_NULL", 1, chunk, offset);
+		case OP_JUMP_IF_NULL_POPPING: return print_jump_op("OP_JUMP_IF_NULL_POPPING", 1, chunk, offset);
 		case OP_JUMP: return print_jump_op("OP_JUMP", 1, chunk, offset);
 		case OP_JUMP_BACK: return print_jump_op("OP_JUMP_BACK", -1, chunk, offset);
 		case OP_AND: return print_jump_op("OP_AND", 1, chunk, offset);

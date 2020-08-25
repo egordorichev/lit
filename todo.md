@@ -1,6 +1,6 @@
 # todo
 
-* fix questionanble expression
+* remove stack size checks
 
 * optimizations {
  * we don't really need private names in bytecode (do an optimization flag that is on by default), nor function names?
@@ -8,6 +8,7 @@
  * multiplication by 1
  * tail-call optimization?
  * for (var a in 1 .. 3) -> for (var a = 1; a < 4; i++)
+ * optimize out line numbers
 }
 
 * keep classes as privates and then allow to export them?
