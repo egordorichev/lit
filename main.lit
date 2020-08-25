@@ -1,40 +1,23 @@
-print(new Fiber(() => {
-  null()
-}).try()) // Expected: Attempt to call a null value
+function e() {
+	print("EEETHOslab")
+}
 
-print(new Fiber(() => {
-  Fiber.yield()
-}).run()) // Expected: null
+function d() {
+	e()
+}
 
-print(new Fiber(() => {
-  Fiber.yield("Hello, World!")
-}).run()) // Expected: Hello, World!
+function c() {
+	d()
+}
 
-var fiber = new Fiber(() => {
-  Fiber.yield(0)
-})
+c()
 
-print(fiber.run()) // Expected: 0
-print(fiber.done) // Expected: false
-print(fiber.run()) // Expected: null
-print(fiber.done) // Expected: true
+function b() {
+	c()
+}
 
-print(Fiber.current.done) // Expected: false
+function a() {
+	b()
+}
 
-fiber = new Fiber(() => {
-  Fiber.abort("ono")
-})
-
-print(fiber.try()) // Expected: ono
-print(fiber.error) // Expected: ono
-
-var failFiber = new Fiber(() => {
-  null()
-})
-
-fiber = new Fiber(() => {
-  failFiber.run()
-  print("help")
-})
-
-print(fiber.try()) // Expected: Attempt to call a null value
+a()

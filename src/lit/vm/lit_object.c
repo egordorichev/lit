@@ -355,7 +355,20 @@ LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMet
 }
 
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function) {
+	// Allocate in advance, just in case GC is triggered
+	uint stack_capacity = function == NULL ? 1 : (uint) lit_closest_power_of_two(function->max_slots + 1);
+	LitValue* stack = LIT_ALLOCATE(state, LitValue, stack_capacity);
+
+	LitCallFrame* frames = LIT_ALLOCATE(state, LitCallFrame, LIT_INITIAL_CALL_FRAMES);
+
 	LitFiber* fiber = ALLOCATE_OBJECT(state, LitFiber, OBJECT_FIBER);
+
+	fiber->stack = stack;
+	fiber->stack_capacity = stack_capacity;
+	fiber->stack_top = fiber->stack;
+
+	fiber->frames = frames;
+	fiber->frame_capacity = LIT_INITIAL_CALL_FRAMES;
 
 	fiber->parent = NULL;
 	fiber->frame_count = 1;
@@ -366,22 +379,14 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	fiber->open_upvalues = NULL;
 	fiber->abort = false;
 
-	fiber->stack_capacity = function == NULL ? 1 : (uint) lit_closest_power_of_two(function->max_slots + 1);
-	fiber->stack = LIT_ALLOCATE(state, LitValue, fiber->stack_capacity);
-	fiber->stack_top = fiber->stack;
-
-	for (uint i = 0; i < LIT_CALL_FRAMES_MAX; i++) {
-		LitCallFrame* frame = &fiber->frames[i];
-
-		frame->closure = NULL;
-		frame->result_ignored = false;
-	}
 
 	LitCallFrame* frame = &fiber->frames[0];
 
+	frame->closure = NULL;
 	frame->function = function;
 	frame->ip = function->chunk.code;
 	frame->slots = fiber->stack;
+	frame->result_ignored = false;
 
 	return fiber;
 }
@@ -398,7 +403,7 @@ void lit_ensure_fiber_stack(LitState* state, LitFiber* fiber, uint needed) {
 	fiber->stack_capacity = capacity;
 
 	if (fiber->stack != old_stack) {
-		for (uint i = 0; i < LIT_CALL_FRAMES_MAX; i++) {
+		for (uint i = 0; i < fiber->frame_capacity; i++) {
 			LitCallFrame* frame = &fiber->frames[i];
 			frame->slots = fiber->stack + (frame->slots - old_stack);
 		}

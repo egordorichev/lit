@@ -246,7 +246,8 @@ typedef struct LitFiber {
 	LitValue* stack_top;
 	uint stack_capacity;
 
-	LitCallFrame frames[LIT_CALL_FRAMES_MAX];
+	LitCallFrame* frames;
+	uint frame_capacity;
 	uint frame_count;
 	uint arg_count;
 

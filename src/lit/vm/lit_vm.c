@@ -138,6 +138,12 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 		return true;
 	}
 
+	if (fiber->frame_count + 1 > fiber->frame_capacity) {
+		uint new_capacity = fmin(LIT_CALL_FRAMES_MAX, fiber->frame_capacity * 2);
+		fiber->frames = (LitCallFrame*) lit_reallocate(vm->state, fiber->frames, sizeof(LitCallFrame) * fiber->frame_capacity, sizeof(LitCallFrame) * new_capacity);
+		fiber->frame_capacity = new_capacity;
+	}
+
 	lit_ensure_fiber_stack(vm->state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
 
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
@@ -146,6 +152,7 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	frame->closure = closure;
 	frame->ip = function->chunk.code;
 	frame->slots = fiber->stack_top - arg_count - 1;
+	frame->result_ignored = false;
 
 	uint function_arg_count = function->arg_count;
 

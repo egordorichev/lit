@@ -82,8 +82,11 @@ void lit_free_object(LitState* state, LitObject* object) {
 
 		case OBJECT_FIBER: {
 			LitFiber* fiber = (LitFiber*) object;
+
+			LIT_FREE_ARRAY(state, LitCallFrame, fiber->frames, fiber->frame_capacity);
 			LIT_FREE_ARRAY(state, LitValue, fiber->stack, fiber->stack_capacity);
 			LIT_FREE(state, LitFiber, object);
+
 			break;
 		}
 
@@ -201,7 +204,6 @@ void lit_mark_object(LitVm* vm, LitObject* object) {
 	printf("%p mark ", (void*) object);
   lit_print_value(OBJECT_VALUE(object));
   printf("\n");
-
 #endif
 
 	if (vm->gray_capacity < vm->gray_count + 1) {
@@ -219,37 +221,13 @@ void lit_mark_value(LitVm* vm, LitValue value) {
 }
 
 static void mark_roots(LitVm* vm) {
-	LitFiber* fiber = vm->fiber;
 	LitState* state = vm->state;
-
-	while (fiber != NULL) {
-		lit_mark_object(vm, (LitObject*) fiber);
-
-		for (LitValue *slot = fiber->stack; slot < fiber->stack_top; slot++) {
-			lit_mark_value(vm, *slot);
-		}
-
-		for (uint i = 0; i < fiber->frame_count; i++) {
-			LitCallFrame *frame = &fiber->frames[i];
-
-			if (frame->closure != NULL) {
-				lit_mark_object(vm, (LitObject*) frame->closure);
-			} else {
-				lit_mark_object(vm, (LitObject*) frame->function);
-			}
-		}
-
-		fiber = fiber->parent;
-	}
-
-	for (LitUpvalue* upvalue = vm->fiber->open_upvalues; upvalue != NULL; upvalue = upvalue->next) {
-		lit_mark_object(vm, (LitObject*) upvalue);
-	}
 
 	for (uint i = 0; i < state->root_count; i++) {
 		lit_mark_value(vm, state->roots[i]);
 	}
 
+	lit_mark_object(vm, (LitObject*) vm->fiber);
 	lit_mark_object(vm, (LitObject*) state->api_module);
 
 	lit_mark_object(vm, (LitObject*) state->class_class);
@@ -303,6 +281,25 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		case OBJECT_FIBER: {
 			LitFiber* fiber = (LitFiber*) object;
 
+			for (LitValue *slot = fiber->stack; slot < fiber->stack_top; slot++) {
+				lit_mark_value(vm, *slot);
+			}
+
+			for (uint i = 0; i < fiber->frame_count; i++) {
+				LitCallFrame *frame = &fiber->frames[i];
+
+				if (frame->closure != NULL) {
+					lit_mark_object(vm, (LitObject*) frame->closure);
+				} else {
+					lit_mark_object(vm, (LitObject*) frame->function);
+				}
+			}
+
+			for (LitUpvalue* upvalue = fiber->open_upvalues; upvalue != NULL; upvalue = upvalue->next) {
+				lit_mark_object(vm, (LitObject*) upvalue);
+			}
+
+			lit_mark_value(vm, fiber->error);
 			lit_mark_object(vm, (LitObject*) fiber->module);
 			lit_mark_object(vm, (LitObject*) fiber->parent);
 
