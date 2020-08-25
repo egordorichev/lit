@@ -504,20 +504,18 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		trace_stack(vm);
 #endif
 
+#ifdef LIT_CHECK_STACK_SIZE
+		if ((fiber->stack_top - frame->slots) > frame->function->max_slots) {
+			RUNTIME_ERROR_VARG("Fiber stack is not large enough (%i > %i)", (int) (fiber->stack_top - frame->slots), frame->function->max_slots)
+		}
+#endif
+
 #ifdef LIT_TRACE_EXECUTION
 		instruction = *ip++;
-
-		if ((fiber->stack_top - frame->slots) > frame->function->max_slots) {
-			RUNTIME_ERROR_VARG("STACK ENDED (%i > %i)", (int) (fiber->stack_top - frame->slots), frame->function->max_slots)
-		}
 
 		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
 		goto *dispatch_table[instruction];
 #else
-		if ((fiber->stack_top - frame->slots) > frame->function->max_slots) {
-			RUNTIME_ERROR_VARG("STACK ENDED (%i > %i)", (int) (fiber->stack_top - frame->slots), frame->function->max_slots)
-		}
-
 		goto *dispatch_table[*ip++];
 #endif
 
