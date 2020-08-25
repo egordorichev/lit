@@ -22,4 +22,6 @@ void lit_mark_object(LitVm* vm, LitObject* object);
 void lit_mark_value(LitVm* vm, LitValue value);
 void lit_free_object(LitState* state, LitObject* object);
 
+int lit_closest_power_of_two(int n);
+
 #endif

@@ -68,8 +68,8 @@ static void emit_op(LitEmitter* emitter, uint16_t line, LitOpCode op) {
 	emit_byte(emitter, line, (uint8_t) op);
 	compiler->slots += stack_effects[(int) op];
 
-	if (compiler->slots > compiler->function->max_slots) {
-		compiler->function->max_slots = compiler->slots;
+	if (compiler->slots > (int) compiler->function->max_slots) {
+		compiler->function->max_slots = (uint) compiler->slots;
 	}
 }
 
@@ -79,8 +79,8 @@ static void emit_ops(LitEmitter* emitter, uint16_t line, LitOpCode a, LitOpCode 
 	emit_bytes(emitter, line, (uint8_t) a, (uint8_t) b);
 	compiler->slots += stack_effects[(int) a] + stack_effects[(int) b];
 
-	if (compiler->slots > compiler->function->max_slots) {
-		compiler->function->max_slots = compiler->slots;
+	if (compiler->slots > (int) compiler->function->max_slots) {
+		compiler->function->max_slots = (uint) compiler->slots;
 	}
 }
 
@@ -90,8 +90,8 @@ static void emit_varying_op(LitEmitter* emitter, uint16_t line, LitOpCode op, ui
 	emit_bytes(emitter, line, (uint8_t) op, arg);
 	compiler->slots -= arg;
 
-	if (compiler->slots > compiler->function->max_slots) {
-		compiler->function->max_slots = compiler->slots;
+	if (compiler->slots > (int) compiler->function->max_slots) {
+		compiler->function->max_slots = (uint) compiler->slots;
 	}
 }
 
@@ -101,8 +101,8 @@ static void emit_arged_op(LitEmitter* emitter, uint16_t line, LitOpCode op, uint
 	emit_bytes(emitter, line, (uint8_t) op, arg);
 	compiler->slots += stack_effects[(int) op];
 
-	if (compiler->slots > compiler->function->max_slots) {
-		compiler->function->max_slots = compiler->slots;
+	if (compiler->slots > (int) compiler->function->max_slots) {
+		compiler->function->max_slots = (uint) compiler->slots;
 	}
 }
 

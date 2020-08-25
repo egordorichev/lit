@@ -357,13 +357,18 @@ LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMet
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function) {
 	LitFiber* fiber = ALLOCATE_OBJECT(state, LitFiber, OBJECT_FIBER);
 
-	fiber->stack_top = fiber->stack;
 	fiber->parent = NULL;
 	fiber->frame_count = 1;
 	fiber->arg_count = 0;
 	fiber->module = module;
 	fiber->catcher = false;
 	fiber->error = NULL_VALUE;
+	fiber->open_upvalues = NULL;
+	fiber->abort = false;
+
+	fiber->stack_capacity = function == NULL ? 1 : (uint) lit_closest_power_of_two(function->max_slots + 1);
+	fiber->stack = LIT_ALLOCATE(state, LitValue, fiber->stack_capacity);
+	fiber->stack_top = fiber->stack;
 
 	for (uint i = 0; i < LIT_CALL_FRAMES_MAX; i++) {
 		LitCallFrame* frame = &fiber->frames[i];
@@ -379,6 +384,31 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	frame->slots = fiber->stack;
 
 	return fiber;
+}
+
+void lit_ensure_fiber_stack(LitState* state, LitFiber* fiber, uint needed) {
+	if (fiber->stack_capacity >= needed) {
+		return;
+	}
+
+	uint capacity = (uint) lit_closest_power_of_two((int) needed);
+	LitValue* old_stack = fiber->stack;
+
+	fiber->stack = (LitValue*) lit_reallocate(state, fiber->stack, sizeof(LitValue) * fiber->stack_capacity, sizeof(LitValue) * capacity);
+	fiber->stack_capacity = capacity;
+
+	if (fiber->stack != old_stack) {
+		for (uint i = 0; i < LIT_CALL_FRAMES_MAX; i++) {
+			LitCallFrame* frame = &fiber->frames[i];
+			frame->slots = fiber->stack + (frame->slots - old_stack);
+		}
+
+		for (LitUpvalue* upvalue = fiber->open_upvalues; upvalue != NULL; upvalue = upvalue->next) {
+			upvalue->location = fiber->stack + (upvalue->location - old_stack);
+		}
+
+		fiber->stack_top = fiber->stack + (fiber->stack_top - old_stack);
+	}
 }
 
 LitModule* lit_create_module(LitState* state, LitString* name) {

@@ -139,7 +139,7 @@ typedef struct {
 
 	uint8_t arg_count;
 	uint16_t upvalue_count;
-	int max_slots;
+	uint max_slots;
 
 	struct sLitModule* module;
 } LitFunction;
@@ -242,13 +242,15 @@ typedef struct LitFiber {
 
 	struct LitFiber* parent;
 
-	LitValue stack[LIT_STACK_MAX];
+	LitValue* stack;
 	LitValue* stack_top;
+	uint stack_capacity;
 
 	LitCallFrame frames[LIT_CALL_FRAMES_MAX];
 	uint frame_count;
 	uint arg_count;
 
+	LitUpvalue* open_upvalues;
 	LitModule* module;
 	LitValue error;
 
@@ -257,6 +259,7 @@ typedef struct LitFiber {
 } LitFiber;
 
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function);
+void lit_ensure_fiber_stack(LitState* state, LitFiber* fiber, uint needed);
 
 typedef struct sLitClass {
 	LitObject object;

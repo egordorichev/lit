@@ -81,6 +81,8 @@ void lit_free_object(LitState* state, LitObject* object) {
 		}
 
 		case OBJECT_FIBER: {
+			LitFiber* fiber = (LitFiber*) object;
+			LIT_FREE_ARRAY(state, LitValue, fiber->stack, fiber->stack_capacity);
 			LIT_FREE(state, LitFiber, object);
 			break;
 		}
@@ -240,7 +242,7 @@ static void mark_roots(LitVm* vm) {
 		fiber = fiber->parent;
 	}
 
-	for (LitUpvalue* upvalue = vm->open_upvalues; upvalue != NULL; upvalue = upvalue->next) {
+	for (LitUpvalue* upvalue = vm->fiber->open_upvalues; upvalue != NULL; upvalue = upvalue->next) {
 		lit_mark_object(vm, (LitObject*) upvalue);
 	}
 
@@ -452,4 +454,17 @@ void lit_collect_garbage(LitVm* vm) {
 	printf("-- gc end\n");
 	printf("   collected %ld bytes (from %ld to %ld) next at %ld\n", before - vm->state->bytes_allocated, before, vm->state->bytes_allocated, vm->state->next_gc);
 #endif
+}
+
+// http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2Float
+int lit_closest_power_of_two(int n) {
+	n--;
+	n |= n >> 1;
+	n |= n >> 2;
+	n |= n >> 4;
+	n |= n >> 8;
+	n |= n >> 16;
+	n++;
+
+	return n;
 }

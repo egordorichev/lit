@@ -6,7 +6,7 @@
 #define LIT_VERSION_STRING "0.1"
 #define LIT_BYTECODE_VERSION 0
 
-// #define TESTING
+#define TESTING
 // #define DEBUG
 
 #ifdef DEBUG
@@ -31,7 +31,6 @@
 
 #define LIT_GC_HEAP_GROW_FACTOR 2
 #define LIT_CALL_FRAMES_MAX 32
-#define LIT_STACK_MAX (LIT_CALL_FRAMES_MAX * 8)
 #define LIT_ROOT_MAX 10
 #define LIT_CONTAINER_OUTPUT_MAX 10
 

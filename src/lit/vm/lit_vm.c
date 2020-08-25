@@ -8,7 +8,7 @@
 #include <string.h>
 
 #ifdef LIT_TRACE_EXECUTION
-	#define TRACE_FRAME() printf("== f%i %s (max %i) ==\n", fiber->frame_count - 1, frame->function->name->chars, frame->function->max_slots);
+	#define TRACE_FRAME() printf("== f%i %s (max %i, added %i, current %i) ==\n", fiber->frame_count - 1, frame->function->name->chars, frame->function->max_slots, frame->function->max_slots + (int) (fiber->stack_top - fiber->stack), fiber->stack_capacity);
 #else
 	#define TRACE_FRAME() do {} while (0);
 #endif
@@ -23,7 +23,6 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 	vm->state = state;
 	vm->objects = NULL;
 	vm->fiber = NULL;
-	vm->open_upvalues = NULL;
 
 	vm->gray_stack = NULL;
 	vm->gray_count = 0;
@@ -138,6 +137,8 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 		lit_runtime_error(vm, "Stack overflow");
 		return true;
 	}
+
+	lit_ensure_fiber_stack(vm->state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
 
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 
@@ -277,7 +278,7 @@ static bool call_value(LitVm* vm, register LitValue callee, register uint8_t arg
 
 static LitUpvalue* capture_upvalue(LitState* state, LitValue* local) {
 	LitUpvalue* previous_upvalue = NULL;
-	LitUpvalue* upvalue = state->vm->open_upvalues;
+	LitUpvalue* upvalue = state->vm->fiber->open_upvalues;
 
 	while (upvalue != NULL && upvalue->location > local) {
 		previous_upvalue = upvalue;
@@ -292,7 +293,7 @@ static LitUpvalue* capture_upvalue(LitState* state, LitValue* local) {
 	created_upvalue->next = upvalue;
 
 	if (previous_upvalue == NULL) {
-		state->vm->open_upvalues = created_upvalue;
+		state->vm->fiber->open_upvalues = created_upvalue;
 	} else {
 		previous_upvalue->next = created_upvalue;
 	}
@@ -301,13 +302,15 @@ static LitUpvalue* capture_upvalue(LitState* state, LitValue* local) {
 }
 
 static void close_upvalues(register LitVm* vm, const LitValue* last) {
-	while (vm->open_upvalues != NULL && vm->open_upvalues->location >= last) {
-		LitUpvalue* upvalue = vm->open_upvalues;
+	LitFiber* fiber = vm->fiber;
+
+	while (fiber->open_upvalues != NULL && fiber->open_upvalues->location >= last) {
+		LitUpvalue* upvalue = fiber->open_upvalues;
 
 		upvalue->closed = *upvalue->location;
 		upvalue->location = &upvalue->closed;
 
-		vm->open_upvalues = upvalue->next;
+		fiber->open_upvalues = upvalue->next;
 	}
 }
 
