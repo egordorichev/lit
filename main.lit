@@ -1,15 +1,10 @@
-var i = 0
-
 for (var z in 0 .. 3) {
-	if (z == 0) {
-		continue
-	}
+	var a = 32
+	var b = 48
+	var d = 4888
 
-	i++
 	break
 }
-
-print(i) // Expected: 1
 
 var pairs = [
 	[ 0, 1 ],

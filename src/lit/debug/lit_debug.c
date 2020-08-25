@@ -41,7 +41,11 @@ static uint print_constant_op(const char* name, LitChunk* chunk, uint offset, bo
 	}
 
 	printf("%s%-16s%s %4d '", COLOR_YELLOW, name, COLOR_RESET, constant);
-	lit_print_value(chunk->constants.values[constant]);
+
+	if (chunk->constants.count <= (int) constant + 1) {
+		lit_print_value(chunk->constants.values[constant]);
+	}
+
 	printf("'\n");
 
 	return offset + (big ? 3 : 2);
@@ -106,7 +110,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 					output_line++;
 				}
 
-				printf("%s        %.*s%s\n", COLOR_RED, (int) (next_line ? (next_line - output_line) : strlen(prev_line)), output_line, COLOR_RESET);
+				printf("%s        %.*s%s\n", COLOR_RED, next_line ? (int) (next_line - output_line) : (int) strlen(prev_line), output_line, COLOR_RESET);
 				break;
 			}
 		}
@@ -124,6 +128,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 
 	switch (instruction) {
 		case OP_POP: return print_simple_op("OP_POP", offset);
+		case OP_POP_LOCALS: return print_constant_op("OP_POP_LOCALS", chunk, offset, true);
 		case OP_RETURN: return print_simple_op("OP_RETURN", offset);
 		case OP_CONSTANT: return print_constant_op("OP_CONSTANT", chunk, offset, false);
 		case OP_CONSTANT_LONG: return print_constant_op("OP_CONSTANT_LONG", chunk, offset, true);

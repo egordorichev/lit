@@ -1159,6 +1159,26 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				error(emitter, statement->line, ERROR_LOOP_JUMP_MISSUSE, "break");
 			}
 
+			emit_op(emitter, statement->line, OP_POP_LOCALS);
+
+			int depth = emitter->compiler->scope_depth;
+			uint16_t local_count = 0;
+
+			LitLocals* locals = &emitter->compiler->locals;
+
+			for (int i = locals->count - 1; i >= 0; i--) {
+				LitLocal* local = &locals->values[i];
+
+				if (local->depth < depth) {
+					break;
+				}
+
+				if (!local->captured) {
+					local_count++;
+				}
+			}
+
+			emit_short(emitter, statement->line, local_count);
 			lit_uints_write(emitter->state, &emitter->breaks, emit_jump(emitter, OP_JUMP, statement->line));
 			break;
 		}

@@ -78,7 +78,7 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 	while (fiber != NULL) {
 		fiber->error = error;
 
-		if (fiber->try) {
+		if (fiber->catcher) {
 			vm->fiber = fiber->parent;
 			vm->fiber->stack_top -= fiber->arg_count;
 			vm->fiber->stack_top[-1] = error;
@@ -1326,6 +1326,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			DROP_MULTIPLE(2); // Drop the instance and class
 			PUSH(BOOL_VALUE(found));
 
+			continue;
+		}
+
+		CASE_CODE(POP_LOCALS) {
+			DROP_MULTIPLE(READ_SHORT());
 			continue;
 		}
 

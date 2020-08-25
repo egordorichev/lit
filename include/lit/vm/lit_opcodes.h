@@ -86,3 +86,4 @@ OPCODE(INVOKE, 0) // Varying stack effect
 OPCODE(INVOKE_SUPER, 0) // Varying stack effect
 OPCODE(INVOKE_IGNORING, 0) // Varying stack effect
 OPCODE(INVOKE_SUPER_IGNORING, 0) // Varying stack effect
+OPCODE(POP_LOCALS, 0) // Stack effect is ignored
