@@ -100,7 +100,14 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 #undef PUSH
 
 	function->max_slots = 2 + argument_count;
-	fiber->frames[0].ip = chunk->code;
+
+	LitCallFrame* frame = &fiber->frames[0];
+
+	frame->ip = chunk->code;
+	frame->closure = NULL;
+	frame->function = function;
+	frame->slots = fiber->stack;
+	frame->result_ignored = false;
 
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 	state->vm->fiber = fiber->parent;
@@ -111,7 +118,7 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 
 LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count) {
 	if (callee == NULL) {
-		return (LitInterpretResult) { INTERPRET_COMPILE_ERROR };
+		return (LitInterpretResult) { INTERPRET_COMPILE_ERROR, NULL_VALUE };
 	}
 
 	return lit_call(state, OBJECT_VALUE(callee), arguments, argument_count);
@@ -247,7 +254,14 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 #undef PUSH
 
 	function->max_slots = 2 + function->arg_count;
-	fiber->frames[0].ip = chunk->code;
+
+	LitCallFrame* frame = &fiber->frames[0];
+
+	frame->ip = chunk->code;
+	frame->closure = NULL;
+	frame->function = function;
+	frame->slots = fiber->stack;
+	frame->result_ignored = false;
 
 	LitFiber* last_fiber = state->vm->fiber;
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);

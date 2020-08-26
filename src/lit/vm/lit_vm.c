@@ -419,8 +419,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		RETURN_ERROR() \
 	}
 
-	// && ( || )
-
 #define INVOKE_FROM_CLASS_ADVANCED(zklass, method_name, arg_count, error, stat, ignoring, callee) \
 	LitValue method; \
 	if ((IS_INSTANCE(callee) && (lit_table_get(&AS_INSTANCE(callee)->fields, method_name, &method) || lit_table_get(&AS_INSTANCE(callee)->klass->static_fields, method_name, &method))) || lit_table_get(&zklass->stat, method_name, &method)) { \

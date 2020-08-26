@@ -1,5 +1,8 @@
 # todo
 
+* fiber.try() might try to use a frame that isn't allocated yet?
+* c-api pushes to stack but stack is probs much smaller
+
 * change up "Expected whatever" error to inclde what you got
 * (try jumps) if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)
 

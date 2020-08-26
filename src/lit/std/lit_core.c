@@ -553,6 +553,22 @@ LIT_PRIMITIVE(fiber_try) {
 
 LIT_PRIMITIVE(fiber_yield) {
 	if (vm->fiber->parent == NULL) {
+		lit_handle_runtime_error(vm, arg_count == 0 ? CONST_STRING(vm->state, "Fiber was yielded") : lit_to_string(vm->state, args[0]));
+		return true;
+	}
+
+	LitFiber* fiber = vm->fiber;
+
+	vm->fiber = vm->fiber->parent;
+	vm->fiber->stack_top -= fiber->arg_count;
+	vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
+
+	args[-1] = NULL_VALUE;
+	return true;
+}
+
+LIT_PRIMITIVE(fiber_yeet) {
+	if (vm->fiber->parent == NULL) {
 		lit_handle_runtime_error(vm, arg_count == 0 ? CONST_STRING(vm->state, "Fiber was yeeted") : lit_to_string(vm->state, args[0]));
 		return true;
 	}
@@ -1394,6 +1410,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_GETTER("error", fiber_error)
 
 		LIT_BIND_STATIC_PRIMITIVE("yield", fiber_yield)
+		LIT_BIND_STATIC_PRIMITIVE("yeet", fiber_yeet)
 		LIT_BIND_STATIC_PRIMITIVE("abort", fiber_abort)
 		LIT_BIND_STATIC_GETTER("current", fiber_current)
 
