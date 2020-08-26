@@ -8,6 +8,7 @@ void lit_init_chunk(LitChunk* chunk) {
 	chunk->capacity = 0;
 	chunk->code = NULL;
 
+	chunk->has_line_info = true;
 	chunk->line_count = 0;
 	chunk->line_capacity = 0;
 	chunk->lines = NULL;
@@ -73,11 +74,9 @@ uint lit_chunk_add_constant(LitState* state, LitChunk* chunk, LitValue constant)
 }
 
 uint lit_chunk_get_line(LitChunk* chunk, uint offset) {
-	/*printf("\n");
-
-	for (uint i = 0; i < chunk->line_count; i++) {
-		printf("%d %d\n", chunk->lines[i * 2], chunk->lines[i * 2 + 1]);
-	}*/
+	if (!chunk->has_line_info) {
+		return 0;
+	}
 
 	uint rle = 0;
 	uint line = 0;

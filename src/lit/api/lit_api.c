@@ -82,6 +82,7 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 
 	LitFiber* fiber = lit_create_fiber(state, state->api_module, function);
 	LitChunk* chunk = &function->chunk;
+	chunk->has_line_info = false;
 
 #define PUSH(value) (*fiber->stack_top++ = value)
 
@@ -231,6 +232,8 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 
 	LitFiber* fiber = lit_create_fiber(state, state->api_module, function);
 	LitChunk* chunk = &function->chunk;
+
+	chunk->has_line_info = false;
 
 #define PUSH(value) (*fiber->stack_top++ = value)
 

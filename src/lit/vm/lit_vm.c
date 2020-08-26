@@ -102,9 +102,14 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 	for (int i = (int) fiber->frame_count - 1; i >= 0; i--) {
 		LitCallFrame* frame = &fiber->frames[i];
 		LitFunction* function = frame->function;
-		LitString* name = function->name;
+		LitChunk* chunk = &function->chunk;
+		const char* name = function->name == NULL ? "unknown" : function->name->chars;
 
-		fprintf(stderr, "[line %d] in %s()\n", lit_chunk_get_line(&function->chunk, frame->ip - function->chunk.code - 1), name == NULL ? "unknown" : name->chars);
+		if (chunk->has_line_info) {
+			fprintf(stderr, "[line %d] in %s()\n", lit_chunk_get_line(chunk, frame->ip - chunk->code - 1), name);
+		} else {
+			fprintf(stderr, "          in %s()\n", name);
+		}
 	}
 
 	fprintf(stderr, "%s", COLOR_RESET);

@@ -18,6 +18,8 @@ typedef struct {
 	uint capacity;
 	uint8_t* code;
 
+	bool has_line_info;
+
 	uint line_count;
 	uint line_capacity;
 	uint16_t* lines;
