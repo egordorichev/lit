@@ -176,22 +176,41 @@ LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count,
 	return AS_STRING(args[id]);
 }
 
-static LitValue value;
+LitInstance* lit_check_instance(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
+	if (arg_count <= id || !IS_STRING(args[id])) {
+		lit_runtime_error(vm, "Expected an instance as argument #%x", id);
+		return NULL;
+	}
 
-LitValue* lit_get_field(LitState* state, LitTable* table, const char* name) {
+	return AS_INSTANCE(args[id]);
+}
+
+LitValue lit_get_field(LitState* state, LitTable* table, const char* name) {
+	LitValue value;
+
 	if (!lit_table_get(table, CONST_STRING(state, name), &value)) {
 		value = NULL_VALUE;
 	}
 
-	return &value;
+	return value;
 }
 
-LitValue* lit_get_map_field(LitState* state, LitMap* map, const char* name) {
+LitValue lit_get_map_field(LitState* state, LitMap* map, const char* name) {
+	LitValue value;
+
 	if (!lit_table_get(&map->values, CONST_STRING(state, name), &value)) {
 		value = NULL_VALUE;
 	}
 
-	return &value;
+	return value;
+}
+
+void lit_set_field(LitState* state, LitTable* table, const char* name, LitValue value) {
+	lit_table_set(state, table, CONST_STRING(state, name), value);
+}
+
+void lit_set_map_field(LitState* state, LitMap* map, const char* name, LitValue value) {
+	lit_table_set(state, &map->values, CONST_STRING(state, name), value);
 }
 
 LitString* lit_to_string(LitState* state, LitValue object) {

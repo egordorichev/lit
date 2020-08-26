@@ -62,6 +62,7 @@ LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitVa
 #define LIT_GET_STRING(id, def) lit_get_string(vm, args, arg_count, id, def)
 
 #define LIT_CHECK_OBJECT_STRING(id) lit_check_object_string(vm, args, arg_count, id)
+#define LIT_CHECK_INSTANCE(id) lit_check_instance(vm, args, arg_count, id)
 
 double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def);
@@ -73,12 +74,18 @@ const char* lit_check_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8
 const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, const char* def);
 
 LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+LitInstance* lit_check_instance(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 
-#define LIT_GET_FIELD(id) lit_get_field(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, id))
-#define LIT_GET_MAP_FIELD(id) lit_get_map_field(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, id))
+#define LIT_GET_FIELD(id) lit_get_field(vm->state, &AS_INSTANCE(instance)->fields, id)
+#define LIT_GET_MAP_FIELD(id) lit_get_map_field(vm->state, &AS_INSTANCE(instance)->fields, id)
+#define LIT_SET_FIELD(id, value) lit_set_field(vm->state, &AS_INSTANCE(instance)->fields, id, value)
+#define LIT_SET_MAP_FIELD(id, value) lit_set_map_field(vm->state, &AS_INSTANCE(instance)->fields, id, value)
 
-LitValue* lit_get_field(LitState* state, LitTable* table, const char* name);
-LitValue* lit_get_map_field(LitState* state, LitMap* map, const char* name);
+LitValue lit_get_field(LitState* state, LitTable* table, const char* name);
+LitValue lit_get_map_field(LitState* state, LitMap* map, const char* name);
+
+void lit_set_field(LitState* state, LitTable* table, const char* name, LitValue value);
+void lit_set_map_field(LitState* state, LitMap* map, const char* name, LitValue value);
 
 #define LIT_ENSURE_ARGS(count) \
 	if (arg_count != count) { \
