@@ -234,8 +234,8 @@ LIT_METHOD(random_pick) {
 
 void lit_open_math_library(LitState* state) {
 	LIT_BEGIN_CLASS("Math")
-		LIT_BIND_STATIC_FIELD("Pi", NUMBER_VALUE(M_PI))
-		LIT_BIND_STATIC_FIELD("Tau", NUMBER_VALUE(M_PI * 2))
+		LIT_SET_STATIC_FIELD("Pi", NUMBER_VALUE(M_PI))
+		LIT_SET_STATIC_FIELD("Tau", NUMBER_VALUE(M_PI * 2))
 
 		LIT_BIND_STATIC_METHOD("abs", math_abs)
 		LIT_BIND_STATIC_METHOD("sin", math_sin)

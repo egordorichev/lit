@@ -178,7 +178,7 @@ LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count,
 }
 
 LitInstance* lit_check_instance(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
-	if (arg_count <= id || !IS_STRING(args[id])) {
+	if (arg_count <= id || !IS_INSTANCE(args[id])) {
 		lit_runtime_error(vm, "Expected an instance as argument #%x", id);
 		return NULL;
 	}

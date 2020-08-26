@@ -1,5 +1,8 @@
 # todo
 
+* change up "Expected whatever" error to inclde what you got
+* (try jumps) if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)
+
 * optimizations {
  * we don't really need private names in bytecode (do an optimization flag that is on by default), nor function names?
  * dead if branchess
@@ -14,7 +17,6 @@
 * more benchmarks
 * enums
 
-* if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)
 * table with globals? module.privates?
 * ffi?
 * gc prooof testing

@@ -108,7 +108,7 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 		if (chunk->has_line_info) {
 			fprintf(stderr, "[line %d] in %s()\n", lit_chunk_get_line(chunk, frame->ip - chunk->code - 1), name);
 		} else {
-			fprintf(stderr, "          in %s()\n", name);
+			fprintf(stderr, "\tin %s()\n", name);
 		}
 	}
 
