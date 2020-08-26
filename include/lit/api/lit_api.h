@@ -74,7 +74,11 @@ const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t
 
 LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 
-LitValue* lit_get_field(LitState* state, LitMap* map, const char* name);
+#define LIT_GET_FIELD(id) lit_get_field(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, id))
+#define LIT_GET_MAP_FIELD(id) lit_get_map_field(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, id))
+
+LitValue* lit_get_field(LitState* state, LitTable* table, const char* name);
+LitValue* lit_get_map_field(LitState* state, LitMap* map, const char* name);
 
 #define LIT_ENSURE_ARGS(count) \
 	if (arg_count != count) { \

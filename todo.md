@@ -9,6 +9,7 @@
  * optimize out line numbers
 }
 
+* improve repl (history, left/right arrow)
 * keep classes as privates and then allow to export them?
 * more benchmarks
 * enums

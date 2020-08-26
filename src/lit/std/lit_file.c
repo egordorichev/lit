@@ -25,7 +25,7 @@ static LitFileData* extract_file_data(LitState* state, LitValue instance) {
 	LitValue data;
 
 	if (!lit_table_get(&AS_INSTANCE(instance)->fields, CONST_STRING(state, "_data"), &data)) {
-		return 0;
+		return NULL;
 	}
 
 	return (LitFileData*) AS_USERDATA(data)->data;

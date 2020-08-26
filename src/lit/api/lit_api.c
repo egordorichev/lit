@@ -178,7 +178,15 @@ LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count,
 
 static LitValue value;
 
-LitValue* lit_get_field(LitState* state, LitMap* map, const char* name) {
+LitValue* lit_get_field(LitState* state, LitTable* table, const char* name) {
+	if (!lit_table_get(table, CONST_STRING(state, name), &value)) {
+		value = NULL_VALUE;
+	}
+
+	return &value;
+}
+
+LitValue* lit_get_map_field(LitState* state, LitMap* map, const char* name) {
 	if (!lit_table_get(&map->values, CONST_STRING(state, name), &value)) {
 		value = NULL_VALUE;
 	}
