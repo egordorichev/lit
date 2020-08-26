@@ -43,8 +43,8 @@ LitState* lit_new_state() {
 	state->next_gc = 1024 * 1024;
 	state->allow_gc = false;
 
-	state->errorFn = default_error;
-	state->printFn = default_printf;
+	state->error_fn = default_error;
+	state->print_fn = default_printf;
 	state->had_error = false;
 	state->root_count = 0;
 
@@ -325,7 +325,7 @@ LitInterpretResult lit_interpret_file(LitState* state, const char* file, bool du
 void lit_error(LitState* state, LitErrorType type, const char* message, ...) {
 	va_list args;
 	va_start(args, message);
-	state->errorFn(state, type, message, args);
+	state->error_fn(state, type, message, args);
 	va_end(args);
 
 	state->had_error = true;
@@ -334,6 +334,6 @@ void lit_error(LitState* state, LitErrorType type, const char* message, ...) {
 void lit_printf(LitState* state, const char* message, ...) {
 	va_list args;
 	va_start(args, message);
-	state->printFn(message, args);
+	state->print_fn(message, args);
 	va_end(args);
 }

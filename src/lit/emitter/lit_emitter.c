@@ -782,10 +782,10 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitLambdaExpression* expr = (LitLambdaExpression*) expression;
 			LitString* name = AS_STRING(lit_string_format(emitter->state, "lambda @:@", OBJECT_VALUE(emitter->module->name), lit_number_to_string(emitter->state, expression->line)));
 
-			begin_scope(emitter);
-
 			LitCompiler compiler;
 			init_compiler(emitter, &compiler, FUNCTION_REGULAR);
+
+			begin_scope(emitter);
 
 			for (uint i = 0; i < expr->parameters.count; i++) {
 				LitParameter parameter = expr->parameters.values[i];
@@ -807,6 +807,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				}
 			}
 
+			end_scope(emitter, emitter->last_line);
 			LitFunction* function = end_compiler(emitter, name);
 			function->arg_count = expr->parameters.count;
 			function->max_slots += function->arg_count;
@@ -822,7 +823,6 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
 			}
 
-			end_scope(emitter, emitter->last_line);
 			break;
 		}
 
@@ -1243,10 +1243,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				mark_private_initialized(emitter, index);
 			}
 
-			begin_scope(emitter);
-
 			LitCompiler compiler;
 			init_compiler(emitter, &compiler, FUNCTION_REGULAR);
+
+			begin_scope(emitter);
 
 			for (uint i = 0; i < stmt->parameters.count; i++) {
 				LitParameter parameter = stmt->parameters.values[i];
@@ -1254,6 +1254,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			emit_statement(emitter, stmt->body);
+			end_scope(emitter, emitter->last_line);
 
 			LitFunction* function = end_compiler(emitter, name);
 			function->arg_count = stmt->parameters.count;
@@ -1280,7 +1281,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			emit_op(emitter, emitter->last_line, OP_POP);
-			end_scope(emitter, emitter->last_line);
 
 			break;
 		}
@@ -1315,10 +1315,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				error(emitter, statement->line, ERROR_STATIC_CONSTRUCTOR);
 			}
 
-			begin_scope(emitter);
-
 			LitCompiler compiler;
 			init_compiler(emitter, &compiler, constructor ? FUNCTION_CONSTRUCTOR : (stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD));
+
+			begin_scope(emitter);
 
 			for (uint i = 0; i < stmt->parameters.count; i++) {
 				LitParameter parameter = stmt->parameters.values[i];
@@ -1326,6 +1326,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			emit_statement(emitter, stmt->body);
+			end_scope(emitter, emitter->last_line);
 
 			LitFunction* function = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:@", emitter->class_name, stmt->name)));
 			function->arg_count = stmt->parameters.count;
@@ -1335,8 +1336,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			emit_op(emitter, emitter->last_line, stmt->is_static ? OP_STATIC_FIELD : OP_METHOD);
 			emit_short(emitter, emitter->last_line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
-
-			end_scope(emitter, emitter->last_line);
 
 			break;
 		}
@@ -1384,29 +1383,28 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitFunction* setter = NULL;
 
 			if (stmt->getter != NULL) {
-				begin_scope(emitter);
-
 				LitCompiler compiler;
 				init_compiler(emitter, &compiler, stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD);
-				emit_statement(emitter, stmt->getter);
-				getter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:get @", emitter->class_name, stmt->name)));
 
+				begin_scope(emitter);
+				emit_statement(emitter, stmt->getter);
 				end_scope(emitter, emitter->last_line);
+
+				getter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:get @", emitter->class_name, stmt->name)));
 			}
 
 			if (stmt->setter != NULL) {
-				begin_scope(emitter);
-
 				LitCompiler compiler;
 				init_compiler(emitter, &compiler, stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD);
 				mark_local_initialized(emitter, add_local(emitter, "value", 5, statement->line, false));
 
+				begin_scope(emitter);
 				emit_statement(emitter, stmt->setter);
+				end_scope(emitter, emitter->last_line);
+
 				setter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:set @", emitter->class_name, stmt->name)));
 				setter->arg_count = 1;
 				setter->max_slots++;
-
-				end_scope(emitter, emitter->last_line);
 			}
 
 			LitField* field = lit_create_field(emitter->state, (LitObject*) getter, (LitObject*) setter);

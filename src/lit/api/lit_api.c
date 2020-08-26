@@ -111,7 +111,7 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 
 LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count) {
 	if (callee == NULL) {
-		return (LitInterpretResult) {};
+		return (LitInterpretResult) { INTERPRET_COMPILE_ERROR };
 	}
 
 	return lit_call(state, OBJECT_VALUE(callee), arguments, argument_count);

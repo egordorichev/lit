@@ -1,1 +1,9 @@
-print("No.")
+function test() {
+	var a = () => {
+		Graphics.print("test", 32, 32)
+	}
+	var fiber = new Fiber(a)
+	fiber.try()
+}
+
+test()

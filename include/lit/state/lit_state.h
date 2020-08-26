@@ -21,8 +21,8 @@ typedef struct sLitState {
 	int64_t next_gc;
 	bool allow_gc;
 
-	LitErrorFn errorFn;
-	LitPrintFn printFn;
+	LitErrorFn error_fn;
+	LitPrintFn print_fn;
 
 	LitValue roots[LIT_ROOT_MAX];
 	uint8_t root_count;
