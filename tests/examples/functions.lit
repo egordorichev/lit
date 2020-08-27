@@ -47,6 +47,18 @@ caller((arg) => {
 	return 3
 }) // Expected: Whatever
 
+// Functions can also specify default values for arguments, in case user doesn't provide them:
+function rain(where, what = "chocolate") {
+	print($"It's raining {what} in the {where}!")
+}
+
+rain("town") // Expected: It's raining chocolate in the town!
+rain("city", "lemonade") // Expected: It's raining lemonade in the city!
+
+// You can have multiple default-arguments, but they always must be at the end of the argument list
+// function rain(where = 32, what)
+// ^ this won't work, because what doesn't have a default value
+
 // Warning: we are entering advaned territory here: upvalues!
 function makePrinter(text) {
 	return () => {

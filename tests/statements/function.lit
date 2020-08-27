@@ -36,3 +36,10 @@ function z() {
 }
 
 print(z() == b) // Expected: true
+
+function call(who = "dog") {
+	print($"Calling {who}")
+}
+
+call() // Expected: Calling dog
+call("pizza delivery") // Expected: Calling pizza delivery
