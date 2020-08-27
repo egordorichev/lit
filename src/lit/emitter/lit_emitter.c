@@ -427,12 +427,17 @@ static void patch_loop_jumps(LitEmitter* emitter, LitUInts* breaks, uint line) {
 	lit_free_uints(emitter->state, breaks);
 }
 
-static void emit_parameters(LitEmitter* emitter, LitParameters* parameters, uint line) {
+static bool emit_parameters(LitEmitter* emitter, LitParameters* parameters, uint line) {
 	for (uint i = 0; i < parameters->count; i++) {
 		LitParameter* parameter = &parameters->values[i];
-		int index = add_local(emitter, parameter->name, parameter->length, line, false);
 
+		int index = add_local(emitter, parameter->name, parameter->length, line, false);
 		mark_local_initialized(emitter, index);
+
+		// Vararg ...
+		if (parameter->length == 3 && memcmp(parameter->name, "...", 3) == 0) {
+			return true;
+		}
 
 		if (parameter->default_value != NULL) {
 			emit_byte_or_short(emitter, line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, index);
@@ -444,6 +449,8 @@ static void emit_parameters(LitEmitter* emitter, LitParameters* parameters, uint
 			emit_op(emitter, line, OP_POP);
 		}
 	}
+
+	return false;
 }
 
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
@@ -723,7 +730,19 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			}
 
 			for (uint i = 0; i < expr->args.count; i++) {
-				emit_expression(emitter, expr->args.values[i]);
+				LitExpression* e = expr->args.values[i];
+
+				if (e->type == VAR_EXPRESSION) {
+					LitVarExpression* ee = (LitVarExpression*) e;
+
+					// Vararg ...
+					if (ee->length == 3 && memcmp(ee->name, "...", 3) == 0) {
+						emit_arged_op(emitter, e->line, OP_VARARG, resolve_local(emitter, emitter->compiler, "...", 3, expression->line));
+						break;
+					}
+				}
+
+				emit_expression(emitter, e);
 			}
 
 			if (method || super) {
@@ -806,7 +825,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			init_compiler(emitter, &compiler, FUNCTION_REGULAR);
 
 			begin_scope(emitter);
-			emit_parameters(emitter, &expr->parameters, expression->line);
+			bool vararg = emit_parameters(emitter, &expr->parameters, expression->line);
 
 			if (expr->body != NULL) {
 				bool single_expression = expr->body->type == EXPRESSION_STATEMENT;
@@ -827,6 +846,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitFunction* function = end_compiler(emitter, name);
 			function->arg_count = expr->parameters.count;
 			function->max_slots += function->arg_count;
+			function->vararg = vararg;
 
 			if (function->upvalue_count > 0) {
 				emit_op(emitter, emitter->last_line, OP_CLOSURE);
@@ -943,6 +963,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			emit_varying_op(emitter, emitter->last_line, OP_INVOKE, 0);
 			emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "join")));
 
+			break;
+		}
+
+		case VARARG_EXPRESSION: {
+			UNREACHABLE
 			break;
 		}
 
@@ -1264,13 +1289,14 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			begin_scope(emitter);
 
-			emit_parameters(emitter, &stmt->parameters, statement->line);
+			bool vararg = emit_parameters(emitter, &stmt->parameters, statement->line);
 			emit_statement(emitter, stmt->body);
 			end_scope(emitter, emitter->last_line);
 
 			LitFunction* function = end_compiler(emitter, name);
 			function->arg_count = stmt->parameters.count;
 			function->max_slots += function->arg_count;
+			function->vararg = vararg;
 
 			if (function->upvalue_count > 0) {
 				emit_op(emitter, emitter->last_line, OP_CLOSURE);
@@ -1332,13 +1358,14 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			begin_scope(emitter);
 
-			emit_parameters(emitter, &stmt->parameters, statement->line);
+			bool vararg = emit_parameters(emitter, &stmt->parameters, statement->line);
 			emit_statement(emitter, stmt->body);
 			end_scope(emitter, emitter->last_line);
 
 			LitFunction* function = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:@", emitter->class_name, stmt->name)));
 			function->arg_count = stmt->parameters.count;
 			function->max_slots += function->arg_count;
+			function->vararg = vararg;
 
 			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
 

@@ -148,6 +148,7 @@ static void save_function(FILE* file, LitFunction* function) {
 
 	lit_write_uint8_t(file, function->arg_count);
 	lit_write_uint16_t(file, function->upvalue_count);
+	lit_write_uint8_t(file, (uint8_t) function->vararg);
 }
 
 static LitFunction* load_function(LitState* state, LitEmulatedFile* file, LitModule* module) {
@@ -158,6 +159,7 @@ static LitFunction* load_function(LitState* state, LitEmulatedFile* file, LitMod
 
 	function->arg_count = lit_read_euint8_t(file);
 	function->upvalue_count = lit_read_euint16_t(file);
+	function->vararg = (bool) lit_read_euint8_t(file);
 
 	return function;
 }

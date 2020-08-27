@@ -82,9 +82,11 @@ OPCODE(INHERIT, -1)
 OPCODE(IS, -1)
 OPCODE(GET_SUPER_METHOD, 0)
 
-OPCODE(CALL, 0) // Varying stack effect
-OPCODE(INVOKE, 0) // Varying stack effect
-OPCODE(INVOKE_SUPER, 0) // Varying stack effect
-OPCODE(INVOKE_IGNORING, 0) // Varying stack effect
-OPCODE(INVOKE_SUPER_IGNORING, 0) // Varying stack effect
-OPCODE(POP_LOCALS, 0) // Stack effect is ignored
+// Varying stack effect
+OPCODE(CALL, 0)
+OPCODE(INVOKE, 0)
+OPCODE(INVOKE_SUPER, 0)
+OPCODE(INVOKE_IGNORING, 0)
+OPCODE(INVOKE_SUPER_IGNORING, 0)
+OPCODE(POP_LOCALS, 0)
+OPCODE(VARARG, 0)

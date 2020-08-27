@@ -400,6 +400,7 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 			break;
 		}
 
+		case VARARG_EXPRESSION:
 		case LITERAL_EXPRESSION:
 		case THIS_EXPRESSION:
 		case SUPER_EXPRESSION: {

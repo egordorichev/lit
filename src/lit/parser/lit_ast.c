@@ -194,6 +194,11 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
+		case VARARG_EXPRESSION: {
+			FREE_EXPRESSION(LitVarargExpression)
+			break;
+		}
+
 		default: {
 			lit_error(state, COMPILE_ERROR, "Unknown expression type %d", (int) expression->type);
 			break;
@@ -366,6 +371,10 @@ LitInterpolationExpression *lit_create_interpolation_expression(LitState* state,
 	LitInterpolationExpression* expression = ALLOCATE_EXPRESSION(state, LitInterpolationExpression, INTERPOLATION_EXPRESSION);
 	lit_init_expressions(&expression->expressions);
 	return expression;
+}
+
+LitVarargExpression *lit_create_vararg_expression(LitState* state, uint line) {
+	return ALLOCATE_EXPRESSION(state, LitVarargExpression, VARARG_EXPRESSION);
 }
 
 #define FREE_STATEMENT(type) lit_reallocate(state, statement, sizeof(type), 0);

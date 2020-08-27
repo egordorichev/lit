@@ -141,6 +141,8 @@ typedef struct {
 	uint16_t upvalue_count;
 	uint max_slots;
 
+	bool vararg;
+
 	struct sLitModule* module;
 } LitFunction;
 

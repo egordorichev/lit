@@ -109,6 +109,8 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 	frame->slots = fiber->stack;
 	frame->result_ignored = false;
 
+	lit_ensure_fiber_stack(state, fiber, function->max_slots);
+
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 	state->vm->fiber = fiber->parent;
 
@@ -262,6 +264,8 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	frame->function = function;
 	frame->slots = fiber->stack;
 	frame->result_ignored = false;
+
+	lit_ensure_fiber_stack(state, fiber, function->max_slots);
 
 	LitFiber* last_fiber = state->vm->fiber;
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);

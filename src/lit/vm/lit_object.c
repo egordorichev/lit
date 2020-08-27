@@ -229,6 +229,7 @@ LitFunction* lit_create_function(LitState* state, LitModule* module) {
 	function->upvalue_count = 0;
 	function->max_slots = 0;
 	function->module = module;
+	function->vararg = false;
 
 	return function;
 }

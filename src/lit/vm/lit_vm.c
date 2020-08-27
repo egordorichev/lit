@@ -8,7 +8,7 @@
 #include <string.h>
 
 #ifdef LIT_TRACE_EXECUTION
-	#define TRACE_FRAME() printf("== f%i %s (max %i, added %i, current %i) ==\n", fiber->frame_count - 1, frame->function->name->chars, frame->function->max_slots, frame->function->max_slots + (int) (fiber->stack_top - fiber->stack), fiber->stack_capacity);
+	#define TRACE_FRAME() printf("== f%i %s (expects %i, max %i, added %i, current %i) ==\n", fiber->frame_count - 1, frame->function->name->chars, frame->function->arg_count, frame->function->max_slots, frame->function->max_slots + (int) (fiber->stack_top - fiber->stack), fiber->stack_capacity);
 #else
 	#define TRACE_FRAME() do {} while (0);
 #endif
@@ -149,6 +149,7 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 		fiber->frame_capacity = new_capacity;
 	}
 
+	uint function_arg_count = function->arg_count;
 	lit_ensure_fiber_stack(vm->state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
 
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
@@ -159,17 +160,25 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	frame->slots = fiber->stack_top - arg_count - 1;
 	frame->result_ignored = false;
 
-	uint function_arg_count = function->arg_count;
-
 	if (arg_count != function_arg_count) {
 		if (arg_count < function_arg_count) {
 			for (uint i = 0; i < function_arg_count - arg_count; i++) {
 				lit_push(vm, NULL_VALUE);
 			}
-		} else {
-			for (uint i = 0; i < arg_count - function_arg_count; i++) {
-				lit_pop(vm);
+		} else if (function->vararg) {
+			LitArray* array = lit_create_array(vm->state);
+			uint vararg_count = arg_count - function_arg_count + 1;
+
+			lit_values_ensure_size(vm->state, &array->values, vararg_count);
+
+			for (uint i = 0; i < vararg_count; i++) {
+				array->values.values[i] = vm->fiber->stack_top[(int) i - (int) vararg_count];
 			}
+
+			vm->fiber->stack_top -= vararg_count;
+			lit_push(vm, OBJECT_VALUE(array));
+		} else {
+			vm->fiber->stack_top -= (arg_count - function_arg_count);
 		}
 	}
 
@@ -380,7 +389,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	ip = frame->ip; \
 	slots = frame->slots; \
 	fiber->module = frame->function->module; \
-	privates = fiber->module->privates;	\
+	privates = fiber->module->privates; \
 	upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
 
 #define WRITE_FRAME() frame->ip = ip;
@@ -518,8 +527,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #endif
 
 #ifdef LIT_CHECK_STACK_SIZE
-		if ((fiber->stack_top - frame->slots) > frame->function->max_slots) {
-			RUNTIME_ERROR_VARG("Fiber stack is not large enough (%i > %i)", (int) (fiber->stack_top - frame->slots), frame->function->max_slots)
+		if ((fiber->stack_top - frame->slots) > fiber->stack_capacity) {
+			RUNTIME_ERROR_VARG("Fiber stack is not large enough (%i > %i)", (int) (fiber->stack_top - frame->slots), fiber->stack_capacity)
 		}
 #endif
 
@@ -1352,6 +1361,19 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(POP_LOCALS) {
 			DROP_MULTIPLE(READ_SHORT());
+			continue;
+		}
+
+		CASE_CODE(VARARG) {
+			LitValues* values = &AS_ARRAY(slots[READ_BYTE()])->values;
+			lit_ensure_fiber_stack(state, fiber, values->count + frame->function->max_slots + (int) (fiber->stack_top - fiber->stack));
+
+			for (uint i = 0; i < values->count; i++) {
+				PUSH(values->values[i]);
+			}
+
+			// Hot-bytecode patching, increment the amount of arguments to OP_CALL
+			ip[1] = ip[1] + 1;
 			continue;
 		}
 

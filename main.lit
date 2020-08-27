@@ -1,7 +1,14 @@
-function test(a, b = 32, c = 48) {
-	print(b)
-	print(c)
+function printAll(...) {
+	for var a in ... {
+		print(a)
+	}
 }
 
-test()
-test(nope, "yea", "test")
+function test(a, ...) {
+	var b = ...
+	print(a)
+	printAll(...)
+	print(b)
+}
+
+test("maybe", "yea", "test")

@@ -467,7 +467,6 @@ LitToken lit_scan_token(LitScanner* scanner) {
 		case '!': return match_token(scanner, '=', TOKEN_BANG_EQUAL, TOKEN_BANG);
 		case '?': return match_token(scanner, '?', TOKEN_QUESTION_QUESTION, TOKEN_QUESTION);
 		case '%': return match_token(scanner, '=', TOKEN_PERCENT_EQUAL, TOKEN_PERCENT);
-		case '.': return match_token(scanner, '.', TOKEN_DOT_DOT, TOKEN_DOT);
 		case '^': return match_token(scanner, '=', TOKEN_CARET_EQUAL, TOKEN_CARET);
 
 		case '>': return match_tokens(scanner, '=', '>', TOKEN_GREATER_EQUAL, TOKEN_GREATER_GREATER, TOKEN_GREATER);
@@ -476,6 +475,15 @@ LitToken lit_scan_token(LitScanner* scanner) {
 		case '=': return match_tokens(scanner, '=', '>', TOKEN_EQUAL_EQUAL, TOKEN_ARROW, TOKEN_EQUAL);
 		case '|': return match_tokens(scanner, '=', '|', TOKEN_BAR_EQUAL, TOKEN_BAR_BAR, TOKEN_BAR);
 		case '&': return match_tokens(scanner, '=', '&', TOKEN_AMPERSAND_EQUAL, TOKEN_AMPERSAND_AMPERSAND, TOKEN_AMPERSAND);
+
+
+		case '.': {
+			if (!match(scanner, '.')) {
+				return make_token(scanner, TOKEN_DOT);
+			}
+
+			return match_token(scanner, '.', TOKEN_DOT_DOT_DOT, TOKEN_DOT_DOT);
+		}
 
 		case '$': {
 			if (!match(scanner, '\"')) {

@@ -227,6 +227,8 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 		case OP_IS: return print_simple_op("OP_IS", offset);
 		case OP_GET_SUPER_METHOD: return print_constant_op("OP_GET_SUPER_METHOD", chunk, offset, true);
 
+		case OP_VARARG: return print_byte_op("OP_VARARG", chunk, offset);
+
 		default: {
 			printf("Unknown opcode %d\n", instruction);
 			return offset + 1;

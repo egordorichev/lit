@@ -204,6 +204,15 @@ static void parse_parameters(LitParser* parser, LitParameters* parameters) {
 	bool had_default = false;
 
 	while (!check(parser, TOKEN_RIGHT_PAREN)) {
+		// Vararg ...
+		if (match(parser, TOKEN_DOT_DOT_DOT)) {
+			lit_parameters_write(parser->state, parameters, (LitParameter) {
+				"...", 3, NULL
+			});
+
+			return;
+		}
+
 		consume(parser, TOKEN_IDENTIFIER, "argument name");
 		const char* arg_name = parser->previous.start;
 		uint arg_length = parser->previous.length;
@@ -309,10 +318,20 @@ static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool ca
 		lit_expressions_write(parser->state, &expression->args, parse_interpolation(parser, false));
 	} else {
 		while (!check(parser, TOKEN_RIGHT_PAREN)) {
-			lit_expressions_write(parser->state, &expression->args, parse_expression(parser));
+			LitExpression* e = parse_expression(parser);
+			lit_expressions_write(parser->state, &expression->args, e);
 
 			if (!match(parser, TOKEN_COMMA)) {
 				break;
+			}
+
+			if (e->type == VAR_EXPRESSION) {
+				LitVarExpression* ee = (LitVarExpression*) e;
+
+				// Vararg ...
+				if (ee->length == 3 && memcmp(ee->name, "...", 3) == 0) {
+					break;
+				}
 			}
 		}
 
@@ -529,6 +548,10 @@ static LitExpression* parse_dot(LitParser* parser, LitExpression* previous, bool
 static LitExpression* parse_range(LitParser* parser, LitExpression* previous, bool can_assign) {
 	uint line = parser->previous.line;
 	return (LitExpression*) lit_create_range_expression(parser->state, line, previous, parse_expression(parser));
+}
+
+static LitExpression* parse_vararg(LitParser* parser, bool can_assign) {
+	return (LitExpression*) lit_create_vararg_expression(parser->state, parser->previous.line);
 }
 
 static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression* previous, bool can_assign) {
@@ -1170,6 +1193,7 @@ static void setup_rules() {
 	rules[TOKEN_DOT] = (LitParseRule) { NULL, parse_dot, PREC_CALL };
 	rules[TOKEN_SMALL_ARROW] = (LitParseRule) { NULL, parse_dot, PREC_CALL };
 	rules[TOKEN_DOT_DOT] = (LitParseRule) { NULL, parse_range, PREC_RANGE };
+	rules[TOKEN_DOT_DOT_DOT] = (LitParseRule) { parse_variable_expression, NULL, PREC_ASSIGNMENT };
 	rules[TOKEN_LEFT_BRACKET] = (LitParseRule) { parse_array, parse_subscript, PREC_NONE };
 	rules[TOKEN_LEFT_BRACE] = (LitParseRule) { parse_map, NULL, PREC_NONE };
 	rules[TOKEN_THIS] = (LitParseRule) { parse_this, NULL, PREC_NONE };
