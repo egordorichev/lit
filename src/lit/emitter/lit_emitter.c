@@ -12,6 +12,7 @@
 DEFINE_ARRAY(LitPrivates, LitPrivate, privates)
 DEFINE_ARRAY(LitLocals, LitLocal, locals)
 
+static void emit_expression(LitEmitter* emitter, LitExpression* expression);
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement);
 
 void lit_init_emitter(LitState* state, LitEmitter* emitter) {
@@ -426,6 +427,25 @@ static void patch_loop_jumps(LitEmitter* emitter, LitUInts* breaks, uint line) {
 	lit_free_uints(emitter->state, breaks);
 }
 
+static void emit_parameters(LitEmitter* emitter, LitParameters* parameters, uint line) {
+	for (uint i = 0; i < parameters->count; i++) {
+		LitParameter* parameter = &parameters->values[i];
+		int index = add_local(emitter, parameter->name, parameter->length, line, false);
+
+		mark_local_initialized(emitter, index);
+
+		if (parameter->default_value != NULL) {
+			emit_byte_or_short(emitter, line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, index);
+			uint jump = emit_jump(emitter, OP_NULL_OR , line);
+
+			emit_expression(emitter, parameter->default_value);
+			patch_jump(emitter, jump, line);
+			emit_byte_or_short(emitter, line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, index);
+			emit_op(emitter, line, OP_POP);
+		}
+	}
+}
+
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
@@ -786,11 +806,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			init_compiler(emitter, &compiler, FUNCTION_REGULAR);
 
 			begin_scope(emitter);
-
-			for (uint i = 0; i < expr->parameters.count; i++) {
-				LitParameter parameter = expr->parameters.values[i];
-				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, expression->line, false));
-			}
+			emit_parameters(emitter, &expr->parameters, expression->line);
 
 			if (expr->body != NULL) {
 				bool single_expression = expr->body->type == EXPRESSION_STATEMENT;
@@ -1248,11 +1264,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			begin_scope(emitter);
 
-			for (uint i = 0; i < stmt->parameters.count; i++) {
-				LitParameter parameter = stmt->parameters.values[i];
-				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, statement->line, false));
-			}
-
+			emit_parameters(emitter, &stmt->parameters, statement->line);
 			emit_statement(emitter, stmt->body);
 			end_scope(emitter, emitter->last_line);
 
@@ -1320,11 +1332,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			begin_scope(emitter);
 
-			for (uint i = 0; i < stmt->parameters.count; i++) {
-				LitParameter parameter = stmt->parameters.values[i];
-				mark_local_initialized(emitter, add_local(emitter, parameter.name, parameter.length, statement->line, false));
-			}
-
+			emit_parameters(emitter, &stmt->parameters, statement->line);
 			emit_statement(emitter, stmt->body);
 			end_scope(emitter, emitter->last_line);
 

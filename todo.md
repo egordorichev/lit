@@ -1,5 +1,7 @@
 # todo
 
+* check upvalues, they seem to be broken?
+
 * fiber.try() might try to use a frame that isn't allocated yet?
 * c-api pushes to stack but stack is probs much smaller
 

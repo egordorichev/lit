@@ -149,6 +149,8 @@ LitSetExpression *lit_create_set_expression(LitState* state, uint line, LitExpre
 typedef struct {
 	const char* name;
 	uint length;
+
+	LitExpression* default_value;
 } LitParameter;
 
 DECLARE_ARRAY(LitParameters, LitParameter, parameters);

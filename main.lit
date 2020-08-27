@@ -1,1 +1,7 @@
-Fiber.yeet()
+function test(a, b = 32, c = 48) {
+	print(b)
+	print(c)
+}
+
+test()
+test(nope, "yea", "test")

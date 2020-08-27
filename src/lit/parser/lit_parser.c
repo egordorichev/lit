@@ -200,6 +200,32 @@ static LitExpression* parse_lambda(LitParser* parser, LitLambdaExpression* lambd
 	return (LitExpression*) lambda;
 }
 
+static void parse_parameters(LitParser* parser, LitParameters* parameters) {
+	bool had_default = false;
+
+	while (!check(parser, TOKEN_RIGHT_PAREN)) {
+		consume(parser, TOKEN_IDENTIFIER, "argument name");
+		const char* arg_name = parser->previous.start;
+		uint arg_length = parser->previous.length;
+		LitExpression* default_value = NULL;
+
+		if (match(parser, TOKEN_EQUAL)) {
+			had_default = true;
+			default_value = parse_expression(parser);
+		} else if (had_default) {
+			error(parser, ERROR_DEFAULT_ARG_CENTRED);
+		}
+
+		lit_parameters_write(parser->state, parameters, (LitParameter) {
+			arg_name, arg_length, default_value
+		});
+
+		if (!match(parser, TOKEN_COMMA)) {
+			break;
+		}
+	}
+}
+
 static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assign) {
 	if (match(parser, TOKEN_RIGHT_PAREN)) {
 		consume(parser, TOKEN_ARROW, "=> after lambda arguments");
@@ -212,26 +238,46 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 	if (match(parser, TOKEN_IDENTIFIER)) {
 		LitState* state = parser->state;
 
-		const char* arg_start = parser->previous.start;
-		uint arg_length = parser->previous.length;
+		const char* first_arg_start = parser->previous.start;
+		uint first_arg_length = parser->previous.length;
 
 		if (match(parser, TOKEN_COMMA) || (match(parser, TOKEN_RIGHT_PAREN) && match(parser, TOKEN_ARROW))) {
 			bool had_arrow = parser->previous.type == TOKEN_ARROW;
 
 			// This is a lambda
 			LitLambdaExpression* lambda = lit_create_lambda_expression(state, line);
-			lit_parameters_write(state, &lambda->parameters, (LitParameter) { arg_start, arg_length });
+			LitExpression* def_value = NULL;
+
+			bool had_default = match(parser, TOKEN_EQUAL);
+
+			if (had_default) {
+				def_value = parse_expression(parser);
+			}
+
+			lit_parameters_write(state, &lambda->parameters, (LitParameter) { first_arg_start, first_arg_length, def_value });
 
 			if (parser->previous.type == TOKEN_COMMA) {
 				do {
 					consume(parser, TOKEN_IDENTIFIER, "argument name");
-					lit_parameters_write(state, &lambda->parameters, (LitParameter) { parser->previous.start, parser->previous.length });
+
+					const char* arg_name = parser->previous.start;
+					uint arg_length = parser->previous.length;
+					LitExpression* default_value = NULL;
+
+					if (match(parser, TOKEN_EQUAL)) {
+						default_value = parse_expression(parser);
+						had_default = true;
+					} else if (had_default) {
+						error(parser, ERROR_DEFAULT_ARG_CENTRED);
+					}
+
+					lit_parameters_write(state, &lambda->parameters, (LitParameter) { arg_name, arg_length, default_value });
 				} while (match(parser, TOKEN_COMMA));
 			}
 
 			if (!had_arrow) {
 				consume(parser, TOKEN_RIGHT_PAREN, "')' after lambda parameters");
-				consume(parser, TOKEN_ARROW, "=> after lambda arguments");
+				consume(parser, TOKEN_ARROW, "=> after lambda parameters");
 			}
 
 			return parse_lambda(parser, lambda);
@@ -754,18 +800,7 @@ static LitStatement* parse_function(LitParser* parser) {
 	begin_scope(parser);
 
 	consume(parser, TOKEN_LEFT_PAREN, "'(' after function name");
-
-	while (!check(parser, TOKEN_RIGHT_PAREN)) {
-		consume(parser, TOKEN_IDENTIFIER, "argument name");
-
-		lit_parameters_write(parser->state, &function->parameters, (LitParameter) {
-			parser->previous.start, parser->previous.length
-		});
-
-		if (!match(parser, TOKEN_COMMA)) {
-			break;
-		}
-	}
+	parse_parameters(parser, &function->parameters);
 
 	if (function->parameters.count > 255) {
 		error(parser, ERROR_TOO_MANY_FUNCTION_ARGS, (int) function->parameters.count);
@@ -892,18 +927,7 @@ static LitStatement* parse_method(LitParser* parser, bool is_static) {
 	begin_scope(parser);
 
 	consume(parser, TOKEN_LEFT_PAREN, "'(' after method name");
-
-	while (!check(parser, TOKEN_RIGHT_PAREN)) {
-		consume(parser, TOKEN_IDENTIFIER, "argument name");
-
-		lit_parameters_write(parser->state, &method->parameters, (LitParameter) {
-			parser->previous.start, parser->previous.length
-		});
-
-		if (!match(parser, TOKEN_COMMA)) {
-			break;
-		}
-	}
+	parse_parameters(parser, &method->parameters);
 
 	if (method->parameters.count > 255) {
 		error(parser, ERROR_TOO_MANY_FUNCTION_ARGS, (int) method->parameters.count);

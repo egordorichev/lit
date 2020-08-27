@@ -9,6 +9,14 @@ DEFINE_ARRAY(LitParameters, LitParameter, parameters);
 
 #define FREE_EXPRESSION(type) lit_reallocate(state, expression, sizeof(type), 0);
 
+static void free_parameters(LitState* state, LitParameters* parameters) {
+	for (uint i = 0; i < parameters->count; i++) {
+		lit_free_expression(state, parameters->values[i].default_value);
+	}
+
+	lit_free_parameters(state, parameters);
+}
+
 void free_expressions(LitState* state, LitExpressions* expressions) {
 	if (expressions == NULL) {
 		return;
@@ -114,7 +122,7 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 		case LAMBDA_EXPRESSION: {
 			LitLambdaExpression* expr = (LitLambdaExpression*) expression;
 
-			lit_free_parameters(state, &expr->parameters);
+			free_parameters(state, &expr->parameters);
 			lit_free_statement(state, expr->body);
 
 			FREE_EXPRESSION(LitLambdaExpression)
@@ -439,7 +447,7 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
 
 			lit_free_statement(state, stmt->body);
-			lit_free_parameters(state, &stmt->parameters);
+			free_parameters(state, &stmt->parameters);
 
 			FREE_STATEMENT(LitFunctionStatement)
 			break;
@@ -455,7 +463,7 @@ void lit_free_statement(LitState* state, LitStatement* statement) {
 		case METHOD_STATEMENT: {
 			LitMethodStatement* stmt = (LitMethodStatement*) statement;
 
-			lit_free_parameters(state, &stmt->parameters);
+			free_parameters(state, &stmt->parameters);
 			lit_free_statement(state, stmt->body);
 
 			FREE_STATEMENT(LitMethodStatement)
