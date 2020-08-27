@@ -55,9 +55,41 @@ function rain(where, what = "chocolate") {
 rain("town") // Expected: It's raining chocolate in the town!
 rain("city", "lemonade") // Expected: It's raining lemonade in the city!
 
-// You can have multiple default-arguments, but they always must be at the end of the argument list
-// function rain(where = 32, what)
-// ^ this won't work, because what doesn't have a default value
+/*
+ * You can have multiple default-arguments, but they always must be at the end of the argument list
+ * function rain(where = 32, what)
+ * ^ this won't work, because what doesn't have a default value
+ */
+
+
+/*
+ * Sometimes you want to pass an unknown amount of arguments to a function.
+ * I've been putting this feature off for a long while, because I always said,
+ * that you can just pass an array (and that's how it works under the hood anyway).
+ * But you know, who doesn't like some sweet sweet syntax sugar?
+ */
+
+function check(...) {
+	print(...[0] == "coffee")
+}
+
+// Note, that the vararg must be the last one in the parameters list.
+function shout(a, ...) {
+	print(a) // Expected: tea
+
+	var b = ...
+	print(b) // Expected: [ coffee, sugar ]
+	
+	// You can treat ... as a regular variable:
+	for var arg in ... {
+		print(arg) // Expected: coffee
+		// Expected: sugar
+	}
+
+	check(...) // Expected: true
+}
+
+shout("tea", "coffee", "sugar")
 
 // Warning: we are entering advaned territory here: upvalues!
 function makePrinter(text) {

@@ -1170,7 +1170,10 @@ LIT_NATIVE(print) {
 		return NULL_VALUE;
 	}
 
-	printf("%s%s", lit_to_string(vm->state, args[0])->chars, arg_count > 1 ? lit_to_string(vm->state, args[1])->chars : "\n");
+	for (uint i = 0; i < arg_count; i++) {
+		printf("%s\n", lit_to_string(vm->state, args[i])->chars);
+	}
+
 	return NULL_VALUE;
 }
 

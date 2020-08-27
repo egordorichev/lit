@@ -43,3 +43,20 @@ function call(who = "dog") {
 
 call() // Expected: Calling dog
 call("pizza delivery") // Expected: Calling pizza delivery
+
+function printAll(...) {
+	for var a in ... {
+		print(a)
+	}
+}
+
+function shout(a, ...) {
+	var b = ...
+	print(a) // Expected: maybe
+	printAll(...) // Expected: yea
+	// Expected: test
+
+	print(b) // Expected: [ yea, test ]
+}
+
+shout("maybe", "yea", "test")

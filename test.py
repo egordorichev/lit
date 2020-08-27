@@ -80,9 +80,7 @@ class Test:
             if subpath in interpreter.tests:
                 state = interpreter.tests[subpath]
 
-        if not state:
-            print('Unknown test state for "{}".'.format(self.path))
-        if state == 'skip':
+        if state and state == 'skip':
             num_skipped += 1
             return False
         # TODO: State for tests that should be run but are expected to fail?

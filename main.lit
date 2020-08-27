@@ -1,14 +1,13 @@
-function printAll(...) {
-	for var a in ... {
-		print(a)
-	}
+function check(...) {
+	var a = ...
+	print(a) // Expected: [ coffee, sugar ]
 }
 
-function test(a, ...) {
+// Note, that the vararg must be the last one in the parameters list.
+function shout(a, ...) {
 	var b = ...
-	print(a)
-	printAll(...)
-	print(b)
+	print(b) // Expected: [ coffee, sugar ]
+	check(...)
 }
 
-test("maybe", "yea", "test")
+shout("tea", "coffee", "sugar")
