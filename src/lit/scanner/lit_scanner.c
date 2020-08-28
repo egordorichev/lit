@@ -242,12 +242,25 @@ static int parse_hex_digit(LitScanner* scanner) {
 	return -1;
 }
 
-static LitToken make_number_token(LitScanner* scanner, bool is_hex) {
+static int parse_binary_digit(LitScanner* scanner) {
+	char c = advance(scanner);
+
+	if (c >= '0' && c <= '1') {
+		return c - '0';
+	}
+
+	scanner->current--;
+	return -1;
+}
+
+static LitToken make_number_token(LitScanner* scanner, bool is_hex, bool is_binary) {
 	errno = 0;
 	LitValue value;
 
 	if (is_hex) {
 		value = NUMBER_VALUE((double) strtoll(scanner->start, NULL, 16));
+	} else if (is_binary) {
+		value = NUMBER_VALUE((int) strtoll(scanner->start + 2, NULL, 2));
 	} else {
 		value = NUMBER_VALUE(strtod(scanner->start, NULL));
 	}
@@ -268,7 +281,15 @@ static LitToken parse_number(LitScanner* scanner) {
 			continue;
 		}
 
-		return make_number_token(scanner, true);
+		return make_number_token(scanner, true, false);
+	}
+
+	if (match(scanner, 'b')) {
+		while (parse_binary_digit(scanner) != -1) {
+			continue;
+		}
+
+		return make_number_token(scanner, false, true);
 	}
 
 	while (is_digit(peek(scanner))) {
@@ -285,7 +306,7 @@ static LitToken parse_number(LitScanner* scanner) {
 		}
 	}
 
-	return make_number_token(scanner, false);
+	return make_number_token(scanner, false, false);
 }
 
 static LitTokenType check_keyword(LitScanner* scanner, int start, int length, const char* rest, LitTokenType type) {

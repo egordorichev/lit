@@ -1,5 +1,7 @@
 # Table of Contents
 
+// todo: maps, arrays
+
 * [Hello, World!](https://github.com/egordorichev/lit/blob/master/tests/examples/hello_world.lit)
 * [Control flow](https://github.com/egordorichev/lit/blob/master/tests/examples/control_flow.lit)
 * [Functions](https://github.com/egordorichev/lit/blob/master/tests/examples/functions.lit)

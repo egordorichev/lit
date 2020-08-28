@@ -1,0 +1,22 @@
+// The most basic value type is bool. It's either true or false.
+
+var a = true
+
+if (a) {
+	print("Halo") // Expected: Halo
+}
+
+// You can invert a boolean with the ! operator.
+
+if (!a) {
+	print("This shouldn't happen")
+}
+
+// Next type is number, it can be represented with decimal, hex or binary value:
+var myNumber = 42.64
+var myHex = 0x32
+var myBinary = 0b11
+
+print(myNumber) // Expected: 42.64
+print(myHex) // Expected: 50
+print(myBinary) // Expected: 42.64
