@@ -43,5 +43,9 @@ add_executable(litc src/main.c)
 target_link_libraries(litc lit)
 target_link_libraries(litc m) # Lib math
 
+IF(NOT EMSCRIPTEN)
+ target_link_libraries(litc readline)
+ENDIF()
+
 set_target_properties(litc PROPERTIES OUTPUT_NAME "lit")
 install(TARGETS litc DESTINATION bin)

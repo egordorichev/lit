@@ -9,6 +9,17 @@
 #include <signal.h>
 #include <stdlib.h>
 
+#ifdef LIT_OS_UNIX_LIKE
+#define USE_LIBREADLINE
+#endif
+
+#ifdef USE_LIBREADLINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#else
+#define REPL_INPUT_MAX 1024
+#endif
+
 #define EXIT_CODE_ARGUMENT_ERROR 1
 #define EXIT_CODE_MEM_LEAK 2
 #define EXIT_CODE_RUNTIME_ERROR 70
@@ -31,15 +42,25 @@ static void run_repl(LitState* state) {
 
 	lit_set_optimization_level(OPTIMIZATION_LEVEL_REPL);
 	printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
-	char line[1024];
+
+	#ifdef USE_LIBREADLINE
+		char* line;
+	#else
+		char line[REPL_INPUT_MAX];
+	#endif
 
 	while (true) {
 		printf("%s>%s ", COLOR_BLUE, COLOR_RESET);
 
-		if (!fgets(line, sizeof(line), stdin)) {
+		#ifdef USE_LIBREADLINE
+			line = readline("");
+			add_history(line);
+		#else
+		if (!fgets(line, REPL_INPUT_MAX, stdin)) {
 			printf("\n");
 			break;
 		}
+		#endif
 
 		LitInterpretResult result = lit_interpret(state, "repl", line);
 

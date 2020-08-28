@@ -39,8 +39,10 @@
 #define LIT_OS_WINDOWS
 #elif __APPLE__
 #define LIT_OS_MAC
+#define LIT_OS_UNIX_LIKE
 #elif __linux__
 #define LIT_OS_LINUX
+#define LIT_OS_UNIX_LIKE
 #else
 #define LIT_OS_UNKNOWN
 #endif
