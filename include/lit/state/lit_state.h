@@ -24,8 +24,9 @@ typedef struct sLitState {
 	LitErrorFn error_fn;
 	LitPrintFn print_fn;
 
-	LitValue roots[LIT_ROOT_MAX];
-	uint8_t root_count;
+	LitValue* roots;
+	uint root_count;
+	uint root_capacity;
 
 	struct sLitScanner* scanner;
 	struct sLitParser* parser;

@@ -36,7 +36,7 @@ void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new
 }
 
 void lit_free_object(LitState* state, LitObject* object) {
-#ifdef LIT_LOG_GC
+#ifdef LIT_LOG_ALLOCATION
 	printf("(");
 	lit_print_value(OBJECT_VALUE(object));
 	printf(") %p free %s\n", (void*) object, lit_object_type_names[object->type]);
@@ -200,7 +200,7 @@ void lit_mark_object(LitVm* vm, LitObject* object) {
 
 	object->marked = true;
 
-#ifdef LIT_LOG_GC
+#ifdef LIT_LOG_MARKING
 	printf("%p mark ", (void*) object);
   lit_print_value(OBJECT_VALUE(object));
   printf("\n");
@@ -252,7 +252,7 @@ static void mark_array(LitVm* vm, LitValues* array) {
 }
 
 static void blacken_object(LitVm* vm, LitObject* object) {
-#ifdef LIT_LOG_GC
+#ifdef LIT_LOG_BLACKING
 	printf("%p blacken ", (void*) object);
   lit_print_value(OBJECT_VALUE(object));
   printf("\n");
@@ -313,6 +313,7 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 
 			lit_mark_object(vm, (LitObject*) module->name);
 			lit_mark_object(vm, (LitObject*) module->main_function);
+			lit_mark_object(vm, (LitObject*) module->main_fiber);
 
 			for (int i = 0; i < module->private_names.count; i++) {
 				lit_mark_value(vm, module->privates[i]);

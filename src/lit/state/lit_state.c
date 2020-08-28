@@ -46,7 +46,9 @@ LitState* lit_new_state() {
 	state->error_fn = default_error;
 	state->print_fn = default_printf;
 	state->had_error = false;
+	state->roots = NULL;
 	state->root_count = 0;
+	state->root_capacity = 0;
 
 	state->api_module = NULL;
 
@@ -71,6 +73,11 @@ LitState* lit_new_state() {
 }
 
 int64_t lit_free_state(LitState* state) {
+	if (state->roots != NULL) {
+		free(state->roots);
+		state->roots = NULL;
+	}
+
 	lit_free_api(state);
 	free(state->scanner);
 
@@ -92,12 +99,15 @@ int64_t lit_free_state(LitState* state) {
 }
 
 void lit_push_root(LitState* state, LitObject* object) {
-	assert(state->root_count < LIT_ROOT_MAX);
-	state->roots[state->root_count++] = OBJECT_VALUE(object);
+	lit_push_value_root(state, OBJECT_VALUE(object));
 }
 
 void lit_push_value_root(LitState* state, LitValue value) {
-	assert(state->root_count < LIT_ROOT_MAX);
+	if (state->root_count + 1 >= state->root_capacity) {
+		state->root_capacity = LIT_GROW_CAPACITY(state->root_capacity);
+		state->roots = realloc(state->roots, state->root_capacity * sizeof(LitValue));
+	}
+
 	state->roots[state->root_count++] = value;
 }
 
@@ -107,12 +117,10 @@ LitValue lit_peek_root(LitState* state, uint8_t distance) {
 }
 
 void lit_pop_root(LitState* state) {
-	assert(state->root_count > 0);
 	state->root_count--;
 }
 
 void lit_pop_roots(LitState* state, uint8_t amount) {
-	assert(state->root_count - amount >= 0);
 	state->root_count -= amount;
 }
 

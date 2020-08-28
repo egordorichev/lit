@@ -6,7 +6,7 @@
 #define LIT_VERSION_STRING "0.1"
 #define LIT_BYTECODE_VERSION 0
 
-#define TESTING
+// #define TESTING
 // #define DEBUG
 
 #ifdef DEBUG
@@ -15,14 +15,20 @@
 #define LIT_CHECK_STACK_SIZE
 // #define LIT_TRACE_CHUNK
 // #define LIT_MINIMIZE_CONTAINERS
-// #define LIT_STRESS_TEST_GC
 // #define LIT_LOG_GC
+// #define LIT_LOG_ALLOCATION
+// #define LIT_LOG_MARKING
+// #define LIT_LOG_BLACKING
+// #define LIT_STRESS_TEST_GC
 #endif
 
 #ifdef TESTING
 // So that we can actually test the map contents with a single-line expression
 #define SINGLE_LINE_MAPS
 #define SINGLE_LINE_MAPS_ENABLED true
+
+// Make sure that we did not break anything
+#define LIT_STRESS_TEST_GC
 #else
 #define SINGLE_LINE_MAPS_ENABLED false
 #endif
@@ -32,7 +38,6 @@
 #define LIT_GC_HEAP_GROW_FACTOR 2
 #define LIT_CALL_FRAMES_MAX 64
 #define LIT_INITIAL_CALL_FRAMES 4
-#define LIT_ROOT_MAX 10
 #define LIT_CONTAINER_OUTPUT_MAX 10
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)

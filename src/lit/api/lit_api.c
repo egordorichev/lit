@@ -68,8 +68,8 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 	LitChunk* chunk = &function->chunk;
 	chunk->has_line_info = false;
 
-	function->max_slots = 2 + argument_count;
-	lit_ensure_fiber_stack(state, fiber, function->max_slots);
+	function->max_slots = 3 + argument_count;
+	lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
 
 #define PUSH(value) (*fiber->stack_top++ = value)
 
@@ -103,7 +103,7 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 
 LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count) {
 	if (callee == NULL) {
-		return (LitInterpretResult) { INTERPRET_COMPILE_ERROR, NULL_VALUE };
+		return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
 	}
 
 	return lit_call(state, OBJECT_VALUE(callee), arguments, argument_count);
@@ -227,7 +227,7 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 
 	chunk->has_line_info = false;
 	function->max_slots = 2 + function->arg_count;
-	lit_ensure_fiber_stack(state, fiber, function->max_slots);
+	lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
 
 #define PUSH(value) (*fiber->stack_top++ = value)
 

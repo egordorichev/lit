@@ -213,7 +213,7 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type)
 
 	state->vm->objects = object;
 
-#ifdef LIT_LOG_GC
+#ifdef LIT_LOG_ALLOCATION
 	printf("%p allocate %ld for %s\n", (void*) object, size, lit_object_type_names[type]);
 #endif
 
@@ -361,8 +361,11 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	LitValue* stack = LIT_ALLOCATE(state, LitValue, stack_capacity);
 
 	LitCallFrame* frames = LIT_ALLOCATE(state, LitCallFrame, LIT_INITIAL_CALL_FRAMES);
-
 	LitFiber* fiber = ALLOCATE_OBJECT(state, LitFiber, OBJECT_FIBER);
+
+	if (module->main_fiber == NULL) {
+		module->main_fiber = fiber;
+	}
 
 	fiber->stack = stack;
 	fiber->stack_capacity = stack_capacity;
@@ -379,7 +382,6 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	fiber->error = NULL_VALUE;
 	fiber->open_upvalues = NULL;
 	fiber->abort = false;
-
 
 	LitCallFrame* frame = &fiber->frames[0];
 
@@ -425,6 +427,7 @@ LitModule* lit_create_module(LitState* state, LitString* name) {
 	module->main_function = NULL;
 	module->privates = NULL;
 	module->ran = false;
+	module->main_fiber = NULL;
 
 	lit_init_table(&module->private_names);
 

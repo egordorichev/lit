@@ -46,10 +46,7 @@ typedef struct sLitParser {
 	LitToken current;
 
 	LitCompiler* compiler;
-	LitStatements* statements;
 
-	LitExpression* expression_roots[LIT_ROOT_MAX];
-	LitStatement* statement_roots[LIT_ROOT_MAX];
 	uint8_t expression_root_count;
 	uint8_t statement_root_count;
 } sLitParser;

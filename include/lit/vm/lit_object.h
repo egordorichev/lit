@@ -89,7 +89,6 @@ static const char* lit_object_type_names[] = {
 	"class",
 	"instance",
 	"bound_method",
-	"native_bound_method",
 	"array",
 	"map",
 	"userdata",
@@ -234,15 +233,17 @@ typedef struct sLitModule {
 	LitTable private_names;
 
 	LitFunction* main_function;
+	struct sLitFiber* main_fiber;
+
 	bool ran;
 } LitModule;
 
 LitModule* lit_create_module(LitState* state, LitString* name);
 
-typedef struct LitFiber {
+typedef struct sLitFiber {
 	LitObject object;
 
-	struct LitFiber* parent;
+	struct sLitFiber* parent;
 
 	LitValue* stack;
 	LitValue* stack_top;
