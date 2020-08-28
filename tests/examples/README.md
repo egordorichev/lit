@@ -1,6 +1,6 @@
 # Table of Contents
 
-// todo: maps, arrays
+// fixme: link to web-player version
 
 * [Hello, World!](https://github.com/egordorichev/lit/blob/master/tests/examples/hello_world.lit)
 * [Control flow](https://github.com/egordorichev/lit/blob/master/tests/examples/control_flow.lit)
