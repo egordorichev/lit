@@ -161,9 +161,17 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	frame->result_ignored = false;
 
 	if (arg_count != function_arg_count) {
+		bool vararg = function->vararg;
+
 		if (arg_count < function_arg_count) {
-			for (uint i = 0; i < function_arg_count - arg_count; i++) {
+			int amount = (int) function_arg_count - arg_count - (vararg ? 1 : 0);
+
+			for (int i = 0; i < amount; i++) {
 				lit_push(vm, NULL_VALUE);
+			}
+
+			if (vararg) {
+				lit_push(vm, OBJECT_VALUE(lit_create_array(vm->state)));
 			}
 		} else if (function->vararg) {
 			LitArray* array = lit_create_array(vm->state);
@@ -1365,7 +1373,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(VARARG) {
-			LitValues* values = &AS_ARRAY(slots[READ_BYTE()])->values;
+			LitValue slot = slots[READ_BYTE()];
+
+			if (!IS_ARRAY(slot)) {
+				continue;
+			}
+
+			LitValues* values = &AS_ARRAY(slot)->values;
 			lit_ensure_fiber_stack(state, fiber, values->count + frame->function->max_slots + (int) (fiber->stack_top - fiber->stack));
 
 			for (uint i = 0; i < values->count; i++) {

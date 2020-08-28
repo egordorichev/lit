@@ -38,3 +38,14 @@ fiber = new Fiber(() => {
 })
 
 print(fiber.try()) // Expected: Attempt to call a null value
+
+function shout(a, ...) {
+	var f = new Fiber((...) => {
+		var a = ...
+		print(a) // Expected: [ coffee, sugar ]
+	})
+
+	f.run(...)
+}
+
+shout("tea", "coffee", "sugar")

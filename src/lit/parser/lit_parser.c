@@ -244,7 +244,7 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 	const char* start = parser->previous.start;
 	uint line = parser->previous.line;
 
-	if (match(parser, TOKEN_IDENTIFIER)) {
+	if (match(parser, TOKEN_IDENTIFIER) || match(parser, TOKEN_DOT_DOT_DOT)) {
 		LitState* state = parser->state;
 
 		const char* first_arg_start = parser->previous.start;
@@ -252,6 +252,7 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 
 		if (match(parser, TOKEN_COMMA) || (match(parser, TOKEN_RIGHT_PAREN) && match(parser, TOKEN_ARROW))) {
 			bool had_arrow = parser->previous.type == TOKEN_ARROW;
+			bool had_vararg = parser->previous.type == TOKEN_DOT_DOT_DOT;
 
 			// This is a lambda
 			LitLambdaExpression* lambda = lit_create_lambda_expression(state, line);
@@ -265,9 +266,15 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 
 			lit_parameters_write(state, &lambda->parameters, (LitParameter) { first_arg_start, first_arg_length, def_value });
 
-			if (parser->previous.type == TOKEN_COMMA) {
+			if (!had_vararg && parser->previous.type == TOKEN_COMMA) {
 				do {
-					consume(parser, TOKEN_IDENTIFIER, "argument name");
+					bool stop = false;
+
+					if (match(parser, TOKEN_DOT_DOT_DOT)) {
+						stop = true;
+					} else {
+						consume(parser, TOKEN_IDENTIFIER, "argument name");
+					}
 
 					const char* arg_name = parser->previous.start;
 					uint arg_length = parser->previous.length;
@@ -281,6 +288,10 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 					}
 
 					lit_parameters_write(state, &lambda->parameters, (LitParameter) { arg_name, arg_length, default_value });
+
+					if (stop) {
+						break;
+					}
 				} while (match(parser, TOKEN_COMMA));
 			}
 

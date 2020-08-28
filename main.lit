@@ -1,13 +1,13 @@
-function check(...) {
-	var a = ...
-	print(a) // Expected: [ coffee, sugar ]
-}
-
-// Note, that the vararg must be the last one in the parameters list.
 function shout(a, ...) {
-	var b = ...
-	print(b) // Expected: [ coffee, sugar ]
-	check(...)
+	var f = new Fiber((...) => {
+		var a = ...
+		print(a) // Expected: [ coffee, sugar ]
+	})
+
+	f.run(...)
 }
 
 shout("tea", "coffee", "sugar")
+
+// [ function main ][ function shout ][ tea ][ (2) [ coffee, sugar ] ][ fiber ][ fiber ][ coffee ][ sugar ]
+// [ function main ][ function shout ][ tea ][ null ]

@@ -4,22 +4,6 @@
 #include <lit/vm/lit_object.h>
 
 #include <string.h>
-#include <lit/debug/lit_debug.h>
-
-static uint emit_constant(LitState* state, LitChunk* chunk, LitValue value) {
-	uint constant = lit_chunk_add_constant(state, chunk, value);
-
-	if (constant < UINT8_MAX) {
-		lit_emit_bytes(state, chunk, OP_CONSTANT, constant);
-	} else if (constant < UINT16_MAX) {
-		lit_emit_byte(state, chunk, OP_CONSTANT_LONG);
-		lit_emit_short(state, chunk, constant);
-	} else {
-		lit_runtime_error(state->vm, "Too many constants in one chunk");
-	}
-
-	return constant;
-}
 
 void lit_init_api(LitState* state) {
 	state->api_name = lit_copy_string(state, "c", 1);
@@ -84,6 +68,9 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 	LitChunk* chunk = &function->chunk;
 	chunk->has_line_info = false;
 
+	function->max_slots = 2 + argument_count;
+	lit_ensure_fiber_stack(state, fiber, function->max_slots);
+
 #define PUSH(value) (*fiber->stack_top++ = value)
 
 	PUSH(OBJECT_VALUE(function));
@@ -99,8 +86,6 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 
 #undef PUSH
 
-	function->max_slots = 2 + argument_count;
-
 	LitCallFrame* frame = &fiber->frames[0];
 
 	frame->ip = chunk->code;
@@ -108,8 +93,6 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 	frame->function = function;
 	frame->slots = fiber->stack;
 	frame->result_ignored = false;
-
-	lit_ensure_fiber_stack(state, fiber, function->max_slots);
 
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 	state->vm->fiber = fiber->parent;
@@ -243,6 +226,8 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	LitChunk* chunk = &function->chunk;
 
 	chunk->has_line_info = false;
+	function->max_slots = 2 + function->arg_count;
+	lit_ensure_fiber_stack(state, fiber, function->max_slots);
 
 #define PUSH(value) (*fiber->stack_top++ = value)
 
@@ -255,8 +240,6 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 
 #undef PUSH
 
-	function->max_slots = 2 + function->arg_count;
-
 	LitCallFrame* frame = &fiber->frames[0];
 
 	frame->ip = chunk->code;
@@ -264,8 +247,6 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	frame->function = function;
 	frame->slots = fiber->stack;
 	frame->result_ignored = false;
-
-	lit_ensure_fiber_stack(state, fiber, function->max_slots);
 
 	LitFiber* last_fiber = state->vm->fiber;
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
