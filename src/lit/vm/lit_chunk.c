@@ -35,6 +35,10 @@ void lit_write_chunk(LitState* state, LitChunk* chunk, uint8_t byte, uint16_t li
 	chunk->code[chunk->count] = byte;
 	chunk->count++;
 
+	if (!chunk->has_line_info) {
+		return;
+	}
+
 	if (chunk->line_capacity < chunk->line_count + 2) {
 		uint old_capacity = chunk->line_capacity;
 
@@ -53,6 +57,8 @@ void lit_write_chunk(LitState* state, LitChunk* chunk, uint8_t byte, uint16_t li
 	if (value != 0 && value != line) {
 		chunk->line_count += 2;
 		line_index = chunk->line_count;
+
+		chunk->lines[line_index + 1] = 0;
 	}
 
 	chunk->lines[line_index] = line;

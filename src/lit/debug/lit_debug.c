@@ -85,7 +85,7 @@ static uint print_invoke_op(const char* name, LitChunk* chunk, uint offset) {
 
 uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* source) {
 	uint line = lit_chunk_get_line(chunk, offset);
-	bool same = offset > 0 && line == lit_chunk_get_line(chunk, offset - 1);
+	bool same = !chunk->has_line_info || (offset > 0 && line == lit_chunk_get_line(chunk, offset - 1));
 
 	if (!same && source != NULL) {
 		uint index = 0;
