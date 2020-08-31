@@ -119,16 +119,13 @@ static bool match(LitParser* parser, LitTokenType type) {
 	return false;
 }
 
-static void consume(LitParser* parser, LitTokenType type, ...) {
+static void consume(LitParser* parser, LitTokenType type, const char* error) {
 	if (parser->current.type == type) {
 		advance(parser);
 		return;
 	}
 
-	va_list args;
-	va_start(args, type);
-	error_at(parser, &parser->current, ERROR_EXPECTION_UNMET, args);
-	va_end(args);
+	string_error(parser, &parser->current, lit_format_error(parser->state, parser->current.line, ERROR_EXPECTION_UNMET, error, parser->previous.length, parser->previous.start)->chars);
 }
 
 static bool match_new_line(LitParser* parser) {
@@ -510,7 +507,7 @@ static LitExpression* parse_variable_expression_base(LitParser* parser, bool can
 
 	if (new) {
 		if (!check(parser, TOKEN_LEFT_PAREN)) {
-			error_at_current(parser, ERROR_EXPECTION_UNMET, "argument list for instance creation");
+			error_at_current(parser, ERROR_EXPECTION_UNMET, "argument list for instance creation", parser->previous.length, parser->previous.start);
 		}
 
 		return expression;
