@@ -387,9 +387,12 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 
 	frame->closure = NULL;
 	frame->function = function;
-	frame->ip = function->chunk.code;
 	frame->slots = fiber->stack;
 	frame->result_ignored = false;
+
+	if (function != NULL) {
+		frame->ip = function->chunk.code;
+	}
 
 	return fiber;
 }

@@ -4,14 +4,20 @@
 #include <lit/vm/lit_object.h>
 
 #include <string.h>
+#include <math.h>
 
 void lit_init_api(LitState* state) {
 	state->api_name = lit_copy_string(state, "c", 1);
-	state->api_module = lit_create_module(state, state->api_name);
+	state->api_function = NULL;
+	state->api_string_function = NULL;
+	state->api_fiber = NULL;
 }
 
 void lit_free_api(LitState* state) {
-	state->api_module = NULL;
+	state->api_name = NULL;
+	state->api_function = NULL;
+	state->api_string_function = NULL;
+	state->api_fiber = NULL;
 }
 
 LitValue lit_get_global(LitState* state, LitString* name) {
@@ -60,57 +66,74 @@ void lit_define_native_primitive(LitState* state, const char* name, LitNativePri
 	lit_pop_roots(state, 2);
 }
 
-LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count) {
-	lit_print_value(callee);
+LitInterpretResult lit_call(LitState* state, LitModule* module, LitValue callee, LitValue* arguments, uint8_t argument_count) {
+	LitFiber* fiber = module->main_fiber;
+	LitVm* vm = state->vm;
 
-	LitFunction* function = lit_create_function(state, state->api_module);
-	function->name = state->api_name;
+	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
+		lit_runtime_error(vm, "Stack overflow");
+		return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
+	}
 
-	LitFiber* fiber = lit_create_fiber(state, state->api_module, function);
-	LitChunk* chunk = &function->chunk;
-	chunk->has_line_info = false;
+	if (fiber->frame_count + 1 > fiber->frame_capacity) {
+		uint new_capacity = fmin(LIT_CALL_FRAMES_MAX, fiber->frame_capacity * 2);
+		fiber->frames = (LitCallFrame*) lit_reallocate(state, fiber->frames, sizeof(LitCallFrame) * fiber->frame_capacity, sizeof(LitCallFrame) * new_capacity);
+		fiber->frame_capacity = new_capacity;
+	}
 
+	LitFunction* function;
+
+	if (state->api_function == NULL) {
+		function = state->api_function = lit_create_function(state, module);
+		LitChunk* chunk = &function->chunk;
+
+		chunk->has_line_info = false;
+		function->name = state->api_name;
+
+		lit_write_chunk(state, chunk, OP_CALL, 1);
+		lit_write_chunk(state, chunk, 0, 1);
+		lit_write_chunk(state, chunk, OP_RETURN, 1);
+	}
+
+	function = state->api_function;
+
+	// Hot patch the argument count into the OP_CALL instruction
+	function->chunk.code[1] = argument_count;
 	function->max_slots = 3 + argument_count;
-	state->api_module->main_function = function;
 
-	lit_ensure_fiber_stack(state, fiber, function->max_slots);
+	lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
 
-#define PUSH(value) (*fiber->stack_top++ = value)
+	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
+	frame->slots = fiber->stack_top;
 
+	#define PUSH(value) (*fiber->stack_top++ = value)
 	PUSH(OBJECT_VALUE(function));
 	PUSH(callee);
 
 	for (uint8_t i = 0; i < argument_count; i++) {
 		PUSH(arguments[i]);
 	}
+	#undef PUSH
 
-	lit_write_chunk(state, chunk, OP_CALL, 1);
-	lit_write_chunk(state, chunk, argument_count, 1);
-	lit_write_chunk(state, chunk, OP_RETURN, 1);
 
-#undef PUSH
-
-	LitCallFrame* frame = &fiber->frames[0];
-
-	frame->ip = chunk->code;
+	frame->ip = function->chunk.code;
 	frame->closure = NULL;
 	frame->function = function;
-	frame->slots = fiber->stack;
 	frame->result_ignored = false;
 
+	LitFiber* previous = state->vm->fiber;
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
-	state->vm->fiber = fiber->parent;
+	state->vm->fiber = previous;
 
-	lit_free_chunk(state, chunk);
 	return result;
 }
 
-LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count) {
+LitInterpretResult lit_call_function(LitState* state, LitModule* module, LitFunction* callee, LitValue* arguments, uint8_t argument_count) {
 	if (callee == NULL) {
 		return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
 	}
 
-	return lit_call(state, OBJECT_VALUE(callee), arguments, argument_count);
+	return lit_call(state, module, OBJECT_VALUE(callee), arguments, argument_count);
 }
 
 double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
@@ -223,44 +246,63 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 		return AS_STRING(object);
 	}
 
-	LitFunction* function = lit_create_function(state, state->api_module);
-	function->name = state->api_name;
+	LitVm* vm = state->vm;
 
-	LitFiber* fiber = lit_create_fiber(state, state->api_module, function);
-	LitChunk* chunk = &function->chunk;
+	if (state->api_fiber == NULL) {
+		state->api_fiber = lit_create_fiber(state, state->vm->fiber->module, NULL);
+		state->api_fiber->frame_count = 0;
+	}
 
-	chunk->has_line_info = false;
-	function->max_slots = 2 + function->arg_count;
-	state->api_module->main_function = function;
+	LitFiber* fiber = state->api_fiber;
 
-	lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
+	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
+		lit_runtime_error(vm, "Stack overflow");
+		return CONST_STRING(state, "null");
+	}
 
-#define PUSH(value) (*fiber->stack_top++ = value)
+	if (fiber->frame_count + 1 > fiber->frame_capacity) {
+		uint new_capacity = fmin(LIT_CALL_FRAMES_MAX, fiber->frame_capacity * 2);
+		fiber->frames = (LitCallFrame*) lit_reallocate(state, fiber->frames, sizeof(LitCallFrame) * fiber->frame_capacity, sizeof(LitCallFrame) * new_capacity);
+		fiber->frame_capacity = new_capacity;
+	}
 
-	PUSH(OBJECT_VALUE(function));
-	PUSH(object);
+	LitFunction* function;
 
-	lit_emit_byte(state, chunk, OP_INVOKE);
-	lit_emit_short(state, chunk, lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString")));
-	lit_emit_bytes(state, chunk, 0, OP_RETURN);
+	if (state->api_string_function == NULL) {
+		function = state->api_string_function = lit_create_function(state, fiber->module);
+		LitChunk* chunk = &function->chunk;
 
-#undef PUSH
+		chunk->has_line_info = false;
+		function->name = state->api_name;
+		function->max_slots = 3;
 
-	LitCallFrame* frame = &fiber->frames[0];
+		lit_write_chunk(state, chunk, OP_INVOKE, 1);
+		lit_emit_short(state, chunk, lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString")));
+		lit_emit_bytes(state, chunk, 0, OP_RETURN);
 
-	frame->ip = chunk->code;
+		lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
+	}
+
+	function = state->api_string_function;
+
+	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
+
+	frame->ip = function->chunk.code;
 	frame->closure = NULL;
 	frame->function = function;
-	frame->slots = fiber->stack;
+	frame->slots = fiber->stack_top;
 	frame->result_ignored = false;
 
-	LitFiber* last_fiber = state->vm->fiber;
+	#define PUSH(value) (*fiber->stack_top++ = value)
+	PUSH(OBJECT_VALUE(function));
+	PUSH(object);
+	#undef PUSH
+
+	LitFiber* previous = state->vm->fiber;
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
+	state->vm->fiber = previous;
 
-	state->vm->fiber = last_fiber;
-	lit_free_chunk(state, chunk);
-
-	if (!IS_STRING(result.result)) {
+	if (result.type != INTERPRET_OK) {
 		return CONST_STRING(state, "null");
 	}
 

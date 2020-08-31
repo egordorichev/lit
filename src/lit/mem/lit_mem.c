@@ -228,7 +228,6 @@ static void mark_roots(LitVm* vm) {
 	}
 
 	lit_mark_object(vm, (LitObject*) vm->fiber);
-	lit_mark_object(vm, (LitObject*) state->api_module);
 
 	lit_mark_object(vm, (LitObject*) state->class_class);
 	lit_mark_object(vm, (LitObject*) state->object_class);
@@ -240,6 +239,11 @@ static void mark_roots(LitVm* vm) {
 	lit_mark_object(vm, (LitObject*) state->module_class);
 	lit_mark_object(vm, (LitObject*) state->array_class);
 	lit_mark_object(vm, (LitObject*) state->map_class);
+
+	lit_mark_object(vm, (LitObject*) state->api_name);
+	lit_mark_object(vm, (LitObject*) state->api_function);
+	lit_mark_object(vm, (LitObject*) state->api_fiber);
+	lit_mark_object(vm, (LitObject*) state->api_string_function);
 
 	lit_mark_table(vm, &vm->globals);
 	lit_mark_table(vm, &vm->modules);

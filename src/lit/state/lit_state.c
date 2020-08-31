@@ -50,8 +50,6 @@ LitState* lit_new_state() {
 	state->root_count = 0;
 	state->root_capacity = 0;
 
-	state->api_module = NULL;
-
 	state->scanner = (LitScanner*) malloc(sizeof(LitScanner));
 
 	state->parser = (LitParser*) malloc(sizeof(LitParser));
@@ -224,7 +222,6 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 		lit_error(state, RUNTIME_ERROR, "Stack offset was not 0");
 	}
 
-	state->vm->fiber = fiber->parent;
 	return result;
 }
 

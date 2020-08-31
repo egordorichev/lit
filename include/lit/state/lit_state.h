@@ -36,7 +36,9 @@ typedef struct sLitState {
 
 	bool had_error;
 
-	LitModule* api_module;
+	LitFunction* api_function;
+	LitFunction* api_string_function;
+	LitFiber* api_fiber;
 	LitString* api_name;
 
 	LitClass* class_class;
