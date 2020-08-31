@@ -170,7 +170,11 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
 	LitPrefixParseFn prefix_rule = get_rule(parser->previous.type)->prefix;
 
 	if (prefix_rule == NULL) {
-		error(parser, ERROR_EXPECTED_EXPRESSION, previous.length, previous.start, parser->previous.length, parser->previous.start);
+		bool prev_newline = *previous.start == '\n';
+		bool parser_prev_newline = *parser->previous.start == '\n';
+
+		error(parser, ERROR_EXPECTED_EXPRESSION, prev_newline ? 8 : previous.length, prev_newline ? "new line" : previous.start,
+			parser_prev_newline ? 8 : parser->previous.length, parser_prev_newline ? "new line" : parser->previous.start);
 		return NULL;
 	}
 
