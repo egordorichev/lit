@@ -1,5 +1,4 @@
 # todo
-
 * c-api call() is really expensive
 * check upvalues
 
@@ -14,9 +13,7 @@
 
 * keep classes as privates and then allow to export them?
 * more benchmarks
-* ffi?
 
 # feature creep
-
 * make var statements into expressions to allow stuff like if (var a = test()) { print(a) }
 * switch statement?

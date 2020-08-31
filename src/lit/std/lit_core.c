@@ -521,41 +521,41 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count
 
 	fiber->parent = vm->fiber;
 	fiber->catcher = catcher;
-	fiber->arg_count = arg_count;
 
 	vm->fiber = fiber;
 
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
 
 	if (frame->ip == frame->function->chunk.code) {
+		fiber->arg_count = arg_count;
 		lit_ensure_fiber_stack(vm->state, fiber, frame->function->max_slots + 1 + (int) (fiber->stack_top - fiber->stack));
 
 		frame->slots = fiber->stack_top;
 		lit_push(vm, OBJECT_VALUE(frame->function));
 
 		bool vararg = frame->function->vararg;
-		uint function_arg_count = frame->function->arg_count;
-		uint to = function_arg_count - (vararg ? 1 : 0);
+		int function_arg_count = frame->function->arg_count;
+		int to = function_arg_count - (vararg ? 1 : 0);
 
 		fiber->arg_count = function_arg_count;
 
-		for (uint i = 0; i < to; i++) {
-			lit_push(vm, i < arg_count ? args[i] : NULL_VALUE);
+		for (int i = 0; i < to; i++) {
+			lit_push(vm, i < (int) arg_count ? args[i] : NULL_VALUE);
 		}
 
 		if (vararg) {
 			LitArray* array = lit_create_array(vm->state);
-			uint vararg_count = arg_count - function_arg_count + 1;
+			lit_push(vm, OBJECT_VALUE(array));
+
+			int vararg_count = arg_count - function_arg_count + 1;
 
 			if (vararg_count > 0) {
 				lit_values_ensure_size(vm->state, &array->values, vararg_count);
 
-				for (uint i = 0; i < vararg_count; i++) {
+				for (int i = 0; i < vararg_count; i++) {
 					array->values.values[i] = args[i + function_arg_count - 1];
 				}
 			}
-
-			lit_push(vm, OBJECT_VALUE(array));
 		}
 	}
 }
