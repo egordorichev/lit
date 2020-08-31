@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include <setjmp.h>
 
 #ifdef LIT_TRACE_EXECUTION
 	#define TRACE_FRAME() printf("== f%i %s (expects %i, max %i, added %i, current %i) ==\n", fiber->frame_count - 1, frame->function->name->chars, frame->function->arg_count, frame->function->max_slots, frame->function->max_slots + (int) (fiber->stack_top - fiber->stack), fiber->stack_capacity);
@@ -15,6 +16,8 @@
 
 #define PUSH_GC(state, allow) bool was_allowed = state->allow_gc; state->allow_gc = allow;
 #define POP_GC(state) state->allow_gc = was_allowed;
+
+static jmp_buf jump_buffer;
 
 static void reset_stack(LitVm* vm) {
 	if (vm->fiber != NULL) {
@@ -200,6 +203,10 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 
 static bool call_value(LitVm* vm, register LitValue callee, register uint8_t arg_count) {
 	if (IS_OBJECT(callee)) {
+		if (setjmp(jump_buffer)) {
+			return true;
+		}
+
 		switch (OBJECT_TYPE(callee)) {
 			case OBJECT_FUNCTION: {
 				return call(vm, AS_FUNCTION(callee), NULL, arg_count);
@@ -1445,6 +1452,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	RETURN_ERROR()
 
 #undef RETURN_ERROR
+}
+
+void lit_native_exit_jump() {
+	longjmp(jump_buffer, 1);
 }
 
 #undef PUSH_GC

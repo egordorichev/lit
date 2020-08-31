@@ -1,12 +1,7 @@
 # todo
 
-* check upvalues, they seem to be broken?
-
-* fiber.try() might try to use a frame that isn't allocated yet?
-* c-api pushes to stack but stack is probs much smaller
-
-* change up "Expected whatever" error to inclde what you got
-* (try jumps) if argument expected type doesnt match in native function, like require, it will crash (cuz it still continues to operate)
+* c-api call() is really expensive
+* check upvalues
 
 * optimizations {
  * we don't really need private names in bytecode (do an optimization flag that is on by default), nor function names?
@@ -24,7 +19,6 @@
 
 * table with globals? module.privates?
 * ffi?
-* gc prooof testing
 
 # feature creep
 

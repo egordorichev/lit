@@ -49,4 +49,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber);
 bool lit_handle_runtime_error(LitVm* vm, LitString* error_string);
 bool lit_runtime_error(LitVm* vm, const char* format, ...);
 
+void lit_native_exit_jump();
+
 #endif

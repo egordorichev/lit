@@ -61,6 +61,8 @@ void lit_define_native_primitive(LitState* state, const char* name, LitNativePri
 }
 
 LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count) {
+	lit_print_value(callee);
+
 	LitFunction* function = lit_create_function(state, state->api_module);
 	function->name = state->api_name;
 
@@ -69,7 +71,9 @@ LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* argument
 	chunk->has_line_info = false;
 
 	function->max_slots = 3 + argument_count;
-	lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
+	state->api_module->main_function = function;
+
+	lit_ensure_fiber_stack(state, fiber, function->max_slots);
 
 #define PUSH(value) (*fiber->stack_top++ = value)
 
@@ -112,7 +116,7 @@ LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitVa
 double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_NUMBER(args[id])) {
 		lit_runtime_error(vm, "Expected a number as argument #%x", id);
-		return 0;
+		lit_native_exit_jump();
 	}
 
 	return AS_NUMBER(args[id]);
@@ -129,7 +133,7 @@ double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, 
 bool lit_check_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_BOOL(args[id])) {
 		lit_runtime_error(vm, "Expected a boolean as argument #%x", id);
-		return false;
+		lit_native_exit_jump();
 	}
 
 	return AS_BOOL(args[id]);
@@ -146,7 +150,7 @@ bool lit_get_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool
 const char* lit_check_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_STRING(args[id])) {
 		lit_runtime_error(vm, "Expected a string as argument #%x", id);
-		return NULL;
+		lit_native_exit_jump();
 	}
 
 	return AS_STRING(args[id])->chars;
@@ -163,7 +167,7 @@ const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t
 LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_STRING(args[id])) {
 		lit_runtime_error(vm, "Expected a string as argument #%x", id);
-		return NULL;
+		lit_native_exit_jump();
 	}
 
 	return AS_STRING(args[id]);
@@ -172,7 +176,7 @@ LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count,
 LitInstance* lit_check_instance(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_INSTANCE(args[id])) {
 		lit_runtime_error(vm, "Expected an instance as argument #%x", id);
-		return NULL;
+		lit_native_exit_jump();
 	}
 
 	return AS_INSTANCE(args[id]);
@@ -227,6 +231,8 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 
 	chunk->has_line_info = false;
 	function->max_slots = 2 + function->arg_count;
+	state->api_module->main_function = function;
+
 	lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
 
 #define PUSH(value) (*fiber->stack_top++ = value)
