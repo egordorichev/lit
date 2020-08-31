@@ -1468,7 +1468,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 
 	bool new = false;
 
-	if (lit_table_get(&emitter->state->vm->modules, module_name, &module_value)) {
+	if (lit_table_get(&emitter->state->vm->modules->values, module_name, &module_value)) {
 		module = AS_MODULE(module_value);
 	} else {
 		module = lit_create_module(emitter->state, module_name);
@@ -1516,7 +1516,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	lit_free_privates(emitter->state, &emitter->privates);
 
 	if (new && !state->had_error) {
-		lit_table_set(state, &state->vm->modules, module_name, OBJECT_VALUE(module));
+		lit_table_set(state, &state->vm->modules->values, module_name, OBJECT_VALUE(module));
 	}
 
 	module->ran = true;

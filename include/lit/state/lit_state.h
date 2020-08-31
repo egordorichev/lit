@@ -52,6 +52,8 @@ typedef struct sLitState {
 	LitClass* array_class;
 	LitClass* map_class;
 	LitClass* range_class;
+
+	LitModule* last_module;
 } sLitState;
 
 typedef enum {

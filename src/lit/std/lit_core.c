@@ -1275,7 +1275,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 	if (!ignore_previous) {
 		LitValue existing_module;
 
-		if (lit_table_get(&vm->modules, name, &existing_module)) {
+		if (lit_table_get(&vm->modules->values, name, &existing_module)) {
 			LitModule* loaded_module = AS_MODULE(existing_module);
 
 			if (loaded_module->ran) {
@@ -1441,6 +1441,7 @@ void lit_open_core_library(LitState* state) {
 	LIT_BEGIN_CLASS("Module")
 		LIT_INHERIT_CLASS(state->object_class)
 
+		LIT_SET_STATIC_FIELD("loaded", OBJECT_VALUE(state->vm->modules))
 		LIT_BIND_METHOD("toString", module_toString)
 		LIT_BIND_GETTER("name", module_name)
 
@@ -1506,4 +1507,6 @@ void lit_open_core_library(LitState* state) {
 
 	lit_define_native_primitive(state, "require", require_primitive);
 	lit_define_native_primitive(state, "eval", eval_primitive);
+
+	lit_set_global(state, CONST_STRING(state, "globals"), OBJECT_VALUE(state->vm->globals));
 }

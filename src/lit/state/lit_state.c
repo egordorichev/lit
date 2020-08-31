@@ -49,6 +49,7 @@ LitState* lit_new_state() {
 	state->roots = NULL;
 	state->root_count = 0;
 	state->root_capacity = 0;
+	state->last_module = NULL;
 
 	state->scanner = (LitScanner*) malloc(sizeof(LitScanner));
 
@@ -216,12 +217,13 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 	}
 
 	LitInterpretResult result = lit_interpret_module(state, module);
-	LitFiber* fiber = state->vm->fiber;
+	LitFiber* fiber = module->main_fiber;
 
 	if (!state->had_error && !fiber->abort && fiber->stack_top != fiber->stack) {
 		lit_error(state, RUNTIME_ERROR, "Stack offset was not 0");
 	}
 
+	state->last_module = module;
 	return result;
 }
 

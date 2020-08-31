@@ -14,8 +14,6 @@
 
 * keep classes as privates and then allow to export them?
 * more benchmarks
-* enums
-* table with globals? module.privates?
 * ffi?
 
 # feature creep

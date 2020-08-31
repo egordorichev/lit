@@ -17,8 +17,9 @@ typedef struct sLitVm {
 	LitObject* objects;
 
 	LitTable strings;
-	LitTable globals;
-	LitTable modules;
+
+	LitMap* modules;
+	LitMap* globals;
 
 	LitFiber* fiber;
 

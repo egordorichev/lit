@@ -25,7 +25,7 @@ static void reset_stack(LitVm* vm) {
 	}
 }
 
-void lit_init_vm(LitState* state, LitVm* vm) {
+static void reset_vm(LitState* state, LitVm* vm) {
 	vm->state = state;
 	vm->objects = NULL;
 	vm->fiber = NULL;
@@ -35,17 +35,23 @@ void lit_init_vm(LitState* state, LitVm* vm) {
 	vm->gray_capacity = 0;
 
 	lit_init_table(&vm->strings);
-	lit_init_table(&vm->globals);
-	lit_init_table(&vm->modules);
+
+	vm->globals = NULL;
+	vm->modules = NULL;
+}
+
+void lit_init_vm(LitState* state, LitVm* vm) {
+	reset_vm(state, vm);
+
+	vm->globals = lit_create_map(state);
+	vm->modules = lit_create_map(state);
 }
 
 void lit_free_vm(LitVm* vm) {
 	lit_free_table(vm->state, &vm->strings);
-	lit_free_table(vm->state, &vm->globals);
-	lit_free_table(vm->state, &vm->modules);
 	lit_free_objects(vm->state, vm->objects);
 
-	lit_init_vm(vm->state, vm);
+	reset_vm(vm->state, vm);
 }
 
 static void trace_stack(LitVm* vm) {
@@ -601,6 +607,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					#endif
 
 					state->allow_gc = was_allowed;
+					vm->fiber = NULL;
+
 					return (LitInterpretResult) { INTERPRET_OK, result };
 				}
 
@@ -627,8 +635,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			} else {
 				PUSH(result);
 			}
-
-			READ_FRAME()
+		frame = &fiber->frames[fiber->frame_count - 1]; \
+	current_chunk = &frame->function->chunk; \
+	ip = frame->ip; \
+	slots = frame->slots; \
+	fiber->module = frame->function->module; \
+	privates = fiber->module->privates; \
+	upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
 			TRACE_FRAME()
 
 			continue;
@@ -843,7 +856,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(SET_GLOBAL) {
 			LitString* name = READ_STRING_LONG();
-			lit_table_set(state, &vm->globals, name, PEEK(0));
+			lit_table_set(state, &vm->globals->values, name, PEEK(0));
 
 			continue;
 		}
@@ -852,7 +865,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			LitString* name = READ_STRING_LONG();
 			LitValue value;
 
-			if (!lit_table_get(&vm->globals, name, &value)) {
+			if (!lit_table_get(&vm->globals->values, name, &value)) {
 				PUSH(NULL_VALUE);
 			} else {
 				PUSH(value);
@@ -1049,7 +1062,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			DROP(); // Pop the class name
 
-			lit_table_set(state, &vm->globals, name, OBJECT_VALUE(klass));
+			lit_table_set(state, &vm->globals->values, name, OBJECT_VALUE(klass));
 
 			PUSH(OBJECT_VALUE(klass));
 			lit_pop_root(state);

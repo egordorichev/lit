@@ -23,7 +23,7 @@ void lit_free_api(LitState* state) {
 LitValue lit_get_global(LitState* state, LitString* name) {
 	LitValue global;
 
-	if (!lit_table_get(&state->vm->globals, name, &global)) {
+	if (!lit_table_get(&state->vm->globals->values, name, &global)) {
 		return NULL_VALUE;
 	}
 
@@ -43,32 +43,38 @@ LitFunction* lit_get_global_function(LitState* state, LitString* name) {
 void lit_set_global(LitState* state, LitString* name, LitValue value) {
 	lit_push_root(state, (LitObject*) name);
 	lit_push_value_root(state, value);
-	lit_table_set(state, &state->vm->globals, name, value);
+	lit_table_set(state, &state->vm->globals->values, name, value);
 	lit_pop_roots(state, 2);
 }
 
 bool lit_global_exists(LitState* state, LitString* name) {
 	LitValue global;
-	return lit_table_get(&state->vm->globals, name, &global);
+	return lit_table_get(&state->vm->globals->values, name, &global);
 }
 
 void lit_define_native(LitState* state, const char* name, LitNativeFunctionFn native) {
 	lit_push_root(state, (LitObject*) CONST_STRING(state, name));
 	lit_push_root(state, (LitObject*) lit_create_native_function(state, native, AS_STRING(lit_peek_root(state, 0))));
-	lit_table_set(state, &state->vm->globals, AS_STRING(lit_peek_root(state, 1)), lit_peek_root(state, 0));
+	lit_table_set(state, &state->vm->globals->values, AS_STRING(lit_peek_root(state, 1)), lit_peek_root(state, 0));
 	lit_pop_roots(state, 2);
 }
 
 void lit_define_native_primitive(LitState* state, const char* name, LitNativePrimitiveFn native) {
 	lit_push_root(state, (LitObject*) CONST_STRING(state, name));
 	lit_push_root(state, (LitObject*) lit_create_native_primitive(state, native, AS_STRING(lit_peek_root(state, 0))));
-	lit_table_set(state, &state->vm->globals, AS_STRING(lit_peek_root(state, 1)), lit_peek_root(state, 0));
+	lit_table_set(state, &state->vm->globals->values, AS_STRING(lit_peek_root(state, 1)), lit_peek_root(state, 0));
 	lit_pop_roots(state, 2);
 }
 
 LitInterpretResult lit_call(LitState* state, LitModule* module, LitValue callee, LitValue* arguments, uint8_t argument_count) {
-	LitFiber* fiber = module->main_fiber;
 	LitVm* vm = state->vm;
+
+	if (state->api_fiber == NULL) {
+		state->api_fiber = lit_create_fiber(state, module, NULL);
+		state->api_fiber->frame_count = 0;
+	}
+
+	LitFiber* fiber = state->api_fiber;
 
 	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
 		lit_runtime_error(vm, "Stack overflow");
@@ -114,7 +120,6 @@ LitInterpretResult lit_call(LitState* state, LitModule* module, LitValue callee,
 		PUSH(arguments[i]);
 	}
 	#undef PUSH
-
 
 	frame->ip = function->chunk.code;
 	frame->closure = NULL;

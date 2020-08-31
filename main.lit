@@ -1,1 +1,3 @@
-print([ 32, 43 ])
+for (var g in Module.loaded) {
+	print(g)
+}

@@ -312,7 +312,7 @@ LitModule* lit_load_module(LitState* state, const char* input) {
 		}
 
 		module->main_function = load_function(state, &file, module);
-		lit_table_set(state, &state->vm->modules, module->name, OBJECT_VALUE(module));
+		lit_table_set(state, &state->vm->modules->values, module->name, OBJECT_VALUE(module));
 
 		if (j == 0) {
 			first = module;
