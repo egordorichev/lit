@@ -78,7 +78,6 @@ static void trace_stack(LitVm* vm) {
 		printf(" ]");
 	}
 
-
 	printf("\n");
 }
 
@@ -104,6 +103,7 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 
 	fiber = vm->fiber;
 	fiber->abort = true;
+	fiber->error = error;
 
 	if (fiber->parent != NULL) {
 		fiber->parent->abort = true;
@@ -635,13 +635,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			} else {
 				PUSH(result);
 			}
-		frame = &fiber->frames[fiber->frame_count - 1]; \
-	current_chunk = &frame->function->chunk; \
-	ip = frame->ip; \
-	slots = frame->slots; \
-	fiber->module = frame->function->module; \
-	privates = fiber->module->privates; \
-	upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
+
+			READ_FRAME()
 			TRACE_FRAME()
 
 			continue;
