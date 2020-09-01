@@ -1461,6 +1461,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 }
 
 LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* module_name) {
+	emitter->last_line = 1;
+
 	LitState* state = emitter->state;
 
 	LitValue module_value;
