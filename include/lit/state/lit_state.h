@@ -41,6 +41,8 @@ typedef struct sLitState {
 	LitFiber* api_fiber;
 	LitString* api_name;
 
+	// Mental note:
+	// When adding another class here, DO NOT forget to mark it in lit_mem.c or it will be GC-ed
 	LitClass* class_class;
 	LitClass* object_class;
 	LitClass* number_class;

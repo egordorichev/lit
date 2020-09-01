@@ -24,7 +24,7 @@ void lit_open_libraries(LitState* state) {
  */
 
 LIT_METHOD(class_toString) {
-	return OBJECT_VALUE(lit_string_format(vm->state, "class @", AS_CLASS(instance)->name));
+	return OBJECT_VALUE(lit_string_format(vm->state, "class @", OBJECT_VALUE(AS_CLASS(instance)->name)));
 }
 
 static int table_iterator(LitTable* table, int number) {
@@ -613,7 +613,7 @@ LIT_PRIMITIVE(fiber_abort) {
  */
 
 LIT_METHOD(module_toString) {
-	return OBJECT_VALUE(lit_string_format(vm->state, "Module @", AS_MODULE(instance)->name));
+	return OBJECT_VALUE(lit_string_format(vm->state, "Module @", OBJECT_VALUE(AS_MODULE(instance)->name)));
 }
 
 LIT_METHOD(module_name) {

@@ -1362,7 +1362,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_statement(emitter, stmt->body);
 			end_scope(emitter, emitter->last_line);
 
-			LitFunction* function = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:@", emitter->class_name, stmt->name)));
+			LitFunction* function = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:@", OBJECT_VALUE(emitter->class_name), stmt->name)));
 			function->arg_count = stmt->parameters.count;
 			function->max_slots += function->arg_count;
 			function->vararg = vararg;
@@ -1379,8 +1379,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitClassStatement* stmt = (LitClassStatement*) statement;
 			emitter->class_name = stmt->name;
 
-			emit_constant(emitter, statement->line, OBJECT_VALUE(stmt->name));
 			emit_op(emitter, statement->line, OP_CLASS);
+			emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->name)));
 
 			if (stmt->parent != NULL) {
 				emit_op(emitter, emitter->last_line, OP_GET_GLOBAL);
@@ -1425,7 +1425,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_statement(emitter, stmt->getter);
 				end_scope(emitter, emitter->last_line);
 
-				getter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:get @", emitter->class_name, stmt->name)));
+				getter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:get @", OBJECT_VALUE(emitter->class_name), stmt->name)));
 			}
 
 			if (stmt->setter != NULL) {
@@ -1437,7 +1437,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_statement(emitter, stmt->setter);
 				end_scope(emitter, emitter->last_line);
 
-				setter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:set @", emitter->class_name, stmt->name)));
+				setter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:set @", OBJECT_VALUE(emitter->class_name), stmt->name)));
 				setter->arg_count = 1;
 				setter->max_slots++;
 			}

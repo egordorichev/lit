@@ -207,7 +207,7 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	return true;
 }
 
-static bool call_value(LitVm* vm, register LitValue callee, register uint8_t arg_count) {
+static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 	if (IS_OBJECT(callee)) {
 		if (setjmp(jump_buffer)) {
 			return true;
@@ -473,7 +473,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 #define INVOKE_FROM_CLASS_ADVANCED(zklass, method_name, arg_count, error, stat, ignoring, callee) \
 	LitValue method; \
-	if ((IS_INSTANCE(callee) && (lit_table_get(&AS_INSTANCE(callee)->fields, method_name, &method) || lit_table_get(&AS_INSTANCE(callee)->klass->static_fields, method_name, &method))) || lit_table_get(&zklass->stat, method_name, &method)) { \
+	if ((IS_INSTANCE(callee) && (lit_table_get(&AS_INSTANCE(callee)->fields, method_name, &method))) || lit_table_get(&zklass->stat, method_name, &method)) { \
 		if (ignoring) { \
 			if (call_value(vm, method, arg_count)) { \
 				RECOVER_STATE() \
@@ -493,7 +493,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		continue; \
 	} \
 
-#define INVOKE_FROM_CLASS(klass, method_name, arg_count, error, stat, ignoring) INVOKE_FROM_CLASS_ADVANCED(klass, method_name, arg_count, error, stat, ignoring, PEEK(arg_count + 1))
+#define INVOKE_FROM_CLASS(klass, method_name, arg_count, error, stat, ignoring) INVOKE_FROM_CLASS_ADVANCED(klass, method_name, arg_count, error, stat, ignoring, PEEK(arg_count))
 
 #define INVOKE_METHOD(instance, method_name, arg_count) \
 	LitClass* klass = lit_get_class_for(state, instance); \
@@ -539,7 +539,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	} \
 	WRITE_FRAME() \
 	if (IS_CLASS(receiver)) { \
-		INVOKE_FROM_CLASS(AS_CLASS(receiver), method_name, arg_count, true, static_fields, ignoring) \
+		INVOKE_FROM_CLASS_ADVANCED(AS_CLASS(receiver), method_name, arg_count, true, static_fields, ignoring, receiver) \
 		continue; \
 	} else if (IS_INSTANCE(receiver)) { \
 		LitInstance* instance = AS_INSTANCE(receiver); \
@@ -550,13 +550,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			READ_FRAME() \
 			continue; \
 		} \
-		INVOKE_FROM_CLASS(instance->klass, method_name, arg_count, true, methods, ignoring) \
+		INVOKE_FROM_CLASS_ADVANCED(instance->klass, method_name, arg_count, true, methods, ignoring, receiver) \
 	} else { \
 		LitClass* type = lit_get_class_for(state, receiver); \
 		if (type == NULL) { \
 			RUNTIME_ERROR("Only instances and classes have methods") \
 		} \
-		INVOKE_FROM_CLASS(type, method_name, arg_count, true, methods, ignoring) \
+		INVOKE_FROM_CLASS_ADVANCED(type, method_name, arg_count, true, methods, ignoring, receiver) \
 	}
 
 #ifdef LIT_TRACE_EXECUTION
@@ -1051,21 +1051,17 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(CLASS) {
-			LitString* name = AS_STRING(PEEK(0));
+			LitString* name = READ_STRING_LONG();
 			LitClass* klass = lit_create_class(state, name);
+
+			PUSH(OBJECT_VALUE(klass));
 
 			klass->super = state->object_class;
 
-			lit_push_root(state, (LitObject*) klass);
 			lit_table_add_all(state, &klass->super->methods, &klass->methods);
 			lit_table_add_all(state, &klass->super->static_fields, &klass->static_fields);
 
-			DROP(); // Pop the class name
-
 			lit_table_set(state, &vm->globals->values, name, OBJECT_VALUE(klass));
-
-			PUSH(OBJECT_VALUE(klass));
-			lit_pop_root(state);
 
 			continue;
 		}

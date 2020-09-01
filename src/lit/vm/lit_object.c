@@ -98,6 +98,9 @@ LitValue lit_number_to_string(LitState* state, double value) {
 }
 
 LitValue lit_string_format(LitState* state, const char* format, ...) {
+	bool was_allowed = state->allow_gc;
+	state->allow_gc = false;
+
 	va_list arg_list;
 
 	va_start(arg_list, format);
@@ -143,12 +146,13 @@ LitValue lit_string_format(LitState* state, const char* format, ...) {
 	}
 
 	va_end(arg_list);
+
 	LitString* result = lit_allocate_empty_string(state, total_length);
 	result->chars = LIT_ALLOCATE(state, char, total_length + 1);
 	result->chars[total_length] = '\0';
-	va_start(arg_list, format);
 
 	char* start = result->chars;
+	va_start(arg_list, format);
 
 	for (const char* c = format; *c != '\0'; c++) {
 		switch (*c) {
@@ -200,6 +204,8 @@ LitValue lit_string_format(LitState* state, const char* format, ...) {
 
 	result->hash = lit_hash_string(result->chars, result->length);
 	lit_register_string(state, result);
+
+	state->allow_gc = was_allowed;
 
 	return OBJECT_VALUE(result);
 }
@@ -288,7 +294,7 @@ LitValue lit_get_function_name(LitVm* vm, LitValue instance) {
 		return OBJECT_VALUE(lit_string_format(vm->state, "function #", *((double*) AS_OBJECT(instance))));
 	}
 
-	return OBJECT_VALUE(lit_string_format(vm->state, "function @", name));
+	return OBJECT_VALUE(lit_string_format(vm->state, "function @", OBJECT_VALUE(name)));
 }
 
 LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot) {
