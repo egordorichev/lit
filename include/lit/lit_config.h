@@ -28,7 +28,7 @@
 #define SINGLE_LINE_MAPS_ENABLED true
 
 // Make sure that we did not break anything
-#define LIT_STRESS_TEST_GC
+// #define LIT_STRESS_TEST_GC
 #else
 #define SINGLE_LINE_MAPS_ENABLED false
 #endif

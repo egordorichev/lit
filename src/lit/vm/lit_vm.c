@@ -1307,50 +1307,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(INVOKE) {
-			uint8_t arg_count = READ_BYTE(); \
-			LitString* method_name = READ_STRING_LONG(); \
-			LitValue receiver = PEEK(arg_count); \
-
-			lit_print_value(receiver);
-			printf("\n");
-
-			if (IS_NULL(receiver)) { \
-				RUNTIME_ERROR("Attempt to index a null value") \
-			} \
-			WRITE_FRAME() \
-			if (IS_CLASS(receiver)) { \
-				INVOKE_FROM_CLASS(AS_CLASS(receiver), method_name, arg_count, true, static_fields, false) \
-				continue; \
-			} else if (IS_INSTANCE(receiver)) { \
-				LitInstance* instance = AS_INSTANCE(receiver); \
-				LitValue value; \
-				if (lit_table_get(&instance->fields, method_name, &value)) { \
-					fiber->stack_top[-arg_count - 1] = value; \
-					CALL_VALUE(value, arg_count) \
-					READ_FRAME() \
-					continue; \
-				} \
-				INVOKE_FROM_CLASS(instance->klass, method_name, arg_count, true, methods, false) \
-			} else { \
-				LitClass* type = lit_get_class_for(state, receiver); \
-				if (type == NULL) { \
-					RUNTIME_ERROR("Only instances and classes have methods") \
-				} \
-				LitValue callee = PEEK(arg_count);
-				lit_print_value(callee);
-				printf("\n");
-				LitValue method;
-				if (lit_table_get(&type->methods, method_name, &method)) {
-					lit_print_value(method);
-					printf("\n");
-
-					if (call_value(vm, callee, arg_count)) {
-						RECOVER_STATE()
-					}
-				} else { \
-					RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, type->name->chars) \
-				} \
-			}
+			INVOKE_OPERATION(false)
 			continue;
 		}
 
