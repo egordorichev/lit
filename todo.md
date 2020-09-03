@@ -1,6 +1,5 @@
 # todo
 
-* optimizations do not get turned on for some reason
 * c-api call() is really expensive
 * check upvalues
 * get/set field can easily become constant instructions

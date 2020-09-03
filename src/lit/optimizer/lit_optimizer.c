@@ -668,6 +668,10 @@ static void optimize_statements(LitOptimizer* optimizer, LitStatements* statemen
 }
 
 void lit_optimize(LitOptimizer* optimizer, LitStatements* statements) {
+	if (!optimization_states_setup) {
+		setup_optimization_states();
+	}
+
 	if (!any_optimization_enabled) {
 		return;
 	}
