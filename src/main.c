@@ -213,6 +213,7 @@ int main(int argc, const char* argv[]) {
 			}
 
 			bytecode_file = (char*) argv[++i];
+			lit_set_optimization_level(OPTIMIZATION_LEVEL_EXTREME);
 		} else if (match_arg(arg, "-p", "--pass")) {
 			arg_array = lit_create_array(state);
 

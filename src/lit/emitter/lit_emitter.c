@@ -6,6 +6,7 @@
 #include <lit/vm/lit_vm.h>
 #include <lit/scanner/lit_scanner.h>
 #include <lit/util/lit_table.h>
+#include <lit/optimizer/lit_optimizer.h>
 
 #include <string.h>
 
@@ -139,6 +140,10 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 	}
 
 	emitter->chunk = &compiler->function->chunk;
+
+	if (lit_is_optimization_enabled(OPTIMIZATION_LINE_INFO)) {
+		emitter->chunk->has_line_info = false;
+	}
 
 	if (type == FUNCTION_METHOD || type == FUNCTION_STATIC_METHOD || type == FUNCTION_CONSTRUCTOR) {
 		lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {

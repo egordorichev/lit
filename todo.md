@@ -11,7 +11,7 @@
  * multiplication by 1
  * tail-call optimization?
  * for (var a in 1 .. 3) -> for (var a = 1; a < 4; i++)
- * optimize out line numbers
+ * ranges like 1 .. 3 can be passed as constants
 }
 
 * keep classes as privates and then allow to export them?

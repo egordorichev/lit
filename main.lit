@@ -1,16 +1,10 @@
-class Base {
-
+function test(a, b) {
+	a = 32
+	b = 48
 }
 
-print(Base.super) // Expected: class Object
-print(new Base()) // Expected: Base instance
-print(Base.name) // Expected: Base
+var ta = "test"
+var tb = "yes"
 
-class Child : Base {
-
-}
-
-print(Child.super) // Expected: class Base
-print(new Child()) // Expected: Child instance
-print(Child.name) // Expected: Child
-print(Child.super.name) // Expected: Base
+test(a, b)
+print(ta, tb)

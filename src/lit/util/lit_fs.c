@@ -149,6 +149,7 @@ static void save_function(FILE* file, LitFunction* function) {
 	lit_write_uint8_t(file, function->arg_count);
 	lit_write_uint16_t(file, function->upvalue_count);
 	lit_write_uint8_t(file, (uint8_t) function->vararg);
+	lit_write_uint16_t(file, (uint16_t) function->max_slots);
 }
 
 static LitFunction* load_function(LitState* state, LitEmulatedFile* file, LitModule* module) {
@@ -160,6 +161,7 @@ static LitFunction* load_function(LitState* state, LitEmulatedFile* file, LitMod
 	function->arg_count = lit_read_euint8_t(file);
 	function->upvalue_count = lit_read_euint16_t(file);
 	function->vararg = (bool) lit_read_euint8_t(file);
+	function->max_slots = lit_read_euint16_t(file);
 
 	return function;
 }
@@ -171,11 +173,15 @@ static void save_chunk(FILE* file, LitChunk* chunk) {
 		lit_write_uint8_t(file, chunk->code[i]);
 	}
 
-	uint c = chunk->line_count * 2 + 2;
-	lit_write_uint32_t(file, c);
+	if (chunk->has_line_info) {
+		uint c = chunk->line_count * 2 + 2;
+		lit_write_uint32_t(file, c);
 
-	for (uint i = 0; i < c; i++) {
-		lit_write_uint16_t(file, chunk->lines[i]);
+		for (uint i = 0; i < c; i++) {
+			lit_write_uint16_t(file, chunk->lines[i]);
+		}
+	} else {
+		lit_write_uint32_t(file, 0);
 	}
 
 	lit_write_uint32_t(file, chunk->constants.count);
@@ -223,12 +229,17 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
 	}
 
 	count = lit_read_euint32_t(file);
-	chunk->lines = (uint16_t*) lit_reallocate(state, NULL, 0, sizeof(uint16_t) * count);
-	chunk->line_count = count;
-	chunk->line_capacity = count;
 
-	for (uint i = 0; i < count; i++) {
-		chunk->lines[i] = lit_read_euint16_t(file);
+	if (count > 0) {
+		chunk->lines = (uint16_t*) lit_reallocate(state, NULL, 0, sizeof(uint16_t) * count);
+		chunk->line_count = count;
+		chunk->line_capacity = count;
+
+		for (uint i = 0; i < count; i++) {
+			chunk->lines[i] = lit_read_euint16_t(file);
+		}
+	} else {
+		chunk->has_line_info = false;
 	}
 
 	count = lit_read_euint32_t(file);

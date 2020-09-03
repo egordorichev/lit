@@ -23,7 +23,8 @@ static const char* optimization_names[OPTIMIZATION_TOTAL] = {
 	"literal-folding",
 	"unused-var",
 	"unreachable-code",
-	"empty-body"
+	"empty-body",
+	"line-info"
 };
 
 static const char* optimization_descriptions[OPTIMIZATION_TOTAL] = {
@@ -31,7 +32,8 @@ static const char* optimization_descriptions[OPTIMIZATION_TOTAL] = {
 	"Precalculates literal expressions (3 + 4 is replaced with 7).",
 	"Removes user-declared all variables, that were not used.",
 	"Removes code that will never be reached.",
-	"Removes loops with empty bodies."
+	"Removes loops with empty bodies.",
+	"Removes line information from chunks to save on space."
 };
 
 static bool optimization_states[OPTIMIZATION_TOTAL];
@@ -693,19 +695,24 @@ void lit_set_optimization_level(LitOptimizationLevel level) {
 			lit_set_optimization_enabled(OPTIMIZATION_UNUSED_VAR, false);
 			lit_set_optimization_enabled(OPTIMIZATION_UNREACHABLE_CODE, false);
 			lit_set_optimization_enabled(OPTIMIZATION_EMPTY_BODY, false);
+			lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
 
 			break;
 		}
 
 		case OPTIMIZATION_LEVEL_DEBUG: {
 			lit_set_all_optimization_enabled(true);
+
 			lit_set_optimization_enabled(OPTIMIZATION_UNUSED_VAR, false);
+			lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
 
 			break;
 		}
 
 		case OPTIMIZATION_LEVEL_RELEASE: {
 			lit_set_all_optimization_enabled(true);
+			lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
+
 			break;
 		}
 
