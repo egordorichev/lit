@@ -1047,12 +1047,14 @@ LIT_METHOD(map_clone) {
 
 LIT_METHOD(map_toString) {
 	LitState* state = vm->state;
-	LitTable* values = &AS_MAP(instance)->values;
+	LitMap* map = AS_MAP(instance);
+	LitTable* values = &map->values;
 
 	if (values->count == 0) {
 		return OBJECT_CONST_STRING(state, "{}");
 	}
 
+	bool has_wrapper = map->index_fn != NULL;
 	bool has_more = values->count > LIT_CONTAINER_OUTPUT_MAX;
 	uint value_amount = has_more ? LIT_CONTAINER_OUTPUT_MAX : values->count;
 
@@ -1071,7 +1073,10 @@ LIT_METHOD(map_toString) {
 		LitTableEntry* entry = &values->entries[index++];
 
 		if (entry->key != NULL) {
-			LitString* value = lit_to_string(state, entry->value);
+			LitValue field = has_wrapper ? map->index_fn(vm, map, entry->key) : entry->value;
+			// This check is required to prevent infinite loops when playing with Module.privates and such
+			LitString* value = (IS_MAP(field) && AS_MAP(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field);
+			lit_push_root(state, (LitObject*) value);
 
 			values_converted[i] = value;
 			keys[i] = entry->key;
@@ -1129,6 +1134,8 @@ LIT_METHOD(map_toString) {
 
 			buffer_index += 2;
 		}
+
+		lit_pop_root(state);
 	}
 
 	buffer[string_length] = '\0';

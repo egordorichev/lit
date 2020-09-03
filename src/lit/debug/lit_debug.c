@@ -235,3 +235,14 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 		}
 	}
 }
+
+void lit_trace_frame(LitFiber* fiber) {
+	#ifdef LIT_TRACE_STACK
+	if (fiber == NULL) {
+		return;
+	}
+
+	LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
+	printf("== fiber %p f%i %s (expects %i, max %i, added %i, current %i) ==\n", fiber, fiber->frame_count - 1, frame->function->name->chars, frame->function->arg_count, frame->function->max_slots, frame->function->max_slots + (int) (fiber->stack_top - fiber->stack), fiber->stack_capacity);
+	#endif
+}

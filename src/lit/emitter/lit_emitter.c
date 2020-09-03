@@ -1516,9 +1516,18 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	module->main_function = end_compiler(emitter, module_name);
 
 	if (new) {
-		module->privates = LIT_ALLOCATE(emitter->state, LitValue, emitter->privates.count);
+		uint total = emitter->privates.count;
+		module->privates = LIT_ALLOCATE(emitter->state, LitValue, total);
+
+		for (uint i = 0; i < total; i++) {
+			module->privates[i] = NULL_VALUE;
+		}
 	} else {
 		module->privates = LIT_GROW_ARRAY(emitter->state, module->privates, LitValue, old_privates_count, module->private_count);
+
+		for (uint i = old_privates_count; i < module->private_count; i++) {
+			module->privates[i] = NULL_VALUE;
+		}
 	}
 
 	lit_free_privates(emitter->state, &emitter->privates);

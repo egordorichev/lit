@@ -321,6 +321,7 @@ LitModule* lit_load_module(LitState* state, const char* input) {
 			uint16_t id = lit_read_euint16_t(&file);
 
 			lit_table_set(state, privates, name, NUMBER_VALUE(id));
+			module->privates[i] = NULL_VALUE;
 		}
 
 		module->main_function = load_function(state, &file, module);

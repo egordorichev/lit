@@ -9,7 +9,7 @@
 #include <setjmp.h>
 
 #ifdef LIT_TRACE_EXECUTION
-	#define TRACE_FRAME() printf("== f%i %s (expects %i, max %i, added %i, current %i) ==\n", fiber->frame_count - 1, frame->function->name->chars, frame->function->arg_count, frame->function->max_slots, frame->function->max_slots + (int) (fiber->stack_top - fiber->stack), fiber->stack_capacity);
+	#define TRACE_FRAME() lit_trace_frame(fiber);
 #else
 	#define TRACE_FRAME() do {} while (0);
 #endif
@@ -602,10 +602,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 				if (fiber->parent == NULL) {
 					DROP();
 
-					#ifdef LIT_TRACE_EXECUTION
-					printf("== end ==\n");
-					#endif
-
 					state->allow_gc = was_allowed;
 					vm->fiber = NULL;
 
@@ -635,13 +631,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			} else {
 				PUSH(result);
 			}
-		frame = &fiber->frames[fiber->frame_count - 1]; \
-	current_chunk = &frame->function->chunk; \
-	ip = frame->ip; \
-	slots = frame->slots; \
-	fiber->module = frame->function->module; \
-	privates = fiber->module->privates; \
-	upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
+
+			READ_FRAME()
 			TRACE_FRAME()
 
 			continue;

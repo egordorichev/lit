@@ -2,6 +2,7 @@
 #include <lit/vm/lit_vm.h>
 #include <lit/vm/lit_chunk.h>
 #include <lit/vm/lit_object.h>
+#include <lit/debug/lit_debug.h>
 
 #include <string.h>
 #include <math.h>
@@ -68,13 +69,15 @@ void lit_define_native_primitive(LitState* state, const char* name, LitNativePri
 
 LitInterpretResult lit_call(LitState* state, LitModule* module, LitValue callee, LitValue* arguments, uint8_t argument_count) {
 	LitVm* vm = state->vm;
-
-	if (state->api_fiber == NULL) {
-		state->api_fiber = lit_create_fiber(state, module, NULL);
-		state->api_fiber->frame_count = 0;
-	}
-
 	LitFiber* fiber = state->api_fiber;
+
+	if (fiber == NULL) {
+		fiber = lit_create_fiber(state, module, NULL);
+		fiber->frame_count = 0;
+	} else {
+		// Make it busy
+		state->api_fiber = NULL;
+	}
 
 	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
 		lit_runtime_error(vm, "Stack overflow");
@@ -129,6 +132,12 @@ LitInterpretResult lit_call(LitState* state, LitModule* module, LitValue callee,
 	LitFiber* previous = state->vm->fiber;
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 	state->vm->fiber = previous;
+
+	lit_trace_frame(state->vm->fiber);
+
+	if (state->api_fiber == NULL) {
+		state->api_fiber = fiber;
+	}
 
 	return result;
 }
@@ -252,13 +261,15 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	}
 
 	LitVm* vm = state->vm;
-
-	if (state->api_fiber == NULL) {
-		state->api_fiber = lit_create_fiber(state, state->vm->fiber->module, NULL);
-		state->api_fiber->frame_count = 0;
-	}
-
 	LitFiber* fiber = state->api_fiber;
+
+	if (fiber == NULL) {
+		fiber = lit_create_fiber(state, state->vm->fiber->module, NULL);
+		fiber->frame_count = 0;
+	} else {
+		// Make it busy
+		state->api_fiber = NULL;
+	}
 
 	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
 		lit_runtime_error(vm, "Stack overflow");
@@ -284,11 +295,10 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 		lit_write_chunk(state, chunk, OP_INVOKE, 1);
 		lit_emit_short(state, chunk, lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString")));
 		lit_emit_bytes(state, chunk, 0, OP_RETURN);
-
-		lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
 	}
 
 	function = state->api_string_function;
+	lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
 
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 
@@ -306,6 +316,12 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	LitFiber* previous = state->vm->fiber;
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 	state->vm->fiber = previous;
+
+	lit_trace_frame(state->vm->fiber);
+
+	if (state->api_fiber == NULL) {
+		state->api_fiber = fiber;
+	}
 
 	if (result.type != INTERPRET_OK) {
 		return CONST_STRING(state, "null");
