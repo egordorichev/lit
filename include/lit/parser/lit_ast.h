@@ -94,7 +94,7 @@ typedef struct {
 	uint length;
 } LitVarExpression;
 
-LitVarExpression *lit_create_var_expression(LitState* state, uint line, LitToken name);
+LitVarExpression *lit_create_var_expression(LitState* state, uint line, const char* name, uint length);
 
 typedef struct {
 	LitExpression expression;

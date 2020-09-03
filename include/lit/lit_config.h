@@ -7,7 +7,7 @@
 #define LIT_BYTECODE_VERSION 0
 
 #define TESTING
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
 #define LIT_TRACE_EXECUTION

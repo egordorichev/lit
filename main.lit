@@ -1,2 +1,9 @@
-var x = 10
-print(x / 1)
+for (var i in 1 .. 20) {
+	print(i)
+}
+
+// =>
+
+for (var i = 1; i <= 20; i++) {
+	print(i)
+}

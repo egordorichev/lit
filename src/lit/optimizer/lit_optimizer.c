@@ -25,7 +25,8 @@ static const char* optimization_names[OPTIMIZATION_TOTAL] = {
 	"unreachable-code",
 	"empty-body",
 	"line-info",
-	"private-names"
+	"private-names",
+	"c-for"
 };
 
 static const char* optimization_descriptions[OPTIMIZATION_TOTAL] = {
@@ -35,7 +36,8 @@ static const char* optimization_descriptions[OPTIMIZATION_TOTAL] = {
 	"Removes code that will never be reached.",
 	"Removes loops with empty bodies.",
 	"Removes line information from chunks to save on space.",
-	"Removes names of the private locals from modules (they are indexed by id at runtime)."
+	"Removes names of the private locals from modules (they are indexed by id at runtime).",
+	"Replaces for-in loops with c-style for loops where it can."
 };
 
 static bool optimization_states[OPTIMIZATION_TOTAL];
@@ -579,7 +581,46 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 			if (lit_is_optimization_enabled(OPTIMIZATION_EMPTY_BODY) && is_empty(stmt->body)) {
 				lit_free_statement(optimizer->state, statement);
 				*slot = NULL;
+
+				break;
 			}
+
+			if (stmt->c_style || !lit_is_optimization_enabled(OPTIMIZATION_C_FOR) || stmt->condition->type != RANGE_EXPRESSION) {
+				break;
+			}
+
+			LitRangeExpression* range = (LitRangeExpression*) stmt->condition;
+			LitValue from = evaluate_expression(optimizer, range->from);
+			LitValue to = evaluate_expression(optimizer, range->to);
+
+			if (!IS_NUMBER(from) || !IS_NUMBER(to)) {
+				break;
+			}
+
+			bool reverse = AS_NUMBER(from) > AS_NUMBER(to);
+
+			LitVarStatement* var = (LitVarStatement*) stmt->var;
+			uint line = range->expression.line;
+
+			// var i = from
+			var->init = range->from;
+
+			// i <= to
+			stmt->condition = (LitExpression*) lit_create_binary_expression(state, line, (LitExpression*) lit_create_var_expression(state, line, var->name, var->length), range->to, TOKEN_LESS_EQUAL);
+
+			// i++ (or i--)
+			LitExpression* var_get = (LitExpression*) lit_create_var_expression(state, line, var->name, var->length);
+			LitBinaryExpression* assign_value = lit_create_binary_expression(state, line, var_get, (LitExpression*) lit_create_literal_expression(state, line, NUMBER_VALUE(1)), reverse ? TOKEN_MINUS_MINUS : TOKEN_PLUS);
+			assign_value->ignore_left = true;
+
+			LitExpression* increment = (LitExpression*) lit_create_assign_expression(state, line, var_get, (LitExpression*) assign_value);
+			stmt->increment = (LitExpression*) increment;
+
+			range->from = NULL;
+			range->to = NULL;
+
+			stmt->c_style = true;
+			lit_free_expression(state, (LitExpression*) range);
 
 			break;
 		}

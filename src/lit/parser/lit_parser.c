@@ -503,7 +503,7 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign) {
 }
 
 static LitExpression* parse_variable_expression_base(LitParser* parser, bool can_assign, bool new) {
-	LitExpression* expression = (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, parser->previous);
+	LitExpression* expression = (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, parser->previous.start, parser->previous.length);
 
 	if (new) {
 		if (!check(parser, TOKEN_LEFT_PAREN)) {

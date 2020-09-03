@@ -250,11 +250,11 @@ LitGroupingExpression *lit_create_grouping_expression(LitState* state, uint line
 	return expression;
 }
 
-LitVarExpression *lit_create_var_expression(LitState* state, uint line, LitToken name) {
+LitVarExpression *lit_create_var_expression(LitState* state, uint line, const char* name, uint length) {
 	LitVarExpression* expression = ALLOCATE_EXPRESSION(state, LitVarExpression, VAR_EXPRESSION);
 
-	expression->name = name.start;
-	expression->length = name.length;
+	expression->name = name;
+	expression->length = length;
 
 	return expression;
 }

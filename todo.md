@@ -8,8 +8,6 @@
 * optimizations {
  * dead if branchess
  * tail-call optimization?
- * for (var a in 1 .. 3) -> for (var a = 1; a < 4; i++)
- * ranges like 1 .. 3 can be passed as constants
 }
 
 * keep classes as privates and then allow to export them?
