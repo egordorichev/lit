@@ -6,7 +6,7 @@
 * upvalues can work as references, perhaps???
 
 * optimizations {
- * we don't really need private names in bytecode (do an optimization flag that is on by default), nor function names?
+ * we don't really need private names in bytecode (do an optimization flag that is on by default)
  * dead if branchess
  * multiplication by 1
  * tail-call optimization?

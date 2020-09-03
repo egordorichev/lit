@@ -93,8 +93,7 @@ void lit_free_object(LitState* state, LitObject* object) {
 		case OBJECT_MODULE: {
 			LitModule* module = (LitModule*) object;
 
-			LIT_FREE_ARRAY(state, LitValue, module->privates, module->private_names.count);
-			lit_free_table(state, &module->private_names);
+			LIT_FREE_ARRAY(state, LitValue, module->privates, module->private_count);
 			LIT_FREE(state, LitModule, object);
 
 			break;
@@ -319,12 +318,12 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 			lit_mark_object(vm, (LitObject*) module->name);
 			lit_mark_object(vm, (LitObject*) module->main_function);
 			lit_mark_object(vm, (LitObject*) module->main_fiber);
+			lit_mark_object(vm, (LitObject*) module->private_names);
 
-			for (int i = 0; i < module->private_names.count; i++) {
+			for (uint i = 0; i < module->private_count; i++) {
 				lit_mark_value(vm, module->privates[i]);
 			}
 
-			lit_mark_table(vm, &module->private_names);
 			break;
 		}
 

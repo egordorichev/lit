@@ -24,7 +24,8 @@ static const char* optimization_names[OPTIMIZATION_TOTAL] = {
 	"unused-var",
 	"unreachable-code",
 	"empty-body",
-	"line-info"
+	"line-info",
+	"private-names"
 };
 
 static const char* optimization_descriptions[OPTIMIZATION_TOTAL] = {
@@ -33,7 +34,8 @@ static const char* optimization_descriptions[OPTIMIZATION_TOTAL] = {
 	"Removes user-declared all variables, that were not used.",
 	"Removes code that will never be reached.",
 	"Removes loops with empty bodies.",
-	"Removes line information from chunks to save on space."
+	"Removes line information from chunks to save on space.",
+	"Removes names of the private locals from modules (they are indexed by id at runtime)."
 };
 
 static bool optimization_states[OPTIMIZATION_TOTAL];
@@ -696,6 +698,7 @@ void lit_set_optimization_level(LitOptimizationLevel level) {
 			lit_set_optimization_enabled(OPTIMIZATION_UNREACHABLE_CODE, false);
 			lit_set_optimization_enabled(OPTIMIZATION_EMPTY_BODY, false);
 			lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
+			lit_set_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES, false);
 
 			break;
 		}
@@ -705,6 +708,7 @@ void lit_set_optimization_level(LitOptimizationLevel level) {
 
 			lit_set_optimization_enabled(OPTIMIZATION_UNUSED_VAR, false);
 			lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
+			lit_set_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES, false);
 
 			break;
 		}

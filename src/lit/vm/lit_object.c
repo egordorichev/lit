@@ -1,6 +1,7 @@
 #include <lit/vm/lit_object.h>
 #include <lit/mem/lit_mem.h>
 #include <lit/vm/lit_vm.h>
+#include <lit/optimizer/lit_optimizer.h>
 
 #include <memory.h>
 #include <math.h>
@@ -44,18 +45,6 @@ LitString* lit_take_string(LitState* state, const char* chars, uint length) {
 	LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
 
 	if (interned != NULL) {
-		return interned;
-	}
-
-	return allocate_string(state, (char*) chars, length, hash);
-}
-
-LitString* lit_take_string_or_free(LitState* state, const char* chars, uint length) {
-	uint32_t hash = lit_hash_string(chars, length);
-	LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
-
-	if (interned != NULL) {
-		lit_reallocate(state, (void*) chars, length, 0);
 		return interned;
 	}
 
@@ -437,8 +426,8 @@ LitModule* lit_create_module(LitState* state, LitString* name) {
 	module->privates = NULL;
 	module->ran = false;
 	module->main_fiber = NULL;
-
-	lit_init_table(&module->private_names);
+	module->private_count = 0;
+	module->private_names = lit_create_map(state);
 
 	return module;
 }
@@ -482,11 +471,12 @@ LitArray* lit_create_array(LitState* state) {
 
 LitMap* lit_create_map(LitState* state) {
 	LitMap* map = ALLOCATE_OBJECT(state, LitMap, OBJECT_MAP);
+
 	lit_init_table(&map->values);
+	map->index_fn = NULL;
 
 	return map;
 }
-
 
 bool lit_map_set(LitState* state, LitMap* map, LitString* key, LitValue value) {
 	if (value == NULL_VALUE) {

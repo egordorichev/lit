@@ -612,6 +612,23 @@ LIT_PRIMITIVE(fiber_abort) {
  * Module
  */
 
+LitValue access_private(LitVm* vm, struct sLitMap* map, LitString* index) {
+	LitValue value;
+
+	if (lit_table_get(&vm->fiber->module->private_names->values, index, &value)) {
+		return vm->fiber->module->privates[(int) AS_NUMBER(value)];
+	}
+
+	return NULL_VALUE;
+}
+
+LIT_METHOD(module_privates) {
+	LitMap* map = vm->fiber->module->private_names;
+	map->index_fn = access_private;
+
+	return OBJECT_VALUE(map);
+}
+
 LIT_METHOD(module_toString) {
 	return OBJECT_VALUE(lit_string_format(vm->state, "Module @", OBJECT_VALUE(AS_MODULE(instance)->name)));
 }
@@ -975,8 +992,14 @@ LIT_METHOD(map_subscript) {
 	}
 
 	LitValue value;
+	LitMap* map = AS_MAP(instance);
+	LitString* index = AS_STRING(args[0]);
 
-	if (!lit_table_get(&AS_MAP(instance)->values, AS_STRING(args[0]), &value)) {
+	if (map->index_fn != NULL) {
+		return map->index_fn(vm, map, index);
+	}
+
+	if (!lit_table_get(&map->values, index, &value)) {
 		return NULL_VALUE;
 	}
 
@@ -1442,6 +1465,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_INHERIT_CLASS(state->object_class)
 
 		LIT_SET_STATIC_FIELD("loaded", OBJECT_VALUE(state->vm->modules))
+		LIT_BIND_STATIC_GETTER("privates", module_privates)
 		LIT_BIND_METHOD("toString", module_toString)
 		LIT_BIND_GETTER("name", module_name)
 

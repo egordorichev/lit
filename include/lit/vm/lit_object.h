@@ -115,7 +115,6 @@ typedef struct sLitString {
 
 LitString* lit_copy_string(LitState* state, const char* chars, uint length);
 LitString* lit_take_string(LitState* state, const char* chars, uint length);
-LitString* lit_take_string_or_free(LitState* state, const char* chars, uint length);
 LitValue lit_string_format(LitState* state, const char* format, ...);
 LitValue lit_number_to_string(LitState* state, double value);
 void lit_register_string(LitState* state, LitString* string);
@@ -223,6 +222,22 @@ typedef struct {
 	bool result_ignored;
 } LitCallFrame;
 
+typedef LitValue (*LitMapIndexFn)(LitVm* vm, struct sLitMap* map, LitString* index);
+
+typedef struct sLitMap {
+	LitObject object;
+	LitTable values;
+
+	LitMapIndexFn index_fn;
+} LitMap;
+
+LitMap* lit_create_map(LitState* state);
+
+bool lit_map_set(LitState* state, LitMap* map, LitString* key, LitValue value);
+bool lit_map_get(LitMap* map, LitString* key, LitValue* value);
+bool lit_map_delete(LitMap* map, LitString* key);
+void lit_map_add_all(LitState* state, LitMap* from, LitMap* to);
+
 typedef struct sLitModule {
 	LitObject object;
 
@@ -230,7 +245,8 @@ typedef struct sLitModule {
 	LitString* name;
 
 	LitValue* privates;
-	LitTable private_names;
+	LitMap* private_names;
+	uint private_count;
 
 	LitFunction* main_function;
 	struct sLitFiber* main_fiber;
@@ -303,18 +319,6 @@ typedef struct {
 } LitArray;
 
 LitArray* lit_create_array(LitState* state);
-
-typedef struct {
-	LitObject object;
-	LitTable values;
-} LitMap;
-
-LitMap* lit_create_map(LitState* state);
-
-bool lit_map_set(LitState* state, LitMap* map, LitString* key, LitValue value);
-bool lit_map_get(LitMap* map, LitString* key, LitValue* value);
-bool lit_map_delete(LitMap* map, LitString* key);
-void lit_map_add_all(LitState* state, LitMap* from, LitMap* to);
 
 typedef void (*LitCleanupFn)(LitState* state, LitUserdata* userdata);
 

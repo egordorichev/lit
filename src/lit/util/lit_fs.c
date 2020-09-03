@@ -1,3 +1,4 @@
+#include <lit/optimizer/lit_optimizer.h>
 #include <lit/util/lit_fs.h>
 #include <lit/lit.h>
 
@@ -276,7 +277,7 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
 void lit_save_module(LitModule* module, FILE* file) {
 	lit_write_string(file, module->name);
 
-	LitTable* privates = &module->private_names;
+	LitTable* privates = lit_is_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES) ? 0 : &module->private_names->values;
 	lit_write_uint16_t(file, privates->count);
 
 	for (int i = 0; i < privates->capacity; i++) {
@@ -310,7 +311,7 @@ LitModule* lit_load_module(LitState* state, const char* input) {
 
 	for (uint16_t j = 0; j < module_count; j++) {
 		LitModule *module = lit_create_module(state, lit_read_estring(state, &file));
-		LitTable *privates = &module->private_names;
+		LitTable *privates = &module->private_names->values;
 
 		uint16_t privates_count = lit_read_euint16_t(&file);
 		module->privates = LIT_ALLOCATE(state, LitValue, privates_count);

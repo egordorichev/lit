@@ -12,6 +12,7 @@ typedef struct sLitState LitState;
 typedef struct sLitInterpretResult LitInterpretResult;
 
 typedef struct sLitObject LitObject;
+typedef struct sLitMap LitMap;
 typedef struct sLitString LitString;
 typedef struct sLitModule LitModule;
 typedef struct sLitFiber LitFiber;

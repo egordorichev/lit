@@ -147,7 +147,7 @@ int main(int argc, const char* argv[]) {
 			char* optimization_name;
 
 			// -Ono-whatever
-			if (strcmp((char*) (arg + 2), "no-") > 0) {
+			if (memcmp((char*) (arg + 2), "no-", 3) == 0) {
 				enable_optimization = false;
 				optimization_name = (char*) (arg + 5);
 			} else {

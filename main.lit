@@ -1,10 +1,7 @@
-function test(a, b) {
-	a = 32
-	b = 48
+var a = 32 + 2
+var b = "test"
+
+for (var k in Module.privates) {
+	print(k)
+	print(Module.privates[k])
 }
-
-var ta = "test"
-var tb = "yes"
-
-test(a, b)
-print(ta, tb)

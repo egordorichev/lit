@@ -255,7 +255,7 @@ static int add_private(LitEmitter* emitter, const char* name, uint length, uint 
 		error(emitter, line, ERROR_TOO_MANY_PRIVATES);
 	}
 
-	LitTable* private_names = &emitter->module->private_names;
+	LitTable* private_names = &emitter->module->private_names->values;
 	LitString* key = lit_table_find_string(private_names, name, length, lit_hash_string(name, length));
 
 	if (key != NULL) {
@@ -275,12 +275,13 @@ static int add_private(LitEmitter* emitter, const char* name, uint length, uint 
 	});
 
 	lit_table_set(state, private_names, lit_copy_string(state, name, length), NUMBER_VALUE(index));
+	emitter->module->private_count++;
 
 	return index;
 }
 
 static int resolve_private(LitEmitter* emitter, const char* name, uint length, uint line) {
-	LitTable* private_names = &emitter->module->private_names;
+	LitTable* private_names = &emitter->module->private_names->values;
 	LitString* key = lit_table_find_string(private_names, name, length, lit_hash_string(name, length));
 
 	if (key != NULL) {
@@ -1483,7 +1484,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	}
 
 	emitter->module = module;
-	uint old_privates_count = module->private_names.count;
+	uint old_privates_count = module->private_count;
 
 	if (old_privates_count > 0) {
 		LitPrivates* privates = &emitter->privates;
@@ -1517,10 +1518,14 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	if (new) {
 		module->privates = LIT_ALLOCATE(emitter->state, LitValue, emitter->privates.count);
 	} else {
-		module->privates = LIT_GROW_ARRAY(emitter->state, module->privates, LitValue, old_privates_count, module->private_names.count);
+		module->privates = LIT_GROW_ARRAY(emitter->state, module->privates, LitValue, old_privates_count, module->private_count);
 	}
 
 	lit_free_privates(emitter->state, &emitter->privates);
+
+	if (lit_is_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES)) {
+		lit_free_table(emitter->state, &emitter->module->private_names->values);
+	}
 
 	if (new && !state->had_error) {
 		lit_table_set(state, &state->vm->modules->values, module_name, OBJECT_VALUE(module));
