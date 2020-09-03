@@ -40,8 +40,8 @@ static const char* optimization_descriptions[OPTIMIZATION_TOTAL] = {
 
 static bool optimization_states[OPTIMIZATION_TOTAL];
 
-static bool optimization_states_setup;
-static bool any_optimization_enabled;
+static bool optimization_states_setup = false;
+static bool any_optimization_enabled = false;
 
 static void setup_optimization_states();
 
@@ -197,6 +197,38 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType operator
 	return NULL_VALUE;
 }
 
+static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExpression* expression, LitValue value, bool left) {
+	LitTokenType operator = expression->operator;
+	LitExpression* branch = left ? expression->left : expression->right;
+
+	if (IS_NUMBER(value)) {
+		double number = AS_NUMBER(value);
+
+		if (operator == TOKEN_STAR) {
+			if (number == 0) {
+				return NUMBER_VALUE(0);
+			} else if (number == 1) {
+				lit_free_expression(optimizer->state, left ? expression->right : expression->left);
+
+				expression->left = branch;
+				expression->right = NULL;
+			}
+		} else if ((operator == TOKEN_PLUS || operator == TOKEN_MINUS) && number == 0) {
+			lit_free_expression(optimizer->state, left ? expression->right : expression->left);
+
+			expression->left = branch;
+			expression->right = NULL;
+		} else if ((operator == TOKEN_SLASH || operator == TOKEN_STAR_STAR) && number == 1) {
+			lit_free_expression(optimizer->state, left ? expression->right : expression->left);
+
+			expression->left = branch;
+			expression->right = NULL;
+		}
+	}
+
+	return NULL_VALUE;
+}
+
 static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expression) {
 	if (expression == NULL) {
 		return NULL_VALUE;
@@ -226,6 +258,10 @@ static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expr
 
 			if (a != NULL_VALUE && b != NULL_VALUE) {
 				return evaluate_binary_op(a, b, expr->operator);
+			} else if (a != NULL_VALUE) {
+				return attempt_to_optimize_binary(optimizer, expr, a, false);
+			} else if (b != NULL_VALUE) {
+				return attempt_to_optimize_binary(optimizer, expr, b, true);
 			}
 
 			break;

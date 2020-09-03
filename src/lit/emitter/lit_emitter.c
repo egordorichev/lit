@@ -479,8 +479,12 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case BINARY_EXPRESSION: {
 			LitBinaryExpression* expr = (LitBinaryExpression*) expression;
-
 			emit_expression(emitter, expr->left);
+
+			if (expr->right == NULL) {
+				break;
+			}
+
 			LitTokenType op = expr->operator;
 
 			if (op == TOKEN_AMPERSAND_AMPERSAND || op == TOKEN_BAR_BAR || op == TOKEN_QUESTION_QUESTION) {
