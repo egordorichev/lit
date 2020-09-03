@@ -78,7 +78,6 @@ static void trace_stack(LitVm* vm) {
 		printf(" ]");
 	}
 
-
 	printf("\n");
 }
 
@@ -104,6 +103,7 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 
 	fiber = vm->fiber;
 	fiber->abort = true;
+	fiber->error = error;
 
 	if (fiber->parent != NULL) {
 		fiber->parent->abort = true;
