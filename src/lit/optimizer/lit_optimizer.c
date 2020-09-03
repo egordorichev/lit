@@ -521,15 +521,47 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case IF_STATEMENT: {
-			// FIXME: remove dead branches
 			LitIfStatement* stmt = (LitIfStatement*) statement;
 
 			optimize_expression(optimizer, &stmt->condition);
 			optimize_statement(optimizer, &stmt->if_branch);
 
+
+			LitValue optimized = evaluate_expression(optimizer, stmt->condition);
+
+			if ((optimized != NULL_VALUE && lit_is_falsey(optimized)) || is_empty(stmt->if_branch)) {
+				lit_free_expression(state, stmt->condition);
+				stmt->condition = NULL;
+
+				lit_free_statement(state, stmt->if_branch);
+				stmt->if_branch = NULL;
+			}
+
 			if (stmt->elseif_conditions != NULL) {
 				optimize_expressions(optimizer, stmt->elseif_conditions);
 				optimize_statements(optimizer, stmt->elseif_branches);
+
+				for (uint i = 0; i < stmt->elseif_conditions->count; i++) {
+					if (is_empty(stmt->elseif_branches->values[i])) {
+						lit_free_expression(state, stmt->elseif_conditions->values[i]);
+						stmt->elseif_conditions->values[i] = NULL;
+
+						lit_free_statement(state, stmt->elseif_branches->values[i]);
+						stmt->elseif_branches->values[i] = NULL;
+
+						continue;
+					}
+
+					LitValue value = evaluate_expression(optimizer, stmt->elseif_conditions->values[i]);
+
+					if (value != NULL_VALUE && lit_is_falsey(value)) {
+						lit_free_expression(state, stmt->elseif_conditions->values[i]);
+						stmt->elseif_conditions->values[i] = NULL;
+
+						lit_free_statement(state, stmt->elseif_branches->values[i]);
+						stmt->elseif_branches->values[i] = NULL;
+					}
+				}
 			}
 
 			optimize_statement(optimizer, &stmt->else_branch);

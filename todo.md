@@ -6,7 +6,6 @@
 * upvalues can work as references, perhaps???
 
 * optimizations {
- * dead if branchess
  * tail-call optimization?
 }
 

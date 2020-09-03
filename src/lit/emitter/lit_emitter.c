@@ -1056,17 +1056,28 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 		case IF_STATEMENT: {
 			LitIfStatement* stmt = (LitIfStatement*) statement;
 
-			emit_expression(emitter, stmt->condition);
+			uint64_t else_jump = 0;
+			uint64_t end_jump = 0;
 
-			uint64_t else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
-			emit_statement(emitter, stmt->if_branch);
+			if (stmt->condition == NULL) {
+				else_jump = emit_jump(emitter, OP_JUMP, statement->line);
+			} else {
+				emit_expression(emitter, stmt->condition);
+				else_jump = emit_jump(emitter, OP_JUMP_IF_FALSE, statement->line);
+				emit_statement(emitter, stmt->if_branch);
 
-			uint64_t end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
+				end_jump = emit_jump(emitter, OP_JUMP, emitter->last_line);
+			}
+
 			uint64_t end_jumps[stmt->elseif_branches == NULL ? 0 : stmt->elseif_branches->count];
 
 			if (stmt->elseif_branches != NULL) {
 				for (uint i = 0; i < stmt->elseif_branches->count; i++) {
 					LitExpression *e = stmt->elseif_conditions->values[i];
+
+					if (e == NULL) {
+						continue;
+					}
 
 					patch_jump(emitter, else_jump, e->line);
 					emit_expression(emitter, e);
@@ -1084,10 +1095,16 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				patch_jump(emitter, else_jump, emitter->last_line);
 			}
 
-			patch_jump(emitter, end_jump, emitter->last_line);
+			if (end_jump != 0) {
+				patch_jump(emitter, end_jump, emitter->last_line);
+			}
 
 			if (stmt->elseif_branches != NULL) {
 				for (uint i = 0; i < stmt->elseif_branches->count; i++) {
+					if (stmt->elseif_branches->values[i] == NULL) {
+						continue;
+					}
+
 					patch_jump(emitter, end_jumps[i], stmt->elseif_branches->values[i]->line);
 				}
 			}
