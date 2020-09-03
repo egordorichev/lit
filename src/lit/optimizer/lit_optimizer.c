@@ -526,10 +526,12 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 			optimize_expression(optimizer, &stmt->condition);
 			optimize_statement(optimizer, &stmt->if_branch);
 
+			bool empty = lit_is_optimization_enabled(OPTIMIZATION_EMPTY_BODY);
+			bool dead = lit_is_optimization_enabled(OPTIMIZATION_UNREACHABLE_CODE);
 
-			LitValue optimized = evaluate_expression(optimizer, stmt->condition);
+			LitValue optimized = empty ? evaluate_expression(optimizer, stmt->condition) : NULL_VALUE;
 
-			if ((optimized != NULL_VALUE && lit_is_falsey(optimized)) || is_empty(stmt->if_branch)) {
+			if ((optimized != NULL_VALUE && lit_is_falsey(optimized)) || (dead && is_empty(stmt->if_branch))) {
 				lit_free_expression(state, stmt->condition);
 				stmt->condition = NULL;
 
@@ -541,31 +543,34 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 				optimize_expressions(optimizer, stmt->elseif_conditions);
 				optimize_statements(optimizer, stmt->elseif_branches);
 
-				for (uint i = 0; i < stmt->elseif_conditions->count; i++) {
-					if (is_empty(stmt->elseif_branches->values[i])) {
-						lit_free_expression(state, stmt->elseif_conditions->values[i]);
-						stmt->elseif_conditions->values[i] = NULL;
+				if (dead || empty) {
+					for (uint i = 0; i < stmt->elseif_conditions->count; i++) {
+						if (empty && is_empty(stmt->elseif_branches->values[i])) {
+							lit_free_expression(state, stmt->elseif_conditions->values[i]);
+							stmt->elseif_conditions->values[i] = NULL;
 
-						lit_free_statement(state, stmt->elseif_branches->values[i]);
-						stmt->elseif_branches->values[i] = NULL;
+							lit_free_statement(state, stmt->elseif_branches->values[i]);
+							stmt->elseif_branches->values[i] = NULL;
 
-						continue;
-					}
+							continue;
+						}
 
-					LitValue value = evaluate_expression(optimizer, stmt->elseif_conditions->values[i]);
+						if (dead) {
+							LitValue value = evaluate_expression(optimizer, stmt->elseif_conditions->values[i]);
 
-					if (value != NULL_VALUE && lit_is_falsey(value)) {
-						lit_free_expression(state, stmt->elseif_conditions->values[i]);
-						stmt->elseif_conditions->values[i] = NULL;
+							if (value != NULL_VALUE && lit_is_falsey(value)) {
+								lit_free_expression(state, stmt->elseif_conditions->values[i]);
+								stmt->elseif_conditions->values[i] = NULL;
 
-						lit_free_statement(state, stmt->elseif_branches->values[i]);
-						stmt->elseif_branches->values[i] = NULL;
+								lit_free_statement(state, stmt->elseif_branches->values[i]);
+								stmt->elseif_branches->values[i] = NULL;
+							}
+						}
 					}
 				}
 			}
 
 			optimize_statement(optimizer, &stmt->else_branch);
-
 			break;
 		}
 
