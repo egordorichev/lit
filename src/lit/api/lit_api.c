@@ -139,12 +139,20 @@ LitInterpretResult lit_call(LitState* state, LitModule* module, LitValue callee,
 		state->api_fiber = fiber;
 	}
 
+	if (fiber->error != NULL_VALUE) {
+		result.result = fiber->error;
+		fiber->error = NULL_VALUE;
+		fiber->abort = false;
+		fiber->stack_top = fiber->stack;
+		fiber->frame_count = 0;
+	}
+
 	return result;
 }
 
 LitInterpretResult lit_call_function(LitState* state, LitModule* module, LitFunction* callee, LitValue* arguments, uint8_t argument_count) {
 	if (callee == NULL) {
-		return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
+		return (LitInterpretResult) { INTERPRET_INVALID, NULL_VALUE };
 	}
 
 	return lit_call(state, module, OBJECT_VALUE(callee), arguments, argument_count);

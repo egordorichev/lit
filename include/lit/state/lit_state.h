@@ -61,7 +61,8 @@ typedef struct sLitState {
 typedef enum {
 	INTERPRET_OK,
 	INTERPRET_COMPILE_ERROR,
-	INTERPRET_RUNTIME_ERROR
+	INTERPRET_RUNTIME_ERROR,
+	INTERPRET_INVALID
 } LitInterpretResultType;
 
 LitState* lit_new_state();
