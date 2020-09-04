@@ -1,4 +1,9 @@
-var a = 32
+var d = 48
+var map = Module.privates
 
-Module.privates["a"] = 48
-print(a)
+for (var k in map) {
+	print($"map[{k}] = {map[k]}")
+}
+
+print(Module.privates["_module"])
+print(Module.current.privates)
