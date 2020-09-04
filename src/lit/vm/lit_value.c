@@ -200,3 +200,19 @@ void lit_values_ensure_size(LitState* state, LitValues* values, uint size) {
 		values->count = size;
 	}
 }
+
+const char* lit_get_value_type(LitValue value) {
+	if (IS_BOOL(value)) {
+		return "bool";
+	} else if (IS_NULL(value)) {
+		return "null";
+	} else if (IS_NUMBER(value)) {
+		return "number";
+	} else if (IS_OBJECT(value)) {
+		return lit_object_type_names[OBJECT_TYPE(value)];
+	} else {
+		UNREACHABLE
+	}
+
+	return "unknown";
+}

@@ -1,7 +1,1 @@
-var t
-var newPrivates = Module.privates
-print(newPrivates)
-
-for (var k in newPrivates) {
-	print(k)
-}
+print(32 >> "test")
