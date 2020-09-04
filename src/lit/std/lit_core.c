@@ -1104,6 +1104,7 @@ LIT_METHOD(map_toString) {
 		LitTableEntry* entry = &values->entries[index++];
 
 		if (entry->key != NULL) {
+			// Special hidden key
 			LitValue field = has_wrapper ? map->index_fn(vm, map, entry->key, NULL) : entry->value;
 			// This check is required to prevent infinite loops when playing with Module.privates and such
 			LitString* value = (IS_MAP(field) && AS_MAP(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field);
@@ -1112,10 +1113,10 @@ LIT_METHOD(map_toString) {
 			values_converted[i] = value;
 			keys[i] = entry->key;
 			string_length += entry->key->length + 3 + value->length +
-			                 #ifdef SINGLE_LINE_MAPS
-			                 (i == value_amount - 1 ? 1 : 2);
+			#ifdef SINGLE_LINE_MAPS
+				(i == value_amount - 1 ? 1 : 2);
 			#else
-			(i == value_amount - 1 ? 2 : 3);
+				(i == value_amount - 1 ? 2 : 3);
 			#endif
 
 			i++;
