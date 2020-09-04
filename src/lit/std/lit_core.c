@@ -32,13 +32,11 @@ static int table_iterator(LitTable* table, int number) {
 		return -1;
 	}
 
-	if (number != -1) {
-		if (number >= (int) table->capacity) {
-			return -1;
-		}
-
-		number++;
+	if (number >= (int) table->capacity) {
+		return -1;
 	}
+
+	number++;
 
 	for (; number < table->capacity; number++) {
 		if (table->entries[number].key != NULL) {
@@ -1056,7 +1054,7 @@ LIT_METHOD(map_clear) {
 
 LIT_METHOD(map_iterator) {
 	LIT_ENSURE_ARGS(1)
-	int index = args[0] == NULL_VALUE ? 0 : AS_NUMBER(args[0]);
+	int index = args[0] == NULL_VALUE ? -1 : AS_NUMBER(args[0]);
 
 	int value = table_iterator(&AS_MAP(instance)->values, index);
 	return value == -1 ? NULL_VALUE : NUMBER_VALUE(value);
