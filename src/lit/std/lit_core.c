@@ -612,19 +612,39 @@ LIT_PRIMITIVE(fiber_abort) {
  * Module
  */
 
-LitValue access_private(LitVm* vm, struct sLitMap* map, LitString* index) {
+LitValue access_private(LitVm* vm, struct sLitMap* map, LitString* name, LitValue* val) {
 	LitValue value;
 
-	if (lit_table_get(&vm->fiber->module->private_names->values, index, &value)) {
-		return vm->fiber->module->privates[(int) AS_NUMBER(value)];
+	if (!lit_table_get(&map->values, CONST_STRING(vm->state, " module"), &value) || !IS_MODULE(value)) {
+		return NULL_VALUE;
+	}
+
+	LitModule* module = AS_MODULE(value);
+
+	if (lit_table_get(&module->private_names->values, name, &value)) {
+		int index = (int) AS_NUMBER(value);
+
+		if (index > -1 && index < (int) module->private_count) {
+			if (val != NULL) {
+				module->privates[index] = *val;
+				return *val;
+			}
+
+			return module->privates[index];
+		}
 	}
 
 	return NULL_VALUE;
 }
 
 LIT_METHOD(module_privates) {
-	LitMap* map = vm->fiber->module->private_names;
-	map->index_fn = access_private;
+	LitModule* module = IS_MODULE(instance) ? AS_MODULE(instance) : vm->fiber->module;
+	LitMap* map = module->private_names;
+
+	if (map->index_fn == NULL) {
+		map->index_fn = access_private;
+		lit_table_set(vm->state, &map->values, CONST_STRING(vm->state, " module"), OBJECT_VALUE(module));
+	}
 
 	return OBJECT_VALUE(map);
 }
@@ -976,27 +996,29 @@ LIT_METHOD(array_length) {
  */
 
 LIT_METHOD(map_subscript) {
-	if (arg_count == 2) {
-		if (!IS_STRING(args[0])) {
-			lit_runtime_error(vm, "Map index must be a string");
-			return NULL_VALUE;
-		}
-
-		lit_map_set(vm->state, AS_MAP(instance), AS_STRING(args[0]), args[1]);
-		return args[1];
-	}
-
 	if (!IS_STRING(args[0])) {
 		lit_runtime_error(vm, "Map index must be a string");
 		return NULL_VALUE;
 	}
 
-	LitValue value;
 	LitMap* map = AS_MAP(instance);
 	LitString* index = AS_STRING(args[0]);
 
+	if (arg_count == 2) {
+		LitValue val = args[1];
+
+		if (map->index_fn != NULL) {
+			return map->index_fn(vm, map, index, &val);
+		}
+
+		lit_map_set(vm->state, map, index, val);
+		return val;
+	}
+
+	LitValue value;
+
 	if (map->index_fn != NULL) {
-		return map->index_fn(vm, map, index);
+		return map->index_fn(vm, map, index, NULL);
 	}
 
 	if (!lit_table_get(&map->values, index, &value)) {
@@ -1073,7 +1095,7 @@ LIT_METHOD(map_toString) {
 		LitTableEntry* entry = &values->entries[index++];
 
 		if (entry->key != NULL) {
-			LitValue field = has_wrapper ? map->index_fn(vm, map, entry->key) : entry->value;
+			LitValue field = has_wrapper ? map->index_fn(vm, map, entry->key, NULL) : entry->value;
 			// This check is required to prevent infinite loops when playing with Module.privates and such
 			LitString* value = (IS_MAP(field) && AS_MAP(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field);
 			lit_push_root(state, (LitObject*) value);
@@ -1081,11 +1103,11 @@ LIT_METHOD(map_toString) {
 			values_converted[i] = value;
 			keys[i] = entry->key;
 			string_length += entry->key->length + 3 + value->length +
-				#ifdef SINGLE_LINE_MAPS
-					(i == value_amount - 1 ? 1 : 2);
-				#else
-					(i == value_amount - 1 ? 2 : 3);
-				#endif
+			                 #ifdef SINGLE_LINE_MAPS
+			                 (i == value_amount - 1 ? 1 : 2);
+			#else
+			(i == value_amount - 1 ? 2 : 3);
+			#endif
 
 			i++;
 		}
@@ -1094,9 +1116,9 @@ LIT_METHOD(map_toString) {
 	char buffer[string_length + 1];
 
 	#ifdef SINGLE_LINE_MAPS
-		memcpy(buffer, "{ ", 2);
+	memcpy(buffer, "{ ", 2);
 	#else
-		memcpy(buffer, "{\n", 2);
+	memcpy(buffer, "{\n", 2);
 	#endif
 
 	uint buffer_index = 2;
@@ -1106,7 +1128,7 @@ LIT_METHOD(map_toString) {
 		LitString *value = values_converted[i];
 
 		#ifndef SINGLE_LINE_MAPS
-			buffer[buffer_index++] = '\t';
+		buffer[buffer_index++] = '\t';
 		#endif
 
 		memcpy(&buffer[buffer_index], key->chars, key->length);
@@ -1120,16 +1142,16 @@ LIT_METHOD(map_toString) {
 
 		if (has_more && i == value_amount - 1) {
 			#ifdef SINGLE_LINE_MAPS
-				memcpy(&buffer[buffer_index], ", ... }", 7);
+			memcpy(&buffer[buffer_index], ", ... }", 7);
 			#else
-				memcpy(&buffer[buffer_index], ",\n\t...\n}", 8);
+			memcpy(&buffer[buffer_index], ",\n\t...\n}", 8);
 			#endif
 			buffer_index += 8;
 		} else {
 			#ifdef SINGLE_LINE_MAPS
-				memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " }" : ", ", 2);
+			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " }" : ", ", 2);
 			#else
-				memcpy(&buffer[buffer_index], (i == value_amount - 1) ? "\n}" : ",\n", 2);
+			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? "\n}" : ",\n", 2);
 			#endif
 
 			buffer_index += 2;
@@ -1473,8 +1495,10 @@ void lit_open_core_library(LitState* state) {
 
 		LIT_SET_STATIC_FIELD("loaded", OBJECT_VALUE(state->vm->modules))
 		LIT_BIND_STATIC_GETTER("privates", module_privates)
+
 		LIT_BIND_METHOD("toString", module_toString)
 		LIT_BIND_GETTER("name", module_name)
+		LIT_BIND_GETTER("privates", module_privates)
 
 		state->module_class = klass;
 	LIT_END_CLASS()

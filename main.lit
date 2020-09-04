@@ -1,5 +1,4 @@
-if (false) {
-	print(32)
-} else {
-	print(48)
-}
+var a = 32
+
+Module.privates["a"] = 48
+print(a)

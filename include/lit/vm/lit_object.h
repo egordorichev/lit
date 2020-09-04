@@ -222,7 +222,7 @@ typedef struct {
 	bool result_ignored;
 } LitCallFrame;
 
-typedef LitValue (*LitMapIndexFn)(LitVm* vm, struct sLitMap* map, LitString* index);
+typedef LitValue (*LitMapIndexFn)(LitVm* vm, struct sLitMap* map, LitString* index, LitValue* value);
 
 typedef struct sLitMap {
 	LitObject object;
