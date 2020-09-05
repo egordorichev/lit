@@ -70,3 +70,17 @@ print(b.d) // Expected: bad
 b.d = "good"
 
 print(b.d) // Expected: good
+
+var test = new Object()
+
+/*
+ * Gets converted into
+ * test.call = () {
+ *   print("hallo")
+ * }
+ */
+function test.call() {
+	print("hallo")
+}
+
+test.call() // Expected: hallo

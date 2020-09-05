@@ -125,7 +125,8 @@ static void consume(LitParser* parser, LitTokenType type, const char* error) {
 		return;
 	}
 
-	string_error(parser, &parser->current, lit_format_error(parser->state, parser->current.line, ERROR_EXPECTION_UNMET, error, parser->previous.length, parser->previous.start)->chars);
+	bool line = parser->previous.type == TOKEN_NEW_LINE;
+	string_error(parser, &parser->current, lit_format_error(parser->state, parser->current.line, ERROR_EXPECTION_UNMET, error, line ? 8 : parser->previous.length, line ? "new line" : parser->previous.start)->chars);
 }
 
 static bool match_new_line(LitParser* parser) {
@@ -177,6 +178,8 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
 
 	bool can_assign = precedence <= PREC_ASSIGNMENT;
 	LitExpression* expr = prefix_rule(parser, can_assign);
+
+	ignore_new_lines(parser);
 
 	while (precedence <= get_rule(parser->current.type)->precedence) {
 		advance(parser);
@@ -562,10 +565,6 @@ static LitExpression* parse_range(LitParser* parser, LitExpression* previous, bo
 	return (LitExpression*) lit_create_range_expression(parser->state, line, previous, parse_expression(parser));
 }
 
-static LitExpression* parse_vararg(LitParser* parser, bool can_assign) {
-	return (LitExpression*) lit_create_vararg_expression(parser->state, parser->previous.line);
-}
-
 static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression* previous, bool can_assign) {
 	uint line = parser->previous.line;
 
@@ -827,14 +826,45 @@ static LitStatement* parse_function(LitParser* parser) {
 	uint line = parser->previous.line;
 	consume(parser, TOKEN_IDENTIFIER, "function name");
 
-	LitFunctionStatement* function = lit_create_function_statement(parser->state, line, parser->previous.start, parser->previous.length);
+	const char* function_name = parser->previous.start;
+	uint function_length = parser->previous.length;
+
+	if (match(parser, TOKEN_DOT)) {
+		consume(parser, TOKEN_IDENTIFIER, "function name");
+
+		LitLambdaExpression* lambda = lit_create_lambda_expression(parser->state, line);
+		LitSetExpression* to = lit_create_set_expression(parser->state, line, (LitExpression*) lit_create_var_expression(parser->state, line, function_name, function_length), parser->previous.start, parser->previous.length, (LitExpression*) lambda);
+
+		consume(parser, TOKEN_LEFT_PAREN, "'(' after function name");
+
+		LitCompiler compiler;
+		init_compiler(parser, &compiler);
+		begin_scope(parser);
+
+		parse_parameters(parser, &lambda->parameters);
+
+		if (lambda->parameters.count > 255) {
+			error(parser, ERROR_TOO_MANY_FUNCTION_ARGS, (int) lambda->parameters.count);
+		}
+
+		consume(parser, TOKEN_RIGHT_PAREN, "')' after function arguments");
+		lambda->body = parse_statement(parser);
+
+		end_scope(parser);
+		end_compiler(parser, &compiler);
+
+		return (LitStatement*) lit_create_expression_statement(parser->state, line, (LitExpression*) to);
+	}
+
+	LitFunctionStatement* function = lit_create_function_statement(parser->state, line, function_name, function_length);
 	function->export = export;
+
+	consume(parser, TOKEN_LEFT_PAREN, "'(' after function name");
 
 	LitCompiler compiler;
 	init_compiler(parser, &compiler);
 	begin_scope(parser);
 
-	consume(parser, TOKEN_LEFT_PAREN, "'(' after function name");
 	parse_parameters(parser, &function->parameters);
 
 	if (function->parameters.count > 255) {

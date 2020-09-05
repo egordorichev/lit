@@ -1192,7 +1192,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					LitField* field = AS_FIELD(setter);
 
 					if (field->setter == NULL) {
-						RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", inst->klass->name->chars, field_name->chars)
+						RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", inst->klass->name->chars,
+						                   field_name->chars)
 					}
 
 					DROP_MULTIPLE(2);
