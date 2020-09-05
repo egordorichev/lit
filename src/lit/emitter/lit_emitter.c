@@ -15,6 +15,13 @@ DEFINE_ARRAY(LitLocals, LitLocal, locals)
 
 static void emit_expression(LitEmitter* emitter, LitExpression* expression);
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement);
+static void resolve_statement(LitEmitter* emitter, LitStatement* statement);
+
+static void resolve_statements(LitEmitter* emitter, LitStatements* statements) {
+	for (uint i = 0; i < statements->count; i++) {
+		resolve_statement(emitter, statements->values[i]);
+	}
+}
 
 void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->state = state;
@@ -457,6 +464,41 @@ static bool emit_parameters(LitEmitter* emitter, LitParameters* parameters, uint
 	}
 
 	return false;
+}
+
+static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
+	switch (statement->type) {
+		case VAR_STATEMENT: {
+			LitVarStatement* stmt = (LitVarStatement*) statement;
+			mark_private_initialized(emitter, add_private(emitter, stmt->name, stmt->length, statement->line, stmt->constant));
+
+			break;
+		}
+
+		case FUNCTION_STATEMENT: {
+			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
+
+			if (!stmt->export) {
+				mark_private_initialized(emitter, add_private(emitter, stmt->name, stmt->length, statement->line, false));
+			}
+
+			break;
+		}
+
+		case CLASS_STATEMENT:
+		case BLOCK_STATEMENT:
+		case FOR_STATEMENT:
+		case WHILE_STATEMENT:
+		case IF_STATEMENT:
+		case CONTINUE_STATEMENT:
+		case BREAK_STATEMENT:
+		case RETURN_STATEMENT:
+		case METHOD_STATEMENT:
+		case FIELD_STATEMENT:
+		case EXPRESSION_STATEMENT: {
+			break;
+		}
+	}
 }
 
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
@@ -1028,7 +1070,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			bool private = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
 
 			int index = private ?
-				add_private(emitter, stmt->name, stmt->length, statement->line, stmt->constant) :
+				resolve_private(emitter, stmt->name, stmt->length, statement->line) :
 				add_local(emitter, stmt->name, stmt->length, statement->line, stmt->constant);
 
 			if (stmt->init == NULL) {
@@ -1299,7 +1341,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			if (!export) {
 				index = private ?
-					add_private(emitter, stmt->name, stmt->length, statement->line, false) :
+					resolve_private(emitter, stmt->name, stmt->length, statement->line) :
 					add_local(emitter, stmt->name, stmt->length, statement->line, false);
 			}
 
@@ -1524,6 +1566,8 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	init_compiler(emitter, &compiler, FUNCTION_SCRIPT);
 
 	emitter->chunk = &compiler.function->chunk;
+
+	resolve_statements(emitter, statements);
 
 	for (uint i = 0; i < statements->count; i++) {
 		LitStatement* stmt = statements->values[i];

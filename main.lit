@@ -1,1 +1,5 @@
-print(32 >> "test")
+export function a() {}
+
+print(a)
+print(a is Function) // Expected: true
+print(a is Object) // Expected: true

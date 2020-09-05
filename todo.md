@@ -1,8 +1,5 @@
 # todo
 
-* if function is declared after the current function and is not exported, it will not find it, cuz it will to look for global
- - we just need a pass on the emitter to resolve everything before emitting
-
 * c-api call() is really expensive
 * check upvalues
 * get/set field can easily become constant instructions
