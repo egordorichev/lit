@@ -4,8 +4,9 @@
 #include <lit/lit_common.h>
 #include <lit/vm/lit_value.h>
 
+int lit_decode_num_bytes(uint8_t byte);
 int lit_ustring_length(LitString* string);
-int lit_ustring_num_bytes(int value);
+int lit_encode_num_bytes(int value);
 int lit_ustring_decode(const uint8_t* bytes, uint32_t length);
 int lit_ustring_encode(int value, uint8_t* bytes);
 

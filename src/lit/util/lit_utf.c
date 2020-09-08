@@ -3,13 +3,31 @@
 
 #include <wchar.h>
 
-#define is_utf(c) (((c) & 0xC0) != 0x80)
+int lit_decode_num_bytes(uint8_t byte) {
+	if ((byte & 0xc0) == 0x80) {
+		return 0;
+	}
+
+	if ((byte & 0xf8) == 0xf0) {
+		return 4;
+	}
+
+	if ((byte & 0xf0) == 0xe0) {
+		return 3;
+	}
+
+	if ((byte & 0xe0) == 0xc0) {
+		return 2;
+	}
+
+	return 1;
+}
 
 int lit_ustring_length(LitString* string){
 	int length = 0;
 
-	for (uint32_t i = 0; i < string->length; i++) {
-		i += lit_ustring_num_bytes(string->chars[i]);
+	for (uint32_t i = 0; i < string->length;) {
+		i += lit_decode_num_bytes(string->chars[i]);
 		length++;
 	}
 
@@ -36,7 +54,7 @@ LitString* lit_ustring_code_point_at(LitState* state, LitString* string, uint32_
 }
 
 LitString* lit_ustring_from_code_point(LitState* state, int value) {
-	int length = lit_ustring_num_bytes(value);
+	int length = lit_encode_num_bytes(value);
 	char bytes[length + 1];
 
 	lit_ustring_encode(value, (uint8_t*) bytes);
@@ -48,7 +66,7 @@ LitString* lit_ustring_from_range(LitState* state, LitString* source, int start,
 	int length = 0;
 
 	for (uint32_t i = 0; i < count; i++) {
-		length += lit_ustring_num_bytes(from[start + i * step]);
+		length += lit_encode_num_bytes(from[start + i * step]);
 	}
 
 	char bytes[length];
@@ -70,7 +88,7 @@ LitString* lit_ustring_from_range(LitState* state, LitString* source, int start,
 	return lit_copy_string(state, bytes, length);
 }
 
-int lit_ustring_num_bytes(int value) {
+int lit_encode_num_bytes(int value) {
 	if (value <= 0x7f) {
 		return 1;
 	}
@@ -163,6 +181,7 @@ int lit_ustring_decode(const uint8_t* bytes, uint32_t length) {
 }
 
 int lit_uchar_offset(char *str, int index) {
+	#define is_utf(c) (((c) & 0xC0) != 0x80)
 	int offset = 0;
 
 	while (index > 0 && str[offset]) {
@@ -171,6 +190,5 @@ int lit_uchar_offset(char *str, int index) {
 	}
 
 	return offset;
+	#undef is_utf
 }
-
-#undef is_utf
