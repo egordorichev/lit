@@ -26,13 +26,4 @@ print(string.length) // Expected: 10
 var s = "Привет, мир"
 
 print(s[1]) // Expected: р
-print(s[2 .. 3]) // Expected: ив
 print(s.length) // Expected: 11
-
-var l = 0
-
-for (var c in s) {
-	l++
-}
-
-print(l) // Expected: 11
