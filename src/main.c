@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
-#include <locale.h>
 
 #ifdef LIT_OS_UNIX_LIKE
 #define USE_LIBREADLINE
@@ -107,8 +106,6 @@ static bool match_arg(const char* arg, const char* a, const char* b) {
 }
 
 int main(int argc, const char* argv[]) {
-	setlocale(LC_ALL, "en_US.UTF-8");
-
 	LitState* state = lit_new_state();
 	lit_open_libraries(state);
 

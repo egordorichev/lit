@@ -6,25 +6,14 @@
 #define is_utf(c) (((c) & 0xC0) != 0x80)
 
 int lit_ustring_length(LitString* string){
-	int position = 0;
-	int count = 0;
 	int length = 0;
 
-	int max = (int) string->length;
-
-	while (max > 0) {
-		length = mbrlen(&string->chars[position], max, NULL);
-
-		if ((length == 0) || (length > max)) {
-			return -1;
-		}
-
-		position += length;
-		max -= length;
-		count++;
+	for (uint32_t i = 0; i < string->length; i++) {
+		i += lit_ustring_num_bytes(string->chars[i]);
+		length++;
 	}
 
-	return count;
+	return length;
 }
 
 LitString* lit_ustring_code_point_at(LitState* state, LitString* string, uint32_t index) {
