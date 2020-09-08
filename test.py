@@ -2,11 +2,13 @@
 # Test script adapted from lox (https://github.com/munificent/craftinginterpreters)
 
 from __future__ import print_function
+from __future__ import unicode_literals
 
 from collections import defaultdict
 from os import listdir
 from os.path import abspath, basename, dirname, isdir, isfile, join, realpath, relpath, splitext
 import re
+import io
 from subprocess import Popen, PIPE
 import sys
 import os
@@ -86,7 +88,7 @@ class Test:
         # TODO: State for tests that should be run but are expected to fail?
 
         line_num = 1
-        with open(self.path, 'r') as file:
+        with io.open(self.path, mode='r', encoding='utf-8') as file:
             for line in file:
                 match = OUTPUT_EXPECT.search(line)
                 if match:
@@ -254,18 +256,16 @@ class Test:
 
         index = 0
         for line in out_lines:
-            if sys.version_info < (3, 0):
-                line = line.encode('utf-8')
 
             if index >= len(self.output):
-                self.fail('Got output "{0}" when none was expected.', line)
+                self.fail(u'Got output "{0}" when none was expected.', line)
             elif self.output[index][0] != line:
-                self.fail('Expected output "{0}" on line {1} and got "{2}".',
+                self.fail(u'Expected output "{0}" on line {1} and got "{2}".',
                           self.output[index][0], self.output[index][1], line)
             index += 1
 
         while index < len(self.output):
-            self.fail('Missing expected output "{0}" on line {1}.',
+            self.fail(u'Missing expected output "{0}" on line {1}.',
                       self.output[index][0], self.output[index][1])
             index += 1
 

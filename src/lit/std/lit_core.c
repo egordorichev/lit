@@ -429,7 +429,10 @@ static LitValue string_splice(LitVm* vm, LitString* string, int from, int to) {
 		lit_runtime_error_exiting(vm, "String splice from bound is larger that to bound");
 	}
 
-	return OBJECT_VALUE(lit_ustring_from_range(vm->state, string, lit_uchar_offset(string->chars, from), to - from + 1, 1));
+	from = lit_uchar_offset(string->chars, from);
+	to = lit_uchar_offset(string->chars, to);
+
+	return OBJECT_VALUE(lit_ustring_from_range(vm->state, string, from, to - from + 1));
 }
 
 LIT_METHOD(string_substring) {

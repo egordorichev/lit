@@ -12,7 +12,7 @@ int lit_ustring_encode(int value, uint8_t* bytes);
 
 LitString* lit_ustring_code_point_at(LitState* state, LitString* string, uint32_t index);
 LitString* lit_ustring_from_code_point(LitState* state, int value);
-LitString* lit_ustring_from_range(LitState* state, LitString* source, int start, uint32_t count, int step);
+LitString* lit_ustring_from_range(LitState* state, LitString* source, int start, uint32_t count);
 
 int lit_uchar_offset(char *str, int index);
 

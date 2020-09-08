@@ -61,27 +61,24 @@ LitString* lit_ustring_from_code_point(LitState* state, int value) {
 	return lit_copy_string(state, bytes, length);
 }
 
-LitString* lit_ustring_from_range(LitState* state, LitString* source, int start, uint32_t count, int step) {
+LitString* lit_ustring_from_range(LitState* state, LitString* source, int start, uint32_t count) {
 	uint8_t* from = (uint8_t*) source->chars;
 	int length = 0;
 
 	for (uint32_t i = 0; i < count; i++) {
-		length += lit_encode_num_bytes(from[start + i * step]);
+		length += lit_decode_num_bytes(from[start + i]);
 	}
 
 	char bytes[length];
+
 	uint8_t* to = (uint8_t*) bytes;
 
-	for (uint32_t i = 0; i < source->length; i++) {
-		int index = start + i * step;
+	for (uint32_t i = 0; i < count; i++) {
+		int index = start + i;
 		int code_point = lit_ustring_decode(from + index, source->length - index);
 
 		if (code_point != -1) {
 			to += lit_ustring_encode(code_point, to);
-
-			if ((uint8_t*) bytes - to >= (long) count) {
-				break;
-			}
 		}
 	}
 
