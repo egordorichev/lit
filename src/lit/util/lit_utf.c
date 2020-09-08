@@ -72,7 +72,7 @@ LitString* lit_ustring_from_range(LitState* state, LitString* source, int start,
 		if (code_point != -1) {
 			to += lit_ustring_encode(code_point, to);
 
-			if ((uint8_t*) bytes - to >= count) {
+			if ((uint8_t*) bytes - to >= (long) count) {
 				break;
 			}
 		}

@@ -29,7 +29,7 @@ void interpret(const char* source) {
 	}
 
 	if (state->vm != NULL) {
-		lit_table_delete(&state->vm->modules, CONST_STRING(state, "web"));
+		lit_table_delete(&state->vm->modules->values, CONST_STRING(state, "web"));
 	}
 
 	lit_interpret(state, "web", source);
