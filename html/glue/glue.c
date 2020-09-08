@@ -28,6 +28,10 @@ void interpret(const char* source) {
 		return;
 	}
 
+	if (state->vm != NULL) {
+		lit_table_delete(&state->vm->modules, CONST_STRING(state, "web"));
+	}
+
 	lit_interpret(state, "web", source);
 }
 

@@ -1,6 +1,6 @@
 <html lang="en">
 <head>
-	<title>Web Lit</title>
+	<title>lit-html</title>
 	<style type="text/css" media="screen">
 		#editor {
 			border-radius: 5px;
@@ -24,6 +24,7 @@
 	</style>
 </head>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.7/ace.js" type="text/javascript" charset="utf-8"></script>
+<script src="https://cdn.jsdelivr.net/gh/egordorichev/lit-ace/mode-lit.js" type="text/javascript" charset="utf-8"></script>
 <body>
 
 <div id="container">
@@ -36,24 +37,52 @@
 
 	<h5>Output</h5>
 	<div id="output"></div>
+	<h6><a href="https://github.com/egordorichev/lit-html">Fork me on github</a></h6>
 	<script>
-		var code = new URLSearchParams(window.location.search).get("code");
+		function get_contents(url, callback) {
+			var request = new XMLHttpRequest();
 
-		if (code != null) {
-			var editor_div = document.getElementById("editor");
-			editor_div.innerHTML = code;
+			request.open('GET', url, true);
+			request.send(null);
+
+			request.onreadystatechange = function () {
+				if (request.readyState === 4 && request.status === 200) {
+					var type = request.getResponseHeader('Content-Type');
+		
+					if (type.indexOf("text") !== 1) {
+						callback(request.responseText);
+					}
+				}
+			}
 		}
 
 		var editor = ace.edit("editor", {
 			theme: "ace/theme/monokai",
-			mode: "ace/mode/javascript",
 			maxLines: 30,
 			minLines: 10,
 			wrap: true,
 			autoScrollEditorIntoView: true
 		});
 
-		editor.getSession().setUseWorker(false);
+		var params = new URLSearchParams(window.location.search);
+		var file = params.get("github");
+		
+		if (file != null) {
+			get_contents(`https://cdn.jsdelivr.net/gh/${file}`, function(content) {
+				editor.setValue(content);
+				editor.clearSelection();
+			});
+		} else {
+			var code = params.get("code");
+
+			if (code != null) {
+				editor.setValue(code);
+				editor.clearSelection();
+			}
+		}
+		
+		editor.session.setMode("ace/mode/lit");
+		editor.session.setUseWorker(false);
 		editor.renderer.setScrollMargin(10, 10);
 
 		var Module = {
@@ -66,11 +95,19 @@
 			})(),
 
 			printErr: function (text) {
+				if (text.startsWith("wasm streaming compile failed") || text.startsWith("falling back to ArrayBuffer instantiation")) {
+					// Yeah, whatever
+					return;
+				}
+
 				if (arguments.length > 1) {
 					text = Array.prototype.slice.call(arguments).join(' ');
 				}
 
 				console.log(text);
+
+				var element = document.getElementById('output');
+				element.innerHTML += `<span style="color:red;">${text}</span><br>`;
 			},
 
 			canvas: (function () {

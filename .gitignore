@@ -11,3 +11,4 @@ lens/*
 Makefile
 venv
 *.lbc
+dist*
