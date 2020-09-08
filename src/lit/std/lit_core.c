@@ -5,6 +5,7 @@
 #include <lit/vm/lit_vm.h>
 #include <lit/vm/lit_object.h>
 #include <lit/util/lit_fs.h>
+#include <lit/util/lit_utf.h>
 
 #include <time.h>
 #include <ctype.h>
@@ -19,12 +20,17 @@ void lit_open_libraries(LitState* state) {
 	lit_open_file_library(state);
 }
 
+LIT_METHOD(invalid_constructor) {
+	lit_runtime_error_exiting(vm, "Can't create an instance of built-in type", AS_INSTANCE(instance)->klass->name);
+	return NULL_VALUE;
+}
+
 /*
  * Class
  */
 
 LIT_METHOD(class_toString) {
-	return OBJECT_VALUE(lit_string_format(vm->state, "class @", AS_CLASS(instance)->name));
+	return OBJECT_VALUE(lit_string_format(vm->state, "class @", OBJECT_VALUE(AS_CLASS(instance)->name)));
 }
 
 static int table_iterator(LitTable* table, int number) {
@@ -32,13 +38,11 @@ static int table_iterator(LitTable* table, int number) {
 		return -1;
 	}
 
-	if (number != -1) {
-		if (number >= (int) table->capacity) {
-			return -1;
-		}
-
-		number++;
+	if (number >= (int) table->capacity) {
+		return -1;
 	}
+
+	number++;
 
 	for (; number < table->capacity; number++) {
 		if (table->entries[number].key != NULL) {
@@ -61,7 +65,7 @@ LIT_METHOD(class_iterator) {
 	LIT_ENSURE_ARGS(1)
 
 	LitClass* klass = AS_CLASS(instance);
-	int index = args[0] == NULL_VALUE ? 0 : AS_NUMBER(args[0]);
+	int index = args[0] == NULL_VALUE ? -1 : AS_NUMBER(args[0]);
 	int methodsCapacity = (int) klass->methods.capacity;
 	bool fields = index >= methodsCapacity;
 
@@ -197,7 +201,7 @@ LIT_METHOD(object_iterator) {
 	LIT_ENSURE_ARGS(1)
 
 	LitInstance* self = AS_INSTANCE(instance);
-	int index = args[0] == NULL_VALUE ? 0 : AS_NUMBER(args[0]);
+	int index = args[0] == NULL_VALUE ? -1 : AS_NUMBER(args[0]);
 	int methodsCapacity = (int) self->klass->methods.capacity;
 	bool fields = index >= methodsCapacity;
 
@@ -408,30 +412,24 @@ LIT_METHOD(string_replace) {
 }
 
 static LitValue string_splice(LitVm* vm, LitString* string, int from, int to) {
+	int length = lit_ustring_length(string);
+
 	if (from < 0) {
-		from = (int) string->length + from;
+		from = length + from;
 	}
 
 	if (to < 0) {
-		to = (int) string->length + to;
-	}
-
-	if (from > to) {
-		lit_runtime_error(vm, "String splice from bound is larger that to bound");
+		to = length + to;
 	}
 
 	from = fmax(from, 0);
-	to = fmin(to, (int) string->length - 1);
+	to = fmin(to, length - 1);
 
-	int length = fmin(string->length, to - from + 1);
-	char buffer[length + 1];
-
-	for (int i = 0; i < length; i++) {
-		buffer[i] = string->chars[from + i];
+	if (from > to) {
+		lit_runtime_error_exiting(vm, "String splice from bound is larger that to bound");
 	}
 
-	buffer[length] = '\0';
-	return OBJECT_VALUE(lit_copy_string(vm->state, buffer, length));
+	return OBJECT_VALUE(lit_ustring_from_range(vm->state, string, lit_uchar_offset(string->chars, from), to - from + 1, 1));
 }
 
 LIT_METHOD(string_substring) {
@@ -456,14 +454,59 @@ LIT_METHOD(string_subscript) {
 	}
 
 	if (index < 0) {
-		index = fmax(0, string->length + index);
+		index = lit_ustring_length(string) + index;
+
+		if (index < 0) {
+			return NULL_VALUE;
+		}
 	}
 
-	return OBJECT_VALUE(lit_copy_string(vm->state, &string->chars[index], 1));
+	LitString* c = lit_ustring_code_point_at(vm->state, string, lit_uchar_offset(string->chars, index));
+
+	return c == NULL ? NULL_VALUE : OBJECT_VALUE(c);
 }
 
 LIT_METHOD(string_length) {
-	return NUMBER_VALUE(AS_STRING(instance)->length);
+	return NUMBER_VALUE(lit_ustring_length(AS_STRING(instance)));
+}
+
+LIT_METHOD(string_iterator) {
+	LitString* string = AS_STRING(instance);
+
+	if (IS_NULL(args[0])) {
+		if (string->length == 0) {
+			return NULL_VALUE;
+		}
+
+		return NUMBER_VALUE(0);
+	}
+
+	int index = LIT_CHECK_NUMBER(0);
+
+	if (index < 0) {
+		return NULL_VALUE;
+	}
+
+	do {
+		index++;
+
+		if (index >= (int) string->length) {
+			return NULL_VALUE;
+		}
+	} while ((string->chars[index] & 0xc0) == 0x80);
+
+	return NUMBER_VALUE(index);
+}
+
+LIT_METHOD(string_iteratorValue) {
+	LitString* string = AS_STRING(instance);
+	uint32_t index = LIT_CHECK_NUMBER(0);
+
+	if (index == UINT32_MAX) {
+		return false;
+	}
+
+	return OBJECT_VALUE(lit_ustring_code_point_at(vm->state, string, index));
 }
 
 /*
@@ -521,21 +564,40 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count
 
 	fiber->parent = vm->fiber;
 	fiber->catcher = catcher;
-	fiber->arg_count = arg_count;
 
 	vm->fiber = fiber;
 
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
 
 	if (frame->ip == frame->function->chunk.code) {
+		fiber->arg_count = arg_count;
+		lit_ensure_fiber_stack(vm->state, fiber, frame->function->max_slots + 1 + (int) (fiber->stack_top - fiber->stack));
+
 		frame->slots = fiber->stack_top;
-
 		lit_push(vm, OBJECT_VALUE(frame->function));
-		uint function_arg_count = frame->function->arg_count;
 
-		if (arg_count <= function_arg_count) {
-			for (uint i = 0; i < function_arg_count; i++) {
-				lit_push(vm, i < arg_count ? args[i] : NULL_VALUE);
+		bool vararg = frame->function->vararg;
+		int function_arg_count = frame->function->arg_count;
+		int to = function_arg_count - (vararg ? 1 : 0);
+
+		fiber->arg_count = function_arg_count;
+
+		for (int i = 0; i < to; i++) {
+			lit_push(vm, i < (int) arg_count ? args[i] : NULL_VALUE);
+		}
+
+		if (vararg) {
+			LitArray* array = lit_create_array(vm->state);
+			lit_push(vm, OBJECT_VALUE(array));
+
+			int vararg_count = arg_count - function_arg_count + 1;
+
+			if (vararg_count > 0) {
+				lit_values_ensure_size(vm->state, &array->values, vararg_count);
+
+				for (int i = 0; i < vararg_count; i++) {
+					array->values.values[i] = args[i + function_arg_count - 1];
+				}
 			}
 		}
 	}
@@ -593,8 +655,54 @@ LIT_PRIMITIVE(fiber_abort) {
  * Module
  */
 
+LitValue access_private(LitVm* vm, struct sLitMap* map, LitString* name, LitValue* val) {
+	LitValue value;
+	LitString* id = CONST_STRING(vm->state, "_module");
+
+	if (!lit_table_get(&map->values, id, &value) || !IS_MODULE(value)) {
+		return NULL_VALUE;
+	}
+
+	LitModule* module = AS_MODULE(value);
+
+	if (id == name) {
+		return OBJECT_VALUE(module);
+	}
+
+	if (lit_table_get(&module->private_names->values, name, &value)) {
+		int index = (int) AS_NUMBER(value);
+
+		if (index > -1 && index < (int) module->private_count) {
+			if (val != NULL) {
+				module->privates[index] = *val;
+				return *val;
+			}
+
+			return module->privates[index];
+		}
+	}
+
+	return NULL_VALUE;
+}
+
+LIT_METHOD(module_privates) {
+	LitModule* module = IS_MODULE(instance) ? AS_MODULE(instance) : vm->fiber->module;
+	LitMap* map = module->private_names;
+
+	if (map->index_fn == NULL) {
+		map->index_fn = access_private;
+		lit_table_set(vm->state, &map->values, CONST_STRING(vm->state, "_module"), OBJECT_VALUE(module));
+	}
+
+	return OBJECT_VALUE(map);
+}
+
+LIT_METHOD(module_current) {
+	return OBJECT_VALUE(vm->fiber->module);
+}
+
 LIT_METHOD(module_toString) {
-	return OBJECT_VALUE(lit_string_format(vm->state, "Module @", AS_MODULE(instance)->name));
+	return OBJECT_VALUE(lit_string_format(vm->state, "Module @", OBJECT_VALUE(AS_MODULE(instance)->name)));
 }
 
 LIT_METHOD(module_name) {
@@ -604,6 +712,10 @@ LIT_METHOD(module_name) {
 /*
  * Array
  */
+
+LIT_METHOD(array_constructor) {
+	return OBJECT_VALUE(lit_create_array(vm->state));
+}
 
 static LitValue array_splice(LitVm* vm, LitArray* array, int from, int to) {
 	uint length = array->values.count;
@@ -939,25 +1051,37 @@ LIT_METHOD(array_length) {
  * Map
  */
 
+LIT_METHOD(map_constructor) {
+	return OBJECT_VALUE(lit_create_map(vm->state));
+}
+
 LIT_METHOD(map_subscript) {
-	if (arg_count == 2) {
-		if (!IS_STRING(args[0])) {
-			lit_runtime_error(vm, "Map index must be a string");
-			return NULL_VALUE;
-		}
-
-		lit_map_set(vm->state, AS_MAP(instance), AS_STRING(args[0]), args[1]);
-		return args[1];
-	}
-
 	if (!IS_STRING(args[0])) {
 		lit_runtime_error(vm, "Map index must be a string");
 		return NULL_VALUE;
 	}
 
+	LitMap* map = AS_MAP(instance);
+	LitString* index = AS_STRING(args[0]);
+
+	if (arg_count == 2) {
+		LitValue val = args[1];
+
+		if (map->index_fn != NULL) {
+			return map->index_fn(vm, map, index, &val);
+		}
+
+		lit_map_set(vm->state, map, index, val);
+		return val;
+	}
+
 	LitValue value;
 
-	if (!lit_table_get(&AS_MAP(instance)->values, AS_STRING(args[0]), &value)) {
+	if (map->index_fn != NULL) {
+		return map->index_fn(vm, map, index, NULL);
+	}
+
+	if (!lit_table_get(&map->values, index, &value)) {
 		return NULL_VALUE;
 	}
 
@@ -983,7 +1107,7 @@ LIT_METHOD(map_clear) {
 
 LIT_METHOD(map_iterator) {
 	LIT_ENSURE_ARGS(1)
-	int index = args[0] == NULL_VALUE ? 0 : AS_NUMBER(args[0]);
+	int index = args[0] == NULL_VALUE ? -1 : AS_NUMBER(args[0]);
 
 	int value = table_iterator(&AS_MAP(instance)->values, index);
 	return value == -1 ? NULL_VALUE : NUMBER_VALUE(value);
@@ -1005,12 +1129,14 @@ LIT_METHOD(map_clone) {
 
 LIT_METHOD(map_toString) {
 	LitState* state = vm->state;
-	LitTable* values = &AS_MAP(instance)->values;
+	LitMap* map = AS_MAP(instance);
+	LitTable* values = &map->values;
 
 	if (values->count == 0) {
 		return OBJECT_CONST_STRING(state, "{}");
 	}
 
+	bool has_wrapper = map->index_fn != NULL;
 	bool has_more = values->count > LIT_CONTAINER_OUTPUT_MAX;
 	uint value_amount = has_more ? LIT_CONTAINER_OUTPUT_MAX : values->count;
 
@@ -1029,16 +1155,20 @@ LIT_METHOD(map_toString) {
 		LitTableEntry* entry = &values->entries[index++];
 
 		if (entry->key != NULL) {
-			LitString* value = lit_to_string(state, entry->value);
+			// Special hidden key
+			LitValue field = has_wrapper ? map->index_fn(vm, map, entry->key, NULL) : entry->value;
+			// This check is required to prevent infinite loops when playing with Module.privates and such
+			LitString* value = (IS_MAP(field) && AS_MAP(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field);
+			lit_push_root(state, (LitObject*) value);
 
 			values_converted[i] = value;
 			keys[i] = entry->key;
 			string_length += entry->key->length + 3 + value->length +
-				#ifdef SINGLE_LINE_MAPS
-					(i == value_amount - 1 ? 1 : 2);
-				#else
-					(i == value_amount - 1 ? 2 : 3);
-				#endif
+			#ifdef SINGLE_LINE_MAPS
+				(i == value_amount - 1 ? 1 : 2);
+			#else
+				(i == value_amount - 1 ? 2 : 3);
+			#endif
 
 			i++;
 		}
@@ -1047,9 +1177,9 @@ LIT_METHOD(map_toString) {
 	char buffer[string_length + 1];
 
 	#ifdef SINGLE_LINE_MAPS
-		memcpy(buffer, "{ ", 2);
+	memcpy(buffer, "{ ", 2);
 	#else
-		memcpy(buffer, "{\n", 2);
+	memcpy(buffer, "{\n", 2);
 	#endif
 
 	uint buffer_index = 2;
@@ -1059,13 +1189,13 @@ LIT_METHOD(map_toString) {
 		LitString *value = values_converted[i];
 
 		#ifndef SINGLE_LINE_MAPS
-			buffer[buffer_index++] = '\t';
+		buffer[buffer_index++] = '\t';
 		#endif
 
 		memcpy(&buffer[buffer_index], key->chars, key->length);
 		buffer_index += key->length;
 
-		memcpy(&buffer[buffer_index], " : ", 3);
+		memcpy(&buffer[buffer_index], " = ", 3);
 		buffer_index += 3;
 
 		memcpy(&buffer[buffer_index], value->chars, value->length);
@@ -1073,20 +1203,22 @@ LIT_METHOD(map_toString) {
 
 		if (has_more && i == value_amount - 1) {
 			#ifdef SINGLE_LINE_MAPS
-				memcpy(&buffer[buffer_index], ", ... }", 7);
+			memcpy(&buffer[buffer_index], ", ... }", 7);
 			#else
-				memcpy(&buffer[buffer_index], ",\n\t...\n}", 8);
+			memcpy(&buffer[buffer_index], ",\n\t...\n}", 8);
 			#endif
 			buffer_index += 8;
 		} else {
 			#ifdef SINGLE_LINE_MAPS
-				memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " }" : ", ", 2);
+			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " }" : ", ", 2);
 			#else
-				memcpy(&buffer[buffer_index], (i == value_amount - 1) ? "\n}" : ",\n", 2);
+			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? "\n}" : ",\n", 2);
 			#endif
 
 			buffer_index += 2;
 		}
+
+		lit_pop_root(state);
 	}
 
 	buffer[string_length] = '\0';
@@ -1194,7 +1326,6 @@ static bool interpret(LitVm* vm, LitModule* module) {
 	return true;
 }
 
-
 static bool compile_and_interpret(LitVm* vm, LitString* module_name, const char* source) {
 	LitModule *module = lit_compile_module(vm->state, module_name, source);
 
@@ -1257,7 +1388,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 	if (!ignore_previous) {
 		LitValue existing_module;
 
-		if (lit_table_get(&vm->modules, name, &existing_module)) {
+		if (lit_table_get(&vm->modules->values, name, &existing_module)) {
 			LitModule* loaded_module = AS_MODULE(existing_module);
 
 			if (loaded_module->ran) {
@@ -1364,12 +1495,15 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Number")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(invalid_constructor)
+
 		LIT_BIND_METHOD("toString", number_toString)
 		state->number_class = klass;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("String")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(invalid_constructor)
 
 		LIT_BIND_METHOD("+", string_plus)
 		LIT_BIND_METHOD("toString", string_toString)
@@ -1381,6 +1515,8 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("endsWith", string_endsWith)
 		LIT_BIND_METHOD("replace", string_replace)
 		LIT_BIND_METHOD("substring", string_substring)
+		LIT_BIND_METHOD("iterator", string_iterator)
+		LIT_BIND_METHOD("iteratorValue", string_iteratorValue)
 		LIT_BIND_METHOD("[]", string_subscript)
 
 		LIT_BIND_GETTER("length", string_length)
@@ -1390,12 +1526,15 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Bool")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(invalid_constructor)
+
 		LIT_BIND_METHOD("toString", bool_toString)
 		state->bool_class = klass;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("Function")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(invalid_constructor)
 
 		LIT_BIND_METHOD("toString", function_toString)
 		LIT_BIND_GETTER("name", function_name)
@@ -1405,8 +1544,8 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Fiber")
 		LIT_INHERIT_CLASS(state->object_class)
-
 		LIT_BIND_CONSTRUCTOR(fiber_constructor)
+
 		LIT_BIND_PRIMITIVE("run", fiber_run)
 		LIT_BIND_PRIMITIVE("try", fiber_try)
 		LIT_BIND_GETTER("done", fiber_done)
@@ -1422,15 +1561,22 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Module")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(invalid_constructor)
+
+		LIT_SET_STATIC_FIELD("loaded", OBJECT_VALUE(state->vm->modules))
+		LIT_BIND_STATIC_GETTER("privates", module_privates)
+		LIT_BIND_STATIC_GETTER("current", module_current)
 
 		LIT_BIND_METHOD("toString", module_toString)
 		LIT_BIND_GETTER("name", module_name)
+		LIT_BIND_GETTER("privates", module_privates)
 
 		state->module_class = klass;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("Array")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(array_constructor)
 
 		LIT_BIND_METHOD("[]", array_subscript)
 		LIT_BIND_METHOD("add", array_add)
@@ -1452,8 +1598,10 @@ void lit_open_core_library(LitState* state) {
 
 		state->array_class = klass;
 	LIT_END_CLASS()
+
 	LIT_BEGIN_CLASS("Map")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(map_constructor)
 
 		LIT_BIND_METHOD("[]", map_subscript)
 		LIT_BIND_METHOD("addAll", map_addAll)
@@ -1470,6 +1618,7 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Range")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(invalid_constructor)
 
 		LIT_BIND_METHOD("iterator", range_iterator)
 		LIT_BIND_METHOD("iteratorValue", range_iteratorValue)
@@ -1488,4 +1637,6 @@ void lit_open_core_library(LitState* state) {
 
 	lit_define_native_primitive(state, "require", require_primitive);
 	lit_define_native_primitive(state, "eval", eval_primitive);
+
+	lit_set_global(state, CONST_STRING(state, "globals"), OBJECT_VALUE(state->vm->globals));
 }

@@ -17,8 +17,9 @@ typedef struct sLitVm {
 	LitObject* objects;
 
 	LitTable strings;
-	LitTable globals;
-	LitTable modules;
+
+	LitMap* modules;
+	LitMap* globals;
 
 	LitFiber* fiber;
 
@@ -47,6 +48,10 @@ static inline LitValue lit_pop(LitVm* vm) {
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module);
 LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber);
 bool lit_handle_runtime_error(LitVm* vm, LitString* error_string);
+bool lit_vruntime_error(LitVm* vm, const char* format, va_list args);
 bool lit_runtime_error(LitVm* vm, const char* format, ...);
+bool lit_runtime_error_exiting(LitVm* vm, const char* format, ...);
+
+void lit_native_exit_jump();
 
 #endif

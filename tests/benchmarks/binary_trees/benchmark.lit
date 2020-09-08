@@ -1,0 +1,53 @@
+class Tree {
+	constructor(item, depth) {
+		this.item = item
+
+		if (depth > 0) {
+			var item2 = item + item
+			depth--
+
+			this.left = new Tree(item2 - 1, depth)
+			this.right = new Tree(item2, depth)
+		}
+	}
+
+	check() {
+		if (this.left == null) {
+			return this.item
+		}
+
+		return this.item + this.left.check() - this.right.check()
+	}
+}
+
+var minDepth = 4
+var maxDepth = 12
+var stretchDepth = maxDepth + 1
+
+var start = time()
+
+print($"stretch tree of depth {stretchDepth} check: {new Tree(0, stretchDepth).check()}")
+
+var longLivedTree = new Tree(0, maxDepth)
+var iterations = 1
+
+for (var d in 0 .. maxDepth - 1) {
+	iterations = iterations * 2
+}
+
+var depth = minDepth
+
+while (depth < stretchDepth) {
+	var check = 0
+
+	for (var i in 1 .. iterations) {
+		check = check + new Tree(i, depth).check() + new Tree(-i, depth).check()
+	}
+
+	print($"{iterations * 2} trees of depth {depth} check: {check}")
+	iterations = iterations / 4
+	depth = depth + 2
+}
+
+print($"long lived tree of depth {maxDepth} check: {longLivedTree.check()}")
+print($"elapsed: {time() - start}")

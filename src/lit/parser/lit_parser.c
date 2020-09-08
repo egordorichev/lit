@@ -119,16 +119,14 @@ static bool match(LitParser* parser, LitTokenType type) {
 	return false;
 }
 
-static void consume(LitParser* parser, LitTokenType type, ...) {
+static void consume(LitParser* parser, LitTokenType type, const char* error) {
 	if (parser->current.type == type) {
 		advance(parser);
 		return;
 	}
 
-	va_list args;
-	va_start(args, type);
-	error_at(parser, &parser->current, ERROR_EXPECTION_UNMET, args);
-	va_end(args);
+	bool line = parser->previous.type == TOKEN_NEW_LINE;
+	string_error(parser, &parser->current, lit_format_error(parser->state, parser->current.line, ERROR_EXPECTION_UNMET, error, line ? 8 : parser->previous.length, line ? "new line" : parser->previous.start)->chars);
 }
 
 static bool match_new_line(LitParser* parser) {
@@ -170,12 +168,18 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
 	LitPrefixParseFn prefix_rule = get_rule(parser->previous.type)->prefix;
 
 	if (prefix_rule == NULL) {
-		error(parser, ERROR_EXPECTED_EXPRESSION, previous.length, previous.start, parser->previous.length, parser->previous.start);
+		bool prev_newline = *previous.start == '\n';
+		bool parser_prev_newline = *parser->previous.start == '\n';
+
+		error(parser, ERROR_EXPECTED_EXPRESSION, prev_newline ? 8 : previous.length, prev_newline ? "new line" : previous.start,
+			parser_prev_newline ? 8 : parser->previous.length, parser_prev_newline ? "new line" : parser->previous.start);
 		return NULL;
 	}
 
 	bool can_assign = precedence <= PREC_ASSIGNMENT;
 	LitExpression* expr = prefix_rule(parser, can_assign);
+
+	ignore_new_lines(parser);
 
 	while (precedence <= get_rule(parser->current.type)->precedence) {
 		advance(parser);
@@ -244,7 +248,7 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 	const char* start = parser->previous.start;
 	uint line = parser->previous.line;
 
-	if (match(parser, TOKEN_IDENTIFIER)) {
+	if (match(parser, TOKEN_IDENTIFIER) || match(parser, TOKEN_DOT_DOT_DOT)) {
 		LitState* state = parser->state;
 
 		const char* first_arg_start = parser->previous.start;
@@ -252,6 +256,7 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 
 		if (match(parser, TOKEN_COMMA) || (match(parser, TOKEN_RIGHT_PAREN) && match(parser, TOKEN_ARROW))) {
 			bool had_arrow = parser->previous.type == TOKEN_ARROW;
+			bool had_vararg = parser->previous.type == TOKEN_DOT_DOT_DOT;
 
 			// This is a lambda
 			LitLambdaExpression* lambda = lit_create_lambda_expression(state, line);
@@ -265,9 +270,15 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 
 			lit_parameters_write(state, &lambda->parameters, (LitParameter) { first_arg_start, first_arg_length, def_value });
 
-			if (parser->previous.type == TOKEN_COMMA) {
+			if (!had_vararg && parser->previous.type == TOKEN_COMMA) {
 				do {
-					consume(parser, TOKEN_IDENTIFIER, "argument name");
+					bool stop = false;
+
+					if (match(parser, TOKEN_DOT_DOT_DOT)) {
+						stop = true;
+					} else {
+						consume(parser, TOKEN_IDENTIFIER, "argument name");
+					}
 
 					const char* arg_name = parser->previous.start;
 					uint arg_length = parser->previous.length;
@@ -281,6 +292,10 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 					}
 
 					lit_parameters_write(state, &lambda->parameters, (LitParameter) { arg_name, arg_length, default_value });
+
+					if (stop) {
+						break;
+					}
 				} while (match(parser, TOKEN_COMMA));
 			}
 
@@ -490,15 +505,55 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign) {
 	return (LitExpression*) expression;
 }
 
+static LitExpression* parse_object(LitParser* parser, bool can_assign) {
+	LitObjectExpression* object = lit_create_object_expression(parser->state, parser->previous.line);
+	ignore_new_lines(parser);
+
+	while (!check(parser, TOKEN_RIGHT_BRACE)) {
+		ignore_new_lines(parser);
+		consume(parser, TOKEN_IDENTIFIER, "key string after '{'");
+		lit_values_write(parser->state, &object->keys, OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start, parser->previous.length)));
+
+		ignore_new_lines(parser);
+		consume(parser, TOKEN_EQUAL, "'=' after key string");
+
+		ignore_new_lines(parser);
+		lit_expressions_write(parser->state, &object->values, parse_expression(parser));
+
+		if (!match(parser,  TOKEN_COMMA)) {
+			break;
+		}
+	}
+
+	ignore_new_lines(parser);
+	consume(parser, TOKEN_RIGHT_BRACE, "'}' after object");
+
+	return (LitExpression*) object;
+}
+
 static LitExpression* parse_variable_expression_base(LitParser* parser, bool can_assign, bool new) {
-	LitExpression* expression = (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, parser->previous);
+	LitExpression* expression = (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, parser->previous.start, parser->previous.length);
 
 	if (new) {
-		if (!check(parser, TOKEN_LEFT_PAREN)) {
-			error_at_current(parser, ERROR_EXPECTION_UNMET, "argument list for instance creation");
+		bool had_args = check(parser, TOKEN_LEFT_PAREN);
+		LitCallExpression* call = NULL;
+
+		if (had_args) {
+			advance(parser);
+			call = (LitCallExpression*) parse_call(parser, expression, false);
 		}
 
-		return expression;
+		if (match(parser, TOKEN_LEFT_BRACE)) {
+			if (call == NULL) {
+				call = lit_create_call_expression(parser->state, expression->line, expression);
+			}
+
+			call->init = parse_object(parser, false);
+		} else if (!had_args) {
+			error_at_current(parser, ERROR_EXPECTION_UNMET, "argument list for instance creation", parser->previous.length, parser->previous.start);
+		}
+
+		return (LitExpression*) call;
 	}
 
 	if (match(parser, TOKEN_LEFT_BRACKET)) {
@@ -550,10 +605,6 @@ static LitExpression* parse_range(LitParser* parser, LitExpression* previous, bo
 	return (LitExpression*) lit_create_range_expression(parser->state, line, previous, parse_expression(parser));
 }
 
-static LitExpression* parse_vararg(LitParser* parser, bool can_assign) {
-	return (LitExpression*) lit_create_vararg_expression(parser->state, parser->previous.line);
-}
-
 static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression* previous, bool can_assign) {
 	uint line = parser->previous.line;
 
@@ -591,32 +642,6 @@ static LitExpression* parse_array(LitParser* parser, bool can_assign) {
 	}
 
 	return (LitExpression*) array;
-}
-
-static LitExpression* parse_map(LitParser* parser, bool can_assign) {
-	LitMapExpression* map = lit_create_map_expression(parser->state, parser->previous.line);
-	ignore_new_lines(parser);
-
-	while (!check(parser, TOKEN_RIGHT_BRACE)) {
-		ignore_new_lines(parser);
-		consume(parser, TOKEN_STRING, "key string after '{'");
-		lit_values_write(parser->state, &map->keys, OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start + 1, parser->previous.length - 2)));
-
-		ignore_new_lines(parser);
-		consume(parser, TOKEN_COLON, "':' after key string");
-
-		ignore_new_lines(parser);
-		lit_expressions_write(parser->state, &map->values, parse_expression(parser));
-
-		if (!match(parser,  TOKEN_COMMA)) {
-			break;
-		}
-	}
-
-	ignore_new_lines(parser);
-	consume(parser, TOKEN_RIGHT_BRACE, "'}' after map");
-
-	return (LitExpression*) map;
 }
 
 static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous, bool can_assign) {
@@ -815,14 +840,45 @@ static LitStatement* parse_function(LitParser* parser) {
 	uint line = parser->previous.line;
 	consume(parser, TOKEN_IDENTIFIER, "function name");
 
-	LitFunctionStatement* function = lit_create_function_statement(parser->state, line, parser->previous.start, parser->previous.length);
+	const char* function_name = parser->previous.start;
+	uint function_length = parser->previous.length;
+
+	if (match(parser, TOKEN_DOT)) {
+		consume(parser, TOKEN_IDENTIFIER, "function name");
+
+		LitLambdaExpression* lambda = lit_create_lambda_expression(parser->state, line);
+		LitSetExpression* to = lit_create_set_expression(parser->state, line, (LitExpression*) lit_create_var_expression(parser->state, line, function_name, function_length), parser->previous.start, parser->previous.length, (LitExpression*) lambda);
+
+		consume(parser, TOKEN_LEFT_PAREN, "'(' after function name");
+
+		LitCompiler compiler;
+		init_compiler(parser, &compiler);
+		begin_scope(parser);
+
+		parse_parameters(parser, &lambda->parameters);
+
+		if (lambda->parameters.count > 255) {
+			error(parser, ERROR_TOO_MANY_FUNCTION_ARGS, (int) lambda->parameters.count);
+		}
+
+		consume(parser, TOKEN_RIGHT_PAREN, "')' after function arguments");
+		lambda->body = parse_statement(parser);
+
+		end_scope(parser);
+		end_compiler(parser, &compiler);
+
+		return (LitStatement*) lit_create_expression_statement(parser->state, line, (LitExpression*) to);
+	}
+
+	LitFunctionStatement* function = lit_create_function_statement(parser->state, line, function_name, function_length);
 	function->export = export;
+
+	consume(parser, TOKEN_LEFT_PAREN, "'(' after function name");
 
 	LitCompiler compiler;
 	init_compiler(parser, &compiler);
 	begin_scope(parser);
 
-	consume(parser, TOKEN_LEFT_PAREN, "'(' after function name");
 	parse_parameters(parser, &function->parameters);
 
 	if (function->parameters.count > 255) {
@@ -1195,7 +1251,7 @@ static void setup_rules() {
 	rules[TOKEN_DOT_DOT] = (LitParseRule) { NULL, parse_range, PREC_RANGE };
 	rules[TOKEN_DOT_DOT_DOT] = (LitParseRule) { parse_variable_expression, NULL, PREC_ASSIGNMENT };
 	rules[TOKEN_LEFT_BRACKET] = (LitParseRule) { parse_array, parse_subscript, PREC_NONE };
-	rules[TOKEN_LEFT_BRACE] = (LitParseRule) { parse_map, NULL, PREC_NONE };
+	rules[TOKEN_LEFT_BRACE] = (LitParseRule) { parse_object, NULL, PREC_NONE };
 	rules[TOKEN_THIS] = (LitParseRule) { parse_this, NULL, PREC_NONE };
 	rules[TOKEN_SUPER] = (LitParseRule) { parse_super, NULL, PREC_NONE };
 	rules[TOKEN_QUESTION] = (LitParseRule) { NULL, parse_ternary_or_question, PREC_EQUALITY };

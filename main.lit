@@ -1,13 +1,18 @@
-function check(...) {
-	var a = ...
-	print(a) // Expected: [ coffee, sugar ]
+var m = new Map {
+	a = 32
 }
 
-// Note, that the vararg must be the last one in the parameters list.
-function shout(a, ...) {
-	var b = ...
-	print(b) // Expected: [ coffee, sugar ]
-	check(...)
+print(m["a"])
+
+class Test {
+	constructor(a) {
+		print(a)
+	}
 }
 
-shout("tea", "coffee", "sugar")
+var o = new Test("hello") {
+	test = true,
+	fields = [ 48, 32 ]
+}
+
+print(o.test)

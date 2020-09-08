@@ -1,4 +1,5 @@
 #include <lit/lit.h>
+#include <lit/lit_config.h>
 #include <lit/vm/lit_vm.h>
 #include <lit/std/lit_core.h>
 #include <lit/scanner/lit_scanner.h>
@@ -8,6 +9,18 @@
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <locale.h>
+
+#ifdef LIT_OS_UNIX_LIKE
+#define USE_LIBREADLINE
+#endif
+
+#ifdef USE_LIBREADLINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#else
+#define REPL_INPUT_MAX 1024
+#endif
 
 #define EXIT_CODE_ARGUMENT_ERROR 1
 #define EXIT_CODE_MEM_LEAK 2
@@ -31,15 +44,25 @@ static void run_repl(LitState* state) {
 
 	lit_set_optimization_level(OPTIMIZATION_LEVEL_REPL);
 	printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
-	char line[1024];
+
+	#ifdef USE_LIBREADLINE
+		char* line;
+	#else
+		char line[REPL_INPUT_MAX];
+	#endif
 
 	while (true) {
 		printf("%s>%s ", COLOR_BLUE, COLOR_RESET);
 
-		if (!fgets(line, sizeof(line), stdin)) {
-			printf("\n");
-			break;
-		}
+		#ifdef USE_LIBREADLINE
+			line = readline("");
+			add_history(line);
+		#else
+			if (!fgets(line, REPL_INPUT_MAX, stdin)) {
+				printf("\n");
+				break;
+			}
+		#endif
 
 		LitInterpretResult result = lit_interpret(state, "repl", line);
 
@@ -84,6 +107,8 @@ static bool match_arg(const char* arg, const char* a, const char* b) {
 }
 
 int main(int argc, const char* argv[]) {
+	setlocale(LC_ALL, "en_US.UTF-8");
+
 	LitState* state = lit_new_state();
 	lit_open_libraries(state);
 
@@ -126,7 +151,7 @@ int main(int argc, const char* argv[]) {
 			char* optimization_name;
 
 			// -Ono-whatever
-			if (strcmp((char*) (arg + 2), "no-") > 0) {
+			if (memcmp((char*) (arg + 2), "no-", 3) == 0) {
 				enable_optimization = false;
 				optimization_name = (char*) (arg + 5);
 			} else {
@@ -192,6 +217,7 @@ int main(int argc, const char* argv[]) {
 			}
 
 			bytecode_file = (char*) argv[++i];
+			lit_set_optimization_level(OPTIMIZATION_LEVEL_EXTREME);
 		} else if (match_arg(arg, "-p", "--pass")) {
 			arg_array = lit_create_array(state);
 

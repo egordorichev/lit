@@ -1,0 +1,90 @@
+// Bool value is either true or false.
+
+var a = true
+
+if (a) {
+	print("Halo") // Expected: Halo
+}
+
+// You can invert a boolean with the ! operator.
+
+if (!a) {
+	print("This shouldn't happen")
+}
+
+// Next type is number, it can be represented with decimal, hex or binary value:
+var myNumber = 42.64
+var myHex = 0x32
+var myBinary = 0b11
+
+print(myNumber) // Expected: 42.64
+print(myHex) // Expected: 50
+print(myBinary) // Expected: 3
+
+// Obviously, we can do what they call math with numbers:
+print(2 + 2 * 2) // Expected: 6
+
+// If you plug a number into an if-statement, it will work as boolean: 0 is false and the rest is true
+if (1.3) {
+	print("True") // Expected: True
+}
+
+if (0) {
+	print("This shouldn't happen")
+}
+
+// Onto objects! Let's start with null:
+
+if (null) {
+	print("This shouldn't happen")
+}
+
+/*
+ * That's about it? Null is always false. 
+ * If you try to access any fields on a null object, you will get a error.
+ * But string is not a null, so we can do this:
+ */
+
+print("python".length) // Expected: 6
+print("Penny".toUpperCase()) // Expected: PENNY
+
+// You can compare strings just fine:
+var str = "BUG".toLowerCase()
+
+if (str == "bug") {
+	print("My API works") // Expected: My API works
+}
+
+/*
+ * For more advanced manipulations with strings see https://github.com/egordorichev/lit/blob/master/tests/examples/string_interpolation.lit
+ * Moving on, we have arrays:
+ */
+
+var array = [ "banana", "orange" ]
+
+// The usual stuff
+print(array.length) // Expected: 2
+print(array) // Expected: [ banana, orange ]
+print(array[0]) // Expected: banana
+
+// If the index is negative, you will be accessing the array starting from its end:
+print(array[-1]) // Expected: orange
+
+array[2] = "tomato"
+print(array.length) // Expected: 3
+print(array.indexOf("orange")) // Expected: 1
+print(array.contains("coal")) // Expected: false
+
+// And for the desert, we have maps:
+
+var book = new Map {
+	author = "John",
+	name = "Magical Operators"
+}
+
+print(book["author"]) // Expected: John
+print(book.length) // Expected: 2
+
+book["notes"] = [ "Nice", "Sweet book" ]
+
+print(book.length) // Expected: 3

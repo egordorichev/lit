@@ -36,7 +36,7 @@ void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new
 }
 
 void lit_free_object(LitState* state, LitObject* object) {
-#ifdef LIT_LOG_GC
+#ifdef LIT_LOG_ALLOCATION
 	printf("(");
 	lit_print_value(OBJECT_VALUE(object));
 	printf(") %p free %s\n", (void*) object, lit_object_type_names[object->type]);
@@ -93,8 +93,7 @@ void lit_free_object(LitState* state, LitObject* object) {
 		case OBJECT_MODULE: {
 			LitModule* module = (LitModule*) object;
 
-			LIT_FREE_ARRAY(state, LitValue, module->privates, module->private_names.count);
-			lit_free_table(state, &module->private_names);
+			LIT_FREE_ARRAY(state, LitValue, module->privates, module->private_count);
 			LIT_FREE(state, LitModule, object);
 
 			break;
@@ -200,7 +199,7 @@ void lit_mark_object(LitVm* vm, LitObject* object) {
 
 	object->marked = true;
 
-#ifdef LIT_LOG_GC
+#ifdef LIT_LOG_MARKING
 	printf("%p mark ", (void*) object);
   lit_print_value(OBJECT_VALUE(object));
   printf("\n");
@@ -228,7 +227,6 @@ static void mark_roots(LitVm* vm) {
 	}
 
 	lit_mark_object(vm, (LitObject*) vm->fiber);
-	lit_mark_object(vm, (LitObject*) state->api_module);
 
 	lit_mark_object(vm, (LitObject*) state->class_class);
 	lit_mark_object(vm, (LitObject*) state->object_class);
@@ -240,9 +238,15 @@ static void mark_roots(LitVm* vm) {
 	lit_mark_object(vm, (LitObject*) state->module_class);
 	lit_mark_object(vm, (LitObject*) state->array_class);
 	lit_mark_object(vm, (LitObject*) state->map_class);
+	lit_mark_object(vm, (LitObject*) state->range_class);
 
-	lit_mark_table(vm, &vm->globals);
-	lit_mark_table(vm, &vm->modules);
+	lit_mark_object(vm, (LitObject*) state->api_name);
+	lit_mark_object(vm, (LitObject*) state->api_function);
+	lit_mark_object(vm, (LitObject*) state->api_fiber);
+	lit_mark_object(vm, (LitObject*) state->api_string_function);
+
+	lit_mark_table(vm, &vm->modules->values);
+	lit_mark_table(vm, &vm->globals->values);
 }
 
 static void mark_array(LitVm* vm, LitValues* array) {
@@ -252,7 +256,7 @@ static void mark_array(LitVm* vm, LitValues* array) {
 }
 
 static void blacken_object(LitVm* vm, LitObject* object) {
-#ifdef LIT_LOG_GC
+#ifdef LIT_LOG_BLACKING
 	printf("%p blacken ", (void*) object);
   lit_print_value(OBJECT_VALUE(object));
   printf("\n");
@@ -313,12 +317,13 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 
 			lit_mark_object(vm, (LitObject*) module->name);
 			lit_mark_object(vm, (LitObject*) module->main_function);
+			lit_mark_object(vm, (LitObject*) module->main_fiber);
+			lit_mark_object(vm, (LitObject*) module->private_names);
 
-			for (int i = 0; i < module->private_names.count; i++) {
+			for (uint i = 0; i < module->private_count; i++) {
 				lit_mark_value(vm, module->privates[i]);
 			}
 
-			lit_mark_table(vm, &module->private_names);
 			break;
 		}
 

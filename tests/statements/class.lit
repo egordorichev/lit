@@ -70,3 +70,37 @@ print(b.d) // Expected: bad
 b.d = "good"
 
 print(b.d) // Expected: good
+
+var test = new Object()
+
+/*
+ * Gets converted into
+ * test.call = () {
+ *   print("hallo")
+ * }
+ */
+function test.call() {
+	print("hallo")
+}
+
+test.call() // Expected: hallo
+
+class Creature {
+	constructor(a) {
+		this.field = a
+	}
+}
+
+var c = new Creature {
+	test = 32
+}
+
+print(c.field) // Expected: null
+print(c.test) // Expected: 32
+
+c = new Creature("dog") {
+	nope = true
+}
+
+print(c.field) // Expected: dog
+print(c.nope) // Expected: true

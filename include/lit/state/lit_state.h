@@ -24,8 +24,9 @@ typedef struct sLitState {
 	LitErrorFn error_fn;
 	LitPrintFn print_fn;
 
-	LitValue roots[LIT_ROOT_MAX];
-	uint8_t root_count;
+	LitValue* roots;
+	uint root_count;
+	uint root_capacity;
 
 	struct sLitScanner* scanner;
 	struct sLitParser* parser;
@@ -35,9 +36,13 @@ typedef struct sLitState {
 
 	bool had_error;
 
-	LitModule* api_module;
+	LitFunction* api_function;
+	LitFunction* api_string_function;
+	LitFiber* api_fiber;
 	LitString* api_name;
 
+	// Mental note:
+	// When adding another class here, DO NOT forget to mark it in lit_mem.c or it will be GC-ed
 	LitClass* class_class;
 	LitClass* object_class;
 	LitClass* number_class;
@@ -49,12 +54,15 @@ typedef struct sLitState {
 	LitClass* array_class;
 	LitClass* map_class;
 	LitClass* range_class;
+
+	LitModule* last_module;
 } sLitState;
 
 typedef enum {
 	INTERPRET_OK,
 	INTERPRET_COMPILE_ERROR,
-	INTERPRET_RUNTIME_ERROR
+	INTERPRET_RUNTIME_ERROR,
+	INTERPRET_INVALID
 } LitInterpretResultType;
 
 LitState* lit_new_state();

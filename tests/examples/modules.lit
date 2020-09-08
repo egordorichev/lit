@@ -16,3 +16,14 @@ exampleFunction() // Expected: Hello, from the library!
 
 // You can also return values from modules:
 print(require("libs.example_library")) // Expected: 1
+
+// Module class has also a few special tricks:
+var a = 32 + 2
+var b = "test"
+
+// Note, that d is already in that array, even tho it was not initializated yet!
+print(Module.privates) // Expected: { _module = Module tests.examples.modules, d = null, a = 34, b = test }
+print(Module.loaded) // Expected: { tests.examples.modules = Module tests.examples.modules, tests.examples.libs.example_library = Module tests.examples.libs.example_library }
+
+var d = 48
+print(Module.privates) // Expected: { _module = Module tests.examples.modules, d = 48, a = 34, b = test }

@@ -1,6 +1,7 @@
 #include <lit/vm/lit_object.h>
 #include <lit/mem/lit_mem.h>
 #include <lit/vm/lit_vm.h>
+#include <lit/optimizer/lit_optimizer.h>
 
 #include <memory.h>
 #include <math.h>
@@ -50,18 +51,6 @@ LitString* lit_take_string(LitState* state, const char* chars, uint length) {
 	return allocate_string(state, (char*) chars, length, hash);
 }
 
-LitString* lit_take_string_or_free(LitState* state, const char* chars, uint length) {
-	uint32_t hash = lit_hash_string(chars, length);
-	LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
-
-	if (interned != NULL) {
-		lit_reallocate(state, (void*) chars, length, 0);
-		return interned;
-	}
-
-	return allocate_string(state, (char*) chars, length, hash);
-}
-
 LitString* lit_copy_string(LitState* state, const char* chars, uint length) {
 	uint32_t hash = lit_hash_string(chars, length);
 	LitString* interned = lit_table_find_string(&state->vm->strings, chars, length, hash);
@@ -98,6 +87,9 @@ LitValue lit_number_to_string(LitState* state, double value) {
 }
 
 LitValue lit_string_format(LitState* state, const char* format, ...) {
+	bool was_allowed = state->allow_gc;
+	state->allow_gc = false;
+
 	va_list arg_list;
 
 	va_start(arg_list, format);
@@ -143,12 +135,13 @@ LitValue lit_string_format(LitState* state, const char* format, ...) {
 	}
 
 	va_end(arg_list);
+
 	LitString* result = lit_allocate_empty_string(state, total_length);
 	result->chars = LIT_ALLOCATE(state, char, total_length + 1);
 	result->chars[total_length] = '\0';
-	va_start(arg_list, format);
 
 	char* start = result->chars;
+	va_start(arg_list, format);
 
 	for (const char* c = format; *c != '\0'; c++) {
 		switch (*c) {
@@ -201,6 +194,8 @@ LitValue lit_string_format(LitState* state, const char* format, ...) {
 	result->hash = lit_hash_string(result->chars, result->length);
 	lit_register_string(state, result);
 
+	state->allow_gc = was_allowed;
+
 	return OBJECT_VALUE(result);
 }
 
@@ -213,7 +208,7 @@ LitObject* lit_allocate_object(LitState* state, size_t size, LitObjectType type)
 
 	state->vm->objects = object;
 
-#ifdef LIT_LOG_GC
+#ifdef LIT_LOG_ALLOCATION
 	printf("%p allocate %ld for %s\n", (void*) object, size, lit_object_type_names[type]);
 #endif
 
@@ -288,7 +283,7 @@ LitValue lit_get_function_name(LitVm* vm, LitValue instance) {
 		return OBJECT_VALUE(lit_string_format(vm->state, "function #", *((double*) AS_OBJECT(instance))));
 	}
 
-	return OBJECT_VALUE(lit_string_format(vm->state, "function @", name));
+	return OBJECT_VALUE(lit_string_format(vm->state, "function @", OBJECT_VALUE(name)));
 }
 
 LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot) {
@@ -361,8 +356,11 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	LitValue* stack = LIT_ALLOCATE(state, LitValue, stack_capacity);
 
 	LitCallFrame* frames = LIT_ALLOCATE(state, LitCallFrame, LIT_INITIAL_CALL_FRAMES);
-
 	LitFiber* fiber = ALLOCATE_OBJECT(state, LitFiber, OBJECT_FIBER);
+
+	if (module->main_fiber == NULL) {
+		module->main_fiber = fiber;
+	}
 
 	fiber->stack = stack;
 	fiber->stack_capacity = stack_capacity;
@@ -380,14 +378,16 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	fiber->open_upvalues = NULL;
 	fiber->abort = false;
 
-
 	LitCallFrame* frame = &fiber->frames[0];
 
 	frame->closure = NULL;
 	frame->function = function;
-	frame->ip = function->chunk.code;
 	frame->slots = fiber->stack;
 	frame->result_ignored = false;
+
+	if (function != NULL) {
+		frame->ip = function->chunk.code;
+	}
 
 	return fiber;
 }
@@ -425,8 +425,9 @@ LitModule* lit_create_module(LitState* state, LitString* name) {
 	module->main_function = NULL;
 	module->privates = NULL;
 	module->ran = false;
-
-	lit_init_table(&module->private_names);
+	module->main_fiber = NULL;
+	module->private_count = 0;
+	module->private_names = lit_create_map(state);
 
 	return module;
 }
@@ -470,11 +471,12 @@ LitArray* lit_create_array(LitState* state) {
 
 LitMap* lit_create_map(LitState* state) {
 	LitMap* map = ALLOCATE_OBJECT(state, LitMap, OBJECT_MAP);
+
 	lit_init_table(&map->values);
+	map->index_fn = NULL;
 
 	return map;
 }
-
 
 bool lit_map_set(LitState* state, LitMap* map, LitString* key, LitValue value) {
 	if (value == NULL_VALUE) {

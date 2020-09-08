@@ -60,3 +60,13 @@ function shout(a, ...) {
 }
 
 shout("maybe", "yea", "test")
+
+function hey() {
+	yes()
+}
+
+function yes() {
+	print("Oh yes") // Expected: Oh yes
+}
+
+hey()

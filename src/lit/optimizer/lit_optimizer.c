@@ -23,7 +23,10 @@ static const char* optimization_names[OPTIMIZATION_TOTAL] = {
 	"literal-folding",
 	"unused-var",
 	"unreachable-code",
-	"empty-body"
+	"empty-body",
+	"line-info",
+	"private-names",
+	"c-for"
 };
 
 static const char* optimization_descriptions[OPTIMIZATION_TOTAL] = {
@@ -31,13 +34,16 @@ static const char* optimization_descriptions[OPTIMIZATION_TOTAL] = {
 	"Precalculates literal expressions (3 + 4 is replaced with 7).",
 	"Removes user-declared all variables, that were not used.",
 	"Removes code that will never be reached.",
-	"Removes loops with empty bodies."
+	"Removes loops with empty bodies.",
+	"Removes line information from chunks to save on space.",
+	"Removes names of the private locals from modules (they are indexed by id at runtime).",
+	"Replaces for-in loops with c-style for loops where it can."
 };
 
 static bool optimization_states[OPTIMIZATION_TOTAL];
 
-static bool optimization_states_setup;
-static bool any_optimization_enabled;
+static bool optimization_states_setup = false;
+static bool any_optimization_enabled = false;
 
 static void setup_optimization_states();
 
@@ -193,6 +199,38 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType operator
 	return NULL_VALUE;
 }
 
+static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExpression* expression, LitValue value, bool left) {
+	LitTokenType operator = expression->operator;
+	LitExpression* branch = left ? expression->left : expression->right;
+
+	if (IS_NUMBER(value)) {
+		double number = AS_NUMBER(value);
+
+		if (operator == TOKEN_STAR) {
+			if (number == 0) {
+				return NUMBER_VALUE(0);
+			} else if (number == 1) {
+				lit_free_expression(optimizer->state, left ? expression->right : expression->left);
+
+				expression->left = branch;
+				expression->right = NULL;
+			}
+		} else if ((operator == TOKEN_PLUS || operator == TOKEN_MINUS) && number == 0) {
+			lit_free_expression(optimizer->state, left ? expression->right : expression->left);
+
+			expression->left = branch;
+			expression->right = NULL;
+		} else if ((operator == TOKEN_SLASH || operator == TOKEN_STAR_STAR) && number == 1) {
+			lit_free_expression(optimizer->state, left ? expression->right : expression->left);
+
+			expression->left = branch;
+			expression->right = NULL;
+		}
+	}
+
+	return NULL_VALUE;
+}
+
 static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expression) {
 	if (expression == NULL) {
 		return NULL_VALUE;
@@ -222,6 +260,10 @@ static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expr
 
 			if (a != NULL_VALUE && b != NULL_VALUE) {
 				return evaluate_binary_op(a, b, expr->operator);
+			} else if (a != NULL_VALUE) {
+				return attempt_to_optimize_binary(optimizer, expr, a, false);
+			} else if (b != NULL_VALUE) {
+				return attempt_to_optimize_binary(optimizer, expr, b, true);
 			}
 
 			break;
@@ -331,8 +373,8 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 			break;
 		}
 
-		case MAP_EXPRESSION: {
-			optimize_expressions(optimizer, &((LitMapExpression*) expression)->values);
+		case OBJECT_EXPRESSION: {
+			optimize_expressions(optimizer, &((LitObjectExpression*) expression)->values);
 			break;
 		}
 
@@ -479,19 +521,56 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 		}
 
 		case IF_STATEMENT: {
-			// FIXME: remove dead branches
 			LitIfStatement* stmt = (LitIfStatement*) statement;
 
 			optimize_expression(optimizer, &stmt->condition);
 			optimize_statement(optimizer, &stmt->if_branch);
 
+			bool empty = lit_is_optimization_enabled(OPTIMIZATION_EMPTY_BODY);
+			bool dead = lit_is_optimization_enabled(OPTIMIZATION_UNREACHABLE_CODE);
+
+			LitValue optimized = empty ? evaluate_expression(optimizer, stmt->condition) : NULL_VALUE;
+
+			if ((optimized != NULL_VALUE && lit_is_falsey(optimized)) || (dead && is_empty(stmt->if_branch))) {
+				lit_free_expression(state, stmt->condition);
+				stmt->condition = NULL;
+
+				lit_free_statement(state, stmt->if_branch);
+				stmt->if_branch = NULL;
+			}
+
 			if (stmt->elseif_conditions != NULL) {
 				optimize_expressions(optimizer, stmt->elseif_conditions);
 				optimize_statements(optimizer, stmt->elseif_branches);
+
+				if (dead || empty) {
+					for (uint i = 0; i < stmt->elseif_conditions->count; i++) {
+						if (empty && is_empty(stmt->elseif_branches->values[i])) {
+							lit_free_expression(state, stmt->elseif_conditions->values[i]);
+							stmt->elseif_conditions->values[i] = NULL;
+
+							lit_free_statement(state, stmt->elseif_branches->values[i]);
+							stmt->elseif_branches->values[i] = NULL;
+
+							continue;
+						}
+
+						if (dead) {
+							LitValue value = evaluate_expression(optimizer, stmt->elseif_conditions->values[i]);
+
+							if (value != NULL_VALUE && lit_is_falsey(value)) {
+								lit_free_expression(state, stmt->elseif_conditions->values[i]);
+								stmt->elseif_conditions->values[i] = NULL;
+
+								lit_free_statement(state, stmt->elseif_branches->values[i]);
+								stmt->elseif_branches->values[i] = NULL;
+							}
+						}
+					}
+				}
 			}
 
 			optimize_statement(optimizer, &stmt->else_branch);
-
 			break;
 		}
 
@@ -539,7 +618,46 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 			if (lit_is_optimization_enabled(OPTIMIZATION_EMPTY_BODY) && is_empty(stmt->body)) {
 				lit_free_statement(optimizer->state, statement);
 				*slot = NULL;
+
+				break;
 			}
+
+			if (stmt->c_style || !lit_is_optimization_enabled(OPTIMIZATION_C_FOR) || stmt->condition->type != RANGE_EXPRESSION) {
+				break;
+			}
+
+			LitRangeExpression* range = (LitRangeExpression*) stmt->condition;
+			LitValue from = evaluate_expression(optimizer, range->from);
+			LitValue to = evaluate_expression(optimizer, range->to);
+
+			if (!IS_NUMBER(from) || !IS_NUMBER(to)) {
+				break;
+			}
+
+			bool reverse = AS_NUMBER(from) > AS_NUMBER(to);
+
+			LitVarStatement* var = (LitVarStatement*) stmt->var;
+			uint line = range->expression.line;
+
+			// var i = from
+			var->init = range->from;
+
+			// i <= to
+			stmt->condition = (LitExpression*) lit_create_binary_expression(state, line, (LitExpression*) lit_create_var_expression(state, line, var->name, var->length), range->to, TOKEN_LESS_EQUAL);
+
+			// i++ (or i--)
+			LitExpression* var_get = (LitExpression*) lit_create_var_expression(state, line, var->name, var->length);
+			LitBinaryExpression* assign_value = lit_create_binary_expression(state, line, var_get, (LitExpression*) lit_create_literal_expression(state, line, NUMBER_VALUE(1)), reverse ? TOKEN_MINUS_MINUS : TOKEN_PLUS);
+			assign_value->ignore_left = true;
+
+			LitExpression* increment = (LitExpression*) lit_create_assign_expression(state, line, var_get, (LitExpression*) assign_value);
+			stmt->increment = (LitExpression*) increment;
+
+			range->from = NULL;
+			range->to = NULL;
+
+			stmt->c_style = true;
+			lit_free_expression(state, (LitExpression*) range);
 
 			break;
 		}
@@ -628,6 +746,10 @@ static void optimize_statements(LitOptimizer* optimizer, LitStatements* statemen
 }
 
 void lit_optimize(LitOptimizer* optimizer, LitStatements* statements) {
+	if (!optimization_states_setup) {
+		setup_optimization_states();
+	}
+
 	if (!any_optimization_enabled) {
 		return;
 	}
@@ -693,19 +815,26 @@ void lit_set_optimization_level(LitOptimizationLevel level) {
 			lit_set_optimization_enabled(OPTIMIZATION_UNUSED_VAR, false);
 			lit_set_optimization_enabled(OPTIMIZATION_UNREACHABLE_CODE, false);
 			lit_set_optimization_enabled(OPTIMIZATION_EMPTY_BODY, false);
+			lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
+			lit_set_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES, false);
 
 			break;
 		}
 
 		case OPTIMIZATION_LEVEL_DEBUG: {
 			lit_set_all_optimization_enabled(true);
+
 			lit_set_optimization_enabled(OPTIMIZATION_UNUSED_VAR, false);
+			lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
+			lit_set_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES, false);
 
 			break;
 		}
 
 		case OPTIMIZATION_LEVEL_RELEASE: {
 			lit_set_all_optimization_enabled(true);
+			lit_set_optimization_enabled(OPTIMIZATION_LINE_INFO, false);
+
 			break;
 		}
 

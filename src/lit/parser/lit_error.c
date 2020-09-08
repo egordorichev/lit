@@ -8,7 +8,7 @@ static const char* error_messages[ERROR_TOTAL] = {
 	"Interpolation nesting is too deep, maximum is %i",
 	"Number is too big to be represented by a single literal",
 	"Expected '%c' after '%c', got '%c'",
-	"Expected %s",
+	"Expected %s, got '%.*s'",
 	"Invalid assigment target",
 	"Function can't have more than 255 arguments, got %i",
 	"If-statement can have only one else-branch",

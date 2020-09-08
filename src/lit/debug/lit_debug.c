@@ -85,7 +85,7 @@ static uint print_invoke_op(const char* name, LitChunk* chunk, uint offset) {
 
 uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* source) {
 	uint line = lit_chunk_get_line(chunk, offset);
-	bool same = offset > 0 && line == lit_chunk_get_line(chunk, offset - 1);
+	bool same = !chunk->has_line_info || (offset > 0 && line == lit_chunk_get_line(chunk, offset - 1));
 
 	if (!same && source != NULL) {
 		uint index = 0;
@@ -202,7 +202,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 		}
 
 		case OP_CLOSE_UPVALUE: return print_simple_op("OP_CLOSE_UPVALUE", offset);
-		case OP_CLASS: return print_simple_op("OP_CLASS", offset);
+		case OP_CLASS: return print_constant_op("OP_CLASS", chunk, offset, true);
 
 		case OP_GET_FIELD: return print_simple_op("OP_GET_FIELD", offset);
 		case OP_SET_FIELD: return print_simple_op("OP_SET_FIELD", offset);
@@ -211,8 +211,8 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 		case OP_SUBSCRIPT_SET: return print_simple_op("OP_SUBSCRIPT_SET", offset);
 		case OP_ARRAY: return print_simple_op("OP_ARRAY", offset);
 		case OP_PUSH_ARRAY_ELEMENT: return print_simple_op("OP_PUSH_ARRAY_ELEMENT", offset);
-		case OP_MAP: return print_simple_op("OP_MAP", offset);
-		case OP_PUSH_MAP_ELEMENT: return print_simple_op("OP_PUSH_MAP_ELEMENT", offset);
+		case OP_OBJECT: return print_simple_op("OP_OBJECT", offset);
+		case OP_PUSH_OBJECT_FIELD: return print_simple_op("OP_PUSH_OBJECT_FIELD", offset);
 		case OP_RANGE: return print_simple_op("OP_RANGE", offset);
 
 		case OP_METHOD: return print_constant_op("OP_METHOD", chunk, offset, true);
@@ -234,4 +234,15 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 			return offset + 1;
 		}
 	}
+}
+
+void lit_trace_frame(LitFiber* fiber) {
+	#ifdef LIT_TRACE_STACK
+	if (fiber == NULL) {
+		return;
+	}
+
+	LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
+	printf("== fiber %p f%i %s (expects %i, max %i, added %i, current %i) ==\n", fiber, fiber->frame_count - 1, frame->function->name->chars, frame->function->arg_count, frame->function->max_slots, frame->function->max_slots + (int) (fiber->stack_top - fiber->stack), fiber->stack_capacity);
+	#endif
 }
