@@ -373,8 +373,8 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 			break;
 		}
 
-		case MAP_EXPRESSION: {
-			optimize_expressions(optimizer, &((LitMapExpression*) expression)->values);
+		case OBJECT_EXPRESSION: {
+			optimize_expressions(optimizer, &((LitObjectExpression*) expression)->values);
 			break;
 		}
 

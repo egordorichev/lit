@@ -833,6 +833,21 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				}
 			}
 
+			if (expr->init == NULL) {
+				return;
+			}
+
+			LitObjectExpression* init = (LitObjectExpression*) expr->init;
+
+			for (uint i = 0; i < init->values.count; i++) {
+				LitExpression* e = init->values.values[i];
+				emitter->last_line = e->line;
+
+				emit_constant(emitter, emitter->last_line, init->keys.values[i]);
+				emit_expression(emitter, e);
+				emit_op(emitter, emitter->last_line, OP_PUSH_OBJECT_FIELD);
+			}
+
 			break;
 		}
 
@@ -926,14 +941,14 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
-		case MAP_EXPRESSION: {
-			LitMapExpression* expr = (LitMapExpression*) expression;
-			emit_op(emitter, expression->line, OP_MAP);
+		case OBJECT_EXPRESSION: {
+			LitObjectExpression* expr = (LitObjectExpression*) expression;
+			emit_op(emitter, expression->line, OP_OBJECT);
 
 			for (uint i = 0; i < expr->values.count; i++) {
 				emit_constant(emitter, emitter->last_line, expr->keys.values[i]);
 				emit_expression(emitter, expr->values.values[i]);
-				emit_op(emitter, emitter->last_line, OP_PUSH_MAP_ELEMENT);
+				emit_op(emitter, emitter->last_line, OP_PUSH_OBJECT_FIELD);
 			}
 
 			break;

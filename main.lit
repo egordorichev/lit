@@ -1,7 +1,18 @@
-var s = "Привет, мир test"
-print(s.toUpperCase())
+var m = new Map {
+	a = 32
+}
 
-var a = {}
+print(m["a"])
 
-a["суп"] = 32
-print(a["суп"])
+class Test {
+	constructor(a) {
+		print(a)
+	}
+}
+
+var o = new Test("hello") {
+	test = true,
+	fields = [ 48, 32 ]
+}
+
+print(o.test)

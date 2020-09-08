@@ -96,7 +96,10 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 
 		case CALL_EXPRESSION: {
 			LitCallExpression* expr = (LitCallExpression*) expression;
+
 			lit_free_expression(state, expr->callee);
+			lit_free_expression(state, expr->init);
+
 			free_expressions(state, &expr->args);
 
 			FREE_EXPRESSION(LitCallExpression)
@@ -136,13 +139,13 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
-		case MAP_EXPRESSION: {
-			LitMapExpression* map = (LitMapExpression*) expression;
+		case OBJECT_EXPRESSION: {
+			LitObjectExpression* map = (LitObjectExpression*) expression;
 
 			lit_free_values(state, &map->keys);
 			free_expressions(state, &map->values);
 
-			FREE_EXPRESSION(LitMapExpression)
+			FREE_EXPRESSION(LitObjectExpression)
 			break;
 		}
 
@@ -272,6 +275,8 @@ LitCallExpression *lit_create_call_expression(LitState* state, uint line, LitExp
 	LitCallExpression* expression = ALLOCATE_EXPRESSION(state, LitCallExpression, CALL_EXPRESSION);
 
 	expression->callee = callee;
+	expression->init = NULL;
+
 	lit_init_expressions(&expression->args);
 
 	return expression;
@@ -316,8 +321,8 @@ LitArrayExpression *lit_create_array_expression(LitState* state, uint line) {
 	return expression;
 }
 
-LitMapExpression *lit_create_map_expression(LitState* state, uint line) {
-	LitMapExpression* expression = ALLOCATE_EXPRESSION(state, LitMapExpression, MAP_EXPRESSION);
+LitObjectExpression *lit_create_object_expression(LitState* state, uint line) {
+	LitObjectExpression* expression = ALLOCATE_EXPRESSION(state, LitObjectExpression, OBJECT_EXPRESSION);
 
 	lit_init_values(&expression->keys);
 	lit_init_expressions(&expression->values);

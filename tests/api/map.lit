@@ -1,6 +1,9 @@
-var map = { "a" : 32, "b" : true }
+var map = new Map {
+	a = 32,
+	b = true
+}
 
-print(map) // Expected: { a : 32, b : true }
+print(map) // Expected: { a = 32, b = true }
 print(map["b"]) // Expected: true
 print(map.length) // Expected: 2
 
@@ -14,9 +17,9 @@ map["test"] = "whatever"
 print(map["test"]) // Expected: whatever
 print(map.length) // Expected: 3
 
-map.addAll({
- "z" : 128,
- "alpha" : 243
+map.addAll(new Map {
+ z = 128,
+ alpha = 243
 })
 
 print(map.length) // Expected: 5
@@ -26,4 +29,4 @@ map.clear()
 print(map) // Expected: {}
 print(map.length) // Expected: 0
 
-print({ "a" : "test" }.clone()) // Expected: { a : test }
+print(new Map { a = "test" }.clone()) // Expected: { a = test }

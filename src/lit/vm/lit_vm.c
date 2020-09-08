@@ -684,8 +684,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
-		CASE_CODE(MAP) {
-			PUSH(OBJECT_VALUE(lit_create_map(state)));
+		CASE_CODE(OBJECT) {
+			PUSH(OBJECT_VALUE(lit_create_instance(state, state->object_class)));
 			continue;
 		}
 
@@ -1279,10 +1279,18 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
-		CASE_CODE(PUSH_MAP_ELEMENT) {
-			lit_map_set(state, AS_MAP(PEEK(2)), AS_STRING(PEEK(1)), PEEK(0));
-			DROP_MULTIPLE(2);
+		CASE_CODE(PUSH_OBJECT_FIELD) {
+			LitValue operand = PEEK(2);
 
+			if (IS_MAP(operand)) {
+				lit_table_set(state, &AS_MAP(operand)->values, AS_STRING(PEEK(1)), PEEK(0));
+			} else if (IS_INSTANCE(operand)) {
+				lit_table_set(state, &AS_INSTANCE(operand)->fields, AS_STRING(PEEK(1)), PEEK(0));
+			} else {
+				RUNTIME_ERROR_VARG("Expected an object or a map as the operand, got %s", lit_get_value_type(operand));
+			}
+
+			DROP_MULTIPLE(2);
 			continue;
 		}
 

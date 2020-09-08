@@ -505,15 +505,55 @@ static LitExpression* parse_interpolation(LitParser* parser, bool can_assign) {
 	return (LitExpression*) expression;
 }
 
+static LitExpression* parse_object(LitParser* parser, bool can_assign) {
+	LitObjectExpression* object = lit_create_object_expression(parser->state, parser->previous.line);
+	ignore_new_lines(parser);
+
+	while (!check(parser, TOKEN_RIGHT_BRACE)) {
+		ignore_new_lines(parser);
+		consume(parser, TOKEN_IDENTIFIER, "key string after '{'");
+		lit_values_write(parser->state, &object->keys, OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start, parser->previous.length)));
+
+		ignore_new_lines(parser);
+		consume(parser, TOKEN_EQUAL, "'=' after key string");
+
+		ignore_new_lines(parser);
+		lit_expressions_write(parser->state, &object->values, parse_expression(parser));
+
+		if (!match(parser,  TOKEN_COMMA)) {
+			break;
+		}
+	}
+
+	ignore_new_lines(parser);
+	consume(parser, TOKEN_RIGHT_BRACE, "'}' after object");
+
+	return (LitExpression*) object;
+}
+
 static LitExpression* parse_variable_expression_base(LitParser* parser, bool can_assign, bool new) {
 	LitExpression* expression = (LitExpression*) lit_create_var_expression(parser->state, parser->previous.line, parser->previous.start, parser->previous.length);
 
 	if (new) {
-		if (!check(parser, TOKEN_LEFT_PAREN)) {
+		bool had_args = check(parser, TOKEN_LEFT_PAREN);
+		LitCallExpression* call = NULL;
+
+		if (had_args) {
+			advance(parser);
+			call = (LitCallExpression*) parse_call(parser, expression, false);
+		}
+
+		if (match(parser, TOKEN_LEFT_BRACE)) {
+			if (call == NULL) {
+				call = lit_create_call_expression(parser->state, expression->line, expression);
+			}
+
+			call->init = parse_object(parser, false);
+		} else if (!had_args) {
 			error_at_current(parser, ERROR_EXPECTION_UNMET, "argument list for instance creation", parser->previous.length, parser->previous.start);
 		}
 
-		return expression;
+		return (LitExpression*) call;
 	}
 
 	if (match(parser, TOKEN_LEFT_BRACKET)) {
@@ -602,32 +642,6 @@ static LitExpression* parse_array(LitParser* parser, bool can_assign) {
 	}
 
 	return (LitExpression*) array;
-}
-
-static LitExpression* parse_map(LitParser* parser, bool can_assign) {
-	LitMapExpression* map = lit_create_map_expression(parser->state, parser->previous.line);
-	ignore_new_lines(parser);
-
-	while (!check(parser, TOKEN_RIGHT_BRACE)) {
-		ignore_new_lines(parser);
-		consume(parser, TOKEN_STRING, "key string after '{'");
-		lit_values_write(parser->state, &map->keys, OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start + 1, parser->previous.length - 2)));
-
-		ignore_new_lines(parser);
-		consume(parser, TOKEN_COLON, "':' after key string");
-
-		ignore_new_lines(parser);
-		lit_expressions_write(parser->state, &map->values, parse_expression(parser));
-
-		if (!match(parser,  TOKEN_COMMA)) {
-			break;
-		}
-	}
-
-	ignore_new_lines(parser);
-	consume(parser, TOKEN_RIGHT_BRACE, "'}' after map");
-
-	return (LitExpression*) map;
 }
 
 static LitExpression* parse_subscript(LitParser* parser, LitExpression* previous, bool can_assign) {
@@ -1237,7 +1251,7 @@ static void setup_rules() {
 	rules[TOKEN_DOT_DOT] = (LitParseRule) { NULL, parse_range, PREC_RANGE };
 	rules[TOKEN_DOT_DOT_DOT] = (LitParseRule) { parse_variable_expression, NULL, PREC_ASSIGNMENT };
 	rules[TOKEN_LEFT_BRACKET] = (LitParseRule) { parse_array, parse_subscript, PREC_NONE };
-	rules[TOKEN_LEFT_BRACE] = (LitParseRule) { parse_map, NULL, PREC_NONE };
+	rules[TOKEN_LEFT_BRACE] = (LitParseRule) { parse_object, NULL, PREC_NONE };
 	rules[TOKEN_THIS] = (LitParseRule) { parse_this, NULL, PREC_NONE };
 	rules[TOKEN_SUPER] = (LitParseRule) { parse_super, NULL, PREC_NONE };
 	rules[TOKEN_QUESTION] = (LitParseRule) { NULL, parse_ternary_or_question, PREC_EQUALITY };

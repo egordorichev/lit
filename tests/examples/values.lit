@@ -77,9 +77,9 @@ print(array.contains("coal")) // Expected: false
 
 // And for the desert, we have maps:
 
-var book = {
-	"author" : "John",
-	"name" : "Magical Operators"
+var book = new Map {
+	author = "John",
+	name = "Magical Operators"
 }
 
 print(book["author"]) // Expected: John
@@ -88,21 +88,3 @@ print(book.length) // Expected: 2
 book["notes"] = [ "Nice", "Sweet book" ]
 
 print(book.length) // Expected: 3
-
-// Combining arrays and maps, you can form complex data structures with the same exact syntax, as JSON!
-
-var root = {
-	"menu" : {
-		"id" : "file",
-		"value" : "File",
-		"popup" : {
-			"menuitem" : [
-				{ "value" : "New", "onclick" : "CreateNewDoc()" },
-				{ "value" : "Open", "onclick" : "OpenDoc()" },
-				{ "value" : "Close", "onclick" : "CloseDoc()" }
-			]
-		}
-	}
-}
-
-print(root["menu"]["popup"]["menuitem"][1]["value"]) // Expected: Open

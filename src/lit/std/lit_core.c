@@ -20,6 +20,11 @@ void lit_open_libraries(LitState* state) {
 	lit_open_file_library(state);
 }
 
+LIT_METHOD(invalid_constructor) {
+	lit_runtime_error_exiting(vm, "Can't create an instance of built-in type", AS_INSTANCE(instance)->klass->name);
+	return NULL_VALUE;
+}
+
 /*
  * Class
  */
@@ -60,7 +65,7 @@ LIT_METHOD(class_iterator) {
 	LIT_ENSURE_ARGS(1)
 
 	LitClass* klass = AS_CLASS(instance);
-	int index = args[0] == NULL_VALUE ? 0 : AS_NUMBER(args[0]);
+	int index = args[0] == NULL_VALUE ? -1 : AS_NUMBER(args[0]);
 	int methodsCapacity = (int) klass->methods.capacity;
 	bool fields = index >= methodsCapacity;
 
@@ -196,7 +201,7 @@ LIT_METHOD(object_iterator) {
 	LIT_ENSURE_ARGS(1)
 
 	LitInstance* self = AS_INSTANCE(instance);
-	int index = args[0] == NULL_VALUE ? 0 : AS_NUMBER(args[0]);
+	int index = args[0] == NULL_VALUE ? -1 : AS_NUMBER(args[0]);
 	int methodsCapacity = (int) self->klass->methods.capacity;
 	bool fields = index >= methodsCapacity;
 
@@ -708,6 +713,10 @@ LIT_METHOD(module_name) {
  * Array
  */
 
+LIT_METHOD(array_constructor) {
+	return OBJECT_VALUE(lit_create_array(vm->state));
+}
+
 static LitValue array_splice(LitVm* vm, LitArray* array, int from, int to) {
 	uint length = array->values.count;
 
@@ -1042,6 +1051,10 @@ LIT_METHOD(array_length) {
  * Map
  */
 
+LIT_METHOD(map_constructor) {
+	return OBJECT_VALUE(lit_create_map(vm->state));
+}
+
 LIT_METHOD(map_subscript) {
 	if (!IS_STRING(args[0])) {
 		lit_runtime_error(vm, "Map index must be a string");
@@ -1182,7 +1195,7 @@ LIT_METHOD(map_toString) {
 		memcpy(&buffer[buffer_index], key->chars, key->length);
 		buffer_index += key->length;
 
-		memcpy(&buffer[buffer_index], " : ", 3);
+		memcpy(&buffer[buffer_index], " = ", 3);
 		buffer_index += 3;
 
 		memcpy(&buffer[buffer_index], value->chars, value->length);
@@ -1482,12 +1495,15 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Number")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(invalid_constructor)
+
 		LIT_BIND_METHOD("toString", number_toString)
 		state->number_class = klass;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("String")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(invalid_constructor)
 
 		LIT_BIND_METHOD("+", string_plus)
 		LIT_BIND_METHOD("toString", string_toString)
@@ -1510,12 +1526,15 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Bool")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(invalid_constructor)
+
 		LIT_BIND_METHOD("toString", bool_toString)
 		state->bool_class = klass;
 	LIT_END_CLASS()
 
 	LIT_BEGIN_CLASS("Function")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(invalid_constructor)
 
 		LIT_BIND_METHOD("toString", function_toString)
 		LIT_BIND_GETTER("name", function_name)
@@ -1525,8 +1544,8 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Fiber")
 		LIT_INHERIT_CLASS(state->object_class)
-
 		LIT_BIND_CONSTRUCTOR(fiber_constructor)
+
 		LIT_BIND_PRIMITIVE("run", fiber_run)
 		LIT_BIND_PRIMITIVE("try", fiber_try)
 		LIT_BIND_GETTER("done", fiber_done)
@@ -1542,6 +1561,7 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Module")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(invalid_constructor)
 
 		LIT_SET_STATIC_FIELD("loaded", OBJECT_VALUE(state->vm->modules))
 		LIT_BIND_STATIC_GETTER("privates", module_privates)
@@ -1556,6 +1576,7 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Array")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(array_constructor)
 
 		LIT_BIND_METHOD("[]", array_subscript)
 		LIT_BIND_METHOD("add", array_add)
@@ -1577,8 +1598,10 @@ void lit_open_core_library(LitState* state) {
 
 		state->array_class = klass;
 	LIT_END_CLASS()
+
 	LIT_BEGIN_CLASS("Map")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(map_constructor)
 
 		LIT_BIND_METHOD("[]", map_subscript)
 		LIT_BIND_METHOD("addAll", map_addAll)
@@ -1595,6 +1618,7 @@ void lit_open_core_library(LitState* state) {
 
 	LIT_BEGIN_CLASS("Range")
 		LIT_INHERIT_CLASS(state->object_class)
+		LIT_BIND_CONSTRUCTOR(invalid_constructor)
 
 		LIT_BIND_METHOD("iterator", range_iterator)
 		LIT_BIND_METHOD("iteratorValue", range_iteratorValue)

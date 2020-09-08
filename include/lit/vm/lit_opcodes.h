@@ -6,7 +6,7 @@ OPCODE(TRUE, 1)
 OPCODE(FALSE, 1)
 OPCODE(NULL, 1)
 OPCODE(ARRAY, 1)
-OPCODE(MAP, 1)
+OPCODE(OBJECT, 1)
 OPCODE(RANGE, -1)
 OPCODE(NEGATE, 0)
 OPCODE(NOT, 0)
@@ -70,7 +70,7 @@ OPCODE(SUBSCRIPT_SET, -2)
 // [array] [value] -> [array]
 OPCODE(PUSH_ARRAY_ELEMENT, -1)
 // [map] [slot] [value] -> [map]
-OPCODE(PUSH_MAP_ELEMENT, -2)
+OPCODE(PUSH_OBJECT_FIELD, -2)
 
 // [class] [method] -> [class]
 OPCODE(METHOD, -1)

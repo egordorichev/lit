@@ -84,3 +84,23 @@ function test.call() {
 }
 
 test.call() // Expected: hallo
+
+class Creature {
+	constructor(a) {
+		this.field = a
+	}
+}
+
+var c = new Creature {
+	test = 32
+}
+
+print(c.field) // Expected: null
+print(c.test) // Expected: 32
+
+c = new Creature("dog") {
+	nope = true
+}
+
+print(c.field) // Expected: dog
+print(c.nope) // Expected: true
