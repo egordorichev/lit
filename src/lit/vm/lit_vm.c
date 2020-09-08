@@ -130,21 +130,37 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 	return false;
 }
 
-bool lit_runtime_error(LitVm* vm, const char* format, ...) {
+bool lit_vruntime_error(LitVm* vm, const char* format, va_list args) {
 	LitFiber* fiber = vm->fiber;
 
-	va_list args;
-	va_start(args, format);
-	size_t buffer_size = vsnprintf(NULL, 0, format, args) + 1;
-	va_end(args);
+	va_list args_copy;
+	va_copy(args_copy, args);
+	size_t buffer_size = vsnprintf(NULL, 0, format, args_copy) + 1;
+	va_end(args_copy);
 
 	char buffer[buffer_size];
-
-	va_start(args, format);
 	vsnprintf(buffer, buffer_size, format, args);
-	va_end(args);
 
 	return lit_handle_runtime_error(vm, lit_copy_string(vm->state, buffer, buffer_size));
+}
+
+bool lit_runtime_error(LitVm* vm, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	bool result = lit_vruntime_error(vm, format, args);
+	va_end(args);
+
+	return result;
+}
+
+bool lit_runtime_error_exiting(LitVm* vm, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	bool result = lit_vruntime_error(vm, format, args);
+	va_end(args);
+
+	lit_native_exit_jump();
+	return result;
 }
 
 static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure, uint8_t arg_count) {

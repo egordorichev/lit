@@ -5,6 +5,7 @@
 #include <lit/vm/lit_vm.h>
 #include <lit/vm/lit_object.h>
 #include <lit/util/lit_fs.h>
+#include <lit/util/lit_utf.h>
 
 #include <time.h>
 #include <ctype.h>
@@ -406,30 +407,24 @@ LIT_METHOD(string_replace) {
 }
 
 static LitValue string_splice(LitVm* vm, LitString* string, int from, int to) {
+	int length = lit_ustring_length(string);
+
 	if (from < 0) {
-		from = (int) string->length + from;
+		from = length + from;
 	}
 
 	if (to < 0) {
-		to = (int) string->length + to;
-	}
-
-	if (from > to) {
-		lit_runtime_error(vm, "String splice from bound is larger that to bound");
+		to = length + to;
 	}
 
 	from = fmax(from, 0);
-	to = fmin(to, (int) string->length - 1);
+	to = fmin(to, length - 1);
 
-	int length = fmin(string->length, to - from + 1);
-	char buffer[length + 1];
-
-	for (int i = 0; i < length; i++) {
-		buffer[i] = string->chars[from + i];
+	if (from > to) {
+		lit_runtime_error_exiting(vm, "String splice from bound is larger that to bound");
 	}
 
-	buffer[length] = '\0';
-	return OBJECT_VALUE(lit_copy_string(vm->state, buffer, length));
+	return OBJECT_VALUE(lit_ustring_from_range(vm->state, string, lit_uchar_offset(string->chars, from), to - from + 1, 1));
 }
 
 LIT_METHOD(string_substring) {
@@ -454,14 +449,59 @@ LIT_METHOD(string_subscript) {
 	}
 
 	if (index < 0) {
-		index = fmax(0, string->length + index);
+		index = lit_ustring_length(string) + index;
+
+		if (index < 0) {
+			return NULL_VALUE;
+		}
 	}
 
-	return OBJECT_VALUE(lit_copy_string(vm->state, &string->chars[index], 1));
+	LitString* c = lit_ustring_code_point_at(vm->state, string, lit_uchar_offset(string->chars, index));
+
+	return c == NULL ? NULL_VALUE : OBJECT_VALUE(c);
 }
 
 LIT_METHOD(string_length) {
-	return NUMBER_VALUE(AS_STRING(instance)->length);
+	return NUMBER_VALUE(lit_ustring_length(AS_STRING(instance)));
+}
+
+LIT_METHOD(string_iterator) {
+	LitString* string = AS_STRING(instance);
+
+	if (IS_NULL(args[0])) {
+		if (string->length == 0) {
+			return NULL_VALUE;
+		}
+
+		return NUMBER_VALUE(0);
+	}
+
+	int index = LIT_CHECK_NUMBER(0);
+
+	if (index < 0) {
+		return NULL_VALUE;
+	}
+
+	do {
+		index++;
+
+		if (index >= (int) string->length) {
+			return NULL_VALUE;
+		}
+	} while ((string->chars[index] & 0xc0) == 0x80);
+
+	return NUMBER_VALUE(index);
+}
+
+LIT_METHOD(string_iteratorValue) {
+	LitString* string = AS_STRING(instance);
+	uint32_t index = LIT_CHECK_NUMBER(0);
+
+	if (index == UINT32_MAX) {
+		return false;
+	}
+
+	return OBJECT_VALUE(lit_ustring_code_point_at(vm->state, string, index));
 }
 
 /*
@@ -1459,6 +1499,8 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("endsWith", string_endsWith)
 		LIT_BIND_METHOD("replace", string_replace)
 		LIT_BIND_METHOD("substring", string_substring)
+		LIT_BIND_METHOD("iterator", string_iterator)
+		LIT_BIND_METHOD("iteratorValue", string_iteratorValue)
 		LIT_BIND_METHOD("[]", string_subscript)
 
 		LIT_BIND_GETTER("length", string_length)

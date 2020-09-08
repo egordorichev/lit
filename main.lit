@@ -1,7 +1,7 @@
-var test = new Object()
+var s = "Привет, мир test"
+print(s.toUpperCase())
 
-function test.call() {
-	print("hallo")
-}
+var a = {}
 
-test.call()
+a["суп"] = 32
+print(a["суп"])

@@ -1,0 +1,18 @@
+#ifndef LIT_UTF_H
+#define LIT_UTF_H
+
+#include <lit/lit_common.h>
+#include <lit/vm/lit_value.h>
+
+int lit_ustring_length(LitString* string);
+int lit_ustring_num_bytes(int value);
+int lit_ustring_decode(const uint8_t* bytes, uint32_t length);
+int lit_ustring_encode(int value, uint8_t* bytes);
+
+LitString* lit_ustring_code_point_at(LitState* state, LitString* string, uint32_t index);
+LitString* lit_ustring_from_code_point(LitState* state, int value);
+LitString* lit_ustring_from_range(LitState* state, LitString* source, int start, uint32_t count, int step);
+
+int lit_uchar_offset(char *str, int index);
+
+#endif

@@ -1,4 +1,5 @@
 #include <lit/lit.h>
+#include <lit/lit_config.h>
 #include <lit/vm/lit_vm.h>
 #include <lit/std/lit_core.h>
 #include <lit/scanner/lit_scanner.h>
@@ -8,6 +9,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <locale.h>
 
 #ifdef LIT_OS_UNIX_LIKE
 #define USE_LIBREADLINE
@@ -56,10 +58,10 @@ static void run_repl(LitState* state) {
 			line = readline("");
 			add_history(line);
 		#else
-		if (!fgets(line, REPL_INPUT_MAX, stdin)) {
-			printf("\n");
-			break;
-		}
+			if (!fgets(line, REPL_INPUT_MAX, stdin)) {
+				printf("\n");
+				break;
+			}
 		#endif
 
 		LitInterpretResult result = lit_interpret(state, "repl", line);
@@ -105,6 +107,8 @@ static bool match_arg(const char* arg, const char* a, const char* b) {
 }
 
 int main(int argc, const char* argv[]) {
+	setlocale(LC_ALL, "en_US.UTF-8");
+
 	LitState* state = lit_new_state();
 	lit_open_libraries(state);
 
