@@ -1,20 +1,20 @@
 # lit
 
 Lit is a dynamicaly-typed language, inspired by highly-hackable Lua and familiar C-styled JavaScipt.
-You can try it out [in your browser](https://github.com/egordorichev/lit-html)!
+You can try it out [in your browser](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/hello_world.lit)!
 
 |                         | Lua      | JavaScript | Lit      |                                                                                                     |
 |-                        |-         |-           |-         |-                                                                                                    |
-| Easy classes            | &#x274C; | &#10004;   | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/oop.lit)                   |
+| Easy classes            | &#x274C; | &#10004;   | &#10004; | [Example](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/oop.lit)                   |
 | Arrays start from       | 1 (WHAT) | 0          | 0        | Balance in the universe is restored                                                                 |
-| String interpolation    | &#x274C; | &#10004;   | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/interpolation.lit)         |
-| Operator overloading    | &#10004; | &#x274C;   | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/operator_overloading.lit)  |
+| String interpolation    | &#x274C; | &#10004;   | &#10004; | [Example](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/interpolation.lit)         |
+| Operator overloading    | &#10004; | &#x274C;   | &#10004; | [Example](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/operator_overloading.lit)  |
 | Easy to embed           | &#10004; | &#x274C;   | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/html/glue/glue.c)                         |
 | Has no `undefined`      | &#10004; | &#x274C;   | &#10004; | Seriously, why, JS??                                                                                |
-| Syntax sugar like `+=`  | &#x274C; | &#10004;   | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/syntax_sugar.lit)          |
-| Coroutines (fibers)     | &#10004; | &#x274C;   | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/tests/examples/fibers.lit)                |
+| Syntax sugar like `+=`  | &#x274C; | &#10004;   | &#10004; | [Example](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/syntax_sugar.lit)          |
+| Coroutines (fibers)     | &#10004; | &#x274C;   | &#10004; | [Example](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/fibers.lit)                |
 
-Sounds good? [Check out some challenge solutions](https://github.com/egordorichev/lit/tree/master/test/challenges) or try lit for yourself!
+Sounds good? [Check out some challenge solutions](https://github.com/egordorichev/lit/tree/master/tests/challenges) or try lit for yourself!
 
 # Building
 
@@ -39,8 +39,8 @@ Just run it, and you should see the familiar message in your terminal:
 lit hello.lit
 ```
 
-That's it! Now you are ready to face a more serious challenge, like the [examples](https://github.com/egordorichev/lit/tree/master/test/examples) or [challenges](https://github.com/egordorichev/lit/tree/master/test/challenges)!
-Or alternatively, [lit runs just fine in browsers](https://github.com/egordorichev/lit-html).
+That's it! Now you are ready to face a more serious challenge, like the [examples](https://github.com/egordorichev/lit/tree/master/tests/examples) or [challenges](https://github.com/egordorichev/lit/tree/master/tests/challenges)!
+Or alternatively, [lit runs just fine in browsers](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/hello_world.lit).
 
 ### Syntax Highlighting
 
