@@ -508,7 +508,12 @@ void lit_map_add_all(LitState* state, LitMap* from, LitMap* to) {
 LitUserdata* lit_create_userdata(LitState* state, size_t size) {
 	LitUserdata* userdata = ALLOCATE_OBJECT(state, LitUserdata, OBJECT_USERDATA);
 
-	userdata->data = lit_reallocate(state, NULL, 0, size);
+	if (size > 0) {
+		userdata->data = lit_reallocate(state, NULL, 0, size);
+	} else {
+		userdata->data = NULL;
+	}
+
 	userdata->size = size;
 	userdata->cleanup_fn = NULL;
 
