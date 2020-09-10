@@ -1,5 +1,6 @@
 # todo
 
+* remove ./ from the file paths (so that we dont end up with ..main)
 * c-api call() is really expensive
 * check upvalues
 * upvalues can work as references, perhaps???

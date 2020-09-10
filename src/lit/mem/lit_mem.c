@@ -157,9 +157,11 @@ void lit_free_object(LitState* state, LitObject* object) {
 				data->cleanup_fn(state, data);
 			}
 
-			lit_reallocate(state, data->data, data->size, 0);
-			LIT_FREE(state, LitUserdata, object);
+			if (data->size > 0) {
+				lit_reallocate(state, data->data, data->size, 0);
+			}
 
+			LIT_FREE(state, LitUserdata, object);
 			break;
 		}
 
