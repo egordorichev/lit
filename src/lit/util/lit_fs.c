@@ -53,9 +53,11 @@ void lit_write_double(FILE* file, double byte) {
 
 void lit_write_string(FILE* file, LitString* string) {
 	uint16_t c = string->length;
-
 	fwrite(&c, 2, 1, file);
-	fwrite(string->chars, string->length, 1, file);
+
+	for (uint16_t i = 0; i < c; i++) {
+		lit_write_uint8_t(file, (uint8_t) string->chars[i] ^ LIT_STRING_KEY);
+	}
 }
 
 uint8_t lit_read_uint8_t(FILE* file) {
@@ -88,8 +90,8 @@ LitString* lit_read_string(LitState* state, FILE* file) {
 
 	char line[length];
 
-	if (!fread(line, length, 1, file)) {
-		return NULL;
+	for (uint16_t i = 0; i < length; i++) {
+		line[i] = (char) lit_read_uint8_t(file) ^ LIT_STRING_KEY;
 	}
 
 	return lit_copy_string(state, line, length);
@@ -134,7 +136,7 @@ LitString* lit_read_estring(LitState* state, LitEmulatedFile* file) {
 	char line[length];
 
 	for (uint16_t i = 0; i < length; i++) {
-		line[i] = (char) lit_read_euint8_t(file);
+		line[i] = (char) lit_read_euint8_t(file) ^ LIT_STRING_KEY;
 	}
 
 	return lit_copy_string(state, line, length);
@@ -275,20 +277,19 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
 }
 
 void lit_save_module(LitModule* module, FILE* file) {
-	lit_write_string(file, module->name);
-
 	bool disabled = lit_is_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES);
-	LitTable* privates = disabled ? NULL : &module->private_names->values;
 
+	lit_write_string(file, module->name);
 	lit_write_uint16_t(file, module->private_count);
 	lit_write_uint8_t(file, (uint8_t) disabled);
 
-	for (uint i = 0; i < module->private_count; i++) {
-		if (privates->entries[i].key != NULL) {
-			lit_write_uint16_t(file, (uint16_t) AS_NUMBER(privates->entries[i].value));
+	if (!disabled) {
+		LitTable* privates = &module->private_names->values;
 
-			if (!disabled) {
+		for (uint i = 0; i < module->private_count; i++) {
+			if (privates->entries[i].key != NULL) {
 				lit_write_string(file, privates->entries[i].key);
+				lit_write_uint16_t(file, (uint16_t) AS_NUMBER(privates->entries[i].value));
 			}
 		}
 	}
@@ -323,14 +324,14 @@ LitModule* lit_load_module(LitState* state, const char* input) {
 		bool enabled = !((bool) lit_read_euint8_t(&file));
 
 		module->privates = LIT_ALLOCATE(state, LitValue, privates_count);
+		module->private_count = privates_count;
 
 		for (uint16_t i = 0; i < privates_count; i++) {
-			uint16_t id = lit_read_euint16_t(&file);
 			module->privates[i] = NULL_VALUE;
 
 			if (enabled) {
-				LitString *name = lit_read_estring(state, &file);
-				lit_table_set(state, privates, name, NUMBER_VALUE(id));
+				LitString* name = lit_read_estring(state, &file);
+				lit_table_set(state, privates, name, NUMBER_VALUE(lit_read_euint16_t(&file)));
 			}
 		}
 

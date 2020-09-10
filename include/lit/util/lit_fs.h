@@ -7,8 +7,10 @@
 
 #include <stdio.h>
 
+// Do not change these, or old bytecode files will break!
 #define LIT_BYTECODE_MAGIC_NUMBER 6932
 #define LIT_BYTECODE_END_NUMBER 2942
+#define LIT_STRING_KEY 48
 
 const char* lit_read_file(const char* path);
 bool lit_file_exists(const char* path);

@@ -1,1 +1,2 @@
-print("test")
+var a = "Test"
+print(a)
