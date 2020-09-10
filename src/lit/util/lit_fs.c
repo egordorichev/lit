@@ -277,13 +277,19 @@ static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module
 void lit_save_module(LitModule* module, FILE* file) {
 	lit_write_string(file, module->name);
 
-	LitTable* privates = lit_is_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES) ? 0 : &module->private_names->values;
-	lit_write_uint16_t(file, privates->count);
+	bool disabled = lit_is_optimization_enabled(OPTIMIZATION_PRIVATE_NAMES);
+	LitTable* privates = disabled ? NULL : &module->private_names->values;
 
-	for (int i = 0; i < privates->capacity; i++) {
+	lit_write_uint16_t(file, module->private_count);
+	lit_write_uint8_t(file, (uint8_t) disabled);
+
+	for (uint i = 0; i < module->private_count; i++) {
 		if (privates->entries[i].key != NULL) {
-			lit_write_string(file, privates->entries[i].key);
 			lit_write_uint16_t(file, (uint16_t) AS_NUMBER(privates->entries[i].value));
+
+			if (!disabled) {
+				lit_write_string(file, privates->entries[i].key);
+			}
 		}
 	}
 
@@ -314,14 +320,18 @@ LitModule* lit_load_module(LitState* state, const char* input) {
 		LitTable *privates = &module->private_names->values;
 
 		uint16_t privates_count = lit_read_euint16_t(&file);
+		bool enabled = !((bool) lit_read_euint8_t(&file));
+
 		module->privates = LIT_ALLOCATE(state, LitValue, privates_count);
 
 		for (uint16_t i = 0; i < privates_count; i++) {
-			LitString *name = lit_read_estring(state, &file);
 			uint16_t id = lit_read_euint16_t(&file);
-
-			lit_table_set(state, privates, name, NUMBER_VALUE(id));
 			module->privates[i] = NULL_VALUE;
+
+			if (enabled) {
+				LitString *name = lit_read_estring(state, &file);
+				lit_table_set(state, privates, name, NUMBER_VALUE(id));
+			}
 		}
 
 		module->main_function = load_function(state, &file, module);

@@ -1,1 +1,1 @@
-print("Привет мир"[2 .. 8]) // Expected: ив
+print("test")
