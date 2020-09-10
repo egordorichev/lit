@@ -209,6 +209,16 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, const cha
 	return state->had_error ? NULL : module;
 }
 
+LitModule* lit_get_module(LitState* state, const char* name) {
+	LitValue value;
+
+	if (lit_table_get(&state->vm->modules->values, CONST_STRING(state, name), &value)) {
+		return AS_MODULE(value);
+	}
+
+	return NULL;
+}
+
 LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code) {
 	LitModule* module = lit_compile_module(state, module_name, code);
 

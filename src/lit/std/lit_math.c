@@ -150,7 +150,7 @@ LIT_METHOD(random_int) {
 		int max = (int) LIT_GET_NUMBER(1, 1);
 
 		if (max - min == 0) {
-			return NUMBER_VALUE(0);
+			return NUMBER_VALUE(max);
 		}
 
 		return NUMBER_VALUE(min + rand_r(data) % (max - min));
@@ -171,7 +171,7 @@ LIT_METHOD(random_float) {
 		int max = (int) LIT_GET_NUMBER(1, 1);
 
 		if (max - min == 0) {
-			return NUMBER_VALUE(0);
+			return NUMBER_VALUE(max);
 		}
 
 		return NUMBER_VALUE(min + value * (max - min));
@@ -185,7 +185,8 @@ LIT_METHOD(random_bool) {
 }
 
 LIT_METHOD(random_chance) {
-	return NUMBER_VALUE((double) rand_r(extract_random_data(vm->state, instance)) / RAND_MAX * 100);
+	float c = LIT_GET_NUMBER(0, 50);
+	return BOOL_VALUE((((float) rand_r(extract_random_data(vm->state, instance))) / RAND_MAX * 100) <= c);
 }
 
 LIT_METHOD(random_pick) {

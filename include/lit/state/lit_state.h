@@ -79,6 +79,8 @@ LitClass* lit_get_class_for(LitState* state, LitValue value);
 void lit_patch_file_name(char* file_name);
 
 LitModule* lit_compile_module(LitState* state, LitString* module_name, const char* code);
+LitModule* lit_get_module(LitState* state, const char* name);
+
 LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code);
 LitInterpretResult lit_interpret(LitState* state, const char* module_name, const char* code);
 LitInterpretResult lit_interpret_file(LitState* state, const char* file, bool dump_only);
