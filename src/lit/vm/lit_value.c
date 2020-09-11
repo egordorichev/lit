@@ -166,7 +166,15 @@ static void print_object(LitValue value) {
 		}
 
 		case OBJECT_REFERENCE: {
-			printf("reference");
+			printf("reference => ");
+			LitValue* slot = AS_REFERENCE(value)->slot;
+
+			if (slot == NULL) {
+				printf("null");
+			} else {
+				lit_print_value(*slot);
+			}
+
 			break;
 		}
 

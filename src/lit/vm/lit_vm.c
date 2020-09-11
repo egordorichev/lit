@@ -1501,6 +1501,17 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(SET_REFERENCE) {
+			LitValue reference = POP();
+
+			if (!IS_REFERENCE(reference)) {
+				RUNTIME_ERROR("Provided value is not a reference")
+			}
+
+			*AS_REFERENCE(reference)->slot = PEEK(0);
+			continue;
+		}
+
 		RUNTIME_ERROR_VARG("Unknown op code '%d'", *ip)
 		break;
 	}

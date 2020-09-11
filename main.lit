@@ -1,23 +1,10 @@
-var a = "Test"
-print(ref a)
-
-g = 10
-print(ref g)
-
-function test() {
-	var a = 32
-	print(ref a)
-	a = 90
-
-	return () => {
-		print(ref a)
-	}
-}
-
-test()()
-
 var z = {
 	me = "Egor"
 }
 
-print(ref z.me)
+function test(a) {
+	ref a = "Test"
+}
+
+test(ref z.me)
+print(z.me)

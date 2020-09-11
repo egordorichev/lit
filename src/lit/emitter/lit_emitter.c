@@ -762,13 +762,17 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 				emit_ops(emitter, emitter->last_line, OP_SET_FIELD, OP_POP);
 			} else if (expr->to->type == SUBSCRIPT_EXPRESSION) {
-				LitSubscriptExpression *e = (LitSubscriptExpression*) expr->to;
+				LitSubscriptExpression* e = (LitSubscriptExpression*) expr->to;
 
 				emit_expression(emitter, e->array);
 				emit_expression(emitter, e->index);
 				emit_expression(emitter, expr->value);
 
 				emit_op(emitter, emitter->last_line, OP_SUBSCRIPT_SET);
+			} else if (expr->to->type == REFERENCE_EXPRESSION) {
+				emit_expression(emitter, expr->value);
+				emit_expression(emitter, ((LitReferenceExpression*) expr->to)->to);
+				emit_op(emitter, expression->line, OP_SET_REFERENCE);
 			} else {
 				error(emitter, expression->line, ERROR_INVALID_ASSIGMENT_TARGET);
 			}

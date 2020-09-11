@@ -234,6 +234,7 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 		case OP_REFERENCE_PRIVATE: return print_short_op("OP_REFERENCE_PRIVATE", chunk, offset);
 		case OP_REFERENCE_LOCAL: return print_short_op("OP_REFERENCE_LOCAL", chunk, offset);
 		case OP_REFERENCE_GLOBAL: return print_constant_op("OP_REFERENCE_GLOBAL", chunk, offset, true);
+		case OP_SET_REFERENCE: return print_simple_op("OP_SET_REFERENCE", offset);
 
 		default: {
 			printf("Unknown opcode %d\n", instruction);
