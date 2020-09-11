@@ -248,7 +248,7 @@ void lit_ensure_number(LitVm* vm, LitValue value, const char* error) {
 	}
 }
 
-void lit_ensure_object(LitVm* vm, LitValue value, LitObjectType type, const char* error) {
+void lit_ensure_object_type(LitVm* vm, LitValue value, LitObjectType type, const char* error) {
 	if (!IS_OBJECT(value) || OBJECT_TYPE(value) != type) {
 		lit_runtime_error_exiting(vm, error);
 	}
