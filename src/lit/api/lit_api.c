@@ -251,7 +251,9 @@ void lit_set_map_field(LitState* state, LitMap* map, const char* name, LitValue 
 }
 
 LitString* lit_to_string(LitState* state, LitValue object) {
-	if (!IS_OBJECT(object)) {
+	if (IS_STRING(object)) {
+		return AS_STRING(object);
+	} else if (!IS_OBJECT(object)) {
 		if (IS_NULL(object)) {
 			return CONST_STRING(state, "null");
 		} else if (IS_NUMBER(object)) {
@@ -259,8 +261,14 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 		} else if (IS_BOOL(object)) {
 			return CONST_STRING(state, AS_BOOL(object) ? "true" : "false");
 		}
-	} else if (IS_STRING(object)) {
-		return AS_STRING(object);
+	} else if (IS_REFERENCE(object)) {
+		LitValue* slot = AS_REFERENCE(object)->slot;
+
+		if (slot == NULL) {
+			return CONST_STRING(state, "null");
+		}
+
+		return lit_to_string(state, *slot);
 	}
 
 	LitVm* vm = state->vm;

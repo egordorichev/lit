@@ -288,7 +288,6 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 
 	switch (expression->type) {
 		case UNARY_EXPRESSION:
-		case GROUPING_EXPRESSION:
 		case BINARY_EXPRESSION: {
 			if (lit_is_optimization_enabled(OPTIMIZATION_LITERAL_FOLDING)) {
 				LitValue optimized = evaluate_expression(optimizer, expression);
@@ -303,11 +302,6 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 			switch (expression->type) {
 				case UNARY_EXPRESSION: {
 					optimize_expression(optimizer, &((LitUnaryExpression*) expression)->right);
-					break;
-				}
-
-				case GROUPING_EXPRESSION: {
-					optimize_expression(optimizer, &((LitGroupingExpression*) expression)->child);
 					break;
 				}
 
@@ -442,7 +436,11 @@ static void optimize_expression(LitOptimizer* optimizer, LitExpression** slot) {
 			break;
 		}
 
-		case VARARG_EXPRESSION:
+		case REFERENCE_EXPRESSION: {
+			optimize_expression(optimizer, &((LitReferenceExpression*) expression)->to);
+			break;
+		}
+
 		case LITERAL_EXPRESSION:
 		case THIS_EXPRESSION:
 		case SUPER_EXPRESSION: {

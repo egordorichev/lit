@@ -693,6 +693,11 @@ static LitExpression* parse_super(LitParser* parser, bool can_assign) {
 	return expression;
 }
 
+static LitExpression* parse_reference(LitParser* parser, bool can_assign) {
+	uint line = parser->previous.line;
+	return (LitExpression*) lit_create_reference_expression(parser->state, line, parse_expression(parser));
+}
+
 static LitExpression* parse_expression(LitParser* parser) {
 	ignore_new_lines(parser);
 	return parse_precedence(parser, PREC_ASSIGNMENT);
@@ -1255,4 +1260,5 @@ static void setup_rules() {
 	rules[TOKEN_THIS] = (LitParseRule) { parse_this, NULL, PREC_NONE };
 	rules[TOKEN_SUPER] = (LitParseRule) { parse_super, NULL, PREC_NONE };
 	rules[TOKEN_QUESTION] = (LitParseRule) { NULL, parse_ternary_or_question, PREC_EQUALITY };
+	rules[TOKEN_REF] = (LitParseRule) { parse_reference, NULL, PREC_NONE };
 }

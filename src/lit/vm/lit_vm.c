@@ -1447,6 +1447,60 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			continue;
 		}
 
+		CASE_CODE(REFERENCE_GLOBAL) {
+			LitString* name = READ_STRING_LONG();
+			LitValue* value;
+
+			if (lit_table_get_slot(&vm->globals->values, name, &value)) {
+				PUSH(OBJECT_VALUE(lit_create_reference(state, value)));
+			} else {
+				RUNTIME_ERROR("Attempt to reference a null value");
+			}
+
+			continue;
+		}
+
+		CASE_CODE(REFERENCE_PRIVATE) {
+			PUSH(OBJECT_VALUE(lit_create_reference(state, &privates[READ_SHORT()])));
+			continue;
+		}
+
+		CASE_CODE(REFERENCE_LOCAL) {
+			PUSH(OBJECT_VALUE(lit_create_reference(state, &slots[READ_SHORT()])));
+			continue;
+		}
+
+		CASE_CODE(REFERENCE_UPVALUE) {
+			PUSH(OBJECT_VALUE(lit_create_reference(state, upvalues[READ_BYTE()]->location)));
+			continue;
+		}
+
+		CASE_CODE(REFERENCE_FIELD) {
+			LitValue object = PEEK(1);
+
+			if (IS_NULL(object)) {
+				RUNTIME_ERROR("Attempt to index a null value")
+			}
+
+			LitValue* value;
+			LitString* name = AS_STRING(PEEK(0));
+
+			if (IS_INSTANCE(object)) {
+				if (!lit_table_get_slot(&AS_INSTANCE(object)->fields, name, &value)) {
+					RUNTIME_ERROR("Attempt to reference a null value")
+				}
+			} else {
+				lit_print_value(object);
+				printf("\n");
+				RUNTIME_ERROR("You can only reference fields of real instances")
+			}
+
+			DROP(); // Pop field name
+			fiber->stack_top[-1] = OBJECT_VALUE(lit_create_reference(state, value));
+
+			continue;
+		}
+
 		RUNTIME_ERROR_VARG("Unknown op code '%d'", *ip)
 		break;
 	}

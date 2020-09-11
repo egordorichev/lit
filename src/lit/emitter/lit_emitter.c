@@ -26,6 +26,7 @@ static void resolve_statements(LitEmitter* emitter, LitStatements* statements) {
 void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->state = state;
 	emitter->loop_start = 0;
+	emitter->emit_reference = 0;
 	emitter->class_name = NULL;
 	emitter->compiler = NULL;
 	emitter->chunk = NULL;
@@ -672,13 +673,15 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
-		case GROUPING_EXPRESSION: {
-			emit_expression(emitter, ((LitGroupingExpression*) expression)->child);
-			break;
-		}
-
 		case VAR_EXPRESSION: {
 			LitVarExpression* expr = (LitVarExpression*) expression;
+
+			bool ref = emitter->emit_reference > 0;
+
+			if (ref) {
+				emitter->emit_reference--;
+			}
+
 			int index = resolve_local(emitter, emitter->compiler, expr->name, expr->length, expression->line);
 
 			if (index == -1) {
@@ -688,16 +691,26 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					index = resolve_private(emitter, expr->name, expr->length, expression->line);
 
 					if (index == -1) {
-						emit_op(emitter, expression->line, OP_GET_GLOBAL);
+						emit_op(emitter, expression->line, ref ? OP_REFERENCE_GLOBAL : OP_GET_GLOBAL);
 						emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length))));
 					} else {
-						emit_byte_or_short(emitter, expression->line, OP_GET_PRIVATE, OP_GET_PRIVATE_LONG, index);
+						if (ref) {
+							emit_op(emitter, expression->line, OP_REFERENCE_PRIVATE);
+							emit_short(emitter, expression->line, index);
+						} else {
+							emit_byte_or_short(emitter, expression->line, OP_GET_PRIVATE, OP_GET_PRIVATE_LONG, index);
+						}
 					}
 				} else {
-					emit_arged_op(emitter, expression->line, OP_GET_UPVALUE, (uint8_t) index);
+					emit_arged_op(emitter, expression->line, ref ? OP_REFERENCE_UPVALUE : OP_GET_UPVALUE, (uint8_t) index);
 				}
 			} else {
-				emit_byte_or_short(emitter, expression->line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, index);
+				if (ref) {
+					emit_op(emitter, expression->line, OP_REFERENCE_LOCAL);
+					emit_short(emitter, expression->line, index);
+				} else {
+					emit_byte_or_short(emitter, expression->line, OP_GET_LOCAL, OP_GET_LOCAL_LONG, index);
+				}
 			}
 
 			break;
@@ -853,6 +866,12 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case GET_EXPRESSION: {
 			LitGetExpression* expr = (LitGetExpression*) expression;
+			bool ref = emitter->emit_reference > 0;
+
+			if (ref) {
+				emitter->emit_reference--;
+			}
+
 			emit_expression(emitter, expr->where);
 
 			if (expr->jump == 0) {
@@ -860,13 +879,13 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 				if (!expr->ignore_emit) {
 					emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
-					emit_op(emitter, emitter->last_line, OP_GET_FIELD);
+					emit_op(emitter, emitter->last_line, ref ? OP_REFERENCE_FIELD : OP_GET_FIELD);
 				}
 
 				patch_jump(emitter, expr->jump, emitter->last_line);
 			} else if (!expr->ignore_emit) {
 				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
-				emit_op(emitter, emitter->last_line, OP_GET_FIELD);
+				emit_op(emitter, emitter->last_line, ref ? OP_REFERENCE_FIELD : OP_GET_FIELD);
 			}
 
 			break;
@@ -1033,8 +1052,20 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 
-		case VARARG_EXPRESSION: {
-			UNREACHABLE
+		case REFERENCE_EXPRESSION: {
+			LitExpression* to = ((LitReferenceExpression*) expression)->to;
+
+			if (to->type != VAR_EXPRESSION && to->type != GET_EXPRESSION && to->type != THIS_EXPRESSION && to->type != SUPER_EXPRESSION) {
+				error(emitter, expression->line, ERROR_INVALID_REFERENCE_TARGET);
+				break;
+			}
+
+			int old = emitter->emit_reference;
+
+			emitter->emit_reference++;
+			emit_expression(emitter, to);
+			emitter->emit_reference = old;
+
 			break;
 		}
 
@@ -1546,6 +1577,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* module_name) {
 	emitter->last_line = 1;
+	emitter->emit_reference = 0;
 
 	LitState* state = emitter->state;
 

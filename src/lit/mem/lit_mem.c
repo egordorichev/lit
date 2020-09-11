@@ -402,6 +402,11 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_REFERENCE: {
+			lit_mark_value(vm, *((LitReference*) object)->slot);
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}

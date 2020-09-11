@@ -72,13 +72,6 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
-		case GROUPING_EXPRESSION: {
-			lit_free_expression(state, ((LitGroupingExpression*) expression)->child);
-			FREE_EXPRESSION(LitGroupingExpression)
-
-			break;
-		}
-
 		case VAR_EXPRESSION: {
 			FREE_EXPRESSION(LitVarExpression)
 			break;
@@ -197,8 +190,10 @@ void lit_free_expression(LitState* state, LitExpression* expression) {
 			break;
 		}
 
-		case VARARG_EXPRESSION: {
-			FREE_EXPRESSION(LitVarargExpression)
+		case REFERENCE_EXPRESSION: {
+			lit_free_expression(state, ((LitReferenceExpression*) expression)->to);
+			FREE_EXPRESSION(LitReferenceExpression)
+
 			break;
 		}
 
@@ -244,12 +239,6 @@ LitUnaryExpression *lit_create_unary_expression(LitState* state, uint line, LitE
 	expression->right = right;
 	expression->operator = operator;
 
-	return expression;
-}
-
-LitGroupingExpression *lit_create_grouping_expression(LitState* state, uint line, LitExpression* child) {
-	LitGroupingExpression* expression = ALLOCATE_EXPRESSION(state, LitGroupingExpression, GROUPING_EXPRESSION);
-	expression->child = child;
 	return expression;
 }
 
@@ -378,8 +367,10 @@ LitInterpolationExpression *lit_create_interpolation_expression(LitState* state,
 	return expression;
 }
 
-LitVarargExpression *lit_create_vararg_expression(LitState* state, uint line) {
-	return ALLOCATE_EXPRESSION(state, LitVarargExpression, VARARG_EXPRESSION);
+LitReferenceExpression *lit_create_reference_expression(LitState* state, uint line, LitExpression* to) {
+	LitReferenceExpression* expression = ALLOCATE_EXPRESSION(state, LitReferenceExpression, REFERENCE_EXPRESSION);
+	expression->to = to;
+	return expression;
 }
 
 #define FREE_STATEMENT(type) lit_reallocate(state, statement, sizeof(type), 0);

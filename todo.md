@@ -1,5 +1,6 @@
 # todo
 
+* expected ) got ) will occur if the file has no more chars left
 * stats like in milk
 * c-api call() is really expensive
 * check upvalues

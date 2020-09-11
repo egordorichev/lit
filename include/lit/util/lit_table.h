@@ -23,6 +23,8 @@ void lit_free_table(LitState* state, LitTable* table);
 
 bool lit_table_set(LitState* state, LitTable* table, LitString* key, LitValue value);
 bool lit_table_get(LitTable* table, LitString* key, LitValue* value);
+bool lit_table_get_slot(LitTable* table, LitString* key, LitValue** value);
+
 bool lit_table_delete(LitTable* table, LitString* key);
 LitString* lit_table_find_string(LitTable* table, const char* chars, uint length, uint32_t hash);
 void lit_table_add_all(LitState* state, LitTable* from, LitTable* to);

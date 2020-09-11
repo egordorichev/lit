@@ -104,6 +104,22 @@ bool lit_table_get(LitTable* table, LitString* key, LitValue* value) {
 	return true;
 }
 
+
+bool lit_table_get_slot(LitTable* table, LitString* key, LitValue** value) {
+	if (table->count == 0) {
+		return false;
+	}
+
+	LitTableEntry* entry = find_entry(table->entries, table->capacity, key);
+
+	if (entry->key == NULL) {
+		return false;
+	}
+
+	*value = &entry->value;
+	return true;
+}
+
 bool lit_table_delete(LitTable* table, LitString* key) {
 	if (table->count == 0) {
 		return false;

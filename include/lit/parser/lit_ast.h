@@ -9,7 +9,6 @@ typedef enum {
 	LITERAL_EXPRESSION,
 	BINARY_EXPRESSION,
 	UNARY_EXPRESSION,
-	GROUPING_EXPRESSION,
 	VAR_EXPRESSION,
 	ASSIGN_EXPRESSION,
 	CALL_EXPRESSION,
@@ -24,7 +23,7 @@ typedef enum {
 	RANGE_EXPRESSION,
 	IF_EXPRESSION,
 	INTERPOLATION_EXPRESSION,
-	VARARG_EXPRESSION
+	REFERENCE_EXPRESSION
 } LitExpressionType;
 
 typedef struct LitExpression {
@@ -95,13 +94,6 @@ typedef struct {
 } LitVarExpression;
 
 LitVarExpression *lit_create_var_expression(LitState* state, uint line, const char* name, uint length);
-
-typedef struct {
-	LitExpression expression;
-	LitExpression* child;
-} LitGroupingExpression;
-
-LitGroupingExpression *lit_create_grouping_expression(LitState* state, uint line, LitExpression* child);
 
 typedef struct {
 	LitExpression expression;
@@ -236,10 +228,10 @@ LitInterpolationExpression *lit_create_interpolation_expression(LitState* state,
 
 typedef struct {
 	LitExpression expression;
-} LitVarargExpression;
+	LitExpression* to;
+} LitReferenceExpression;
 
-LitVarargExpression *lit_create_vararg_expression(LitState* state, uint line);
-
+LitReferenceExpression *lit_create_reference_expression(LitState* state, uint line, LitExpression* to);
 
 /*
  * Statements
