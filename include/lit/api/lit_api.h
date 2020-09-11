@@ -67,7 +67,6 @@ LitInterpretResult lit_call_function(LitState* state, LitModule* module, LitFunc
 
 #define LIT_CHECK_REFERENCE(id) lit_check_reference(vm, args, arg_count, id)
 
-
 double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def);
 
