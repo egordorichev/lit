@@ -65,6 +65,9 @@ LitInterpretResult lit_call_function(LitState* state, LitModule* module, LitFunc
 #define LIT_CHECK_OBJECT_STRING(id) lit_check_object_string(vm, args, arg_count, id)
 #define LIT_CHECK_INSTANCE(id) lit_check_instance(vm, args, arg_count, id)
 
+#define LIT_CHECK_REFERENCE(id) lit_check_reference(vm, args, arg_count, id)
+
+
 double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, double def);
 
@@ -76,6 +79,13 @@ const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t
 
 LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 LitInstance* lit_check_instance(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+
+LitValue* lit_check_reference(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
+
+void lit_ensure_bool(LitVm* vm, LitValue value, const char* error);
+void lit_ensure_string(LitVm* vm, LitValue value, const char* error);
+void lit_ensure_number(LitVm* vm, LitValue value, const char* error);
+void lit_ensure_object_type(LitVm* vm, LitValue value, LitObjectType type, const char* error);
 
 #define LIT_GET_FIELD(id) lit_get_field(vm->state, &AS_INSTANCE(instance)->fields, id)
 #define LIT_GET_MAP_FIELD(id) lit_get_map_field(vm->state, &AS_INSTANCE(instance)->fields, id)

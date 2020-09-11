@@ -160,7 +160,7 @@ LitInterpretResult lit_call_function(LitState* state, LitModule* module, LitFunc
 
 double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_NUMBER(args[id])) {
-		lit_runtime_error_exiting(vm, "Expected a number as argument #%i, got a %s", (int) id, lit_get_value_type(args[id]));
+		lit_runtime_error_exiting(vm, "Expected a number as argument #%i, got a %s", (int) id, id >= arg_count ? "null" : lit_get_value_type(args[id]));
 	}
 
 	return AS_NUMBER(args[id]);
@@ -176,7 +176,7 @@ double lit_get_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, 
 
 bool lit_check_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_BOOL(args[id])) {
-		lit_runtime_error_exiting(vm, "Expected a boolean as argument #%i, got a %s", (int) id, lit_get_value_type(args[id]));
+		lit_runtime_error_exiting(vm, "Expected a boolean as argument #%i, got a %s", (int) id, id >= arg_count ? "null" : lit_get_value_type(args[id]));
 	}
 
 	return AS_BOOL(args[id]);
@@ -192,7 +192,7 @@ bool lit_get_bool(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id, bool
 
 const char* lit_check_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_STRING(args[id])) {
-		lit_runtime_error_exiting(vm, "Expected a string as argument #%i, got a %s", (int) id, lit_get_value_type(args[id]));
+		lit_runtime_error_exiting(vm, "Expected a string as argument #%i, got a %s", (int) id, id >= arg_count ? "null" : lit_get_value_type(args[id]));
 	}
 
 	return AS_STRING(args[id])->chars;
@@ -208,7 +208,7 @@ const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t
 
 LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_STRING(args[id])) {
-		lit_runtime_error_exiting(vm, "Expected a string as argument #%i, got a %s", (int) id, lit_get_value_type(args[id]));
+		lit_runtime_error_exiting(vm, "Expected a string as argument #%i, got a %s", (int) id, id >= arg_count ? "null" : lit_get_value_type(args[id]));
 	}
 
 	return AS_STRING(args[id]);
@@ -216,10 +216,42 @@ LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count,
 
 LitInstance* lit_check_instance(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
 	if (arg_count <= id || !IS_INSTANCE(args[id])) {
-		lit_runtime_error_exiting(vm, "Expected an instance as argument #%i, got a %s", (int) id, lit_get_value_type(args[id]));
+		lit_runtime_error_exiting(vm, "Expected an instance as argument #%i, got a %s", (int) id, id >= arg_count ? "null" : lit_get_value_type(args[id]));
 	}
 
 	return AS_INSTANCE(args[id]);
+}
+
+LitValue* lit_check_reference(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
+	if (arg_count <= id || !IS_INSTANCE(args[id])) {
+		lit_runtime_error_exiting(vm, "Expected a reference as argument #%i, got a %s", (int) id, id >= arg_count ? "null" : lit_get_value_type(args[id]));
+	}
+
+	return AS_REFERENCE(args[id])->slot;
+}
+
+void lit_ensure_bool(LitVm* vm, LitValue value, const char* error){
+	if (!IS_BOOL(value)) {
+		lit_runtime_error_exiting(vm, error);
+	}
+}
+
+void lit_ensure_string(LitVm* vm, LitValue value, const char* error) {
+	if (!IS_STRING(value)) {
+		lit_runtime_error_exiting(vm, error);
+	}
+}
+
+void lit_ensure_number(LitVm* vm, LitValue value, const char* error) {
+	if (!IS_NUMBER(value)) {
+		lit_runtime_error_exiting(vm, error);
+	}
+}
+
+void lit_ensure_object(LitVm* vm, LitValue value, LitObjectType type, const char* error) {
+	if (!IS_OBJECT(value) || OBJECT_TYPE(value) != type) {
+		lit_runtime_error_exiting(vm, error);
+	}
 }
 
 LitValue lit_get_field(LitState* state, LitTable* table, const char* name) {
