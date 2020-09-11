@@ -223,7 +223,7 @@ LitInstance* lit_check_instance(LitVm* vm, LitValue* args, uint8_t arg_count, ui
 }
 
 LitValue* lit_check_reference(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id) {
-	if (arg_count <= id || !IS_INSTANCE(args[id])) {
+	if (arg_count <= id || !IS_REFERENCE(args[id])) {
 		lit_runtime_error_exiting(vm, "Expected a reference as argument #%i, got a %s", (int) id, id >= arg_count ? "null" : lit_get_value_type(args[id]));
 	}
 
@@ -248,7 +248,7 @@ void lit_ensure_number(LitVm* vm, LitValue value, const char* error) {
 	}
 }
 
-void lit_ensure_object(LitVm* vm, LitValue value, LitObjectType type, const char* error) {
+void lit_ensure_object_type(LitVm* vm, LitValue value, LitObjectType type, const char* error) {
 	if (!IS_OBJECT(value) || OBJECT_TYPE(value) != type) {
 		lit_runtime_error_exiting(vm, error);
 	}
