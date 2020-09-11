@@ -165,6 +165,11 @@ static void print_object(LitValue value) {
 			break;
 		}
 
+		case OBJECT_REFERENCE: {
+			printf("reference");
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}

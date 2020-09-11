@@ -1,2 +1,2 @@
 var a = "Test"
-print(a)
+// print(ref a)

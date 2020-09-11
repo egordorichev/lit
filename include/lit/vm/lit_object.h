@@ -29,6 +29,7 @@
 #define IS_USERDATA(value) IS_OBJECTS_TYPE(value, OBJECT_USERDATA)
 #define IS_RANGE(value) IS_OBJECTS_TYPE(value, OBJECT_RANGE)
 #define IS_FIELD(value) IS_OBJECTS_TYPE(value, OBJECT_FIELD)
+#define IS_REFERENCE(value) IS_OBJECTS_TYPE(value, OBJECT_REFERENCE)
 
 #define AS_STRING(value) ((LitString*) AS_OBJECT(value))
 #define AS_CSTRING(value) (((LitString*) AS_OBJECT(value))->chars)
@@ -49,6 +50,7 @@
 #define AS_RANGE(value) ((LitRange*) AS_OBJECT(value))
 #define AS_FIELD(value) ((LitField*) AS_OBJECT(value))
 #define AS_FIBER(value) ((LitFiber*) AS_OBJECT(value))
+#define AS_REFERENCE(value) ((LitReference*) AS_OBJECT(value))
 
 #define ALLOCATE_OBJECT(state, type, objectType) (type*) lit_allocate_object(state, sizeof(type), objectType)
 #define OBJECT_CONST_STRING(state, text) OBJECT_VALUE(lit_copy_string((state), (text), strlen(text)))
@@ -72,7 +74,8 @@ typedef enum {
 	OBJECT_MAP,
 	OBJECT_USERDATA,
 	OBJECT_RANGE,
-	OBJECT_FIELD
+	OBJECT_FIELD,
+	OBJECT_REFERENCE
 } LitObjectType;
 
 static const char* lit_object_type_names[] = {
@@ -93,7 +96,8 @@ static const char* lit_object_type_names[] = {
 	"map",
 	"userdata",
 	"range",
-	"field"
+	"field",
+	"reference"
 };
 
 typedef struct sLitObject {
@@ -350,5 +354,12 @@ typedef struct {
 } LitField;
 
 LitField* lit_create_field(LitState* state, LitObject* getter, LitObject* setter);
+
+typedef struct {
+	LitObject object;
+	LitValue* slot;
+} LitReference;
+
+LitReference* lit_create_reference(LitState* state, LitValue* slot);
 
 #endif

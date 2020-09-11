@@ -175,6 +175,11 @@ void lit_free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_REFERENCE: {
+			LIT_FREE(state, LitReference, object);
+			break;
+		}
+
 		default: {
 			UNREACHABLE
 		}

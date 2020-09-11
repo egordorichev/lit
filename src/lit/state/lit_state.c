@@ -158,6 +158,16 @@ LitClass* lit_get_class_for(LitState* state, LitValue value) {
 			case OBJECT_ARRAY: return state->array_class;
 			case OBJECT_MAP: return state->map_class;
 			case OBJECT_RANGE: return state->range_class;
+
+			case OBJECT_REFERENCE: {
+				LitValue* slot = AS_REFERENCE(value)->slot;
+
+				if (slot != NULL) {
+					return lit_get_class_for(state, *slot);
+				}
+
+				return state->object_class;
+			}
 		}
 	} else if (IS_NUMBER(value)) {
 		return state->number_class;
@@ -237,12 +247,19 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 	return result;
 }
 
-void lit_patch_file_name(char* file_name) {
+char* lit_patch_file_name(char* file_name) {
 	int name_length = strlen(file_name);
 
 	// Check, if our file_name ends with .lit or lbc, and remove it
-	if (name_length > 4 && (strcmp(file_name + name_length - 4, ".lit") == 0 || strcmp(file_name + name_length - 4, ".lbc") == 0)) {
+	if (name_length > 4 && (memcmp(file_name + name_length - 4, ".lit", 4) == 0 || memcmp(file_name + name_length - 4, ".lbc", 4) == 0)) {
 		file_name[name_length - 4] = '\0';
+		name_length -= 4;
+	}
+
+	// Check, if our file_name starts with ./ and remove it (useless, and makes the module name be ..main)
+	if (name_length > 2 && memcmp(file_name, "./", 2) == 0) {
+		file_name += 2;
+		name_length -= 2;
 	}
 
 	for (int i = 0; i < name_length; i++) {
@@ -252,6 +269,8 @@ void lit_patch_file_name(char* file_name) {
 			file_name[i] = '.';
 		}
 	}
+
+	return file_name;
 }
 
 bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, const char* output_file) {
@@ -267,7 +286,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, 
 			return false;
 		}
 
-		lit_patch_file_name(file_name);
+		file_name = lit_patch_file_name(file_name);
 
 		LitString *module_name = lit_copy_string(state, file_name, strlen(file_name));
 		LitModule* module = lit_compile_module(state, module_name, source);
@@ -317,12 +336,12 @@ LitInterpretResult lit_interpret_file(LitState* state, const char* file, bool du
 		return INTERPRET_RUNTIME_FAIL;
 	}
 
-	lit_patch_file_name(file_name);
+	char* patched_file_name = lit_patch_file_name(file_name);
 
 	LitInterpretResult result;
 
 	if (dump_only) {
-		LitString* module_name = lit_copy_string(state, file_name, strlen(file_name));
+		LitString* module_name = lit_copy_string(state, patched_file_name, strlen(patched_file_name));
 		LitModule* module = lit_compile_module(state, module_name, source);
 
 		if (module == NULL) {
@@ -332,7 +351,7 @@ LitInterpretResult lit_interpret_file(LitState* state, const char* file, bool du
 			result = (LitInterpretResult) {INTERPRET_OK, NULL_VALUE};
 		}
 	} else {
-		result = lit_interpret(state, file_name, source);
+		result = lit_interpret(state, patched_file_name, source);
 	}
 
 	free((void*) source);

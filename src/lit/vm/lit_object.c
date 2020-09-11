@@ -537,3 +537,9 @@ LitField* lit_create_field(LitState* state, LitObject* getter, LitObject* setter
 
 	return field;
 }
+
+LitReference* lit_create_reference(LitState* state, LitValue* slot) {
+	LitReference* reference = ALLOCATE_OBJECT(state, LitReference, OBJECT_REFERENCE);
+	reference->slot = slot;
+	return reference;
+}

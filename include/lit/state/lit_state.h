@@ -76,7 +76,7 @@ void lit_pop_roots(LitState* state, uint8_t amount);
 
 LitClass* lit_get_class_for(LitState* state, LitValue value);
 
-void lit_patch_file_name(char* file_name);
+char* lit_patch_file_name(char* file_name);
 
 LitModule* lit_compile_module(LitState* state, LitString* module_name, const char* code);
 LitModule* lit_get_module(LitState* state, const char* name);
