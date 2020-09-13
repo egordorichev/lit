@@ -421,7 +421,7 @@ void lit_build_native_runner(const char* bytecode_file) {
 	const char* data_location = getenv("HOME");
 
 	if (data_location == NULL) {
-		fprintf(stderr, "Failed to locate data directory.");
+		fprintf(stderr, "Failed to locate data directory.\n");
 		return;
 	}
 
@@ -435,7 +435,7 @@ void lit_build_native_runner(const char* bytecode_file) {
 		free(git_clone);
 
 		if (result != 0) {
-			fprintf(stderr, "Failed to clone lit.");
+			fprintf(stderr, "Failed to clone lit.\n");
 			return;
 		}
 	}
@@ -446,17 +446,18 @@ void lit_build_native_runner(const char* bytecode_file) {
 	free(git_pull);
 
 	if (result != 0) {
-		fprintf(stderr, "Failed to update lit.");
+		fprintf(stderr, "Failed to update lit.\n");
 		return;
 	}
 
+	printf("Generating bytecode wrapper...\n");
 	char* output = format("%sbytecode.c", dir);
 	bool r = lit_generate_source_file(bytecode_file, output);
 
 	free(output);
 
 	if (!r)	{
-		fprintf(stderr, "Failed generate bytecode wrapper.");
+		fprintf(stderr, "Failed generate bytecode wrapper.\n");
 		return;
 	}
 
@@ -466,7 +467,7 @@ void lit_build_native_runner(const char* bytecode_file) {
 	free(cmake);
 
 	if (result != 0) {
-		fprintf(stderr, "Failed to compile lit.");
+		fprintf(stderr, "Failed to compile lit.\n");
 		return;
 	}
 
@@ -476,7 +477,7 @@ void lit_build_native_runner(const char* bytecode_file) {
 	free(make);
 
 	if (result != 0) {
-		fprintf(stderr, "Failed to compile lit.");
+		fprintf(stderr, "Failed to compile lit.\n");
 		return;
 	}
 
@@ -487,7 +488,7 @@ void lit_build_native_runner(const char* bytecode_file) {
 	free(dir);
 
 	if (result != 0) {
-		fprintf(stderr, "Failed to move the result.");
+		fprintf(stderr, "Failed to move the result.\n");
 		return;
 	}
 

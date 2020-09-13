@@ -172,7 +172,7 @@ int main(int argc, const char* argv[]) {
 				}
 
 				if (!found) {
-					printf("Unknown optimization '%s'. Run with -Ohelp for a list of all optimizations.\n", optimization_name);
+					fprintf(stderr, "Unknown optimization '%s'. Run with -Ohelp for a list of all optimizations.\n", optimization_name);
 					return LIT_EXIT_CODE_ARGUMENT_ERROR;
 				}
 			}
@@ -180,7 +180,7 @@ int main(int argc, const char* argv[]) {
 			evaled = true;
 
 			if (args_left == 0) {
-				printf("Expected code to run for the eval argument.\n");
+				fprintf(stderr, "Expected code to run for the eval argument.\n");
 				return LIT_EXIT_CODE_ARGUMENT_ERROR;
 			}
 
@@ -198,7 +198,7 @@ int main(int argc, const char* argv[]) {
 			dump = true;
 		} else if (match_arg(arg, "-o", "--output")) {
 			if (args_left == 0) {
-				printf("Expected file name where to save the bytecode.\n");
+				fprintf(stderr, "Expected file name where to save the bytecode.\n");
 				return LIT_EXIT_CODE_ARGUMENT_ERROR;
 			}
 
@@ -206,7 +206,7 @@ int main(int argc, const char* argv[]) {
 			lit_set_optimization_level(OPTIMIZATION_LEVEL_EXTREME);
 		} else if (match_arg(arg, "-n", "--native")) {
 			if (args_left == 0) {
-				printf("Expected file name where to save the native.\n");
+				fprintf(stderr, "Expected file name where to save the native.\n");
 				return LIT_EXIT_CODE_ARGUMENT_ERROR;
 			}
 
@@ -225,7 +225,7 @@ int main(int argc, const char* argv[]) {
 			lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
 			break;
 		} else if (arg[0] == '-') {
-			printf("Unknown argument '%s', run 'lit --help' for help.\n", arg);
+			fprintf(stderr, "Unknown argument '%s', run 'lit --help' for help.\n", arg);
 			return LIT_EXIT_CODE_ARGUMENT_ERROR;
 		}
 	}
