@@ -104,3 +104,20 @@ c = new Creature("dog") {
 
 print(c.field) // Expected: dog
 print(c.nope) // Expected: true
+
+class Amazing {
+ a {
+  get => this.realA
+  set => {
+   this.realA = value
+   print("Changed!")
+  }
+ }
+
+ constructor() {
+  this.realA = 32
+ }
+}
+
+var instance = new Amazing()
+instance.a = 38 // Expected: Changed!

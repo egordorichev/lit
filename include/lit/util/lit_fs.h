@@ -14,6 +14,7 @@
 
 const char* lit_read_file(const char* path);
 bool lit_file_exists(const char* path);
+bool lit_dir_exists(const char* path);
 
 void lit_write_uint8_t(FILE* file, uint8_t byte);
 void lit_write_uint16_t(FILE* file, uint16_t byte);
@@ -42,5 +43,7 @@ LitString* lit_read_estring(LitState* state, LitEmulatedFile* file);
 
 void lit_save_module(LitModule* module, FILE* file);
 LitModule* lit_load_module(LitState* state, const char* input);
+bool lit_generate_source_file(const char* file, const char* output);
+void lit_build_native_runner(const char* bytecode_file);
 
 #endif

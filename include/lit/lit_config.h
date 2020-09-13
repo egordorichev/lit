@@ -1,6 +1,8 @@
 #ifndef LIT_CONFIG_H
 #define LIT_CONFIG_H
 
+#define LIT_REPOSITORY "https://github.com/egordorichev/lit"
+
 #define LIT_VERSION_MAJOR 0
 #define LIT_VERSION_MINOR 1
 #define LIT_VERSION_STRING "0.1"

@@ -14,7 +14,8 @@ set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno
 set(CMAKE_C_FLAGS_DEBUG "-g")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 
-OPTION(DEFINE_TEST "Build code for testing (disables debug output)" OFF)
+option(DEFINE_TEST "Build code for testing (disables debug output)" OFF)
+option(STANDALONE "Build in standalone mode" OFF)
 
 if (EMSCRIPTEN)
  set(CMAKE_AR "emcc")
@@ -25,11 +26,11 @@ if (EMSCRIPTEN)
 endif()
 
 IF(DEFINE_TEST)
- MESSAGE("Adding Testing flag...")
- ADD_DEFINITIONS(-DTESTING)
+ message("Adding Testing flag...")
+ add_definitions(-DTESTING)
 ELSE()
- MESSAGE("Adding Release flag...")
- ADD_DEFINITIONS(-DRELEASE)
+ message("Adding release flag...")
+ add_definitions(-DRELEASE)
 ENDIF(DEFINE_TEST)
 
 add_library(lit STATIC src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/vm/lit_chunk.c
@@ -39,11 +40,17 @@ add_library(lit STATIC src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/v
  src/lit/std/lit_core.c src/lit/std/lit_math.c src/lit/std/lit_file.c src/lit/parser/lit_error.c
  src/lit/optimizer/lit_optimizer.c src/lit/util/lit_utf.c)
 
-add_executable(litc src/main.c)
+IF(STANDALONE)
+ message("Adding standalone flag...")
+ add_executable(litc src/lit/standalone/main.c bytecode.c)
+ELSE()
+ add_executable(litc src/lit/cli/main.c)
+ENDIF()
+
 target_link_libraries(litc lit)
 target_link_libraries(litc m) # Lib math
 
-IF(NOT EMSCRIPTEN)
+IF(NOT EMSCRIPTEN AND NOT STANDALONE)
  target_link_libraries(litc readline)
 ENDIF()
 

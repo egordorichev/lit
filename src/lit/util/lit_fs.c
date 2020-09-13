@@ -35,6 +35,11 @@ bool lit_file_exists(const char* path) {
 	return stat(path, &buffer) == 0 && S_ISREG(buffer.st_mode);
 }
 
+bool lit_dir_exists(const char* path) {
+	struct stat buffer;
+	return stat(path, &buffer) == 0 && S_ISDIR(buffer.st_mode);
+}
+
 void lit_write_uint8_t(FILE* file, uint8_t byte) {
 	fwrite(&byte, sizeof(uint8_t), 1, file);
 }
@@ -349,4 +354,131 @@ LitModule* lit_load_module(LitState* state, const char* input) {
 	}
 
 	return first;
+}
+
+bool lit_generate_source_file(const char* file, const char* output) {
+	FILE* in = fopen(file, "r");
+
+	if (in == NULL) {
+		return false;
+	}
+
+	FILE* out = fopen(output, "w");
+
+	if (out == NULL) {
+		return false;
+	}
+
+	fprintf(out, "#include <stdlib.h>\nconst char bytecode[] = {\n");
+
+	unsigned char buf[256];
+	size_t num_read = 0;
+	size_t line_count = 0;
+
+	do {
+		num_read = fread(buf, 1, sizeof(buf), in);
+
+		for (size_t i = 0; i < num_read; i++) {
+			fprintf(out, "0x%02x,", buf[i]);
+
+			if (++line_count == 10) {
+				fprintf(out, "\n");
+				line_count = 0;
+			}
+		}
+	} while (num_read > 0);
+
+	if (line_count > 0) {
+		fprintf(out, "\n");
+	}
+
+	fprintf(out, "};");
+
+	fclose(in);
+	fclose(out);
+
+	return true;
+}
+
+static char* format(const char* message, ...) {
+	va_list args;
+	va_start(args, message);
+
+	va_list args_copy;
+	va_copy(args_copy, args);
+	size_t needed = vsnprintf(NULL, 0, message, args_copy) + 1;
+	va_end(args_copy);
+
+	char* buffer = malloc(needed);
+
+	vsnprintf(buffer, needed, message, args);
+	va_end(args);
+
+	return buffer;
+}
+
+void lit_build_native_runner(const char* bytecode_file) {
+	const char* data_location = getenv("HOME");
+
+	if (data_location == NULL) {
+		fprintf(stderr, "Failed to locate data directory.");
+		return;
+	}
+
+	char* dir = format("%s/.lit/", data_location);
+
+	if (!lit_dir_exists(dir)) {
+		printf("Clonning lit...\n");
+
+		char* git_clone = format("git clone %s %s -q", LIT_REPOSITORY, dir);
+		int result = system(git_clone);
+		free(git_clone);
+
+		if (result != 0) {
+			fprintf(stderr, "Failed to clone lit.");
+			return;
+		}
+	}
+
+	printf("Updating lit...\n");
+	char* git_pull = format("git pull -q");
+	int result = system(git_pull);
+	free(git_pull);
+
+	if (result != 0) {
+		fprintf(stderr, "Failed to update lit.");
+		return;
+	}
+
+	char* output = format("%sbytecode.c", dir);
+	bool r = lit_generate_source_file(bytecode_file, output);
+
+	free(output);
+	free(dir);
+
+	if (!r)	{
+		fprintf(stderr, "Failed generate bytecode wrapper.");
+		return;
+	}
+
+	printf("Compiling lit...\n");
+	char* cmake = format("cmake -DSTANDALONE=ON .");
+	result = system(cmake);
+	free(cmake);
+
+	if (result != 0) {
+		fprintf(stderr, "Failed to compile lit.");
+		return;
+	}
+
+	char* make = format("make");
+	result = system(make);
+	free(make);
+
+	if (result != 0) {
+		fprintf(stderr, "Failed to compile lit.");
+		return;
+	}
+
+	free(dir);
 }

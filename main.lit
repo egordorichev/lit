@@ -1,10 +1,1 @@
-var z = {
-	me = "Egor"
-}
-
-function test(a) {
-	ref a = "Test"
-}
-
-test(ref z.me)
-print(z.me)
+print(32)
