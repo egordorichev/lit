@@ -1,1 +1,2 @@
-print(32)
+what = args[0] ?? "world"
+print($"Hello, {what}!")

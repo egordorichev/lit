@@ -441,7 +441,7 @@ void lit_build_native_runner(const char* bytecode_file) {
 	}
 
 	printf("Updating lit...\n");
-	char* git_pull = format("git pull -q");
+	char* git_pull = format("cd %s && git pull -q", dir);
 	int result = system(git_pull);
 	free(git_pull);
 
@@ -454,7 +454,6 @@ void lit_build_native_runner(const char* bytecode_file) {
 	bool r = lit_generate_source_file(bytecode_file, output);
 
 	free(output);
-	free(dir);
 
 	if (!r)	{
 		fprintf(stderr, "Failed generate bytecode wrapper.");
@@ -462,7 +461,7 @@ void lit_build_native_runner(const char* bytecode_file) {
 	}
 
 	printf("Compiling lit...\n");
-	char* cmake = format("cmake -DSTANDALONE=ON .");
+	char* cmake = format("cd %s && cmake . -DSTANDALONE=ON", dir);
 	result = system(cmake);
 	free(cmake);
 
@@ -471,8 +470,9 @@ void lit_build_native_runner(const char* bytecode_file) {
 		return;
 	}
 
-	char* make = format("make");
+	char* make = format("cd %s && make", dir);
 	result = system(make);
+
 	free(make);
 
 	if (result != 0) {
@@ -480,5 +480,16 @@ void lit_build_native_runner(const char* bytecode_file) {
 		return;
 	}
 
+	char* mv = format("mv %sdist/lit ./%s", dir, bytecode_file);
+	result = system(mv);
+
+	free(mv);
 	free(dir);
+
+	if (result != 0) {
+		fprintf(stderr, "Failed to move the result.");
+		return;
+	}
+
+	printf("Done.\n");
 }
