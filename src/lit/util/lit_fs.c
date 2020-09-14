@@ -11,7 +11,7 @@ static uint16_t stmp;
 static uint32_t itmp;
 static double dtmp;
 
-const char* lit_read_file(const char* path) {
+char* lit_read_file(const char* path) {
 	FILE* file = fopen(path, "rb");
 
 	if (file == NULL) {

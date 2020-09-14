@@ -3,6 +3,7 @@
 #include <lit/scanner/lit_scanner.h>
 #include <lit/parser/lit_parser.h>
 #include <lit/optimizer/lit_optimizer.h>
+#include <lit/preprocessor/lit_preprocessor.h>
 #include <lit/emitter/lit_emitter.h>
 #include <lit/vm/lit_vm.h>
 #include <lit/util/lit_fs.h>
@@ -186,11 +187,11 @@ static void free_statements(LitState* state, LitStatements* statements) {
 	lit_free_stataments(state, statements);
 }
 
-LitInterpretResult lit_interpret(LitState* state, const char* module_name, const char* code) {
+LitInterpretResult lit_interpret(LitState* state, const char* module_name, char* code) {
 	return lit_internal_interpret(state, lit_copy_string(state, module_name, strlen(module_name)), code);
 }
 
-LitModule* lit_compile_module(LitState* state, LitString* module_name, const char* code) {
+LitModule* lit_compile_module(LitState* state, LitString* module_name, char* code) {
 	bool allowed_gc = state->allow_gc;
 
 	state->allow_gc = false;
@@ -202,6 +203,10 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, const cha
 	if ((code[1] << 8 | code[0]) == LIT_BYTECODE_MAGIC_NUMBER) {
 		module = lit_load_module(state, code);
 	} else {
+		if (!lit_preprocess(state, code)) {
+			return NULL;
+		}
+
 		LitStatements statements;
 		lit_init_stataments(&statements);
 
@@ -229,7 +234,7 @@ LitModule* lit_get_module(LitState* state, const char* name) {
 	return NULL;
 }
 
-LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code) {
+LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, char* code) {
 	LitModule* module = lit_compile_module(state, module_name, code);
 
 	if (module == NULL) {
@@ -279,7 +284,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, 
 
 	for (uint i = 0; i < num_files; i++) {
 		char* file_name = files[i];
-		const char* source = lit_read_file(file_name);
+		char* source = lit_read_file(file_name);
 
 		if (source == NULL) {
 			lit_error(state, COMPILE_ERROR, "Failed to open file '%s'", file_name);
@@ -329,7 +334,7 @@ LitInterpretResult lit_interpret_file(LitState* state, const char* file, bool du
 	char file_name[length];
 	memcpy(&file_name, file, length);
 
-	const char* source = lit_read_file(file_name);
+	char* source = lit_read_file(file_name);
 
 	if (source == NULL) {
 		lit_error(state, RUNTIME_ERROR, "Failed to open file '%s'", file_name);

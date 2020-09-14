@@ -184,7 +184,12 @@ int main(int argc, const char* argv[]) {
 				return LIT_EXIT_CODE_ARGUMENT_ERROR;
 			}
 
-			result = lit_interpret(state, num_files_to_run == 0 ? "repl" : files_to_run[0], argv[++i]).type;
+			const char* string = argv[++i];
+			size_t length = strlen(string) + 1;
+			char source[length];
+
+			memcpy(source, string, length);
+			result = lit_interpret(state, num_files_to_run == 0 ? "repl" : files_to_run[0], source).type;
 
 			if (result != INTERPRET_OK) {
 				break;

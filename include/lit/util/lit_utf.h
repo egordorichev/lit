@@ -16,4 +16,12 @@ LitString* lit_ustring_from_range(LitState* state, LitString* source, int start,
 
 int lit_uchar_offset(char *str, int index);
 
+static inline bool lit_is_digit(char c) {
+	return c >= '0' && c <= '9';
+}
+
+static inline bool lit_is_alpha(char c) {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+}
+
 #endif

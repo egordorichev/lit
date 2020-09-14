@@ -1,6 +1,10 @@
 # todo
 
+* defines
+* require dir.* ?
 * some sort of main function?
+* os module with access to shell?
+* correct error messages on the start of the file instead of ''
 
 * expected ) got ) will occur if the file has no more chars left
 * stats like in milk

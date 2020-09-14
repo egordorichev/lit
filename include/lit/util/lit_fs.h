@@ -12,7 +12,7 @@
 #define LIT_BYTECODE_END_NUMBER 2942
 #define LIT_STRING_KEY 48
 
-const char* lit_read_file(const char* path);
+char* lit_read_file(const char* path);
 bool lit_file_exists(const char* path);
 bool lit_dir_exists(const char* path);
 

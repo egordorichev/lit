@@ -1306,7 +1306,7 @@ LIT_NATIVE(print) {
 	}
 
 	for (uint i = 0; i < arg_count; i++) {
-		printf("%s\n", lit_to_string(vm->state, args[i])->chars);
+		lit_printf(vm->state, "%s\n", lit_to_string(vm->state, args[i])->chars);
 	}
 
 	return NULL_VALUE;
@@ -1329,7 +1329,7 @@ static bool interpret(LitVm* vm, LitModule* module) {
 	return true;
 }
 
-static bool compile_and_interpret(LitVm* vm, LitString* module_name, const char* source) {
+static bool compile_and_interpret(LitVm* vm, LitString* module_name, char* source) {
 	LitModule *module = lit_compile_module(vm->state, module_name, source);
 
 	if (module == NULL) {
@@ -1341,7 +1341,7 @@ static bool compile_and_interpret(LitVm* vm, LitString* module_name, const char*
 }
 
 LIT_NATIVE_PRIMITIVE(eval) {
-	const char* code = LIT_CHECK_STRING(0);
+	char* code = (char*) LIT_CHECK_STRING(0);
 	return compile_and_interpret(vm, vm->fiber->module->name, code);
 }
 
@@ -1405,7 +1405,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 		}
 	}
 
-	const char* source = lit_read_file(module_name);
+	char* source = lit_read_file(module_name);
 
 	if (source == NULL) {
 		return false;

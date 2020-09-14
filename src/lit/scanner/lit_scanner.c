@@ -1,12 +1,13 @@
 #include <lit/scanner/lit_scanner.h>
 #include <lit/parser/lit_error.h>
+#include <lit/util/lit_utf.h>
 
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 
-void lit_setup_scanner(LitState* state, LitScanner* scanner, const char* file_name, const char* source) {
+void lit_init_scanner(LitState* state, LitScanner* scanner, const char* file_name, const char* source) {
 	scanner->line = 1;
 	scanner->start = source;
 	scanner->current = source;
@@ -14,10 +15,6 @@ void lit_setup_scanner(LitState* state, LitScanner* scanner, const char* file_na
 	scanner->state = state;
 	scanner->num_braces = 0;
 	scanner->had_error = false;
-}
-
-static bool is_at_end(LitScanner* scanner) {
-	return *scanner->current == '\0';
 }
 
 static LitToken make_token(LitScanner* scanner, LitTokenType type) {
@@ -49,12 +46,12 @@ static LitToken make_error_token(LitScanner* scanner, LitError error, ...) {
 	return token;
 }
 
-static char advance(LitScanner* scanner) {
-	scanner->current++;
-	return scanner->current[-1];
+static bool is_at_end(LitScanner* scanner) {
+	return *scanner->current == '\0';
 }
 
-static char get_current(LitScanner* scanner) {
+static char advance(LitScanner* scanner) {
+	scanner->current++;
 	return scanner->current[-1];
 }
 
@@ -194,7 +191,7 @@ static LitToken parse_string(LitScanner* scanner, bool interpolation) {
 					case 'v': lit_bytes_write(state, &bytes, '\v'); break;
 
 					default: {
-						return make_error_token(scanner, ERROR_INVALID_ESCAPE_CHAR, get_current(scanner));
+						return make_error_token(scanner, ERROR_INVALID_ESCAPE_CHAR, scanner->current[-1]);
 					}
 				}
 
@@ -213,14 +210,6 @@ static LitToken parse_string(LitScanner* scanner, bool interpolation) {
 	lit_free_bytes(state, &bytes);
 
 	return token;
-}
-
-static bool is_digit(char c) {
-	return c >= '0' && c <= '9';
-}
-
-static bool is_alpha(char c) {
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
 static int parse_hex_digit(LitScanner* scanner) {
@@ -292,16 +281,16 @@ static LitToken parse_number(LitScanner* scanner) {
 		return make_number_token(scanner, false, true);
 	}
 
-	while (is_digit(peek(scanner))) {
+	while (lit_is_digit(peek(scanner))) {
 		advance(scanner);
 	}
 
 	// Look for a fractional part.
-	if (peek(scanner) == '.' && is_digit(peek_next(scanner))) {
+	if (peek(scanner) == '.' && lit_is_digit(peek_next(scanner))) {
 		// Consume the '.'
 		advance(scanner);
 
-		while (is_digit(peek(scanner))) {
+		while (lit_is_digit(peek(scanner))) {
 			advance(scanner);
 		}
 	}
@@ -432,7 +421,7 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 }
 
 static LitToken parse_identifier(LitScanner* scanner) {
-	while (is_alpha(peek(scanner)) || is_digit(peek(scanner))) {
+	while (lit_is_alpha(peek(scanner)) || lit_is_digit(peek(scanner))) {
 		advance(scanner);
 	}
 
@@ -455,11 +444,11 @@ LitToken lit_scan_token(LitScanner* scanner) {
 
 	char c = advance(scanner);
 
-	if (is_digit(c)) {
+	if (lit_is_digit(c)) {
 		return parse_number(scanner);
 	}
 
-	if (is_alpha(c)) {
+	if (lit_is_alpha(c)) {
 		return parse_identifier(scanner);
 	}
 

@@ -1,2 +1,9 @@
+#define TEST
+
+#else
+
+#endif
 what = args[0] ?? "world"
-print($"Hello, {what}!")
+
+print($"Hello, release {what}!")
+print($"Hello, debug {what}!")

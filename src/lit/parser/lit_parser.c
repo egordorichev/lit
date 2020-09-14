@@ -168,8 +168,9 @@ static LitExpression* parse_precedence(LitParser* parser, LitPrecedence preceden
 	LitPrefixParseFn prefix_rule = get_rule(parser->previous.type)->prefix;
 
 	if (prefix_rule == NULL) {
-		bool prev_newline = *previous.start == '\n';
-		bool parser_prev_newline = *parser->previous.start == '\n';
+		// todo: file start
+		bool prev_newline = previous.start != NULL && *previous.start == '\n';
+		bool parser_prev_newline = parser->previous.start != NULL && *parser->previous.start == '\n';
 
 		error(parser, ERROR_EXPECTED_EXPRESSION, prev_newline ? 8 : previous.length, prev_newline ? "new line" : previous.start,
 			parser_prev_newline ? 8 : parser->previous.length, parser_prev_newline ? "new line" : parser->previous.start);
@@ -1182,7 +1183,7 @@ bool lit_parse(LitParser* parser, const char* file_name, const char* source, Lit
 	parser->had_error = false;
 	parser->panic_mode = false;
 
-	lit_setup_scanner(parser->state, parser->state->scanner, file_name, source);
+	lit_init_scanner(parser->state, parser->state->scanner, file_name, source);
 
 	LitCompiler compiler;
 	init_compiler(parser, &compiler);
