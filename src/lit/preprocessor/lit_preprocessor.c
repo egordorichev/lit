@@ -63,6 +63,8 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source) {
 			} while (c != '\n' && c != '\0');
 
 			in_macro = false;
+			on_new_line = true;
+
 			continue;
 		} else if (c == '/' && current[0] == '*') {
 			// Multiline comment
@@ -74,6 +76,8 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source) {
 			} while (c != '*' && c != '\0' && current[0] != '/');
 
 			in_macro = false;
+			on_new_line = true;
+
 			continue;
 		}
 
