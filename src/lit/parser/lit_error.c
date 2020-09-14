@@ -2,6 +2,8 @@
 #include <stdio.h>
 
 static const char* error_messages[ERROR_TOTAL] = {
+	"Unclosed macro.",
+	"Unknown macro '%.*s'.",
 	"Unexpected character '%c'",
 	"Unterminated string",
 	"Invalid escape character '%c'",
@@ -53,7 +55,11 @@ LitString* lit_vformat_error(LitState* state, uint line, LitError error, va_list
 	vsnprintf(buffer, buffer_size, error_message, args);
 	buffer[buffer_size - 1] = '\0';
 
-	return AS_STRING(lit_string_format(state, "[err # line #]: $", (double) error_id, (double) line, (const char*) buffer));
+	if (line != 0) {
+		return AS_STRING(lit_string_format(state, "[err # line #]: $", (double) error_id, (double) line, (const char*) buffer));
+	}
+
+	return AS_STRING(lit_string_format(state, "[err #]: $", (double) error_id, (const char*) buffer));
 }
 
 LitString* lit_format_error(LitState* state, uint line, LitError error, ...) {

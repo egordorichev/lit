@@ -2,6 +2,7 @@
 #include <lit/vm/lit_object.h>
 #include <lit/util/lit_utf.h>
 #include <lit/state/lit_state.h>
+#include <lit/parser/lit_error.h>
 
 #include <stdio.h>
 
@@ -154,8 +155,7 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source) {
 							}
 						}
 					} else {
-						// todo: proper error reporting
-						printf("Unknown macro '%.*s'\n", (int) (current - macro_start) - 1, macro_start);
+						lit_error(preprocessor->state, 0, lit_format_error(preprocessor->state, 0, ERROR_UNKNOWN_MACRO, (int) (current - macro_start) - 1, macro_start)->chars);
 						return false;
 					}
 				}
@@ -174,8 +174,7 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source) {
 	} while (c != '\0');
 
 	if (in_macro || preprocessor->open_ifs.count > 0 || depth > 0) {
-		// Fixme: proper error reporting
-		printf("Unclosed macro!\n");
+		lit_error(preprocessor->state, 0, lit_format_error(preprocessor->state, 0, ERROR_UNCLOSED_MACRO)->chars);
 		return false;
 	}
 

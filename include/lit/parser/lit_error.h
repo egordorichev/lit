@@ -8,6 +8,10 @@
 #include <stdarg.h>
 
 typedef enum LitError {
+	// Preprocessor errors
+	ERROR_UNCLOSED_MACRO,
+	ERROR_UNKNOWN_MACRO,
+
 	// Scanner errors
 	ERROR_UNEXPECTED_CHAR,
 	ERROR_UNTERMINATED_STRING,
