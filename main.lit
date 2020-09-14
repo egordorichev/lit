@@ -1,5 +1,5 @@
-#define TEST
-#define RELEASE
+// #define TEST
+//#define RELEASE
 
 #ifndef TEST
 	print("a")

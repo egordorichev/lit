@@ -1,6 +1,7 @@
 #include <lit/preprocessor/lit_preprocessor.h>
 #include <lit/vm/lit_object.h>
 #include <lit/util/lit_utf.h>
+#include <lit/state/lit_state.h>
 
 #include <stdio.h>
 
@@ -14,6 +15,10 @@ void lit_init_preprocessor(LitState* state, LitPreprocessor* preprocessor) {
 void lit_free_preprocessor(LitPreprocessor* preprocessor) {
 	lit_free_table(preprocessor->state, &preprocessor->defined);
 	lit_free_values(preprocessor->state, &preprocessor->open_ifs);
+}
+
+void lit_add_definition(LitState* state, const char* name) {
+	lit_table_set(state, &state->preprocessor->defined, CONST_STRING(state, name), TRUE_VALUE);
 }
 
 static void override(char* source, int length) {

@@ -6,6 +6,7 @@
 #include <lit/scanner/lit_scanner.h>
 #include <lit/util/lit_fs.h>
 #include <lit/optimizer/lit_optimizer.h>
+#include <lit/preprocessor/lit_preprocessor.h>
 
 #include <stdio.h>
 #include <signal.h>
@@ -61,6 +62,7 @@ static void show_help() {
 	printf("\t-o --output [file]\tInstead of running the file the compiled bytecode will be saved.\n");
 	printf("\t-n --native [file]\tInstead of running the file the compiled code will be embeded into a native runner.\n");
 	printf("\t-O[name] [string]\tEnables given optimization. For the list of aviable optimizations run with -Ohelp\n");
+	printf("\t-D[name]\t\tDefines given symbol.\n");
 	printf("\t-e --eval [string]\tRuns the given code string.\n");
 	printf("\t-p --pass [args]\tPasses the rest of the arguments to the script.\n");
 	printf("\t-i --interactive\tStarts an interactive shell.\n");
@@ -132,7 +134,9 @@ int main(int argc, const char* argv[]) {
 		int args_left = argc - i - 1;
 		const char* arg = argv[i];
 
-		if (arg[0] == '-' && arg[1] == 'O') {
+		if (arg[0] == '-' && arg[1] == 'D') {
+			lit_add_definition(state, arg + 2);
+		} else if (arg[0] == '-' && arg[1] == 'O') {
 			bool enable_optimization = true;
 			char* optimization_name;
 

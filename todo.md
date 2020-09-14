@@ -1,7 +1,6 @@
 # todo
 
 * segfault in LitInfixParseFn infix_rule = get_rule(parser->previous.type)->infix; (get_rule returns null)
-* defines
 * require dir.* ?
 * some sort of main function?
 * os module with access to shell?

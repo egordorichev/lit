@@ -21,6 +21,8 @@ typedef struct sLitPreprocessor {
 
 void lit_init_preprocessor(LitState* state, LitPreprocessor* preprocessor);
 void lit_free_preprocessor(LitPreprocessor* preprocessor);
+void lit_add_definition(LitState* state, const char* name);
+
 bool lit_preprocess(LitPreprocessor* preprocessor, char* source);
 
 #endif
