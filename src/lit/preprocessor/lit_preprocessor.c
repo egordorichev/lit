@@ -38,6 +38,7 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source) {
 
 	bool in_macro = false;
 	bool in_arg = false;
+	bool on_new_line = true;
 
 	int ignore_depth = -1;
 	int depth = 0;
@@ -53,8 +54,9 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source) {
 			do {
 				c = current[0];
 				current++;
-			} while (c != '\n');
+			} while (c != '\n' && c != '\0');
 
+			in_macro = false;
 			continue;
 		} else if (c == '/' && current[0] == '*') {
 			// Multiline comment
@@ -63,8 +65,9 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source) {
 			do {
 				c = current[0];
 				current++;
-			} while (c != '*' && current[0] != '/');
+			} while (c != '*' && c != '\0' && current[0] != '/');
 
+			in_macro = false;
 			continue;
 		}
 
@@ -93,7 +96,6 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source) {
 								ignore_depth = depth;
 							}
 
-							printf("Writing\n");
 							lit_values_write(preprocessor->state, &preprocessor->open_ifs, (LitValue) macro_start);
 						}
 					}
@@ -155,7 +157,14 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source) {
 			}
 		} else {
 			macro_start = current;
-			in_macro = c == '#';
+
+			if (c == '\n') {
+				on_new_line = true;
+			} else if (!(c == '\t' || c == ' ' || c == '#')) {
+				on_new_line = false;
+			}
+
+			in_macro = on_new_line && c == '#';
 		}
 	} while (c != '\0');
 
@@ -166,7 +175,5 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source) {
 	}
 
 	lit_free_values(preprocessor->state, &preprocessor->open_ifs);
-
-	printf("----\n%s\n", source);
 	return true;
 }
