@@ -1,24 +1,28 @@
-// #define TEST
-//#define RELEASE
+// Challenge from https://techiedelight.com/find-pair-with-given-sum-array/
 
-#ifndef TEST
-	print("a")
+var input = [ 8, 7, 2, 5, 3, 1 ]
+var sum = 10
+var length = input.length
+var pairs = []
 
-	#ifdef RELEASE
-		print("release")
-	#else
-		print("debug")
-	#endif
+for (var i = 0; i < length; i++) {
+	var a = input[i]
 
-	print("aend")
-#else
-	print("b")
+	for (var j = i + 1; j < length; j++) {
+		var b = input[j]
 
-	#ifdef RELEASE
-		print("release")
-	#else
-		print("debug")
-	#endif
+		if (a + b == sum) {
+			pairs.add([ i, j ])
+		}
+	}
+}
 
-	print("bend")
-#endif
+print(pairs.length) // Expected: 2
+
+function getPairSum(id) {
+	var pair = pairs[id]
+	return input[pair[0]] + input[pair[1]]
+}
+
+print(getPairSum(0) == sum) // Expected: true
+print(getPairSum(1) == sum) // Expected: true

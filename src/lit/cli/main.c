@@ -67,6 +67,7 @@ static void show_help() {
 	printf("\t-p --pass [args]\tPasses the rest of the arguments to the script.\n");
 	printf("\t-i --interactive\tStarts an interactive shell.\n");
 	printf("\t-d --dump\t\tDumps all the bytecode chunks from the given file.\n");
+	printf("\t-t --time\t\tMeasures and prints the compilation timings.\n");
 	printf("\t-h --help\t\tI wonder, what this option does.\n");
 	printf("\tIf no code to run is provided, lit will try to run either main.lbc or main.lit and, if fails, default to an interactive shell will start.\n");
 }
@@ -201,6 +202,8 @@ int main(int argc, const char* argv[]) {
 		} else if (match_arg(arg, "-h", "--help")) {
 			show_help();
 			showed_help = true;
+		} else if (match_arg(arg, "-t", "--time")) {
+			lit_enable_compilation_time_measurement();
 		} else if (match_arg(arg, "-i", "--interactive")) {
 			show_repl = true;
 		} else if (match_arg(arg, "-d", "--dump")) {

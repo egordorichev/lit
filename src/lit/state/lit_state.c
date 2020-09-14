@@ -12,6 +12,13 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+static bool measure_compilation_time;
+
+void lit_enable_compilation_time_measurement() {
+	measure_compilation_time = true;
+}
 
 static void default_error(LitState* state, LitErrorType type, const char* message, va_list args) {
 	fflush(stdout);
@@ -210,8 +217,20 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
 	if ((code[1] << 8 | code[0]) == LIT_BYTECODE_MAGIC_NUMBER) {
 		module = lit_load_module(state, code);
 	} else {
+		clock_t t;
+		clock_t total_t;
+
+		if (measure_compilation_time) {
+			total_t = t = clock();
+		}
+
 		if (!lit_preprocess(state->preprocessor, code)) {
 			return NULL;
+		}
+
+		if (measure_compilation_time) {
+			printf("----------------------\nPreprocessing: %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+			t = clock();
 		}
 
 		LitStatements statements;
@@ -222,9 +241,25 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
 			return NULL;
 		}
 
+		if (measure_compilation_time) {
+			printf("Parsing:       %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+			t = clock();
+		}
+
 		lit_optimize(state->optimizer, &statements);
+
+		if (measure_compilation_time) {
+			printf("Optimization:  %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+			t = clock();
+		}
+
 		module = lit_emit(state->emitter, &statements, module_name);
 		free_statements(state, &statements);
+
+		if (measure_compilation_time) {
+			printf("Emitting:      %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+			printf("\nTotal:         %gms\n----------------------\n", (double) (clock() - total_t) / CLOCKS_PER_SEC * 1000);
+		}
 	}
 
 	state->allow_gc = allowed_gc;

@@ -1,13 +1,12 @@
 # todo
 
-* segfault in LitInfixParseFn infix_rule = get_rule(parser->previous.type)->infix; (get_rule returns null)
 * require dir.* ?
 * some sort of main function?
 * os module with access to shell?
 * correct error messages on the start of the file instead of ''
+* segfault in LitInfixParseFn infix_rule = get_rule(parser->previous.type)->infix; (get_rule returns null)
 
 * expected ) got ) will occur if the file has no more chars left
-* stats like in milk
 * c-api call() is really expensive
 * check upvalues
 * tail-call optimization?

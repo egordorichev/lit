@@ -93,5 +93,6 @@ bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, 
 
 void lit_error(LitState* state, LitErrorType type, const char* message, ...);
 void lit_printf(LitState* state, const char* message, ...);
+void lit_enable_compilation_time_measurement();
 
 #endif
