@@ -1,9 +1,24 @@
 #define TEST
+#define RELEASE
 
+#ifndef TEST
+	print("a")
+
+	#ifdef RELEASE
+		print("release")
+	#else
+		print("debug")
+	#endif
+
+	print("aend")
 #else
+	print("b")
 
+	#ifdef RELEASE
+		print("release")
+	#else
+		print("debug")
+	#endif
+
+	print("bend")
 #endif
-what = args[0] ?? "world"
-
-print($"Hello, release {what}!")
-print($"Hello, debug {what}!")

@@ -28,6 +28,7 @@ typedef struct sLitState {
 	uint root_count;
 	uint root_capacity;
 
+	struct sLitPreprocessor* preprocessor;
 	struct sLitScanner* scanner;
 	struct sLitParser* parser;
 	struct sLitEmitter* emitter;

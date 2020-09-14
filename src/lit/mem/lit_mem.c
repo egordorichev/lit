@@ -3,6 +3,7 @@
 #include <lit/vm/lit_vm.h>
 #include <lit/emitter/lit_emitter.h>
 #include <lit/parser/lit_parser.h>
+#include <lit/preprocessor/lit_preprocessor.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -251,6 +252,8 @@ static void mark_roots(LitVm* vm) {
 	lit_mark_object(vm, (LitObject*) state->api_function);
 	lit_mark_object(vm, (LitObject*) state->api_fiber);
 	lit_mark_object(vm, (LitObject*) state->api_string_function);
+
+	lit_mark_table(vm, &state->preprocessor->defined);
 
 	lit_mark_table(vm, &vm->modules->values);
 	lit_mark_table(vm, &vm->globals->values);

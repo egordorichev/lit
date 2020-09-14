@@ -52,6 +52,9 @@ LitState* lit_new_state() {
 	state->root_capacity = 0;
 	state->last_module = NULL;
 
+	state->preprocessor = (LitPreprocessor*) malloc(sizeof(LitPreprocessor));
+	lit_init_preprocessor(state, state->preprocessor);
+
 	state->scanner = (LitScanner*) malloc(sizeof(LitScanner));
 
 	state->parser = (LitParser*) malloc(sizeof(LitParser));
@@ -79,6 +82,10 @@ int64_t lit_free_state(LitState* state) {
 	}
 
 	lit_free_api(state);
+
+	lit_free_preprocessor(state->preprocessor);
+	free(state->preprocessor);
+
 	free(state->scanner);
 
 	lit_free_parser(state->parser);
@@ -203,7 +210,7 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
 	if ((code[1] << 8 | code[0]) == LIT_BYTECODE_MAGIC_NUMBER) {
 		module = lit_load_module(state, code);
 	} else {
-		if (!lit_preprocess(state, code)) {
+		if (!lit_preprocess(state->preprocessor, code)) {
 			return NULL;
 		}
 
