@@ -220,7 +220,7 @@ static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExp
 
 			expression->left = branch;
 			expression->right = NULL;
-		} else if ((operator == TOKEN_SLASH || operator == TOKEN_STAR_STAR) && number == 1) {
+		} else if (((left && operator == TOKEN_SLASH) || operator == TOKEN_STAR_STAR) && number == 1) {
 			lit_free_expression(optimizer->state, left ? expression->right : expression->left);
 
 			expression->left = branch;

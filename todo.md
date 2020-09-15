@@ -1,5 +1,6 @@
 # todo
 
+* this.fun?() or smth i need this
 * require dir.* ?
 * some sort of main function?
 * os module with access to shell?
