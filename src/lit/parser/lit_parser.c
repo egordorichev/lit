@@ -1042,6 +1042,7 @@ static LitStatement* parse_class(LitParser* parser) {
 	}
 
 	uint line = parser->previous.line;
+
 	bool is_static = parser->previous.type == TOKEN_STATIC;
 
 	if (is_static) {
