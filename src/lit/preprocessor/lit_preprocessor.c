@@ -171,9 +171,9 @@ bool lit_preprocess(LitPreprocessor* preprocessor, char* source) {
 				on_new_line = true;
 			} else if (!(c == '\t' || c == ' ' || c == '#')) {
 				on_new_line = false;
+			} else {
+				in_macro = on_new_line && c == '#';
 			}
-
-			in_macro = on_new_line && c == '#';
 		}
 	} while (c != '\0');
 

@@ -14,8 +14,9 @@ set(CMAKE_C_FLAGS "-no-pie -Wall -Wextra -Wno-unused-variable -Wno-unused-parame
 set(CMAKE_C_FLAGS_DEBUG "-g")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 
-option(DEFINE_TEST "Build code for testing (disables debug output)" OFF)
-option(STANDALONE "Build in standalone mode" OFF)
+option(LIT_DEFINE_TEST "Build code for testing (disables debug output)" OFF)
+option(LIT_STANDALONE "Build in standalone mode" OFF)
+option(LIT_BUILD_BINARY "Build the binary" ON)
 
 if (EMSCRIPTEN)
  set(CMAKE_AR "emcc")
@@ -40,19 +41,21 @@ add_library(lit STATIC src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/v
  src/lit/std/lit_core.c src/lit/std/lit_math.c src/lit/std/lit_file.c src/lit/parser/lit_error.c
  src/lit/optimizer/lit_optimizer.c src/lit/util/lit_utf.c src/lit/preprocessor/lit_preprocessor.c)
 
-IF(STANDALONE)
- message("Adding standalone flag...")
- add_executable(litc src/lit/standalone/main.c bytecode.c)
-ELSE()
- add_executable(litc src/lit/cli/main.c)
-ENDIF()
+if (LIT_BUILD_BINARY)
+ IF(STANDALONE)
+  message("Adding standalone flag...")
+  add_executable(litc src/lit/standalone/main.c bytecode.c)
+ ELSE()
+  add_executable(litc src/lit/cli/main.c)
+ ENDIF()
 
-target_link_libraries(litc lit)
-target_link_libraries(litc m) # Lib math
+ target_link_libraries(litc lit)
+ target_link_libraries(litc m) # Lib math
 
-IF(NOT EMSCRIPTEN AND NOT STANDALONE)
- target_link_libraries(litc readline)
-ENDIF()
+ IF(NOT EMSCRIPTEN AND NOT STANDALONE)
+  target_link_libraries(litc readline)
+ ENDIF()
 
-set_target_properties(litc PROPERTIES OUTPUT_NAME "lit")
-install(TARGETS litc DESTINATION bin)
+ set_target_properties(litc PROPERTIES OUTPUT_NAME "lit")
+ install(TARGETS litc DESTINATION bin)
+endif()

@@ -328,36 +328,29 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool can_assign) {
 	LitCallExpression* expression = lit_create_call_expression(parser->state, parser->previous.line, prev);
 
-	if (parser->previous.type == TOKEN_STRING) {
-		lit_expressions_write(parser->state, &expression->args, parse_string(parser, false));
-	} else if (parser->previous.type == TOKEN_INTERPOLATION) {
-		lit_expressions_write(parser->state, &expression->args, parse_interpolation(parser, false));
-	} else {
-		while (!check(parser, TOKEN_RIGHT_PAREN)) {
-			LitExpression* e = parse_expression(parser);
-			lit_expressions_write(parser->state, &expression->args, e);
+	while (!check(parser, TOKEN_RIGHT_PAREN)) {
+		LitExpression* e = parse_expression(parser);
+		lit_expressions_write(parser->state, &expression->args, e);
 
-			if (!match(parser, TOKEN_COMMA)) {
+		if (!match(parser, TOKEN_COMMA)) {
+			break;
+		}
+
+		if (e->type == VAR_EXPRESSION) {
+			LitVarExpression* ee = (LitVarExpression*) e;
+
+			// Vararg ...
+			if (ee->length == 3 && memcmp(ee->name, "...", 3) == 0) {
 				break;
 			}
-
-			if (e->type == VAR_EXPRESSION) {
-				LitVarExpression* ee = (LitVarExpression*) e;
-
-				// Vararg ...
-				if (ee->length == 3 && memcmp(ee->name, "...", 3) == 0) {
-					break;
-				}
-			}
 		}
-
-		if (expression->args.count > 255) {
-			error(parser, ERROR_TOO_MANY_FUNCTION_ARGS, (int) expression->args.count);
-		}
-
-		consume(parser, TOKEN_RIGHT_PAREN, "')' after arguments");
 	}
 
+	if (expression->args.count > 255) {
+		error(parser, ERROR_TOO_MANY_FUNCTION_ARGS, (int) expression->args.count);
+	}
+
+	consume(parser, TOKEN_RIGHT_PAREN, "')' after arguments");
 	return (LitExpression*) expression;
 }
 

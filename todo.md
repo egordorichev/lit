@@ -3,15 +3,13 @@
 * require dir.* ?
 * some sort of main function?
 * os module with access to shell?
-* correct error messages on the start of the file instead of ''
-* segfault in LitInfixParseFn infix_rule = get_rule(parser->previous.type)->infix; (get_rule returns null)
 
+* correct error messages on the start of the file instead of ''
 * expected ) got ) will occur if the file has no more chars left
-* c-api call() is really expensive
-* check upvalues
+
+* segfault in LitInfixParseFn infix_rule = get_rule(parser->previous.type)->infix; (get_rule returns null)
 * tail-call optimization?
 * more benchmarks
-
 * add tests for c-side features, like saving/loading bytecode
 
 # feature creep
