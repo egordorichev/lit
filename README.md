@@ -45,3 +45,8 @@ Or alternatively, [lit runs just fine in browsers](https://egordorichev.github.i
 ### Syntax Highlighting
 
 If you want syntax highlighting in Visual Studio Code, see [lit-vscode](https://github.com/egordorichev/lit-vscode).
+
+
+###### History
+
+This is not the first version of lit. And not second. Sadly, most of the versions got lost along the way, but [you still can checkout previous version of lit](https://github.com/egordorichev/static-lit), that was staticly-typed!
