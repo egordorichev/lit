@@ -1,0 +1,118 @@
+#ifdef DEBUG
+	print("Nope")
+#endif
+
+#ifndef DEBUG
+	print("Yes.") // Expected: Yes.
+#endif
+
+#ifdef MONKEY
+	print("What")
+#else
+	print("Nope.") // Expected: Nope.
+#endif
+
+#ifndef RANI
+	print("Rani is gone") // Expected: Rani is gone
+#else
+	print("Nope.")
+#endif
+
+#define DEBUG
+
+#ifdef DEBUG
+	print("Yes.") // Expected: Yes.
+#endif
+
+#ifndef DEBUG
+	print("Nope")
+#endif
+
+#undef DEBUG
+
+#ifdef DEBUG
+	print("Nope")
+#endif
+
+#ifndef DEBUG
+	print("Yes.") // Expected: Yes.
+#endif
+
+#ifndef DEBUG
+	#ifdef A
+		print("A")
+	#else
+		print("B") // Expected: B
+	#endif
+
+	print("Yes.") // Expected: Yes.
+#else
+	#ifdef A
+		print("NA")
+	#else
+		print("NB")
+	#endif
+
+	print("No.")
+#endif
+
+#define A
+
+#ifndef DEBUG
+	#ifdef A
+		print("A") // Expected: A
+	#else
+		print("B")
+	#endif
+
+	print("Yes.") // Expected: Yes.
+#else
+	#ifdef A
+		print("NA")
+	#else
+		print("NB")
+	#endif
+
+	print("No.")
+#endif
+
+#define DEBUG
+#undef A
+
+#ifndef DEBUG
+	#ifdef A
+		print("A")
+	#else
+		print("B") 
+	#endif
+
+	print("Yes."()
+#else
+	#ifdef A
+		print("NA")
+	#else
+		print("NB") // Expected: NB
+	#endif
+
+	print("No.") // Expected: No.
+#endif
+
+#define A
+
+#ifndef DEBUG
+	#ifdef A
+		print("A")
+	#else
+		print("B")
+	#endif
+
+	print("Yes.")
+#else
+	#ifdef A
+		print("NA") // Expected: NA
+	#else
+		print("NB")
+	#endif
+
+	print("No.") // Expected: No.
+#endif

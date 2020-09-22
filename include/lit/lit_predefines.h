@@ -4,6 +4,7 @@
 #include <lit/lit_common.h>
 
 typedef struct sLitScanner LitScanner;
+typedef struct sLitPreprocessor LitPreprocessor;
 typedef struct sLitVm LitVm;
 typedef struct sLitParser LitParser;
 typedef struct sLitEmitter LitEmitter;

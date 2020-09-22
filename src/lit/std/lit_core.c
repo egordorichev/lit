@@ -201,32 +201,18 @@ LIT_METHOD(object_iterator) {
 	LIT_ENSURE_ARGS(1)
 
 	LitInstance* self = AS_INSTANCE(instance);
+
 	int index = args[0] == NULL_VALUE ? -1 : AS_NUMBER(args[0]);
-	int methodsCapacity = (int) self->klass->methods.capacity;
-	bool fields = index >= methodsCapacity;
+	int value = table_iterator(&self->fields, index);
 
-	int value = table_iterator(fields ? &self->fields : &self->klass->methods, fields ? index - methodsCapacity : index);
-
-	if (value == -1) {
-		if (fields) {
-			return NULL_VALUE;
-		}
-
-		index++;
-		fields = true;
-		value = table_iterator(&self->fields, index - methodsCapacity);
-	}
-
-	return value == -1 ? NULL_VALUE : NUMBER_VALUE(fields ? value + methodsCapacity : value);
+	return value == -1 ? NULL_VALUE : NUMBER_VALUE(value);
 }
 
 LIT_METHOD(object_iteratorValue) {
 	uint index = LIT_CHECK_NUMBER(0);
 	LitInstance* self = AS_INSTANCE(instance);
-	uint methodsCapacity = self->klass->methods.capacity;
-	bool fields = index >= methodsCapacity;
 
-	return table_iterator_key(fields ? &self->fields : &self->klass->methods, fields ? index - methodsCapacity : index);
+	return table_iterator_key(&self->fields, index);
 }
 
 /*
@@ -1306,7 +1292,7 @@ LIT_NATIVE(print) {
 	}
 
 	for (uint i = 0; i < arg_count; i++) {
-		printf("%s\n", lit_to_string(vm->state, args[i])->chars);
+		lit_printf(vm->state, "%s\n", lit_to_string(vm->state, args[i])->chars);
 	}
 
 	return NULL_VALUE;
@@ -1329,7 +1315,7 @@ static bool interpret(LitVm* vm, LitModule* module) {
 	return true;
 }
 
-static bool compile_and_interpret(LitVm* vm, LitString* module_name, const char* source) {
+static bool compile_and_interpret(LitVm* vm, LitString* module_name, char* source) {
 	LitModule *module = lit_compile_module(vm->state, module_name, source);
 
 	if (module == NULL) {
@@ -1341,7 +1327,7 @@ static bool compile_and_interpret(LitVm* vm, LitString* module_name, const char*
 }
 
 LIT_NATIVE_PRIMITIVE(eval) {
-	const char* code = LIT_CHECK_STRING(0);
+	char* code = (char*) LIT_CHECK_STRING(0);
 	return compile_and_interpret(vm, vm->fiber->module->name, code);
 }
 
@@ -1405,7 +1391,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 		}
 	}
 
-	const char* source = lit_read_file(module_name);
+	char* source = lit_read_file(module_name);
 
 	if (source == NULL) {
 		return false;

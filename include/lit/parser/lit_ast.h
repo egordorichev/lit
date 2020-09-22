@@ -228,6 +228,7 @@ LitInterpolationExpression *lit_create_interpolation_expression(LitState* state,
 
 typedef struct {
 	LitExpression expression;
+
 	LitExpression* to;
 } LitReferenceExpression;
 

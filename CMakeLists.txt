@@ -10,11 +10,13 @@ if(NOT CMAKE_BUILD_TYPE)
  set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_C_FLAGS "-Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-strict-aliasing -Wno-unused-result -Wno-sequence-point")
+set(CMAKE_C_FLAGS "-no-pie -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-strict-aliasing -Wno-unused-result -Wno-sequence-point")
 set(CMAKE_C_FLAGS_DEBUG "-g")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 
-OPTION(DEFINE_TEST "Build code for testing (disables debug output)" OFF)
+option(LIT_DEFINE_TEST "Build code for testing (disables debug output)" OFF)
+option(LIT_STANDALONE "Build in standalone mode" OFF)
+option(LIT_BUILD_BINARY "Build the binary" ON)
 
 if (EMSCRIPTEN)
  set(CMAKE_AR "emcc")
@@ -25,11 +27,11 @@ if (EMSCRIPTEN)
 endif()
 
 IF(DEFINE_TEST)
- MESSAGE("Adding Testing flag...")
- ADD_DEFINITIONS(-DTESTING)
+ message("Adding Testing flag...")
+ add_definitions(-DTESTING)
 ELSE()
- MESSAGE("Adding Release flag...")
- ADD_DEFINITIONS(-DRELEASE)
+ message("Adding release flag...")
+ add_definitions(-DRELEASE)
 ENDIF(DEFINE_TEST)
 
 add_library(lit STATIC src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/vm/lit_chunk.c
@@ -37,15 +39,23 @@ add_library(lit STATIC src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/v
  src/lit/parser/lit_parser.c src/lit/parser/lit_ast.c src/lit/emitter/lit_emitter.c src/lit/vm/lit_object.c
  src/lit/util/lit_table.c src/lit/util/lit_array.c src/lit/util/lit_fs.c src/lit/api/lit_api.c
  src/lit/std/lit_core.c src/lit/std/lit_math.c src/lit/std/lit_file.c src/lit/parser/lit_error.c
- src/lit/optimizer/lit_optimizer.c src/lit/util/lit_utf.c)
+ src/lit/optimizer/lit_optimizer.c src/lit/util/lit_utf.c src/lit/preprocessor/lit_preprocessor.c)
 
-add_executable(litc src/main.c)
-target_link_libraries(litc lit)
-target_link_libraries(litc m) # Lib math
+if (LIT_BUILD_BINARY)
+ IF(STANDALONE)
+  message("Adding standalone flag...")
+  add_executable(litc src/lit/standalone/main.c bytecode.c)
+ ELSE()
+  add_executable(litc src/lit/cli/main.c)
+ ENDIF()
 
-IF(NOT EMSCRIPTEN)
- target_link_libraries(litc readline)
-ENDIF()
+ target_link_libraries(litc lit)
+ target_link_libraries(litc m) # Lib math
 
-set_target_properties(litc PROPERTIES OUTPUT_NAME "lit")
-install(TARGETS litc DESTINATION bin)
+ IF(NOT EMSCRIPTEN AND NOT STANDALONE)
+  target_link_libraries(litc readline)
+ ENDIF()
+
+ set_target_properties(litc PROPERTIES OUTPUT_NAME "lit")
+ install(TARGETS litc DESTINATION bin)
+endif()

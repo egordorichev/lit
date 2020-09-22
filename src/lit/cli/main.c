@@ -1,30 +1,16 @@
 #include <lit/lit.h>
+#include <lit/cli/lit_cli.h>
 #include <lit/lit_config.h>
 #include <lit/vm/lit_vm.h>
 #include <lit/std/lit_core.h>
 #include <lit/scanner/lit_scanner.h>
 #include <lit/util/lit_fs.h>
 #include <lit/optimizer/lit_optimizer.h>
+#include <lit/preprocessor/lit_preprocessor.h>
 
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
-
-#ifdef LIT_OS_UNIX_LIKE
-#define USE_LIBREADLINE
-#endif
-
-#ifdef USE_LIBREADLINE
-#include <readline/readline.h>
-#include <readline/history.h>
-#else
-#define REPL_INPUT_MAX 1024
-#endif
-
-#define EXIT_CODE_ARGUMENT_ERROR 1
-#define EXIT_CODE_MEM_LEAK 2
-#define EXIT_CODE_RUNTIME_ERROR 70
-#define EXIT_CODE_COMPILE_ERROR 65
 
 // Used for clean up on Ctrl+C / Ctrl+Z
 static LitState* repl_state;
@@ -44,20 +30,20 @@ static void run_repl(LitState* state) {
 	lit_set_optimization_level(OPTIMIZATION_LEVEL_REPL);
 	printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
 
-	#ifdef USE_LIBREADLINE
+	#ifdef LIT_USE_LIBREADLINE
 		char* line;
 	#else
-		char line[REPL_INPUT_MAX];
+		char line[LIT_REPL_INPUT_MAX];
 	#endif
 
 	while (true) {
 		printf("%s>%s ", COLOR_BLUE, COLOR_RESET);
 
-		#ifdef USE_LIBREADLINE
+		#ifdef LIT_USE_LIBREADLINE
 			line = readline("");
 			add_history(line);
 		#else
-			if (!fgets(line, REPL_INPUT_MAX, stdin)) {
+			if (!fgets(line, LIT_REPL_INPUT_MAX, stdin)) {
 				printf("\n");
 				break;
 			}
@@ -74,11 +60,14 @@ static void run_repl(LitState* state) {
 static void show_help() {
 	printf("lit [options] [files]\n");
 	printf("\t-o --output [file]\tInstead of running the file the compiled bytecode will be saved.\n");
+	printf("\t-n --native [file]\tInstead of running the file the compiled code will be embeded into a native runner.\n");
 	printf("\t-O[name] [string]\tEnables given optimization. For the list of aviable optimizations run with -Ohelp\n");
+	printf("\t-D[name]\t\tDefines given symbol.\n");
 	printf("\t-e --eval [string]\tRuns the given code string.\n");
 	printf("\t-p --pass [args]\tPasses the rest of the arguments to the script.\n");
 	printf("\t-i --interactive\tStarts an interactive shell.\n");
 	printf("\t-d --dump\t\tDumps all the bytecode chunks from the given file.\n");
+	printf("\t-t --time\t\tMeasures and prints the compilation timings.\n");
 	printf("\t-h --help\t\tI wonder, what this option does.\n");
 	printf("\tIf no code to run is provided, lit will try to run either main.lbc or main.lit and, if fails, default to an interactive shell will start.\n");
 }
@@ -118,7 +107,7 @@ int main(int argc, const char* argv[]) {
 		const char* arg = argv[i];
 
 		if (arg[0] == '-') {
-			if (match_arg(arg, "-e", "--eval") || match_arg(arg, "-o", "--output")) {
+			if (match_arg(arg, "-e", "--eval") || match_arg(arg, "-o", "--output") || match_arg(arg, "-n", "--native")) {
 				// It takes an extra argument, count it or we will use it as the file name to run :P
 				i++;
 			} else if (match_arg(arg, "-p", "--pass")) {
@@ -133,17 +122,22 @@ int main(int argc, const char* argv[]) {
 	}
 
 	LitArray* arg_array = NULL;
+
 	bool show_repl = false;
 	bool evaled = false;
 	bool dump = false;
 	bool showed_help = false;
+	bool create_native = false;
+
 	char* bytecode_file = NULL;
 
 	for (int i = 1; i < argc; i++) {
 		int args_left = argc - i - 1;
 		const char* arg = argv[i];
 
-		if (arg[0] == '-' && arg[1] == 'O') {
+		if (arg[0] == '-' && arg[1] == 'D') {
+			lit_add_definition(state, arg + 2);
+		} else if (arg[0] == '-' && arg[1] == 'O') {
 			bool enable_optimization = true;
 			char* optimization_name;
 
@@ -183,19 +177,24 @@ int main(int argc, const char* argv[]) {
 				}
 
 				if (!found) {
-					printf("Unknown optimization '%s'. Run with -Ohelp for a list of all optimizations.\n", optimization_name);
-					return EXIT_CODE_ARGUMENT_ERROR;
+					fprintf(stderr, "Unknown optimization '%s'. Run with -Ohelp for a list of all optimizations.\n", optimization_name);
+					return LIT_EXIT_CODE_ARGUMENT_ERROR;
 				}
 			}
 		} else if (match_arg(arg, "-e", "--eval")) {
 			evaled = true;
 
 			if (args_left == 0) {
-				printf("Expected code to run for the eval argument.\n");
-				return EXIT_CODE_ARGUMENT_ERROR;
+				fprintf(stderr, "Expected code to run for the eval argument.\n");
+				return LIT_EXIT_CODE_ARGUMENT_ERROR;
 			}
 
-			result = lit_interpret(state, num_files_to_run == 0 ? "repl" : files_to_run[0], argv[++i]).type;
+			const char* string = argv[++i];
+			size_t length = strlen(string) + 1;
+			char source[length];
+
+			memcpy(source, string, length);
+			result = lit_interpret(state, num_files_to_run == 0 ? "repl" : files_to_run[0], source).type;
 
 			if (result != INTERPRET_OK) {
 				break;
@@ -203,17 +202,29 @@ int main(int argc, const char* argv[]) {
 		} else if (match_arg(arg, "-h", "--help")) {
 			show_help();
 			showed_help = true;
+		} else if (match_arg(arg, "-t", "--time")) {
+			lit_enable_compilation_time_measurement();
 		} else if (match_arg(arg, "-i", "--interactive")) {
 			show_repl = true;
 		} else if (match_arg(arg, "-d", "--dump")) {
 			dump = true;
 		} else if (match_arg(arg, "-o", "--output")) {
 			if (args_left == 0) {
-				printf("Expected file name where to save the bytecode.\n");
-				return EXIT_CODE_ARGUMENT_ERROR;
+				fprintf(stderr, "Expected file name where to save the bytecode.\n");
+				return LIT_EXIT_CODE_ARGUMENT_ERROR;
 			}
 
 			bytecode_file = (char*) argv[++i];
+			lit_set_optimization_level(OPTIMIZATION_LEVEL_EXTREME);
+		} else if (match_arg(arg, "-n", "--native")) {
+			if (args_left == 0) {
+				fprintf(stderr, "Expected file name where to save the native.\n");
+				return LIT_EXIT_CODE_ARGUMENT_ERROR;
+			}
+
+			bytecode_file = (char*) argv[++i];
+			create_native = true;
+
 			lit_set_optimization_level(OPTIMIZATION_LEVEL_EXTREME);
 		} else if (match_arg(arg, "-p", "--pass")) {
 			arg_array = lit_create_array(state);
@@ -226,8 +237,8 @@ int main(int argc, const char* argv[]) {
 			lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
 			break;
 		} else if (arg[0] == '-') {
-			printf("Unknown argument '%s', run 'lit --help' for help.\n", arg);
-			return EXIT_CODE_ARGUMENT_ERROR;
+			fprintf(stderr, "Unknown argument '%s', run 'lit --help' for help.\n", arg);
+			return LIT_EXIT_CODE_ARGUMENT_ERROR;
 		}
 	}
 
@@ -235,6 +246,10 @@ int main(int argc, const char* argv[]) {
 		if (bytecode_file != NULL) {
 			if (!lit_compile_and_save_files(state, files_to_run, num_files_to_run, bytecode_file)) {
 				result = INTERPRET_COMPILE_ERROR;
+			}
+
+			if (create_native) {
+				lit_build_native_runner(bytecode_file);
 			}
 		} else {
 			if (arg_array == NULL) {
@@ -269,11 +284,11 @@ int main(int argc, const char* argv[]) {
 
 	if (result != INTERPRET_COMPILE_ERROR && amount != 0) {
 		fprintf(stderr, "Error: memory leak of %i bytes!\n", (int) amount);
-		return EXIT_CODE_MEM_LEAK;
+		return LIT_EXIT_CODE_MEM_LEAK;
 	}
 
 	if (result != INTERPRET_OK) {
-		return result == INTERPRET_RUNTIME_ERROR ? EXIT_CODE_RUNTIME_ERROR : EXIT_CODE_COMPILE_ERROR;
+		return result == INTERPRET_RUNTIME_ERROR ? LIT_EXIT_CODE_RUNTIME_ERROR : LIT_EXIT_CODE_COMPILE_ERROR;
 	}
 
 	return 0;

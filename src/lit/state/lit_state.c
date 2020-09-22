@@ -3,6 +3,7 @@
 #include <lit/scanner/lit_scanner.h>
 #include <lit/parser/lit_parser.h>
 #include <lit/optimizer/lit_optimizer.h>
+#include <lit/preprocessor/lit_preprocessor.h>
 #include <lit/emitter/lit_emitter.h>
 #include <lit/vm/lit_vm.h>
 #include <lit/util/lit_fs.h>
@@ -11,6 +12,13 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+static bool measure_compilation_time;
+
+void lit_enable_compilation_time_measurement() {
+	measure_compilation_time = true;
+}
 
 static void default_error(LitState* state, LitErrorType type, const char* message, va_list args) {
 	fflush(stdout);
@@ -51,6 +59,9 @@ LitState* lit_new_state() {
 	state->root_capacity = 0;
 	state->last_module = NULL;
 
+	state->preprocessor = (LitPreprocessor*) malloc(sizeof(LitPreprocessor));
+	lit_init_preprocessor(state, state->preprocessor);
+
 	state->scanner = (LitScanner*) malloc(sizeof(LitScanner));
 
 	state->parser = (LitParser*) malloc(sizeof(LitParser));
@@ -78,6 +89,10 @@ int64_t lit_free_state(LitState* state) {
 	}
 
 	lit_free_api(state);
+
+	lit_free_preprocessor(state->preprocessor);
+	free(state->preprocessor);
+
 	free(state->scanner);
 
 	lit_free_parser(state->parser);
@@ -186,11 +201,11 @@ static void free_statements(LitState* state, LitStatements* statements) {
 	lit_free_stataments(state, statements);
 }
 
-LitInterpretResult lit_interpret(LitState* state, const char* module_name, const char* code) {
+LitInterpretResult lit_interpret(LitState* state, const char* module_name, char* code) {
 	return lit_internal_interpret(state, lit_copy_string(state, module_name, strlen(module_name)), code);
 }
 
-LitModule* lit_compile_module(LitState* state, LitString* module_name, const char* code) {
+LitModule* lit_compile_module(LitState* state, LitString* module_name, char* code) {
 	bool allowed_gc = state->allow_gc;
 
 	state->allow_gc = false;
@@ -202,6 +217,22 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, const cha
 	if ((code[1] << 8 | code[0]) == LIT_BYTECODE_MAGIC_NUMBER) {
 		module = lit_load_module(state, code);
 	} else {
+		clock_t t;
+		clock_t total_t;
+
+		if (measure_compilation_time) {
+			total_t = t = clock();
+		}
+
+		if (!lit_preprocess(state->preprocessor, code)) {
+			return NULL;
+		}
+
+		if (measure_compilation_time) {
+			printf("----------------------\nPreprocessing: %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+			t = clock();
+		}
+
 		LitStatements statements;
 		lit_init_stataments(&statements);
 
@@ -210,9 +241,25 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, const cha
 			return NULL;
 		}
 
+		if (measure_compilation_time) {
+			printf("Parsing:       %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+			t = clock();
+		}
+
 		lit_optimize(state->optimizer, &statements);
+
+		if (measure_compilation_time) {
+			printf("Optimization:  %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+			t = clock();
+		}
+
 		module = lit_emit(state->emitter, &statements, module_name);
 		free_statements(state, &statements);
+
+		if (measure_compilation_time) {
+			printf("Emitting:      %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+			printf("\nTotal:         %gms\n----------------------\n", (double) (clock() - total_t) / CLOCKS_PER_SEC * 1000);
+		}
 	}
 
 	state->allow_gc = allowed_gc;
@@ -229,7 +276,7 @@ LitModule* lit_get_module(LitState* state, const char* name) {
 	return NULL;
 }
 
-LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code) {
+LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, char* code) {
 	LitModule* module = lit_compile_module(state, module_name, code);
 
 	if (module == NULL) {
@@ -279,7 +326,7 @@ bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, 
 
 	for (uint i = 0; i < num_files; i++) {
 		char* file_name = files[i];
-		const char* source = lit_read_file(file_name);
+		char* source = lit_read_file(file_name);
 
 		if (source == NULL) {
 			lit_error(state, COMPILE_ERROR, "Failed to open file '%s'", file_name);
@@ -329,7 +376,7 @@ LitInterpretResult lit_interpret_file(LitState* state, const char* file, bool du
 	char file_name[length];
 	memcpy(&file_name, file, length);
 
-	const char* source = lit_read_file(file_name);
+	char* source = lit_read_file(file_name);
 
 	if (source == NULL) {
 		lit_error(state, RUNTIME_ERROR, "Failed to open file '%s'", file_name);

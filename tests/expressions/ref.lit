@@ -21,3 +21,10 @@ var z = {
 }
 
 print(ref z.me) // Expected: Egor
+
+function change(a) {
+	ref a = "Test"
+}
+
+change(ref z.me)
+print(z.me) // Expected: Test

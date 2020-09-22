@@ -21,7 +21,7 @@ typedef struct sLitScanner {
 	bool had_error;
 } sLitScanner;
 
-void lit_setup_scanner(LitState* state, LitScanner* scanner, const char* file_name, const char* source);
+void lit_init_scanner(LitState* state, LitScanner* scanner, const char* file_name, const char* source);
 LitToken lit_scan_token(LitScanner* scanner);
 
 #endif

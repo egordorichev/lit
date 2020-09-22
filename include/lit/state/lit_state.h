@@ -28,6 +28,7 @@ typedef struct sLitState {
 	uint root_count;
 	uint root_capacity;
 
+	struct sLitPreprocessor* preprocessor;
 	struct sLitScanner* scanner;
 	struct sLitParser* parser;
 	struct sLitEmitter* emitter;
@@ -78,15 +79,20 @@ LitClass* lit_get_class_for(LitState* state, LitValue value);
 
 char* lit_patch_file_name(char* file_name);
 
-LitModule* lit_compile_module(LitState* state, LitString* module_name, const char* code);
+/*
+ * Please, do not provide a const string source to the compiler, because it will
+ * get modified, if it has any macros in it!
+ */
+LitModule* lit_compile_module(LitState* state, LitString* module_name, char* code);
 LitModule* lit_get_module(LitState* state, const char* name);
 
-LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, const char* code);
-LitInterpretResult lit_interpret(LitState* state, const char* module_name, const char* code);
+LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, char* code);
+LitInterpretResult lit_interpret(LitState* state, const char* module_name, char* code);
 LitInterpretResult lit_interpret_file(LitState* state, const char* file, bool dump_only);
 bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, const char* output_file);
 
 void lit_error(LitState* state, LitErrorType type, const char* message, ...);
 void lit_printf(LitState* state, const char* message, ...);
+void lit_enable_compilation_time_measurement();
 
 #endif
