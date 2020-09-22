@@ -462,7 +462,7 @@ void lit_build_native_runner(const char* bytecode_file) {
 	}
 
 	printf("Compiling lit...\n");
-	char* cmake = format("cd %s && cmake . -DSTANDALONE=ON", dir);
+	char* cmake = format("cd %s && cmake . -DLIT_STANDALONE=ON", dir);
 	result = system(cmake);
 	free(cmake);
 
