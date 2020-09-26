@@ -42,7 +42,9 @@
 #define LIT_INITIAL_CALL_FRAMES 4
 #define LIT_CONTAINER_OUTPUT_MAX 10
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+#if defined(__ANDROID__) || defined(_ANDROID_)
+#define LIT_OS_ANDROID
+#elif defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 #define LIT_OS_WINDOWS
 #elif __APPLE__
 #define LIT_OS_MAC

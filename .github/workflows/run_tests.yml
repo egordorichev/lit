@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: cmake
-      run: cmake . -DDEFINE_TEST=ON
+      run: cmake . -DLIT_DEFINE_TEST=ON
     - name: make
       run: make
     - name: test
