@@ -1,5 +1,6 @@
 # todo
 
+* add time for reading file too
 * this.fun?() or smth i need this
 * require dir.* ?
 * some sort of main function?
