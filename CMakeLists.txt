@@ -52,6 +52,7 @@ if (LIT_BUILD_BINARY)
   message("Adding standalone flag...")
   add_executable(litc src/lit/standalone/main.c bytecode.c)
  else()
+  message("Building regular binary...")
   add_executable(litc src/lit/cli/main.c)
  endif()
 
@@ -71,4 +72,7 @@ if (LIT_BUILD_BINARY)
 
  set_target_properties(litc PROPERTIES OUTPUT_NAME "lit")
  install(TARGETS litc DESTINATION bin)
+
+ set_target_properties(litc PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
+ set_target_properties(litc PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
 endif()
