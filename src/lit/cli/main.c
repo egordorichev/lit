@@ -7,6 +7,7 @@
 #include <lit/util/lit_fs.h>
 #include <lit/optimizer/lit_optimizer.h>
 #include <lit/preprocessor/lit_preprocessor.h>
+#include <lit/debug/lit_debug.h>
 
 #include <stdio.h>
 #include <signal.h>
@@ -102,6 +103,7 @@ int main(int argc, const char* argv[]) {
 	uint num_files_to_run = 0;
 
 	LitInterpretResultType result = INTERPRET_OK;
+	bool dump = false;
 
 	for (int i = 1; i < argc; i++) {
 		const char* arg = argv[i];
@@ -113,6 +115,8 @@ int main(int argc, const char* argv[]) {
 			} else if (match_arg(arg, "-p", "--pass")) {
 				// The rest of the args go to the script, go home pls
 				break;
+			} else if (match_arg(arg, "-d", "--dump")) {
+				dump = true;
 			}
 
 			continue;
@@ -125,7 +129,6 @@ int main(int argc, const char* argv[]) {
 
 	bool show_repl = false;
 	bool evaled = false;
-	bool dump = false;
 	bool showed_help = false;
 	bool create_native = false;
 
@@ -194,10 +197,22 @@ int main(int argc, const char* argv[]) {
 			char source[length];
 
 			memcpy(source, string, length);
-			result = lit_interpret(state, num_files_to_run == 0 ? "repl" : files_to_run[0], source).type;
+			const char* module_name = num_files_to_run == 0 ? "repl" : files_to_run[0];
 
-			if (result != INTERPRET_OK) {
-				break;
+			if (dump) {
+				LitModule* module = lit_compile_module(state, CONST_STRING(state, module_name), source);
+
+				if (module == NULL) {
+					break;
+				}
+
+				lit_disassemble_module(module, source);
+			} else {
+				result = lit_interpret(state, module_name, source).type;
+
+				if (result != INTERPRET_OK) {
+					break;
+				}
 			}
 		} else if (match_arg(arg, "-h", "--help")) {
 			show_help();

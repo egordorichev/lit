@@ -42,10 +42,8 @@ add_library(lit STATIC src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/v
 target_link_libraries(lit LINK_PUBLIC m) # Lib math
 
 if (LIT_BUILD_ANDROID)
- set_target_properties(lit PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist/${CMAKE_ANDROID_ARCH_ABI}")
  set_target_properties(lit PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist/${CMAKE_ANDROID_ARCH_ABI}")
 else()
- set_target_properties(lit PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
  set_target_properties(lit PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
 endif()
 
@@ -61,6 +59,14 @@ if (LIT_BUILD_BINARY)
 
  if(NOT EMSCRIPTEN AND NOT STANDALONE)
   target_link_libraries(litc readline)
+ endif()
+
+ if (LIT_BUILD_ANDROID)
+  set_target_properties(litc PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist/${CMAKE_ANDROID_ARCH_ABI}")
+  set_target_properties(litc PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist/${CMAKE_ANDROID_ARCH_ABI}")
+ else()
+  set_target_properties(litc PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
+  set_target_properties(litc PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
  endif()
 
  set_target_properties(litc PROPERTIES OUTPUT_NAME "lit")

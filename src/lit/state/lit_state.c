@@ -217,8 +217,8 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
 	if ((code[1] << 8 | code[0]) == LIT_BYTECODE_MAGIC_NUMBER) {
 		module = lit_load_module(state, code);
 	} else {
-		clock_t t;
-		clock_t total_t;
+		clock_t t = 0;
+		clock_t total_t = 0;
 
 		if (measure_compilation_time) {
 			total_t = t = clock();
