@@ -109,30 +109,50 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 		fiber->parent->abort = true;
 	}
 
-	fprintf(stderr, "%s%s\n", COLOR_RED, error_string->chars);
+	// Maan, formatting c strings is hard...
+	int count = (int) fiber->frame_count - 1;
+	size_t length = snprintf(NULL, 0, "%s%s\n", COLOR_RED, error_string->chars);
 
-	for (int i = (int) fiber->frame_count - 1; i >= 0; i--) {
+	for (int i = count; i >= 0; i--) {
 		LitCallFrame* frame = &fiber->frames[i];
 		LitFunction* function = frame->function;
 		LitChunk* chunk = &function->chunk;
 		const char* name = function->name == NULL ? "unknown" : function->name->chars;
 
 		if (chunk->has_line_info) {
-			fprintf(stderr, "[line %d] in %s()\n", lit_chunk_get_line(chunk, frame->ip - chunk->code - 1), name);
+			length += snprintf(NULL, 0, "[line %d] in %s()\n", lit_chunk_get_line(chunk, frame->ip - chunk->code - 1), name);
 		} else {
-			fprintf(stderr, "\tin %s()\n", name);
+			length += snprintf(NULL, 0, "\tin %s()\n", name);
 		}
 	}
 
-	fprintf(stderr, "%s", COLOR_RESET);
+	length += snprintf(NULL, 0, "%s", COLOR_RESET);
+	char buffer[length + 1];
+	buffer[length] = '\0';
+
+	char* start = buffer + sprintf(buffer, "%s%s\n", COLOR_RED, error_string->chars);
+
+	for (int i = count; i >= 0; i--) {
+		LitCallFrame* frame = &fiber->frames[i];
+		LitFunction* function = frame->function;
+		LitChunk* chunk = &function->chunk;
+		const char* name = function->name == NULL ? "unknown" : function->name->chars;
+
+		if (chunk->has_line_info) {
+			start += sprintf(start, "[line %d] in %s()\n", lit_chunk_get_line(chunk, frame->ip - chunk->code - 1), name);
+		} else {
+			start += sprintf(start, "\tin %s()\n", name);
+		}
+	}
+
+	start += sprintf(start, "%s", COLOR_RESET);
+	lit_error(vm->state, RUNTIME_ERROR, buffer);
 	reset_stack(vm);
 
 	return false;
 }
 
 bool lit_vruntime_error(LitVm* vm, const char* format, va_list args) {
-	LitFiber* fiber = vm->fiber;
-
 	va_list args_copy;
 	va_copy(args_copy, args);
 	size_t buffer_size = vsnprintf(NULL, 0, format, args_copy) + 1;

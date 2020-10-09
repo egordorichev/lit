@@ -9,6 +9,7 @@
 #include <lit/util/lit_fs.h>
 #include <lit/std/lit_core.h>
 #include <lit/api/lit_api.h>
+#include <lit/parser/lit_error.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -20,16 +21,14 @@ void lit_enable_compilation_time_measurement() {
 	measure_compilation_time = true;
 }
 
-static void default_error(LitState* state, LitErrorType type, const char* message, va_list args) {
+static void default_error(LitState* state, const char* message) {
 	fflush(stdout);
-	fprintf(stderr, COLOR_RED);
-	vfprintf(stderr, message, args);
-	fprintf(stderr, "%s\n", COLOR_RESET);
+	fprintf(stderr, "%s%s%s\n", COLOR_RED, message, COLOR_RESET);
 	fflush(stderr);
 }
 
-static void default_printf(const char* message, va_list args) {
-	vprintf(message, args);
+static void default_printf(LitState* state, const char* message) {
+	printf(message);
 }
 
 LitState* lit_new_state() {
@@ -408,15 +407,30 @@ LitInterpretResult lit_interpret_file(LitState* state, const char* file, bool du
 void lit_error(LitState* state, LitErrorType type, const char* message, ...) {
 	va_list args;
 	va_start(args, message);
-	state->error_fn(state, type, message, args);
+	va_list args_copy;
+	va_copy(args_copy, args);
+	size_t buffer_size = vsnprintf(NULL, 0, message, args_copy) + 1;
+	va_end(args_copy);
+
+	char buffer[buffer_size];
+	vsnprintf(buffer, buffer_size, message, args);
 	va_end(args);
 
+	state->error_fn(state, buffer);
 	state->had_error = true;
 }
 
 void lit_printf(LitState* state, const char* message, ...) {
 	va_list args;
 	va_start(args, message);
-	state->print_fn(message, args);
+	va_list args_copy;
+	va_copy(args_copy, args);
+	size_t buffer_size = vsnprintf(NULL, 0, message, args_copy) + 1;
+	va_end(args_copy);
+
+	char buffer[buffer_size];
+	vsnprintf(buffer, buffer_size, message, args);
 	va_end(args);
+
+	state->print_fn(state, buffer);
 }

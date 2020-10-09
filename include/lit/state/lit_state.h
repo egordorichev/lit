@@ -13,8 +13,8 @@ typedef enum {
 	RUNTIME_ERROR
 } LitErrorType;
 
-typedef void (*LitErrorFn)(LitState* state, LitErrorType type, const char* message, va_list args);
-typedef void (*LitPrintFn)(const char* message, va_list args);
+typedef void (*LitErrorFn)(LitState* state, const char* message);
+typedef void (*LitPrintFn)(LitState* state, const char* message);
 
 typedef struct sLitState {
 	int64_t bytes_allocated;
