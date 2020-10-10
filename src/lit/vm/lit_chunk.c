@@ -1,7 +1,7 @@
-#include <lit/vm/lit_chunk.h>
-#include <lit/mem/lit_mem.h>
-#include <lit/state/lit_state.h>
-#include <lit/util/lit_fs.h>
+#include "vm/lit_chunk.h"
+#include "mem/lit_mem.h"
+#include "state/lit_state.h"
+#include "util/lit_fs.h"
 
 void lit_init_chunk(LitChunk* chunk) {
 	chunk->count = 0;

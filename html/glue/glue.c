@@ -1,6 +1,6 @@
-#include <lit/lit_config.h>
-#include <lit/vm/lit_vm.h>
-#include <lit/vm/lit_chunk.h>
+#include "lit_config.h"
+#include "vm/lit_vm.h"
+#include "vm/lit_chunk.h"
 
 #include <stdio.h>
 

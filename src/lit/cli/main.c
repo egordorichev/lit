@@ -1,13 +1,13 @@
-#include <lit/lit.h>
-#include <lit/cli/lit_cli.h>
-#include <lit/lit_config.h>
-#include <lit/vm/lit_vm.h>
-#include <lit/std/lit_core.h>
-#include <lit/scanner/lit_scanner.h>
-#include <lit/util/lit_fs.h>
-#include <lit/optimizer/lit_optimizer.h>
-#include <lit/preprocessor/lit_preprocessor.h>
-#include <lit/debug/lit_debug.h>
+#include "lit.h"
+#include "cli/lit_cli.h"
+#include "lit_config.h"
+#include "vm/lit_vm.h"
+#include "std/lit_core.h"
+#include "scanner/lit_scanner.h"
+#include "util/lit_fs.h"
+#include "optimizer/lit_optimizer.h"
+#include "preprocessor/lit_preprocessor.h"
+#include"debug/lit_debug.h"
 
 #include <stdio.h>
 #include <signal.h>

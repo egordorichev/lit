@@ -1,4 +1,4 @@
-#include <lit/parser/lit_error.h>
+#include "parser/lit_error.h"
 #include <stdio.h>
 
 static const char* error_messages[ERROR_TOTAL] = {

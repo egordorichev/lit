@@ -1,10 +1,10 @@
 #ifndef LIT_SCANNER_H
 #define LIT_SCANNER_H
 
-#include <lit/lit_common.h>
-#include <lit/lit_predefines.h>
-#include <lit/state/lit_state.h>
-#include <lit/scanner/lit_token.h>
+#include "lit_common.h"
+#include "lit_predefines.h"
+#include "state/lit_state.h"
+#include "scanner/lit_token.h"
 
 typedef struct sLitScanner {
 	uint line;

@@ -1,11 +1,11 @@
 #ifndef LIT_PARSER_H
 #define LIT_PARSER_H
 
-#include <lit/lit_common.h>
-#include <lit/lit_predefines.h>
-#include <lit/parser/lit_ast.h>
-#include <lit/emitter/lit_emitter.h>
-#include <lit/lit_config.h>
+#include "lit_common.h"
+#include "lit_predefines.h"
+#include "parser/lit_ast.h"
+#include "emitter/lit_emitter.h"
+#include "lit_config.h"
 
 typedef enum {
 	PREC_NONE,

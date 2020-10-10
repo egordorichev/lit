@@ -1,6 +1,6 @@
-#include <lit/util/lit_table.h>
-#include <lit/mem/lit_mem.h>
-#include <lit/vm/lit_object.h>
+#include "util/lit_table.h"
+#include "mem/lit_mem.h"
+#include "vm/lit_object.h"
 
 #include <string.h>
 

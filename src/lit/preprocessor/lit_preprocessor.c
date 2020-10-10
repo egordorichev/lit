@@ -1,8 +1,8 @@
-#include <lit/preprocessor/lit_preprocessor.h>
-#include <lit/vm/lit_object.h>
-#include <lit/util/lit_utf.h>
-#include <lit/state/lit_state.h>
-#include <lit/parser/lit_error.h>
+#include "preprocessor/lit_preprocessor.h"
+#include "vm/lit_object.h"
+#include "util/lit_utf.h"
+#include "state/lit_state.h"
+#include "parser/lit_error.h"
 
 #include <stdio.h>
 

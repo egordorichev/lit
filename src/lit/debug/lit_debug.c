@@ -1,5 +1,5 @@
-#include <lit/debug/lit_debug.h>
-#include <lit/vm/lit_object.h>
+#include"debug/lit_debug.h"
+#include "vm/lit_object.h"
 #include <stdio.h>
 
 void lit_disassemble_module(LitModule* module, const char* source) {

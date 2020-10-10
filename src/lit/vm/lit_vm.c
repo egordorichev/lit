@@ -1,7 +1,7 @@
-#include <lit/vm/lit_vm.h>
-#include <lit/vm/lit_object.h>
-#include <lit/debug/lit_debug.h>
-#include <lit/mem/lit_mem.h>
+#include "vm/lit_vm.h"
+#include "vm/lit_object.h"
+#include"debug/lit_debug.h"
+#include "mem/lit_mem.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -446,7 +446,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	// Has to be inside of the function in order for goto to work
 	static void* dispatch_table[] = {
 #define OPCODE(name, effect) &&OP_##name,
-#include <lit/vm/lit_opcodes.h>
+#include "vm/lit_opcodes.h"
 #undef OPCODE
 	};
 

@@ -1,6 +1,6 @@
-#include <lit/std/lit_math.h>
-#include <lit/api/lit_api.h>
-#include <lit/vm/lit_vm.h>
+#include "std/lit_math.h"
+#include "api/lit_api.h"
+#include "vm/lit_vm.h"
 
 #include <math.h>
 #include <stdlib.h>

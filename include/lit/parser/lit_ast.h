@@ -1,9 +1,9 @@
 #ifndef LIT_AST_H
 #define LIT_AST_H
 
-#include <lit/lit_common.h>
-#include <lit/vm/lit_value.h>
-#include <lit/scanner/lit_token.h>
+#include "lit_common.h"
+#include "vm/lit_value.h"
+#include "scanner/lit_token.h"
 
 typedef enum {
 	LITERAL_EXPRESSION,

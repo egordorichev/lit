@@ -1,7 +1,7 @@
 #ifndef LIT_PREDEFINES_H
 #define LIT_PREDEFINES_H
 
-#include <lit/lit_common.h>
+#include "lit_common.h"
 
 typedef struct sLitScanner LitScanner;
 typedef struct sLitPreprocessor LitPreprocessor;

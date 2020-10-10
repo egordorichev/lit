@@ -1,6 +1,6 @@
-#include <lit/scanner/lit_scanner.h>
-#include <lit/parser/lit_error.h>
-#include <lit/util/lit_utf.h>
+#include "scanner/lit_scanner.h"
+#include "parser/lit_error.h"
+#include "util/lit_utf.h"
 
 #include <string.h>
 #include <stdlib.h>

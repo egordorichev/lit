@@ -12,3 +12,4 @@ Makefile
 venv
 *.lbc
 dist*
+install_manifest.txt

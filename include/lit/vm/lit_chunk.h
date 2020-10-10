@@ -1,15 +1,15 @@
 #ifndef LIT_CHUNK_H
 #define LIT_CHUNK_H
 
-#include <lit/lit_common.h>
-#include <lit/lit_predefines.h>
-#include <lit/vm/lit_value.h>
+#include "lit_common.h"
+#include "lit_predefines.h"
+#include "vm/lit_value.h"
 
 #include <stdio.h>
 
 typedef enum {
 #define OPCODE(name, effect) OP_##name,
-#include <lit/vm/lit_opcodes.h>
+#include "vm/lit_opcodes.h"
 #undef OPCODE
 } LitOpCode;
 

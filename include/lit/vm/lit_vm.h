@@ -1,13 +1,13 @@
 #ifndef LIT_VM_H
 #define LIT_VM_H
 
-#include <lit/vm/lit_chunk.h>
-#include <lit/vm/lit_object.h>
-#include <lit/state/lit_state.h>
-#include <lit/lit_predefines.h>
-#include <lit/util/lit_table.h>
+#include "vm/lit_chunk.h"
+#include "vm/lit_object.h"
+#include "state/lit_state.h"
+#include "lit_predefines.h"
+#include "util/lit_table.h"
 
-#include <lit/lit_config.h>
+#include "lit_config.h"
 
 #define INTERPRET_RUNTIME_FAIL ((LitInterpretResult) {INTERPRET_INVALID, NULL_VALUE})
 

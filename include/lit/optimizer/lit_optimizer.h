@@ -1,9 +1,9 @@
 #ifndef LIT_OPTIMISER_H
 #define LIT_OPTIMISER_H
 
-#include <lit/lit_common.h>
-#include <lit/lit_predefines.h>
-#include <lit/parser/lit_ast.h>
+#include "lit_common.h"
+#include "lit_predefines.h"
+#include "parser/lit_ast.h"
 
 typedef struct {
 	const char* name;

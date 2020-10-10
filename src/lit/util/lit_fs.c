@@ -1,6 +1,6 @@
-#include <lit/optimizer/lit_optimizer.h>
-#include <lit/util/lit_fs.h>
-#include <lit/lit.h>
+#include "optimizer/lit_optimizer.h"
+#include "util/lit_fs.h"
+#include "lit.h"
 
 #include <stdlib.h>
 #include <stdio.h>

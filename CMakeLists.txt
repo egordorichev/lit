@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(lit C)
 
 set(CMAKE_C_STANDARD 11)
-include_directories(include)
+include_directories(include/lit)
 
 if (NOT CMAKE_BUILD_TYPE)
  set(CMAKE_BUILD_TYPE Release)
@@ -46,6 +46,9 @@ if (LIT_BUILD_ANDROID)
 else()
  set_target_properties(lit PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
 endif()
+
+install(TARGETS lit DESTINATION lib)
+install(DIRECTORY include/lit/ DESTINATION include/lit)
 
 if (LIT_BUILD_BINARY)
  if (STANDALONE)

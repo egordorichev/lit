@@ -1,9 +1,9 @@
 #ifndef LIT_VALUE_H
 #define LIT_VALUE_H
 
-#include <lit/lit_common.h>
-#include <lit/lit_predefines.h>
-#include <lit/util/lit_array.h>
+#include "lit_common.h"
+#include "lit_predefines.h"
+#include "util/lit_array.h"
 
 #include <memory.h>
 

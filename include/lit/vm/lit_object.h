@@ -1,13 +1,13 @@
 #ifndef LIT_OBJECT_H
 #define LIT_OBJECT_H
 
-#include <lit/lit_common.h>
-#include <lit/lit_predefines.h>
-#include <lit/mem/lit_mem.h>
-#include <lit/vm/lit_chunk.h>
-#include <lit/util/lit_table.h>
-#include <lit/vm/lit_value.h>
-#include <lit/lit_config.h>
+#include "lit_common.h"
+#include "lit_predefines.h"
+#include "mem/lit_mem.h"
+#include "vm/lit_chunk.h"
+#include "util/lit_table.h"
+#include "vm/lit_value.h"
+#include "lit_config.h"
 
 #define OBJECT_TYPE(value) (AS_OBJECT(value)->type)
 

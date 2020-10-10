@@ -1,9 +1,1 @@
-class Base {
-
-}
-
-class Child : Base {
-
-}
-
-print(Child.super)
+print(32)

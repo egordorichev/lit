@@ -1,7 +1,7 @@
-#include <lit/vm/lit_object.h>
-#include <lit/mem/lit_mem.h>
-#include <lit/vm/lit_vm.h>
-#include <lit/optimizer/lit_optimizer.h>
+#include "vm/lit_object.h"
+#include "mem/lit_mem.h"
+#include "vm/lit_vm.h"
+#include "optimizer/lit_optimizer.h"
 
 #include <memory.h>
 #include <math.h>

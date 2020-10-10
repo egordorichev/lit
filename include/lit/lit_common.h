@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include <lit/util/lit_color.h>
+#include "util/lit_color.h"
 
 #define UNREACHABLE assert(false);
 #define UINT8_COUNT UINT8_MAX + 1

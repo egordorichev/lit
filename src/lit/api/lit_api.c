@@ -1,8 +1,8 @@
-#include <lit/api/lit_api.h>
-#include <lit/vm/lit_vm.h>
-#include <lit/vm/lit_chunk.h>
-#include <lit/vm/lit_object.h>
-#include <lit/debug/lit_debug.h>
+#include "api/lit_api.h"
+#include "vm/lit_vm.h"
+#include "vm/lit_chunk.h"
+#include "vm/lit_object.h"
+#include"debug/lit_debug.h"
 
 #include <string.h>
 #include <math.h>

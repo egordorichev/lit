@@ -1,15 +1,14 @@
-#include <lit/state/lit_state.h>
-#include <lit/debug/lit_debug.h>
-#include <lit/scanner/lit_scanner.h>
-#include <lit/parser/lit_parser.h>
-#include <lit/optimizer/lit_optimizer.h>
-#include <lit/preprocessor/lit_preprocessor.h>
-#include <lit/emitter/lit_emitter.h>
-#include <lit/vm/lit_vm.h>
-#include <lit/util/lit_fs.h>
-#include <lit/std/lit_core.h>
-#include <lit/api/lit_api.h>
-#include <lit/parser/lit_error.h>
+#include "state/lit_state.h"
+#include"debug/lit_debug.h"
+#include "scanner/lit_scanner.h"
+#include "parser/lit_parser.h"
+#include "optimizer/lit_optimizer.h"
+#include "preprocessor/lit_preprocessor.h"
+#include "emitter/lit_emitter.h"
+#include "vm/lit_vm.h"
+#include "util/lit_fs.h"
+#include "std/lit_core.h"
+#include "api/lit_api.h"
 
 #include <stdlib.h>
 #include <string.h>

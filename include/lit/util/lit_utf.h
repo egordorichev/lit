@@ -1,8 +1,8 @@
 #ifndef LIT_UTF_H
 #define LIT_UTF_H
 
-#include <lit/lit_common.h>
-#include <lit/vm/lit_value.h>
+#include "lit_common.h"
+#include "vm/lit_value.h"
 
 int lit_decode_num_bytes(uint8_t byte);
 int lit_ustring_length(LitString* string);

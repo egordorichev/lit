@@ -1,11 +1,11 @@
-#include <lit/std/lit_core.h>
-#include <lit/std/lit_math.h>
-#include <lit/std/lit_file.h>
-#include <lit/api/lit_api.h>
-#include <lit/vm/lit_vm.h>
-#include <lit/vm/lit_object.h>
-#include <lit/util/lit_fs.h>
-#include <lit/util/lit_utf.h>
+#include "std/lit_core.h"
+#include "std/lit_math.h"
+#include "std/lit_file.h"
+#include "api/lit_api.h"
+#include "vm/lit_vm.h"
+#include "vm/lit_object.h"
+#include "util/lit_fs.h"
+#include "util/lit_utf.h"
 
 #include <time.h>
 #include <ctype.h>

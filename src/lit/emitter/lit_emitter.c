@@ -1,12 +1,12 @@
-#include <lit/emitter/lit_emitter.h>
-#include <lit/parser/lit_error.h>
-#include <lit/mem/lit_mem.h>
-#include <lit/debug/lit_debug.h>
-#include <lit/vm/lit_object.h>
-#include <lit/vm/lit_vm.h>
-#include <lit/scanner/lit_scanner.h>
-#include <lit/util/lit_table.h>
-#include <lit/optimizer/lit_optimizer.h>
+#include "emitter/lit_emitter.h"
+#include "parser/lit_error.h"
+#include "mem/lit_mem.h"
+#include"debug/lit_debug.h"
+#include "vm/lit_object.h"
+#include "vm/lit_vm.h"
+#include "scanner/lit_scanner.h"
+#include "util/lit_table.h"
+#include "optimizer/lit_optimizer.h"
 
 #include <string.h>
 
@@ -56,7 +56,7 @@ static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte) {
 
 static const int8_t stack_effects[] = {
 	#define OPCODE(_, effect) effect,
-	#include <lit/vm/lit_opcodes.h>
+	#include "vm/lit_opcodes.h"
 	#undef OPCODE
 };
 
