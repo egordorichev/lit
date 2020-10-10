@@ -1340,19 +1340,8 @@ static bool should_update_locals;
 
 static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const char* path, bool ignore_previous) {
 	size_t length = strlen(path);
-
-	// You can require dirs if they have init.lit in them
-	if (lit_dir_exists(path)) {
-		char dir_name[length + 6];
-		dir_name[length + 5] = '\0';
-
-		memcpy((void*) dir_name, path, length);
-		memcpy((void*) dir_name + length, ".init", 5);
-
-		return attempt_to_require(vm, args, arg_count, dir_name, ignore_previous);
-	}
-
 	should_update_locals = false;
+
 	char module_name[length + 5];
 	char module_name_dotted[length + 5];
 
@@ -1369,6 +1358,19 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 		} else {
 			module_name[i] = c;
 		}
+	}
+
+	// You can require dirs if they have init.lit in them
+	module_name[length] = '\0';
+
+	if (lit_dir_exists(module_name)) {
+		char dir_name[length + 6];
+		dir_name[length + 5] = '\0';
+
+		memcpy((void*) dir_name, module_name, length);
+		memcpy((void*) dir_name + length, ".init", 5);
+
+		return attempt_to_require(vm, args, arg_count, dir_name, ignore_previous);
 	}
 
 	module_name[length] = '.';
