@@ -19,7 +19,11 @@ static void print_object(LitValue value) {
 		}
 
 		case OBJECT_CLOSURE: {
+#ifdef LIT_TRACE_STACK
+			printf("closure %s", AS_CLOSURE(value)->function->name->chars);
+#else
 			printf("function %s", AS_CLOSURE(value)->function->name->chars);
+#endif
 			break;
 		}
 

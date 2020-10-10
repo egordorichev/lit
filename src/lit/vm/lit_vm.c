@@ -1355,7 +1355,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(INVOKE_SUPER) {
 			uint8_t arg_count = READ_BYTE();
 			LitString* method_name = READ_STRING_LONG();
-			LitClass* klass = AS_INSTANCE(PEEK(arg_count))->klass->super;
+			LitClass* klass = AS_CLASS(POP());
 
 			WRITE_FRAME()
 			INVOKE_FROM_CLASS(klass, method_name, arg_count, true, methods, false)
@@ -1365,7 +1365,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		CASE_CODE(INVOKE_SUPER_IGNORING) {
 			uint8_t arg_count = READ_BYTE();
 			LitString* method_name = READ_STRING_LONG();
-			LitClass* klass = AS_INSTANCE(PEEK(0))->klass->super;
+			LitClass* klass = AS_CLASS(POP());
 
 			WRITE_FRAME()
 			INVOKE_FROM_CLASS(klass, method_name, arg_count, true, methods, true)
@@ -1374,11 +1374,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		CASE_CODE(GET_SUPER_METHOD) {
 			LitString* method_name = READ_STRING_LONG();
+			LitClass* klass = AS_CLASS(POP());
 			LitValue instance = POP();
 
 			LitValue value;
 
-			if (lit_table_get(&((LitClass*) AS_INSTANCE(instance)->klass->super)->methods, method_name, &value)) {
+			if (lit_table_get(&klass->methods, method_name, &value)) {
 				value = OBJECT_VALUE(lit_create_bound_method(state, instance, value));
 			} else {
 				value = NULL_VALUE;
@@ -1389,13 +1390,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(INHERIT) {
-			LitValue super = PEEK(0);
+			LitValue super = PEEK(1);
 
 			if (!IS_CLASS(super)) {
 				RUNTIME_ERROR("Superclass must be a class")
 			}
 
-			LitClass* klass = AS_CLASS(PEEK(1));
+			LitClass* klass = AS_CLASS(PEEK(0));
 			LitClass* super_klass = AS_CLASS(super);
 
 			klass->super = super_klass;
@@ -1404,7 +1405,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			lit_table_add_all(state, &super_klass->methods, &klass->methods);
 			lit_table_add_all(state, &klass->super->static_fields, &klass->static_fields);
 
-			DROP();
 			continue;
 		}
 

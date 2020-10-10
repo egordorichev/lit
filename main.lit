@@ -1,1 +1,9 @@
-require("tests.examples.hello_world")
+class Base {
+
+}
+
+class Child : Base {
+
+}
+
+print(Child.super)

@@ -274,6 +274,10 @@ LitValue lit_get_function_name(LitVm* vm, LitValue instance) {
 			break;
 		}
 
+		case OBJECT_BOUND_METHOD: {
+			return lit_get_function_name(vm, AS_BOUND_METHOD(instance)->method);
+		}
+
 		default: {
 			break;
 		}

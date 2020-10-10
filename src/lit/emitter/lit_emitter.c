@@ -822,7 +822,9 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length))));
 				} else {
 					LitSuperExpression *e = (LitSuperExpression*) expr->callee;
+					uint8_t index = resolve_upvalue(emitter, emitter->compiler, "super", 5, emitter->last_line);
 
+					emit_arged_op(emitter, expression->line, OP_GET_UPVALUE, index);
 					emit_varying_op(emitter, emitter->last_line, ((LitSuperExpression*) expr->callee)->ignore_result ? OP_INVOKE_SUPER_IGNORING : OP_INVOKE_SUPER, (uint8_t) expr->args.count);
 					emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(e->method)));
 				}
@@ -1007,7 +1009,10 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitSuperExpression* expr = (LitSuperExpression*) expression;
 
 			if (!expr->ignore_emit) {
+				uint8_t index = resolve_upvalue(emitter, emitter->compiler, "super", 5, emitter->last_line);
+
 				emit_arged_op(emitter, expression->line, OP_GET_LOCAL, 0);
+				emit_arged_op(emitter, expression->line, OP_GET_UPVALUE, index);
 				emit_op(emitter, expression->line, OP_GET_SUPER_METHOD);
 				emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(expr->method)));
 			}
@@ -1486,7 +1491,16 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			function->max_slots += function->arg_count;
 			function->vararg = vararg;
 
-			emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
+			if (function->upvalue_count > 0) {
+				emit_op(emitter, emitter->last_line, OP_CLOSURE);
+				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(function)));
+
+				for (uint i = 0; i < function->upvalue_count; i++) {
+					emit_bytes(emitter, emitter->last_line, compiler.upvalues[i].isLocal ? 1 : 0, compiler.upvalues[i].index);
+				}
+			} else {
+				emit_constant(emitter, emitter->last_line, OBJECT_VALUE(function));
+			}
 
 			emit_op(emitter, emitter->last_line, stmt->is_static ? OP_STATIC_FIELD : OP_METHOD);
 			emit_short(emitter, emitter->last_line, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)));
@@ -1498,15 +1512,22 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitClassStatement* stmt = (LitClassStatement*) statement;
 			emitter->class_name = stmt->name;
 
+			if (stmt->parent != NULL) {
+				emit_op(emitter, emitter->last_line, OP_GET_GLOBAL);
+				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->parent)));
+			}
+
 			emit_op(emitter, statement->line, OP_CLASS);
 			emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->name)));
 
 			if (stmt->parent != NULL) {
-				emit_op(emitter, emitter->last_line, OP_GET_GLOBAL);
-				emit_short(emitter, emitter->last_line, add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->parent)));
 				emit_op(emitter, emitter->last_line, OP_INHERIT);
-
 				emitter->class_has_super = true;
+
+				begin_scope(emitter);
+
+				uint8_t super = add_local(emitter, "super", 5, emitter->last_line, false);
+				mark_local_initialized(emitter, super);
 			}
 
 			for (uint i = 0; i < stmt->fields.count; i++) {
@@ -1525,6 +1546,11 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			emit_op(emitter, emitter->last_line, OP_POP);
+
+			if (stmt->parent != NULL) {
+				end_scope(emitter, emitter->last_line);
+			}
+
 			emitter->class_name = NULL;
 			emitter->class_has_super = false;
 

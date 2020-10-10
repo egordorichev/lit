@@ -28,7 +28,7 @@ static void default_error(LitState* state, const char* message) {
 }
 
 static void default_printf(LitState* state, const char* message) {
-	printf(message);
+	printf("%s", message);
 }
 
 LitState* lit_new_state() {

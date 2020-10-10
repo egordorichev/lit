@@ -77,7 +77,7 @@ OPCODE(METHOD, -1)
 // [class] [method] -> [class]
 OPCODE(STATIC_FIELD, -1)
 OPCODE(DEFINE_FIELD, -1)
-OPCODE(INHERIT, -1)
+OPCODE(INHERIT, 0)
 // [instance] [class] -> [bool]
 OPCODE(IS, -1)
 OPCODE(GET_SUPER_METHOD, 0)

@@ -1,5 +1,14 @@
 # todo
 
+* check emission of super experession, do we need it?
+
+* optimization: remove unused classes/functions/variables
+
+* garbage collector info {
+    * trigger
+    * get current memory usage
+}
+
 * add time for reading file too
 * this.fun?() or smth i need this
 * require dir.* ?
