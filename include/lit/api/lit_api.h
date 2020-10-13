@@ -103,18 +103,38 @@ void lit_set_map_field(LitState* state, LitMap* map, const char* name, LitValue 
 		return NULL_VALUE; \
 	}
 
+#define LIT_ENSURE_MIN_ARGS(count) \
+	if (arg_count < count) { \
+		lit_runtime_error(vm, "Expected minimum %i argument, got %i", count, arg_count); \
+		return NULL_VALUE; \
+	}
+
+#define LIT_ENSURE_MAX_ARGS(count) \
+	if (arg_count > count) { \
+		lit_runtime_error(vm, "Expected maximum %i argument, got %i", count, arg_count); \
+		return NULL_VALUE; \
+	}
+
 LitString* lit_to_string(LitState* state, LitValue object);
 
 #define LIT_INSERT_DATA(type, cleanup) ({\
 	  LitUserdata* userdata = lit_create_userdata(vm->state, sizeof(type));\
 	  userdata->cleanup_fn = cleanup;\
 	  lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), OBJECT_VALUE(userdata)); \
-	  (type*) userdata;\
+	  (type*) userdata->data;\
   })
 
 #define LIT_EXTRACT_DATA(type) ({ \
     LitValue _d; \
 		if (!lit_table_get(&AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), &_d)) { \
+			lit_runtime_error_exiting(vm, "Failed to extract userdata");\
+		} \
+		(type*) AS_USERDATA(_d)->data; \
+	})
+
+#define LIT_EXTRACT_DATA_FROM(from, type) ({ \
+    LitValue _d; \
+		if (!lit_table_get(&AS_INSTANCE(from)->fields, CONST_STRING(vm->state, "_data"), &_d)) { \
 			lit_runtime_error_exiting(vm, "Failed to extract userdata");\
 		} \
 		(type*) AS_USERDATA(_d)->data; \
