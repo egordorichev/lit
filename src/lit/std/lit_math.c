@@ -225,8 +225,7 @@ LIT_METHOD(random_pick) {
 
 			return NULL_VALUE;
 		} else {
-			lit_runtime_error(vm, "Expected map or array as the argument");
-			return NULL_VALUE;
+			lit_runtime_error_exiting(vm, "Expected map or array as the argument");
 		}
 	} else {
 		return args[value % arg_count];

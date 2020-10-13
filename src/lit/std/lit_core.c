@@ -114,8 +114,7 @@ LIT_METHOD(class_subscript) {
 
 	if (arg_count == 2) {
 		if (!IS_STRING(args[0])) {
-			lit_runtime_error(vm, "Class index must be a string");
-			return NULL_VALUE;
+			lit_runtime_error_exiting(vm, "Class index must be a string");
 		}
 
 		lit_table_set(vm->state, &klass->static_fields, AS_STRING(args[0]), args[1]);
@@ -123,8 +122,7 @@ LIT_METHOD(class_subscript) {
 	}
 
 	if (!IS_STRING(args[0])) {
-		lit_runtime_error(vm, "Class index must be a string");
-		return NULL_VALUE;
+		lit_runtime_error_exiting(vm, "Class index must be a string");=
 	}
 
 	LitValue value;
@@ -159,16 +157,14 @@ LIT_METHOD(object_toString) {
 
 LIT_METHOD(object_subscript) {
 	if (!IS_INSTANCE(instance)) {
-		lit_runtime_error(vm, "Can't modify built-in types");
-		return NULL_VALUE;
+		lit_runtime_error_exiting(vm, "Can't modify built-in types");
 	}
 
 	LitInstance* inst = AS_INSTANCE(instance);
 
 	if (arg_count == 2) {
 		if (!IS_STRING(args[0])) {
-			lit_runtime_error(vm, "Object index must be a string");
-			return NULL_VALUE;
+			lit_runtime_error_exiting(vm, "Object index must be a string");
 		}
 
 		lit_table_set(vm->state, &inst->fields, AS_STRING(args[0]), args[1]);
@@ -176,8 +172,7 @@ LIT_METHOD(object_subscript) {
 	}
 
 	if (!IS_STRING(args[0])) {
-		lit_runtime_error(vm, "Object index must be a string");
-		return NULL_VALUE;
+		lit_runtime_error_exiting(vm, "Object index must be a string");
 	}
 
 	LitValue value;
@@ -358,8 +353,7 @@ LIT_METHOD(string_replace) {
 	LIT_ENSURE_ARGS(2)
 
 	if (!IS_STRING(args[0]) || !IS_STRING(args[1])) {
-		lit_runtime_error(vm, "Expected 2 string arguments");
-		return NULL_VALUE;
+		lit_runtime_error_exiting(vm, "Expected 2 string arguments");
 	}
 
 	LitString* string = AS_STRING(instance);
@@ -438,8 +432,7 @@ LIT_METHOD(string_subscript) {
 	int index = LIT_CHECK_NUMBER(0);
 
 	if (arg_count != 1) {
-		lit_runtime_error(vm, "Can't modify strings with the subscript operator");
-		return NULL_VALUE;
+		lit_runtime_error_exiting(vm, "Can't modify strings with the subscript operator");
 	}
 
 	if (index < 0) {
@@ -516,8 +509,7 @@ LIT_METHOD(function_name) {
 
 LIT_METHOD(fiber_constructor) {
 	if (arg_count < 1 || !IS_FUNCTION(args[0])) {
-		lit_runtime_error(vm, "Fiber constructor expects a function as its argument");
-		return NULL_VALUE;
+		lit_runtime_error_exiting(vm, "Fiber constructor expects a function as its argument");
 	}
 
 	LitFunction* function = AS_FUNCTION(args[0]);
@@ -547,8 +539,7 @@ LIT_METHOD(fiber_current) {
 
 static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count, bool catcher) {
 	if (is_fiber_done(fiber)) {
-		lit_runtime_error(vm, "Fiber already finished executing");
-		return;
+		lit_runtime_error_exiting(vm, "Fiber already finished executing");
 	}
 
 	fiber->parent = vm->fiber;
@@ -718,7 +709,7 @@ static LitValue array_splice(LitVm* vm, LitArray* array, int from, int to) {
 	}
 
 	if (from > to) {
-		lit_runtime_error(vm, "String splice from bound is larger that to bound");
+		lit_runtime_error_exiting(vm, "String splice from bound is larger that to bound");
 	}
 
 	from = fmax(from, 0);
@@ -744,7 +735,7 @@ LIT_METHOD(array_slice) {
 LIT_METHOD(array_subscript) {
 	if (arg_count == 2) {
 		if (!IS_NUMBER(args[0])) {
-			lit_runtime_error(vm, "Array index must be a number");
+			lit_runtime_error_exiting(vm, "Array index must be a number");
 		}
 
 		LitValues* values = &AS_ARRAY(instance)->values;
@@ -764,7 +755,7 @@ LIT_METHOD(array_subscript) {
 			return array_splice(vm, AS_ARRAY(instance), (int) range->from, (int) range->to);
 		}
 
-		lit_runtime_error(vm, "Array index must be a number");
+		lit_runtime_error_exiting(vm, "Array index must be a number");
 		return NULL_VALUE;
 	}
 
@@ -819,8 +810,7 @@ LIT_METHOD(array_addAll) {
 	LIT_ENSURE_ARGS(1)
 
 	if (!IS_ARRAY(args[0])) {
-		lit_runtime_error(vm, "Expected array as the argument");
-		return NULL_VALUE;
+		lit_runtime_error_exiting(vm, "Expected array as the argument");
 	}
 
 	LitArray* array = AS_ARRAY(instance);
@@ -1046,8 +1036,7 @@ LIT_METHOD(map_constructor) {
 
 LIT_METHOD(map_subscript) {
 	if (!IS_STRING(args[0])) {
-		lit_runtime_error(vm, "Map index must be a string");
-		return NULL_VALUE;
+		lit_runtime_error_exiting(vm, "Map index must be a string");
 	}
 
 	LitMap* map = AS_MAP(instance);
@@ -1081,8 +1070,7 @@ LIT_METHOD(map_addAll) {
 	LIT_ENSURE_ARGS(1)
 
 	if (!IS_MAP(args[0])) {
-		lit_runtime_error(vm, "Expected map as the argument");
-		return NULL_VALUE;
+		lit_runtime_error_exiting(vm, "Expected map as the argument");
 	}
 
 	lit_map_add_all(vm->state, AS_MAP(args[0]), AS_MAP(instance));
@@ -1460,7 +1448,7 @@ LIT_NATIVE_PRIMITIVE(require) {
 		}
 	}
 
-	lit_runtime_error(vm, "Failed to require module '%s'", name->chars);
+	lit_runtime_error_exiting(vm, "Failed to require module '%s'", name->chars);
 	return false;
 }
 

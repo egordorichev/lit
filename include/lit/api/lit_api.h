@@ -105,4 +105,19 @@ void lit_set_map_field(LitState* state, LitMap* map, const char* name, LitValue 
 
 LitString* lit_to_string(LitState* state, LitValue object);
 
+#define LIT_INSERT_DATA(type, cleanup) ({\
+	  LitUserdata* userdata = lit_create_userdata(vm->state, sizeof(type));\
+	  userdata->cleanup_fn = cleanup;\
+	  lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), OBJECT_VALUE(userdata)); \
+	  (type*) userdata;\
+  })
+
+#define LIT_EXTRACT_DATA(type) ({ \
+    LitValue _d; \
+		if (!lit_table_get(&AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), &_d)) { \
+			lit_runtime_error_exiting(vm, "Failed to extract userdata");\
+		} \
+		(type*) AS_USERDATA(_d)->data; \
+	})
+
 #endif

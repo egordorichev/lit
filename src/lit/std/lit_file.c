@@ -21,16 +21,6 @@ typedef struct {
 	FILE* file;
 } LitFileData;
 
-static LitFileData* extract_file_data(LitState* state, LitValue instance) {
-	LitValue data;
-
-	if (!lit_table_get(&AS_INSTANCE(instance)->fields, CONST_STRING(state, "_data"), &data)) {
-		return NULL;
-	}
-
-	return (LitFileData*) AS_USERDATA(data)->data;
-}
-
 void cleanup_file(LitState* state, LitUserdata* data) {
 	LitFileData* file_data = ((LitFileData*) data->data);
 
@@ -44,27 +34,23 @@ LIT_METHOD(file_constructor) {
 	const char* path = LIT_CHECK_STRING(0);
 	const char* mode = LIT_GET_STRING(1, "r");
 
-	LitUserdata* userdata = lit_create_userdata(vm->state, sizeof(LitFileData));
-	userdata->cleanup_fn = cleanup_file;
+	FILE* file = fopen(path, mode);
 
-	lit_table_set(vm->state, &AS_INSTANCE(instance)->fields, CONST_STRING(vm->state, "_data"), OBJECT_VALUE(userdata));
-	LitFileData* data = (LitFileData*) userdata->data;
+	if (file == NULL) {
+		lit_runtime_error_exiting(vm, "Failed to open file %s with mode %s (C error: %s)", path, mode, strerror(errno));
+	}
+
+	LitFileData* data = LIT_INSERT_DATA(LitFileData, cleanup_file);
 
 	data->path = (char*) path;
-
-	if ((data->file = fopen(path, mode)) == NULL) {
-		lit_runtime_error(vm, "Failed to open file %s with mode %s (C error: %s)", path, mode, strerror(errno));
-	}
+	data->file = file;
 
 	return instance;
 }
 
 LIT_METHOD(file_close) {
-	LitFileData* data = extract_file_data(vm->state, instance);
-
-	if (data->file != NULL) {
-		fclose(data->file);
-	}
+	LitFileData* data = LIT_EXTRACT_DATA(LitFileData);
+	fclose(data->file);
 
 	return NULL_VALUE;
 }
@@ -73,7 +59,7 @@ LIT_METHOD(file_exists) {
 	char* file_name = NULL;
 
 	if (IS_INSTANCE(instance)) {
-		file_name = extract_file_data(vm->state, instance)->path;
+		file_name = LIT_EXTRACT_DATA(LitFileData)->path;
 	} else {
 		file_name = (char*) LIT_CHECK_STRING(0);
 	}
@@ -90,28 +76,28 @@ LIT_METHOD(file_write) {
 	LIT_ENSURE_ARGS(1)
 
 	LitString* value = lit_to_string(vm->state, args[0]);
-	fwrite(value->chars, value->length, 1, extract_file_data(vm->state, instance)->file);
+	fwrite(value->chars, value->length, 1, LIT_EXTRACT_DATA(LitFileData)->file);
 
 	return NULL_VALUE;
 }
 
 LIT_METHOD(file_writeByte) {
 	uint8_t byte = (uint8_t) LIT_CHECK_NUMBER(0);
-	lit_write_uint8_t(extract_file_data(vm->state, instance)->file, byte);
+	lit_write_uint8_t(LIT_EXTRACT_DATA(LitFileData)->file, byte);
 
 	return NULL_VALUE;
 }
 
 LIT_METHOD(file_writeShort) {
 	uint16_t shrt = (uint16_t) LIT_CHECK_NUMBER(0);
-	lit_write_uint16_t(extract_file_data(vm->state, instance)->file, shrt);
+	lit_write_uint16_t(LIT_EXTRACT_DATA(LitFileData)->file, shrt);
 
 	return NULL_VALUE;
 }
 
 LIT_METHOD(file_writeNumber) {
 	float num = (float) LIT_CHECK_NUMBER(0);
-	lit_write_uint32_t(extract_file_data(vm->state, instance)->file, num);
+	lit_write_uint32_t(LIT_EXTRACT_DATA(LitFileData)->file, num);
 
 	return NULL_VALUE;
 }
@@ -119,7 +105,7 @@ LIT_METHOD(file_writeNumber) {
 LIT_METHOD(file_writeBool) {
 	bool value = LIT_CHECK_BOOL(0);
 
-	lit_write_uint8_t(extract_file_data(vm->state, instance)->file, (uint8_t) value ? '1' : '0');
+	lit_write_uint8_t(LIT_EXTRACT_DATA(LitFileData)->file, (uint8_t) value ? '1' : '0');
 	return NULL_VALUE;
 }
 
@@ -129,7 +115,7 @@ LIT_METHOD(file_writeString) {
 	}
 
 	LitString* string = AS_STRING(args[0]);
-	LitFileData* data = extract_file_data(vm->state, instance);
+	LitFileData* data = LIT_EXTRACT_DATA(LitFileData);
 
 	lit_write_string(data->file, string);
 	return NULL_VALUE;
@@ -141,7 +127,7 @@ LIT_METHOD(file_writeString) {
  */
 
 LIT_METHOD(file_readAll) {
-	LitFileData* data = extract_file_data(vm->state, instance);
+	LitFileData* data = LIT_EXTRACT_DATA(LitFileData);
 
 	fseek(data->file, 0, SEEK_END);
 	uint length = ftell(data->file);
@@ -162,7 +148,7 @@ LIT_METHOD(file_readAll) {
 
 LIT_METHOD(file_readLine) {
 	uint max_length = (uint) LIT_GET_NUMBER(0, 128);
-	LitFileData* data = extract_file_data(vm->state, instance);
+	LitFileData* data = LIT_EXTRACT_DATA(LitFileData);
 
 	char line[max_length];
 
@@ -174,23 +160,23 @@ LIT_METHOD(file_readLine) {
 }
 
 LIT_METHOD(file_readByte) {
-	return NUMBER_VALUE(lit_read_uint8_t(extract_file_data(vm->state, instance)->file));
+	return NUMBER_VALUE(lit_read_uint8_t(LIT_EXTRACT_DATA(LitFileData)->file));
 }
 
 LIT_METHOD(file_readShort) {
-	return NUMBER_VALUE(lit_read_uint16_t(extract_file_data(vm->state, instance)->file));
+	return NUMBER_VALUE(lit_read_uint16_t(LIT_EXTRACT_DATA(LitFileData)->file));
 }
 
 LIT_METHOD(file_readNumber) {
-	return NUMBER_VALUE(lit_read_uint32_t(extract_file_data(vm->state, instance)->file));
+	return NUMBER_VALUE(lit_read_uint32_t(LIT_EXTRACT_DATA(LitFileData)->file));
 }
 
 LIT_METHOD(file_readBool) {
-	return BOOL_VALUE((char) lit_read_uint8_t(extract_file_data(vm->state, instance)->file) == '1');
+	return BOOL_VALUE((char) lit_read_uint8_t(LIT_EXTRACT_DATA(LitFileData)->file) == '1');
 }
 
 LIT_METHOD(file_readString) {
-	LitFileData* data = extract_file_data(vm->state, instance);
+	LitFileData* data = LIT_EXTRACT_DATA(LitFileData);
 	LitString* string = lit_read_string(vm->state, data->file);
 
 	return string == NULL ? NULL_VALUE : OBJECT_VALUE(string);
@@ -201,7 +187,7 @@ LIT_METHOD(file_getLastModified) {
 	char* file_name = NULL;
 
 	if (IS_INSTANCE(instance)) {
-		file_name = extract_file_data(vm->state, instance)->path;
+		file_name = LIT_EXTRACT_DATA(LitFileData)->path;
 	} else {
 		file_name = (char*) LIT_CHECK_STRING(0);
 	}
