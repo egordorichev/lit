@@ -122,7 +122,7 @@ LIT_METHOD(class_subscript) {
 	}
 
 	if (!IS_STRING(args[0])) {
-		lit_runtime_error_exiting(vm, "Class index must be a string");=
+		lit_runtime_error_exiting(vm, "Class index must be a string");
 	}
 
 	LitValue value;
