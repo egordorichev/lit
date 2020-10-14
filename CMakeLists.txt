@@ -75,7 +75,4 @@ if (LIT_BUILD_BINARY)
 
  set_target_properties(litc PROPERTIES OUTPUT_NAME "lit")
  install(TARGETS litc DESTINATION bin)
-
- set_target_properties(litc PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
- set_target_properties(litc PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
 endif()

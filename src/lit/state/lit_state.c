@@ -380,7 +380,9 @@ static char* read_source(LitState* state, const char* file, char** patched_file_
 		lit_error(state, RUNTIME_ERROR, "Failed to open file '%s'", file_name);
 	}
 
+	lit_patch_file_name(file_name);
 	*patched_file_name = file_name;
+
 	return source;
 }
 
