@@ -1,6 +1,8 @@
 # todo
 
-* check emission of super experession, do we need it?
+* easier  object creation: {
+ name = name
+} could be just { = name } or smth
 
 * optimization: remove unused classes/functions/variables
 

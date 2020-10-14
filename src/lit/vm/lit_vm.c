@@ -238,6 +238,14 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 		} else {
 			vm->fiber->stack_top -= (arg_count - function_arg_count);
 		}
+	} else if (function->vararg) {
+		LitArray* array = lit_create_array(vm->state);
+		uint vararg_count = arg_count - function_arg_count + 1;
+
+		lit_push_root(vm->state, (LitObject*) array);
+		lit_values_write(vm->state, &array->values, *(fiber->stack_top - 1));
+		*(fiber->stack_top - 1) = OBJECT_VALUE(array);
+		lit_pop_root(vm->state);
 	}
 
 	return true;
