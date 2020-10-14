@@ -222,14 +222,14 @@ LIT_METHOD(random_pick) {
 					index++;
 				}
 			}
-
-			return NULL_VALUE;
 		} else {
 			lit_runtime_error_exiting(vm, "Expected map or array as the argument");
 		}
 	} else {
 		return args[value % arg_count];
 	}
+
+	return NULL_VALUE;
 }
 
 void lit_open_math_library(LitState* state) {

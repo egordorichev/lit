@@ -274,7 +274,8 @@ int main(int argc, const char* argv[]) {
 			lit_set_global(state, CONST_STRING(state, "args"), OBJECT_VALUE(arg_array));
 
 			for (uint i = 0; i < num_files_to_run; i++) {
-				result = lit_interpret_file(state, files_to_run[i], dump).type;
+				char* file = files_to_run[i];
+				result = (dump ? lit_dump_file(state, file) : lit_interpret_file(state, file)).type;
 
 				if (result != INTERPRET_OK) {
 					break;
@@ -287,9 +288,9 @@ int main(int argc, const char* argv[]) {
 		run_repl(state);
 	} else if (!showed_help && !evaled && num_files_to_run == 0) {
 		if (lit_file_exists("main.lbc")) {
-			result = lit_interpret_file(state, "main.lbc", false).type;
+			result = lit_interpret_file(state, "main.lbc").type;
 		} else if (lit_file_exists("main.lit")) {
-			result = lit_interpret_file(state, "main.lit", false).type;
+			result = lit_interpret_file(state, "main.lit").type;
 		} else {
 			run_repl(state);
 		}

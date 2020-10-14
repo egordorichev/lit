@@ -365,41 +365,63 @@ bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, 
 	return true;
 }
 
-LitInterpretResult lit_interpret_file(LitState* state, const char* file, bool dump_only) {
+static char* read_source(LitState* state, const char* file, char** patched_file_name) {
 	// We have to use this trick because we modify the file_name string, and if
 	// The user provides a string constant, he will get a SEGFAULT
 	// And who wants that?
 
 	size_t length = strlen(file) + 1;
-	char file_name[length];
-	memcpy(&file_name, file, length);
+	char* file_name = malloc(length);
+	memcpy(file_name, file, length);
 
 	char* source = lit_read_file(file_name);
 
 	if (source == NULL) {
 		lit_error(state, RUNTIME_ERROR, "Failed to open file '%s'", file_name);
+	}
+
+	*patched_file_name = file_name;
+	return source;
+}
+
+LitInterpretResult lit_interpret_file(LitState* state, const char* file) {
+	char* patched_file_name;
+	char* source = read_source(state, file, &patched_file_name);
+
+	if (source == NULL) {
 		return INTERPRET_RUNTIME_FAIL;
 	}
 
-	char* patched_file_name = lit_patch_file_name(file_name);
+	LitInterpretResult result = lit_interpret(state, patched_file_name, source);
+
+	free((void*) source);
+	free((void*) patched_file_name);
+
+	return result;
+}
+
+LitInterpretResult lit_dump_file(LitState* state, const char* file) {
+	char* patched_file_name;
+	char* source = read_source(state, file, &patched_file_name);
+
+	if (source == NULL) {
+		return INTERPRET_RUNTIME_FAIL;
+	}
 
 	LitInterpretResult result;
+	LitString* module_name = lit_copy_string(state, patched_file_name, strlen(patched_file_name));
+	LitModule* module = lit_compile_module(state, module_name, source);
 
-	if (dump_only) {
-		LitString* module_name = lit_copy_string(state, patched_file_name, strlen(patched_file_name));
-		LitModule* module = lit_compile_module(state, module_name, source);
-
-		if (module == NULL) {
-			result = INTERPRET_RUNTIME_FAIL;
-		} else {
-			lit_disassemble_module(module, source);
-			result = (LitInterpretResult) {INTERPRET_OK, NULL_VALUE};
-		}
+	if (module == NULL) {
+		result = INTERPRET_RUNTIME_FAIL;
 	} else {
-		result = lit_interpret(state, patched_file_name, source);
+		lit_disassemble_module(module, source);
+		result = (LitInterpretResult) {INTERPRET_OK, NULL_VALUE};
 	}
 
 	free((void*) source);
+	free((void*) patched_file_name);
+
 	return result;
 }
 

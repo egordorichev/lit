@@ -88,7 +88,8 @@ LitModule* lit_get_module(LitState* state, const char* name);
 
 LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_name, char* code);
 LitInterpretResult lit_interpret(LitState* state, const char* module_name, char* code);
-LitInterpretResult lit_interpret_file(LitState* state, const char* file, bool dump_only);
+LitInterpretResult lit_interpret_file(LitState* state, const char* file);
+LitInterpretResult lit_dump_file(LitState* state, const char* file);
 bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, const char* output_file);
 
 void lit_error(LitState* state, LitErrorType type, const char* message, ...);
