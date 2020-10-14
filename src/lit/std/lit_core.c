@@ -1466,7 +1466,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_STATIC_GETTER("name", class_name)
 
 		state->class_class = klass;
-	LIT_END_CLASS()
+	LIT_END_CLASS_IGNORING()
 
 	LIT_BEGIN_CLASS("Object")
 		LIT_INHERIT_CLASS(state->class_class)
