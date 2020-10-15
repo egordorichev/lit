@@ -126,7 +126,7 @@ static void consume(LitParser* parser, LitTokenType type, const char* error) {
 	}
 
 	bool line = parser->previous.type == TOKEN_NEW_LINE;
-	string_error(parser, &parser->current, lit_format_error(parser->state, parser->current.line, ERROR_EXPECTION_UNMET, error, line ? 8 : parser->previous.length, line ? "new line" : parser->previous.start)->chars);
+	string_error(parser, &parser->current, lit_format_error(parser->state, parser->current.line, ERROR_EXPECTATION_UNMET, error, line ? 8 : parser->previous.length, line ? "new line" : parser->previous.start)->chars);
 }
 
 static bool match_new_line(LitParser* parser) {
@@ -544,7 +544,7 @@ static LitExpression* parse_variable_expression_base(LitParser* parser, bool can
 
 			call->init = parse_object(parser, false);
 		} else if (!had_args) {
-			error_at_current(parser, ERROR_EXPECTION_UNMET, "argument list for instance creation", parser->previous.length, parser->previous.start);
+			error_at_current(parser, ERROR_EXPECTATION_UNMET, "argument list for instance creation", parser->previous.length, parser->previous.start);
 		}
 
 		return (LitExpression*) call;

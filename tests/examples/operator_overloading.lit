@@ -8,23 +8,23 @@ class Vector {
 		return $"({this.x}, {this.y})"
 	}
 
-	op + (v) {
+	operator + (v) {
 		return new Vector(this.x + v.x, this.y + v.y)
 	}
 
-	op - (v) {
+	operator - (v) {
 		return new Vector(this.x - v.x, this.y - v.y)
 	}
 
-	op * (i) {
+	operator * (i) {
 		return new Vector(this.x * i, this.y * i)
 	}
 
-	op / (i) {
+	operator / (i) {
 		return new Vector(this.x / i, this.y / i)
 	}
 
-	op [] (index, value) {
+	operator [] (index, value) {
 		// Make sure, that our index is either 0 or 1
 		index %= 2
 

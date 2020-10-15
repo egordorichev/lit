@@ -4,47 +4,47 @@ class Test {
 		this.array = [ 1, 2, 3 ]
 	}
 
-	op + (value) {
+	operator + (value) {
 		return this.base + value
 	}
 
-	op - (value) {
+	operator - (value) {
 		return this.base - value
 	}
 
-	op * (value) {
+	operator * (value) {
 		return this.base * value
 	}
 
-	op / (value) {
+	operator / (value) {
 		return this.base / value
 	}
 
-	op % (value) {
+	operator % (value) {
 		return this.base % value
 	}
 
-	op > (value) {
+	operator > (value) {
 		return this.base > value
 	}
 
-	op >= (value) {
+	operator >= (value) {
 		return this.base >= value
 	}
 
-	op < (value) {
+	operator < (value) {
 		return this.base < value
 	}
 
-	op <= (value) {
+	operator <= (value) {
 		return this.base <= value
 	}
 
-	op ! (value) {
+	operator ! (value) {
 		return true
 	}
 
-	op [] (index, value) {
+	operator [] (index, value) {
 		if (value != null) {
 			this.array[index] = value
 		} else {
@@ -52,7 +52,7 @@ class Test {
 		}
 	}
 
-	op == (value) {
+	operator == (value) {
 		return this.base == value
 	}
 }
