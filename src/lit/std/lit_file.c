@@ -21,7 +21,11 @@ typedef struct {
 	FILE* file;
 } LitFileData;
 
-void cleanup_file(LitState* state, LitUserdata* data) {
+void cleanup_file(LitState* state, LitUserdata* data, bool mark) {
+	if (mark) {
+		return;
+	}
+
 	LitFileData* file_data = ((LitFileData*) data->data);
 
 	if (file_data->file != NULL) {

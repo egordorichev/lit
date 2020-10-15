@@ -324,7 +324,7 @@ typedef struct {
 
 LitArray* lit_create_array(LitState* state);
 
-typedef void (*LitCleanupFn)(LitState* state, LitUserdata* userdata);
+typedef void (*LitCleanupFn)(LitState* state, LitUserdata* userdata, bool mark);
 
 typedef struct sLitUserdata {
 	LitObject object;

@@ -156,7 +156,7 @@ void lit_free_object(LitState* state, LitObject* object) {
 			LitUserdata* data = (LitUserdata*) object;
 
 			if (data->cleanup_fn != NULL) {
-				data->cleanup_fn(state, data);
+				data->cleanup_fn(state, data, false);
 			}
 
 			if (data->size > 0) {
@@ -279,8 +279,17 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		case OBJECT_NATIVE_METHOD:
 		case OBJECT_PRIMITIVE_METHOD:
 		case OBJECT_RANGE:
-		case OBJECT_USERDATA:
 		case OBJECT_STRING: {
+			break;
+		}
+
+		case OBJECT_USERDATA: {
+			LitUserdata* data = (LitUserdata*) object;
+
+			if (data->cleanup_fn != NULL) {
+				data->cleanup_fn(vm->state, data, true);
+			}
+
 			break;
 		}
 
