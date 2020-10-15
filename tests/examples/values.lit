@@ -6,7 +6,7 @@ if (a) {
 	print("Halo") // Expected: Halo
 }
 
-// You can invert a boolean with the ! operator.
+// You can invert a boolean with the ! op.
 
 if (!a) {
 	print("This shouldn't happen")

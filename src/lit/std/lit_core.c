@@ -434,7 +434,7 @@ LIT_METHOD(string_subscript) {
 	int index = LIT_CHECK_NUMBER(0);
 
 	if (arg_count != 1) {
-		lit_runtime_error_exiting(vm, "Can't modify strings with the subscript operator");
+		lit_runtime_error_exiting(vm, "Can't modify strings with the subscript op");
 	}
 
 	if (index < 0) {

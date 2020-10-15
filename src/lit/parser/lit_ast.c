@@ -222,22 +222,22 @@ LitLiteralExpression *lit_create_literal_expression(LitState* state, uint line, 
 	return expression;
 }
 
-LitBinaryExpression *lit_create_binary_expression(LitState* state, uint line, LitExpression* left, LitExpression* right, LitTokenType operator) {
+LitBinaryExpression *lit_create_binary_expression(LitState* state, uint line, LitExpression* left, LitExpression* right, LitTokenType op) {
 	LitBinaryExpression* expression = ALLOCATE_EXPRESSION(state, LitBinaryExpression, BINARY_EXPRESSION);
 
 	expression->left = left;
 	expression->right = right;
-	expression->operator = operator;
+	expression->op = op;
 	expression->ignore_left = false;
 
 	return expression;
 }
 
-LitUnaryExpression *lit_create_unary_expression(LitState* state, uint line, LitExpression* right, LitTokenType operator) {
+LitUnaryExpression *lit_create_unary_expression(LitState* state, uint line, LitExpression* right, LitTokenType op) {
 	LitUnaryExpression* expression = ALLOCATE_EXPRESSION(state, LitUnaryExpression, UNARY_EXPRESSION);
 
 	expression->right = right;
-	expression->operator = operator;
+	expression->op = op;
 
 	return expression;
 }

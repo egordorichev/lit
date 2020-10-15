@@ -71,21 +71,21 @@ typedef struct {
 
 	LitExpression* left;
 	LitExpression* right;
-	LitTokenType operator;
+	LitTokenType op;
 
 	bool ignore_left;
 } LitBinaryExpression;
 
-LitBinaryExpression *lit_create_binary_expression(LitState* state, uint line, LitExpression* left, LitExpression* right, LitTokenType operator);
+LitBinaryExpression *lit_create_binary_expression(LitState* state, uint line, LitExpression* left, LitExpression* right, LitTokenType op);
 
 typedef struct {
 	LitExpression expression;
 
 	LitExpression* right;
-	LitTokenType operator;
+	LitTokenType op;
 } LitUnaryExpression;
 
-LitUnaryExpression *lit_create_unary_expression(LitState* state, uint line, LitExpression* right, LitTokenType operator);
+LitUnaryExpression *lit_create_unary_expression(LitState* state, uint line, LitExpression* right, LitTokenType op);
 
 typedef struct {
 	LitExpression expression;

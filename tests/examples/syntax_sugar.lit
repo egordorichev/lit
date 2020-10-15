@@ -22,7 +22,7 @@ print(a) // Expected: 43
 /*
  * This stands true for most operators.
  * -= -- *= /= #= %= !=
- * Be careful with ** tho, it's the power operator, not multiplication!
+ * Be careful with ** tho, it's the power op, not multiplication!
  * (so 2 ** 3 == 8)
  */
 

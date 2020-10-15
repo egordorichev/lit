@@ -355,11 +355,11 @@ static LitExpression* parse_call(LitParser* parser, LitExpression* prev, bool ca
 }
 
 static LitExpression* parse_unary(LitParser* parser, bool can_assign) {
-	LitTokenType operator = parser->previous.type;
+	LitTokenType op = parser->previous.type;
 	uint line = parser->previous.line;
 	LitExpression* expression = parse_precedence(parser, PREC_UNARY, true);
 
-	return (LitExpression*) lit_create_unary_expression(parser->state, line, expression, operator);
+	return (LitExpression*) lit_create_unary_expression(parser->state, line, expression, op);
 }
 
 static LitExpression* parse_binary(LitParser* parser, LitExpression* prev, bool can_assign) {
@@ -369,13 +369,13 @@ static LitExpression* parse_binary(LitParser* parser, LitExpression* prev, bool 
 		consume(parser, TOKEN_IS, "'is' after '!'");
 	}
 
-	LitTokenType operator = parser->previous.type;
+	LitTokenType op = parser->previous.type;
 	uint line = parser->previous.line;
 
-	LitParseRule* rule = get_rule(operator);
+	LitParseRule* rule = get_rule(op);
 	LitExpression* expression = parse_precedence(parser, (LitPrecedence) (rule->precedence + 1), true);
 
-	expression = (LitExpression*) lit_create_binary_expression(parser->state, line, prev, expression, operator);
+	expression = (LitExpression*) lit_create_binary_expression(parser->state, line, prev, expression, op);
 
 	if (invert) {
 		expression = (LitExpression*) lit_create_unary_expression(parser->state, line, expression, TOKEN_BANG);
@@ -385,28 +385,28 @@ static LitExpression* parse_binary(LitParser* parser, LitExpression* prev, bool 
 }
 
 static LitExpression* parse_and(LitParser* parser, LitExpression* prev, bool can_assign) {
-	LitTokenType operator = parser->previous.type;
+	LitTokenType op = parser->previous.type;
 	uint line = parser->previous.line;
 
-	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, PREC_AND, true), operator);
+	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, PREC_AND, true), op);
 }
 
 static LitExpression* parse_or(LitParser* parser, LitExpression* prev, bool can_assign) {
-	LitTokenType operator = parser->previous.type;
+	LitTokenType op = parser->previous.type;
 	uint line = parser->previous.line;
 
-	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, PREC_OR, true), operator);
+	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, PREC_OR, true), op);
 }
 
 static LitExpression* parse_null_filter(LitParser* parser, LitExpression* prev, bool can_assign) {
-	LitTokenType operator = parser->previous.type;
+	LitTokenType op = parser->previous.type;
 	uint line = parser->previous.line;
 
-	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, PREC_NULL, true), operator);
+	return (LitExpression*) lit_create_binary_expression(parser->state, line, prev, parse_precedence(parser, PREC_NULL, true), op);
 }
 
-static LitTokenType convert_compound_operator(LitTokenType operator) {
-	switch (operator) {
+static LitTokenType convert_compound_operator(LitTokenType op) {
+	switch (op) {
 		case TOKEN_PLUS_EQUAL: return TOKEN_PLUS;
 		case TOKEN_MINUS_EQUAL: return TOKEN_MINUS;
 		case TOKEN_STAR_EQUAL: return TOKEN_STAR;
@@ -427,19 +427,19 @@ static LitTokenType convert_compound_operator(LitTokenType operator) {
 }
 
 static LitExpression* parse_compound(LitParser* parser, LitExpression* prev, bool can_assign) {
-	LitTokenType operator = parser->previous.type;
+	LitTokenType op = parser->previous.type;
 	uint line = parser->previous.line;
 
-	LitParseRule* rule = get_rule(operator);
+	LitParseRule* rule = get_rule(op);
 	LitExpression* expression;
 
-	if (operator == TOKEN_PLUS_PLUS || operator == TOKEN_MINUS_MINUS) {
+	if (op == TOKEN_PLUS_PLUS || op == TOKEN_MINUS_MINUS) {
 		expression = (LitExpression*) lit_create_literal_expression(parser->state, line, NUMBER_VALUE(1));
 	} else {
 		expression = parse_precedence(parser, (LitPrecedence) (rule->precedence + 1), true);
 	}
 
-	LitBinaryExpression* binary = lit_create_binary_expression(parser->state, line, prev, expression, convert_compound_operator(operator));
+	LitBinaryExpression* binary = lit_create_binary_expression(parser->state, line, prev, expression, convert_compound_operator(op));
 	binary->ignore_left = true; // To make sure we don't free it twice
 
 	return (LitExpression*) lit_create_assign_expression(parser->state, line, prev, (LitExpression*) binary);
@@ -992,7 +992,7 @@ static LitStatement* parse_method(LitParser* parser, bool is_static) {
 		}
 
 		if (parser->previous.type == TOKEN_LEFT_BRACKET) {
-			consume(parser, TOKEN_RIGHT_BRACKET, "']' after '[' in operator method declaration");
+			consume(parser, TOKEN_RIGHT_BRACKET, "']' after '[' in op method declaration");
 			name = lit_copy_string(parser->state, "[]", 2);
 		} else {
 			name = lit_copy_string(parser->state, parser->previous.start, parser->previous.length);

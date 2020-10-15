@@ -553,14 +553,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	LitValue b = PEEK(0); \
 	if (IS_NUMBER(a)) { \
 		if (!IS_NUMBER(b)) { \
-			RUNTIME_ERROR_VARG("Attempt to use operator %s with a number and a %s", op_string, lit_get_value_type(b)) \
+			RUNTIME_ERROR_VARG("Attempt to use op %s with a number and a %s", op_string, lit_get_value_type(b)) \
 		} \
 		DROP(); \
 		*(fiber->stack_top - 1) = (type(AS_NUMBER(a) op AS_NUMBER(b))); \
 		continue; \
 	} \
 	if (IS_NULL(a)) { \
-		RUNTIME_ERROR_VARG("Attempt to use operator %s on a null value", op_string) \
+		RUNTIME_ERROR_VARG("Attempt to use op %s on a null value", op_string) \
 	} \
 	INVOKE_METHOD(a, op_string, 1)
 
@@ -569,7 +569,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	LitValue a = PEEK(1); \
 	LitValue b = PEEK(0); \
 	if (!IS_NUMBER(a) || !IS_NUMBER(b)) { \
-		RUNTIME_ERROR_VARG("Operands of bitwise operator %s must be two numbers, got %s and %s", op_string, lit_get_value_type(a), lit_get_value_type(b)) \
+		RUNTIME_ERROR_VARG("Operands of bitwise op %s must be two numbers, got %s and %s", op_string, lit_get_value_type(a), lit_get_value_type(b)) \
 	} \
 	DROP(); \
 	*(fiber->stack_top - 1) = (NUMBER_VALUE((int) AS_NUMBER(a) op (int) AS_NUMBER(b)));

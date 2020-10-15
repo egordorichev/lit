@@ -528,7 +528,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 				break;
 			}
 
-			LitTokenType op = expr->operator;
+			LitTokenType op = expr->op;
 
 			if (op == TOKEN_AMPERSAND_AMPERSAND || op == TOKEN_BAR_BAR || op == TOKEN_QUESTION_QUESTION) {
 				uint jump = emit_jump(emitter, op == TOKEN_BAR_BAR ? OP_OR : (op == TOKEN_QUESTION_QUESTION ? OP_NULL_OR : OP_AND), emitter->last_line);
@@ -649,7 +649,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			LitUnaryExpression* expr = (LitUnaryExpression*) expression;
 			emit_expression(emitter, expr->right);
 
-			switch (expr->operator) {
+			switch (expr->op) {
 				case TOKEN_MINUS: {
 					emit_op(emitter, expression->line, OP_NEGATE);
 					break;

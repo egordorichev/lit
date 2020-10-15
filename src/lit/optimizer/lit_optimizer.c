@@ -103,8 +103,8 @@ static bool is_empty(LitStatement* statement) {
 	return statement == NULL || (statement->type == BLOCK_STATEMENT && ((LitBlockStatement*) statement)->statements.count == 0);
 }
 
-static LitValue evaluate_unary_op(LitValue value, LitTokenType operator) {
-	switch (operator) {
+static LitValue evaluate_unary_op(LitValue value, LitTokenType op) {
+	switch (op) {
 		case TOKEN_MINUS: {
 			if (IS_NUMBER(value)) {
 				return NUMBER_VALUE(-AS_NUMBER(value));
@@ -133,7 +133,7 @@ static LitValue evaluate_unary_op(LitValue value, LitTokenType operator) {
 	return NULL_VALUE;
 }
 
-static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType operator) {
+static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType op) {
 	#define BINARY_OP(op) \
 		if (IS_NUMBER(a) && IS_NUMBER(b)) { \
 			return NUMBER_VALUE(AS_NUMBER(a) op AS_NUMBER(b)); \
@@ -152,7 +152,7 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType operator
 	  } \
 		return NULL_VALUE;
 
-	switch (operator) {
+	switch (op) {
 		case TOKEN_PLUS: BINARY_OP(+)
 		case TOKEN_MINUS: BINARY_OP(-)
 		case TOKEN_STAR: BINARY_OP(*)
@@ -200,13 +200,13 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType operator
 }
 
 static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExpression* expression, LitValue value, bool left) {
-	LitTokenType operator = expression->operator;
+	LitTokenType op = expression->op;
 	LitExpression* branch = left ? expression->left : expression->right;
 
 	if (IS_NUMBER(value)) {
 		double number = AS_NUMBER(value);
 
-		if (operator == TOKEN_STAR) {
+		if (op == TOKEN_STAR) {
 			if (number == 0) {
 				return NUMBER_VALUE(0);
 			} else if (number == 1) {
@@ -215,12 +215,12 @@ static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExp
 				expression->left = branch;
 				expression->right = NULL;
 			}
-		} else if ((operator == TOKEN_PLUS || operator == TOKEN_MINUS) && number == 0) {
+		} else if ((op == TOKEN_PLUS || op == TOKEN_MINUS) && number == 0) {
 			lit_free_expression(optimizer->state, left ? expression->right : expression->left);
 
 			expression->left = branch;
 			expression->right = NULL;
-		} else if (((left && operator == TOKEN_SLASH) || operator == TOKEN_STAR_STAR) && number == 1) {
+		} else if (((left && op == TOKEN_SLASH) || op == TOKEN_STAR_STAR) && number == 1) {
 			lit_free_expression(optimizer->state, left ? expression->right : expression->left);
 
 			expression->left = branch;
@@ -246,7 +246,7 @@ static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expr
 			LitValue branch = evaluate_expression(optimizer, expr->right);
 
 			if (branch != NULL_VALUE) {
-				return evaluate_unary_op(branch, expr->operator);
+				return evaluate_unary_op(branch, expr->op);
 			}
 
 			break;
@@ -259,7 +259,7 @@ static LitValue evaluate_expression(LitOptimizer* optimizer, LitExpression* expr
 			LitValue b = evaluate_expression(optimizer, expr->right);
 
 			if (a != NULL_VALUE && b != NULL_VALUE) {
-				return evaluate_binary_op(a, b, expr->operator);
+				return evaluate_binary_op(a, b, expr->op);
 			} else if (a != NULL_VALUE) {
 				return attempt_to_optimize_binary(optimizer, expr, a, false);
 			} else if (b != NULL_VALUE) {
