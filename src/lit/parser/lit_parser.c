@@ -878,7 +878,7 @@ static LitStatement* parse_function(LitParser* parser) {
 	}
 
 	LitFunctionStatement* function = lit_create_function_statement(parser->state, line, function_name, function_length);
-	function->export = export;
+	function->exported = export;
 
 	consume(parser, TOKEN_LEFT_PAREN, "'(' after function name");
 

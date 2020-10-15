@@ -479,7 +479,7 @@ static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
 		case FUNCTION_STATEMENT: {
 			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
 
-			if (!stmt->export) {
+			if (!stmt->exported) {
 				mark_private_initialized(emitter, add_private(emitter, stmt->name, stmt->length, statement->line, false));
 			}
 
@@ -1388,7 +1388,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 		case FUNCTION_STATEMENT: {
 			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
 
-			bool export = stmt->export;
+			bool export = stmt->exported;
 			bool private = !export && emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
 			bool local = !(export || private);
 

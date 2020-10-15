@@ -681,7 +681,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
 			LitVariable* variable = add_variable(optimizer, stmt->name, stmt->length, false, slot);
 
-			if (stmt->export) {
+			if (stmt->exported) {
 				// Otherwise it will get optimized-out with a big chance
 				variable->used = true;
 			}
