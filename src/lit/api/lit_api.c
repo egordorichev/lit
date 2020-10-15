@@ -372,3 +372,13 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 
 	return AS_STRING(result.result);
 }
+
+LitValue lit_call_new(LitVm* vm, const char* name, LitValue* args, uint arg_count) {
+	LitValue value;
+
+	if (!lit_table_get(&vm->globals->values, CONST_STRING(vm->state, name), &value)) {
+		lit_runtime_error_exiting(vm, "Failed to create instance of class %s: class not found", name);
+	}
+
+	return lit_call(vm->state, vm->fiber->module, value, args, arg_count).result;
+}

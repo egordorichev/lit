@@ -148,4 +148,6 @@ LitString* lit_to_string(LitState* state, LitValue object);
 		(type*) AS_USERDATA(_d)->data; \
 	})
 
+LitValue lit_call_new(LitVm* vm, const char* name, LitValue* args, uint arg_count);
+
 #endif
