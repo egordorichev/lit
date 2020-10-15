@@ -7,7 +7,7 @@
 #include "util/lit_fs.h"
 #include "optimizer/lit_optimizer.h"
 #include "preprocessor/lit_preprocessor.h"
-#include"debug/lit_debug.h"
+#include "debug/lit_debug.h"
 
 #include <stdio.h>
 #include <signal.h>
