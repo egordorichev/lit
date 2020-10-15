@@ -47,7 +47,7 @@ typedef enum {
 	FIELD_STATEMENT
 } LitStatementType;
 
-typedef struct LitStatement {
+typedef struct sLitStatement {
 	LitStatementType type;
 	uint line;
 } LitStatement;

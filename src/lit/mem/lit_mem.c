@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size) {
 	state->bytes_allocated += (int64_t) new_size - (int64_t) old_size;
@@ -447,16 +448,17 @@ static void sweep(LitVm* vm) {
 	}
 }
 
-void lit_collect_garbage(LitVm* vm) {
+uint64_t lit_collect_garbage(LitVm* vm) {
 	if (!vm->state->allow_gc) {
-		return;
+		return 0;
 	}
 
 	vm->state->allow_gc = false;
+	uint64_t before = vm->state->bytes_allocated;
 
 #ifdef LIT_LOG_GC
 	printf("-- gc begin\n");
-	uint64_t before = vm->state->bytes_allocated;
+	clock_t t = clock();
 #endif
 
 	mark_roots(vm);
@@ -467,10 +469,13 @@ void lit_collect_garbage(LitVm* vm) {
 	vm->state->next_gc = vm->state->bytes_allocated * LIT_GC_HEAP_GROW_FACTOR;
 	vm->state->allow_gc = true;
 
+	uint64_t collected = before - vm->state->bytes_allocated;
+
 #ifdef LIT_LOG_GC
-	printf("-- gc end\n");
-	printf("   collected %ld bytes (from %ld to %ld) next at %ld\n", before - vm->state->bytes_allocated, before, vm->state->bytes_allocated, vm->state->next_gc);
+	printf("-- gc end. Collected %imb in %gms\n", ((int) ((collected / 1024.0 + 0.5) / 10)) * 10, (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
 #endif
+
+	return collected;
 }
 
 // http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2Float

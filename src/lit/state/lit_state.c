@@ -46,7 +46,9 @@ LitState* lit_new_state() {
 	state->range_class = NULL;
 
 	state->bytes_allocated = 0;
-	state->next_gc = 1024 * 1024;
+
+	// DEBUG value for tsab/flute 150, default should be like 256 or smth
+	state->next_gc = 150 * 1024;
 	state->allow_gc = false;
 
 	state->error_fn = default_error;

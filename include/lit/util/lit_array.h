@@ -5,7 +5,7 @@
 #include "lit_predefines.h"
 
 #define DECLARE_ARRAY(name, type, shr) \
-	typedef struct { \
+	typedef struct name { \
 		uint capacity; \
 		uint count; \
 		type* values; \

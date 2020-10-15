@@ -63,6 +63,7 @@ LitString* lit_copy_string(LitState* state, const char* chars, uint length) {
 
 	memcpy(heap_chars, chars, length);
 	heap_chars[length] = '\0';
+	printf("Allocated new string '%s'\n", chars);
 
 	return allocate_string(state, heap_chars, length, hash);
 }

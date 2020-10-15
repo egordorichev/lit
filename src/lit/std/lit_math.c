@@ -47,7 +47,14 @@ LIT_METHOD(math_ceil) {
 }
 
 LIT_METHOD(math_round) {
-	return NUMBER_VALUE(round(LIT_CHECK_NUMBER(0)));
+	double value = LIT_CHECK_NUMBER(0);
+
+	if (arg_count > 1) {
+		int places = (int) pow(10, LIT_CHECK_NUMBER(1));
+		return NUMBER_VALUE(round(value * places) / places);
+	}
+
+	return NUMBER_VALUE(round(value));
 }
 
 LIT_METHOD(math_min) {

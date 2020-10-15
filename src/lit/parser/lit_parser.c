@@ -1184,9 +1184,7 @@ bool lit_parse(LitParser* parser, const char* file_name, const char* source, Lit
 	advance(parser);
 	ignore_new_lines(parser);
 
-	if (is_at_end(parser)) {
-		error_at_current(parser, ERROR_MISSING_STATEMENT);
-	} else {
+	if (!is_at_end(parser)) {
 		do {
 			LitStatement* statement = parse_declaration(parser);
 

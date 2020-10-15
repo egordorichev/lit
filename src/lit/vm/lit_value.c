@@ -183,7 +183,7 @@ static void print_object(LitValue value) {
 		}
 
 		default: {
-			UNREACHABLE
+			break;
 		}
 	}
 }
@@ -197,8 +197,6 @@ void lit_print_value(LitValue value) {
 		printf("%g", AS_NUMBER(value));
 	} else if (IS_OBJECT(value)) {
 		print_object(value);
-	} else {
-		UNREACHABLE
 	}
 }
 
@@ -227,8 +225,6 @@ const char* lit_get_value_type(LitValue value) {
 		return "number";
 	} else if (IS_OBJECT(value)) {
 		return lit_object_type_names[OBJECT_TYPE(value)];
-	} else {
-		UNREACHABLE
 	}
 
 	return "unknown";
