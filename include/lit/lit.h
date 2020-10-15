@@ -7,5 +7,6 @@
 #include "vm/lit_object.h"
 #include "api/lit_api.h"
 #include "std/lit_core.h"
+#include "preprocessor/lit_preprocessor.h"
 
 #endif
