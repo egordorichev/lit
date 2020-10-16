@@ -6,6 +6,15 @@
 #include <memory.h>
 #include <math.h>
 
+bool lit_is_callable_function(LitValue value) {
+	if (IS_OBJECT(value)) {
+		LitObjectType type = OBJECT_TYPE(value);
+		return type == OBJECT_CLOSURE || type == OBJECT_FUNCTION || type == OBJECT_NATIVE_FUNCTION || type == OBJECT_NATIVE_PRIMITIVE || type == OBJECT_NATIVE_METHOD || type == OBJECT_PRIMITIVE_METHOD;
+	}
+
+	return false;
+}
+
 LitString* lit_allocate_empty_string(LitState* state, uint length) {
 	LitString* string = ALLOCATE_OBJECT(state, LitString, OBJECT_STRING);
 	string->length = length;

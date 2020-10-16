@@ -31,6 +31,9 @@
 #define IS_FIELD(value) IS_OBJECTS_TYPE(value, OBJECT_FIELD)
 #define IS_REFERENCE(value) IS_OBJECTS_TYPE(value, OBJECT_REFERENCE)
 
+bool lit_is_callable_function(LitValue value);
+#define IS_CALLABLE_FUNCTION(value) lit_is_callable_function(value)
+
 #define AS_STRING(value) ((LitString*) AS_OBJECT(value))
 #define AS_CSTRING(value) (((LitString*) AS_OBJECT(value))->chars)
 #define AS_FUNCTION(value) ((LitFunction*) AS_OBJECT(value))

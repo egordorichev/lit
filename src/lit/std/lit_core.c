@@ -1412,8 +1412,8 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 			memcpy((void *) dir_name, module_name, length);
 			memcpy((void *) dir_name + length, ".init", 5);
 
-			if (file_exists(dir_name)) {
-				return attempt_to_require(vm, args, arg_count, dir_name, ignore_previous, false);
+			if (attempt_to_require(vm, args, arg_count, dir_name, ignore_previous, false)) {
+				return true;
 			}
 		}
 	} else if (folders) {

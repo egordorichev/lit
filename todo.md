@@ -1,5 +1,7 @@
 # todo
 
+* Interesting quirk, that needs to be fixed: using this in lambdas will break, because it won't become an upvalue and it will point to the function itself. Discovered the hard way today
+
 * easier  object creation: {
  name = name
 } could be just { = name } or smth
