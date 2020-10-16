@@ -991,11 +991,23 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 		}
 
 		case THIS_EXPRESSION: {
-			if (emitter->compiler->type == FUNCTION_STATIC_METHOD) {
+			LitFunctionType type = emitter->compiler->type;
+
+			if (type == FUNCTION_STATIC_METHOD) {
 				error(emitter, expression->line, ERROR_THIS_MISSUSE, "in static methods");
 			}
 
-			emit_arged_op(emitter, expression->line, OP_GET_LOCAL, 0);
+			if (type == FUNCTION_CONSTRUCTOR || type == FUNCTION_METHOD) {
+				emit_arged_op(emitter, expression->line, OP_GET_LOCAL, 0);
+			} else {
+				if (emitter->compiler->enclosing == NULL) {
+					error(emitter, expression->line, ERROR_THIS_MISSUSE, "in functions outside of any class");
+				} else {
+					int local = resolve_local(emitter, (LitCompiler *) emitter->compiler->enclosing, "this", 4, expression->line);
+					emit_arged_op(emitter, expression->line, OP_GET_UPVALUE, add_upvalue(emitter, emitter->compiler, local, expression->line, true));
+				}
+			}
+
 			break;
 		}
 
