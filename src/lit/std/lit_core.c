@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
 void lit_open_libraries(LitState* state) {
 	lit_open_math_library(state);
@@ -1327,10 +1328,23 @@ static bool file_exists(const char* filename) {
 }
 
 static bool should_update_locals;
+static bool attempt_to_require_combined(LitVm* vm, LitValue* args, uint arg_count, const char* a, const char* b, bool ignore_previous);
 
-static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const char* path, bool ignore_previous) {
+static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const char* path, bool ignore_previous, bool folders) {
 	size_t length = strlen(path);
 	should_update_locals = false;
+
+	if (path[length - 2] == '.' && path[length - 1] == '*') {
+		if (folders) {
+			lit_runtime_error_exiting(vm, "Can't recursively require folders (beg @egordorichev for mercy)");
+		}
+
+		char dir_path[length - 1];
+		dir_path[length - 2] = '\0';
+		memcpy((void*) dir_path, path, length - 2);
+
+		return attempt_to_require(vm, args, arg_count, dir_path, ignore_previous, true);
+	}
 
 	char module_name[length + 5];
 	char module_name_dotted[length + 5];
@@ -1354,13 +1368,56 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 	module_name[length] = '\0';
 
 	if (lit_dir_exists(module_name)) {
-		char dir_name[length + 6];
-		dir_name[length + 5] = '\0';
+		if (folders) {
+			struct dirent* ep;
+			DIR* dir = opendir(module_name);
 
-		memcpy((void*) dir_name, module_name, length);
-		memcpy((void*) dir_name + length, ".init", 5);
+			if (dir == NULL) {
+				lit_runtime_error_exiting(vm, "Failed to open folder '%s'", module_name);
+			}
 
-		return attempt_to_require(vm, args, arg_count, dir_name, ignore_previous);
+			bool found = false;
+
+			while ((ep = readdir(dir))) {
+				if (ep->d_type == DT_REG) {
+					const char* name = ep->d_name;
+					int name_length = strlen(name);
+
+					if (name_length > 4 && (strcmp(name + name_length - 4, ".lit") == 0 || strcmp(name + name_length - 4, ".lbc"))) {
+						char dir_path[length + name_length - 2];
+						dir_path[length + name_length - 3] = '\0';
+
+						memcpy((void*) dir_path, path, length);
+						memcpy((void*) dir_path + length + 1, name, name_length - 4);
+						dir_path[length] = '.';
+
+						if (!attempt_to_require(vm, args + arg_count, 0, dir_path, false, false)) {
+							lit_runtime_error_exiting(vm, "Failed to require module '%s'", name);
+						} else {
+							found = true;
+						}
+					}
+				}
+			}
+
+			if (!found) {
+				lit_runtime_error_exiting(vm, "Folder '%s' contains no modules that can be required", module_name);
+			}
+
+			return found;
+		} else {
+			char dir_name[length + 6];
+			dir_name[length + 5] = '\0';
+
+			memcpy((void *) dir_name, module_name, length);
+			memcpy((void *) dir_name + length, ".init", 5);
+
+			if (file_exists(dir_name)) {
+				return attempt_to_require(vm, args, arg_count, dir_name, ignore_previous, false);
+			}
+		}
+	} else if (folders) {
+		return false;
 	}
 
 	module_name[length] = '.';
@@ -1420,7 +1477,7 @@ static bool attempt_to_require_combined(LitVm* vm, LitValue* args, uint arg_coun
 	path[a_length] = '.';
 	path[total_length] = '\0';
 
-	return attempt_to_require(vm, args, arg_count, (const char*) &path, ignore_previous);
+	return attempt_to_require(vm, args, arg_count, (const char*) &path, ignore_previous, false);
 }
 
 LIT_NATIVE_PRIMITIVE(require) {
@@ -1428,7 +1485,7 @@ LIT_NATIVE_PRIMITIVE(require) {
 	bool ignore_previous = arg_count > 1 && IS_BOOL(args[1]) && AS_BOOL(args[1]);
 
 	// First check, if a file with this name exists in the local path
-	if (attempt_to_require(vm, args, arg_count, name->chars, ignore_previous)) {
+	if (attempt_to_require(vm, args, arg_count, name->chars, ignore_previous, false)) {
 		return should_update_locals;
 	}
 

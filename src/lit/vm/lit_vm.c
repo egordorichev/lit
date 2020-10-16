@@ -269,54 +269,55 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 
 			case OBJECT_NATIVE_FUNCTION: {
 				PUSH_GC(vm->state, false)
+
 				LitValue result = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, vm->fiber->stack_top - arg_count);
 				vm->fiber->stack_top -= arg_count + 1;
 				lit_push(vm, result);
-				POP_GC(vm->state)
 
+				POP_GC(vm->state)
 				return false;
 			}
 
 			case OBJECT_NATIVE_PRIMITIVE: {
-				LitFiber* fiber = vm->fiber;
 				PUSH_GC(vm->state, false)
 
-				if (AS_NATIVE_PRIMITIVE(callee)->function(vm, arg_count, fiber->stack_top - arg_count)) {
+				LitFiber* fiber = vm->fiber;
+				bool result = AS_NATIVE_PRIMITIVE(callee)->function(vm, arg_count, fiber->stack_top - arg_count);
+
+				if (result) {
 					fiber->stack_top -= arg_count;
-					POP_GC(vm->state)
-					return true;
 				}
 
 				POP_GC(vm->state)
-				return false;
+				return result;
 			}
 
 			case OBJECT_NATIVE_METHOD: {
-				LitNativeMethod* method = AS_NATIVE_METHOD(callee);
-
-				LitFiber* fiber = vm->fiber;
 				PUSH_GC(vm->state, false)
+
+				LitNativeMethod* method = AS_NATIVE_METHOD(callee);
+				LitFiber* fiber = vm->fiber;
 				LitValue result = method->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count);
 
 				vm->fiber->stack_top -= arg_count + 1;
 				lit_push(vm, result);
-				POP_GC(vm->state)
 
+				POP_GC(vm->state)
 				return false;
 			}
 
 			case OBJECT_PRIMITIVE_METHOD: {
-				LitFiber* fiber = vm->fiber;
 				PUSH_GC(vm->state, false)
 
-				if (AS_PRIMITIVE_METHOD(callee)->method(vm, *(fiber->stack_top - arg_count - 1), arg_count, fiber->stack_top - arg_count)) {
+				LitFiber* fiber = vm->fiber;
+				bool result = AS_PRIMITIVE_METHOD(callee)->method(vm, *(fiber->stack_top - arg_count - 1), arg_count, fiber->stack_top - arg_count);
+
+				if (result) {
 					fiber->stack_top -= arg_count;
-					POP_GC(vm->state)
-					return true;
 				}
 
 				POP_GC(vm->state)
-				return false;
+				return result;
 			}
 
 			case OBJECT_CLASS: {

@@ -1,11 +1,5 @@
-var callbacks = new Map()
+require("tests.examples.libs.*")
 
-export function registerHook(event, fn) {
-	var array = callbacks[event]
-
-	if (!array) {
-		callbacks[event] = array = []
-	}
-
-	array.add(fn)
-}
+exampleFunction()
+var a = makePrinter("money")
+a()
