@@ -99,7 +99,7 @@ int main(int argc, const char* argv[]) {
 	LitState* state = lit_new_state();
 	lit_open_libraries(state);
 
-	char* files_to_run[argc - 2];
+	char* files_to_run[argc - 1];
 	uint num_files_to_run = 0;
 
 	LitInterpretResultType result = INTERPRET_OK;

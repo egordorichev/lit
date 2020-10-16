@@ -1,5 +1,2 @@
 require("tests.examples.libs.*")
-
 exampleFunction()
-var a = makePrinter("money")
-a()
