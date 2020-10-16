@@ -1,0 +1,7 @@
+export function makePrinter(what) {
+	return () => {
+		print(what)
+	}
+}
+
+return null

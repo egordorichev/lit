@@ -1,3 +1,8 @@
 var a = require("folder.module") // Expected: hi
 print(a) // Expected: 32
 print(require("tests.expressions.folder.module")) // Expected: 32
+
+require("folder.*")
+
+var b = makePrinter("money")
+b() // Expected: money
