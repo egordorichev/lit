@@ -19,8 +19,12 @@ NUM_TRIALS = 10
 BENCHMARKS = []
 
 def BENCHMARK(name, pattern):
-	regex = re.compile(pattern + "\n" + r"elapsed: (\d+\.\d+)", re.MULTILINE)
+	regex = re.compile(pattern + r"elapsed: (\d+\.\d+)", re.MULTILINE)
 	BENCHMARKS.append([name, regex, None])
+
+BENCHMARK("sort", "")
+BENCHMARK("sort_custom", "")
+BENCHMARK("for", r"""499999500000\n""")
 
 BENCHMARK("binary_trees", """stretch tree of depth 13 check: -1
 8192 trees of depth 4 check: -8192
@@ -28,15 +32,14 @@ BENCHMARK("binary_trees", """stretch tree of depth 13 check: -1
 512 trees of depth 8 check: -512
 128 trees of depth 10 check: -128
 32 trees of depth 12 check: -32
-long lived tree of depth 12 check: -1""")
+long lived tree of depth 12 check: -1\n""")
 
-BENCHMARK("for", r"""499999500000""")
 
 BENCHMARK("fib", r"""317811
 317811
 317811
 317811
-317811""")
+317811\n""")
 
 LANGUAGES = [
 	("lit",            ["./dist/lit", "-Oall"],          ".lit"),
@@ -148,9 +151,9 @@ def run_benchmark_language(benchmark, language, benchmark_result):
 			ratio = 100 * score / benchmark[2]
 			comparison =  "{:6.2f}% relative to baseline".format(ratio)
 			if ratio > 105:
-				comparison = green(comparison)
-			if ratio < 95:
 				comparison = red(comparison)
+			if ratio < 95:
+				comparison = green(comparison)
 		else:
 			comparison = "no baseline"
 	else:
@@ -159,9 +162,9 @@ def run_benchmark_language(benchmark, language, benchmark_result):
 		ratio = 100.0 * lit_score / score
 		comparison =  "{:6.2f}%".format(ratio)
 		if ratio > 105:
-			comparison = green(comparison)
-		if ratio < 95:
 			comparison = red(comparison)
+		if ratio < 95:
+			comparison = green(comparison)
 
 	print(" {:4.2f}s {:4.4f} {:s}".format(
 		best,

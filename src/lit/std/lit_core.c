@@ -1051,7 +1051,7 @@ LIT_METHOD(array_sort) {
 		basic_quick_sort(vm->state, values->values, values->count);
 	}
 
-	return NULL_VALUE;	
+	return instance;
 }
 
 LIT_METHOD(array_clone) {

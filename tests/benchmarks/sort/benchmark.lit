@@ -1,0 +1,9 @@
+var a = []
+
+for (var i in 0 .. 999999) {
+	a.add(Random.int(-10000, 10000))
+}
+
+var start = time()
+a.sort()
+print("elapsed: " + (time() - start))
