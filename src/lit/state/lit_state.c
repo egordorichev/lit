@@ -15,6 +15,7 @@
 #include <time.h>
 
 static bool measure_compilation_time;
+static double last_source_time = 0;
 
 void lit_enable_compilation_time_measurement() {
 	measure_compilation_time = true;
@@ -228,7 +229,7 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
 		}
 
 		if (measure_compilation_time) {
-			printf("----------------------\nPreprocessing: %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+			printf("-----------------------\nPreprocessing:  %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
 			t = clock();
 		}
 
@@ -241,14 +242,14 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
 		}
 
 		if (measure_compilation_time) {
-			printf("Parsing:       %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+			printf("Parsing:        %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
 			t = clock();
 		}
 
 		lit_optimize(state->optimizer, &statements);
 
 		if (measure_compilation_time) {
-			printf("Optimization:  %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+			printf("Optimization:   %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
 			t = clock();
 		}
 
@@ -256,8 +257,8 @@ LitModule* lit_compile_module(LitState* state, LitString* module_name, char* cod
 		free_statements(state, &statements);
 
 		if (measure_compilation_time) {
-			printf("Emitting:      %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
-			printf("\nTotal:         %gms\n----------------------\n", (double) (clock() - total_t) / CLOCKS_PER_SEC * 1000);
+			printf("Emitting:       %gms\n", (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+			printf("\nTotal:          %gms\n-----------------------\n", (double) (clock() - total_t) / CLOCKS_PER_SEC * 1000 + last_source_time);
 		}
 	}
 
@@ -367,6 +368,12 @@ bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, 
 }
 
 static char* read_source(LitState* state, const char* file, char** patched_file_name) {
+	clock_t t = 0;
+
+	if (measure_compilation_time) {
+		t = clock();
+	}
+
 	// We have to use this trick because we modify the file_name string, and if
 	// The user provides a string constant, he will get a SEGFAULT
 	// And who wants that?
@@ -383,6 +390,10 @@ static char* read_source(LitState* state, const char* file, char** patched_file_
 
 	lit_patch_file_name(file_name);
 	*patched_file_name = file_name;
+
+	if (measure_compilation_time) {
+		printf("Reading source: %gms\n", last_source_time = (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+	}
 
 	return source;
 }

@@ -451,6 +451,14 @@ LIT_METHOD(string_subscript) {
 	return c == NULL ? NULL_VALUE : OBJECT_VALUE(c);
 }
 
+LIT_METHOD(string_less) {
+	return BOOL_VALUE(strcmp(AS_STRING(instance)->chars, LIT_CHECK_STRING(0)) < 0);
+}
+
+LIT_METHOD(string_greater) {
+	return BOOL_VALUE(strcmp(AS_STRING(instance)->chars, LIT_CHECK_STRING(0)) > 0);
+}
+
 LIT_METHOD(string_length) {
 	return NUMBER_VALUE(lit_ustring_length(AS_STRING(instance)));
 }
@@ -956,6 +964,94 @@ LIT_METHOD(array_join) {
 	}
 
 	return OBJECT_VALUE(lit_copy_string(vm->state, chars, length));
+}
+
+static inline bool compare(LitState* state, LitValue a, LitValue b) {
+	if (IS_NUMBER(a) && IS_NUMBER(b)) {
+		return AS_NUMBER(a) < AS_NUMBER(b);
+	}
+
+	return !lit_is_falsey(lit_call_method(state, state->vm->fiber->module, a, CONST_STRING(state, "<"), (LitValue[1]) { b }, 1).result);
+}
+
+static void basic_quick_sort(LitState* state, LitValue *l, int length) {
+	if (length < 2) {
+		return;
+	}
+
+	LitValue pivot = l[length / 2];
+	int i, j;
+
+	for (i = 0, j = length - 1; ; i++, j--) {
+		while (compare(state, l[i], pivot)) {
+			i++;
+		}
+
+		while (compare(state, pivot, l[j])) {
+			j--;
+		}
+
+		if (i >= j) {
+			break;
+		}
+
+		LitValue tmp = l[i];
+		l[i] = l[j];
+		l[j] = tmp;
+	}
+
+	basic_quick_sort(state, l, i);
+	basic_quick_sort(state, l + i, length - i);
+}
+
+static void custom_quick_sort(LitVm* vm, LitValue *l, int length, LitValue callee) {
+	if (length < 2) {
+		return;
+	}
+
+	LitState* state = vm->state;
+	LitModule* module = vm->fiber->module;
+	LitValue pivot = l[length / 2];
+	int i, j;
+
+	#define COMPARE(a, b) ({ LitInterpretResult r = lit_call(state, module, callee, (LitValue[2]) { a, b }, 2); \
+    if (r.type != INTERPRET_OK) return; \
+		!lit_is_falsey(r.result); })
+
+	for (i = 0, j = length - 1; ; i++, j--) {
+		while (COMPARE(l[i], pivot)) {
+			i++;
+		}
+
+		while (COMPARE(pivot, l[j])) {
+			j--;
+		}
+
+		if (i >= j) {
+			break;
+		}
+
+		LitValue tmp = l[i];
+		l[i] = l[j];
+		l[j] = tmp;
+	}
+
+	#undef COMPARE
+
+	custom_quick_sort(vm, l, i, callee);
+	custom_quick_sort(vm, l + i, length - i, callee);
+}
+
+LIT_METHOD(array_sort) {
+	LitValues* values = &AS_ARRAY(instance)->values;
+
+	if (arg_count == 1 && IS_CALLABLE_FUNCTION(args[0])) {
+		custom_quick_sort(vm, values->values, values->count, args[0]);
+	} else {
+		basic_quick_sort(vm->state, values->values, values->count);
+	}
+
+	return NULL_VALUE;	
 }
 
 LIT_METHOD(array_clone) {
@@ -1565,6 +1661,8 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("iterator", string_iterator)
 		LIT_BIND_METHOD("iteratorValue", string_iteratorValue)
 		LIT_BIND_METHOD("[]", string_subscript)
+		LIT_BIND_METHOD("<", string_less)
+		LIT_BIND_METHOD(">", string_greater)
 
 		LIT_BIND_GETTER("length", string_length)
 
@@ -1638,6 +1736,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("iterator", array_iterator)
 		LIT_BIND_METHOD("iteratorValue", array_iteratorValue)
 		LIT_BIND_METHOD("join", array_join)
+		LIT_BIND_METHOD("sort", array_sort)
 		LIT_BIND_METHOD("clone", array_clone)
 		LIT_BIND_METHOD("toString", array_toString)
 
