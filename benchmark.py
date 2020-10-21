@@ -22,10 +22,10 @@ def BENCHMARK(name, pattern):
 	regex = re.compile(pattern + r"elapsed: (\d+\.\d+)", re.MULTILINE)
 	BENCHMARKS.append([name, regex, None])
 
+BENCHMARK("lit_call", "")
+BENCHMARK("c_call", "")
 BENCHMARK("sort_custom", "")
 BENCHMARK("sort", "")
-BENCHMARK("c_call", "")
-BENCHMARK("lit_call", "")
 BENCHMARK("for", r"""499999500000\n""")
 
 BENCHMARK("binary_trees", """stretch tree of depth 13 check: -1

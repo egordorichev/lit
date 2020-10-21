@@ -1,11 +1,13 @@
 class A {
-
+	toString() {
+		return 32
+	}
 }
 
 var a = new A()
 var start = time()
 
-for (var i in 0 .. 9999) {
+for (var i in 0 .. 2999999) {
 	a.toString()
 }
 

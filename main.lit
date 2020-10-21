@@ -1,2 +1,14 @@
-var a = [ 10, 32, 48, -1, 10, 32, 18, 32, 10, 28, 1230, 21, 2.0, 3.21, 10 ]
-print(a.sort((a, b) => a > b))
+class A {
+	toString() {
+		return 32
+	}
+}
+
+var a = new A()
+var start = time()
+
+for (var i in 0 .. 9999) {
+	a.toString()
+}
+
+print("elapsed: " + (time() - start))
