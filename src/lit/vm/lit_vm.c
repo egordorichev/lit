@@ -427,7 +427,6 @@ LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 	register LitVm *vm = state->vm;
 
 	LitFiber* fiber = lit_create_fiber(state, module, module->main_function);
-	fiber->parent = vm->fiber;
 	vm->fiber = fiber;
 
 	lit_push(vm, OBJECT_VALUE(module->main_function));

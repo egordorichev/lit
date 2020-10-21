@@ -31,6 +31,11 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
 	LitVm* vm = state->vm;
 	LitFiber* fiber = vm->fiber;
 
+	if (callee == NULL) {
+		lit_runtime_error(vm, "Attempt to call a null value");
+		return NULL;
+	}
+
 	if (ensure_fiber(vm, fiber)) {
 		return NULL;
 	}
@@ -184,7 +189,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
 				*slot = OBJECT_VALUE(lit_create_instance(vm->state, klass));
 
 				if (klass->init_method != NULL) {
-					lit_call(state, OBJECT_VALUE(klass->init_method), arguments, argument_count);
+					lit_call_method(state, *slot, OBJECT_VALUE(klass->init_method), arguments, argument_count);
 				}
 
 				fiber->stack_top = slot;
@@ -251,12 +256,11 @@ LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, Li
 	LitClass* klass = lit_get_class_for(state, callee);
 	LitValue method;
 
-	if (lit_table_get(&klass->methods, method_name, &method)) {
+	if ((IS_INSTANCE(callee) && lit_table_get(&AS_INSTANCE(callee)->fields, method_name, &method)) || lit_table_get(&klass->methods, method_name, &method)) {
 		return lit_call_method(state, callee, method, arguments, argument_count);
 	}
 
-	lit_runtime_error(vm, "Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars);
-	RETURN_RUNTIME_ERROR()
+	return (LitInterpretResult) { INTERPRET_INVALID, NULL_VALUE };
 }
 
 LitString* lit_to_string(LitState* state, LitValue object) {
