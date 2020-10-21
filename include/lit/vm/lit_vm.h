@@ -36,6 +36,7 @@ typedef struct sLitInterpretResult {
 
 void lit_init_vm(LitState* state, LitVm* vm);
 void lit_free_vm(LitVm* vm);
+void lit_trace_vm_stack(LitVm* vm);
 
 static inline void lit_push(LitVm* vm, LitValue value) {
 	*vm->fiber->stack_top++ = value;
@@ -53,5 +54,6 @@ bool lit_runtime_error(LitVm* vm, const char* format, ...);
 bool lit_runtime_error_exiting(LitVm* vm, const char* format, ...);
 
 void lit_native_exit_jump();
+bool lit_set_native_exit_jump();
 
 #endif

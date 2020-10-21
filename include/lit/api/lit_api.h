@@ -4,8 +4,12 @@
 #include "lit_predefines.h"
 #include "lit_common.h"
 #include "vm/lit_object.h"
+#include "api/lit_calls.h"
 
 #include <string.h>
+
+#define RETURN_RUNTIME_ERROR() return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
+#define RETURN_OK(r) return (LitInterpretResult) { INTERPRET_OK, r };
 
 #define LIT_NATIVE(name) static LitValue name##_native(LitVm* vm, uint arg_count, LitValue* args)
 #define LIT_METHOD(name) static LitValue name(LitVm* vm, LitValue instance, uint arg_count, LitValue* args)
@@ -58,10 +62,6 @@ bool lit_global_exists(LitState* state, LitString* name);
 void lit_define_native(LitState* state, const char* name, LitNativeFunctionFn native);
 void lit_define_native_primitive(LitState* state, const char* name, LitNativePrimitiveFn native);
 
-LitInterpretResult lit_call(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count);
-
-LitInterpretResult lit_call_method(LitState* state, LitModule* module, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count);
-
 #define LIT_CHECK_NUMBER(id) lit_check_number(vm, args, arg_count, id)
 #define LIT_GET_NUMBER(id, def) lit_get_number(vm, args, arg_count, id, def)
 
@@ -73,7 +73,6 @@ LitInterpretResult lit_call_method(LitState* state, LitModule* module, LitValue 
 
 #define LIT_CHECK_OBJECT_STRING(id) lit_check_object_string(vm, args, arg_count, id)
 #define LIT_CHECK_INSTANCE(id) lit_check_instance(vm, args, arg_count, id)
-
 #define LIT_CHECK_REFERENCE(id) lit_check_reference(vm, args, arg_count, id)
 
 double lit_check_number(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
@@ -87,7 +86,6 @@ const char* lit_get_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t
 
 LitString* lit_check_object_string(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 LitInstance* lit_check_instance(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
-
 LitValue* lit_check_reference(LitVm* vm, LitValue* args, uint8_t arg_count, uint8_t id);
 
 void lit_ensure_bool(LitVm* vm, LitValue value, const char* error);
@@ -124,8 +122,6 @@ void lit_set_map_field(LitState* state, LitMap* map, const char* name, LitValue 
 		return NULL_VALUE; \
 	}
 
-LitString* lit_to_string(LitState* state, LitValue object);
-
 #define LIT_INSERT_DATA(type, cleanup) ({\
 	  LitUserdata* userdata = lit_create_userdata(vm->state, sizeof(type));\
 	  userdata->cleanup_fn = cleanup;\
@@ -148,7 +144,5 @@ LitString* lit_to_string(LitState* state, LitValue object);
 		} \
 		(type*) AS_USERDATA(_d)->data; \
 	})
-
-LitValue lit_call_new(LitVm* vm, const char* name, LitValue* args, uint arg_count);
 
 #endif

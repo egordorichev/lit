@@ -54,10 +54,10 @@ void lit_free_vm(LitVm* vm) {
 	reset_vm(vm->state, vm);
 }
 
-static void trace_stack(LitVm* vm) {
+void lit_trace_vm_stack(LitVm* vm) {
 	LitFiber* fiber = vm->fiber;
 
-	if (fiber->stack_top == fiber->stack) {
+	if (fiber->stack_top == fiber->stack || fiber->frame_count == 0) {
 		return;
 	}
 
@@ -254,7 +254,7 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 
 static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 	if (IS_OBJECT(callee)) {
-		if (setjmp(jump_buffer)) {
+		if (lit_set_native_exit_jump()) {
 			return true;
 		}
 
@@ -379,7 +379,7 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 	if (IS_NULL(callee)) {
 		lit_runtime_error(vm, "Attempt to call a null value");
 	} else {
-		lit_runtime_error(vm, "Can only call functions and classes");
+		lit_runtime_error(vm, "Can only call functions and classes, got %s", lit_get_value_type(callee));
 	}
 
 	return true;
@@ -612,7 +612,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	while (true) {
 #ifdef LIT_TRACE_STACK
-		trace_stack(vm);
+		lit_trace_vm_stack(vm);
 #endif
 
 #ifdef LIT_CHECK_STACK_SIZE
@@ -657,8 +657,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					DROP();
 
 					state->allow_gc = was_allowed;
-					vm->fiber = NULL;
-
 					return (LitInterpretResult) { INTERPRET_OK, result };
 				}
 
@@ -1481,7 +1479,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			}
 
 			// Hot-bytecode patching, increment the amount of arguments to OP_CALL
-			ip[1] = ip[1] + 1;
+			ip[1] = ip[1] + values->count - 1;
 			continue;
 		}
 
@@ -1584,6 +1582,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 void lit_native_exit_jump() {
 	longjmp(jump_buffer, 1);
+}
+
+bool lit_set_native_exit_jump() {
+	return setjmp(jump_buffer);
 }
 
 #undef PUSH_GC

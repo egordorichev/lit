@@ -1655,7 +1655,6 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	init_compiler(emitter, &compiler, FUNCTION_SCRIPT);
 
 	emitter->chunk = &compiler.function->chunk;
-
 	resolve_statements(emitter, statements);
 
 	for (uint i = 0; i < statements->count; i++) {

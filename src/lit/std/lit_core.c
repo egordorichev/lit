@@ -971,7 +971,7 @@ static inline bool compare(LitState* state, LitValue a, LitValue b) {
 		return AS_NUMBER(a) < AS_NUMBER(b);
 	}
 
-	return !lit_is_falsey(lit_call_method(state, state->vm->fiber->module, a, CONST_STRING(state, "<"), (LitValue[1]) { b }, 1).result);
+	return !lit_is_falsey(lit_find_and_call_method(state, a, CONST_STRING(state, "<"), (LitValue[1]) { b }, 1).result);
 }
 
 static void basic_quick_sort(LitState* state, LitValue *l, int length) {
@@ -979,15 +979,18 @@ static void basic_quick_sort(LitState* state, LitValue *l, int length) {
 		return;
 	}
 
-	LitValue pivot = l[length / 2];
-	int i, j;
+	int pivot_index = length / 2;
+	int i;
+	int j;
+
+	LitValue pivot = l[pivot_index];
 
 	for (i = 0, j = length - 1; ; i++, j--) {
-		while (compare(state, l[i], pivot)) {
+		while (i < pivot_index && compare(state, l[i], pivot)) {
 			i++;
 		}
 
-		while (compare(state, pivot, l[j])) {
+		while (j > pivot_index && compare(state, pivot, l[j])) {
 			j--;
 		}
 
@@ -1004,25 +1007,28 @@ static void basic_quick_sort(LitState* state, LitValue *l, int length) {
 	basic_quick_sort(state, l + i, length - i);
 }
 
-static void custom_quick_sort(LitVm* vm, LitValue *l, int length, LitFunction* callee) {
+static void custom_quick_sort(LitVm* vm, LitValue *l, int length, LitValue callee) {
 	if (length < 2) {
 		return;
 	}
 
 	LitState* state = vm->state;
-	LitValue pivot = l[length / 2];
-	int i, j;
+
+	int pivot_index = length / 2;
+	int i;
+	int j;
+	LitValue pivot = l[pivot_index];
 
 	#define COMPARE(a, b) ({ LitInterpretResult r = lit_call(state, callee, (LitValue[2]) { a, b }, 2); \
     if (r.type != INTERPRET_OK) return; \
 		!lit_is_falsey(r.result); })
 
 	for (i = 0, j = length - 1; ; i++, j--) {
-		while (COMPARE(l[i], pivot)) {
+		while (i < pivot_index && COMPARE(l[i], pivot)) {
 			i++;
 		}
 
-		while (COMPARE(pivot, l[j])) {
+		while (j > pivot_index && COMPARE(pivot, l[j])) {
 			j--;
 		}
 
@@ -1044,9 +1050,8 @@ static void custom_quick_sort(LitVm* vm, LitValue *l, int length, LitFunction* c
 LIT_METHOD(array_sort) {
 	LitValues* values = &AS_ARRAY(instance)->values;
 
-	// Fixme: any callable function support (requires api changes)
-	if (arg_count == 1 && IS_FUNCTION(args[0])) {
-		custom_quick_sort(vm, values->values, values->count, AS_FUNCTION(args[0]));
+	if (arg_count == 1 && IS_CALLABLE_FUNCTION(args[0])) {
+		custom_quick_sort(vm, values->values, values->count, args[0]);
 	} else {
 		basic_quick_sort(vm->state, values->values, values->count);
 	}

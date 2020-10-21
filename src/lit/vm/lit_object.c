@@ -9,7 +9,7 @@
 bool lit_is_callable_function(LitValue value) {
 	if (IS_OBJECT(value)) {
 		LitObjectType type = OBJECT_TYPE(value);
-		return type == OBJECT_CLOSURE || type == OBJECT_FUNCTION || type == OBJECT_NATIVE_FUNCTION || type == OBJECT_NATIVE_PRIMITIVE || type == OBJECT_NATIVE_METHOD || type == OBJECT_PRIMITIVE_METHOD;
+		return type == OBJECT_CLOSURE || type == OBJECT_FUNCTION || type == OBJECT_NATIVE_FUNCTION || type == OBJECT_NATIVE_PRIMITIVE || type == OBJECT_NATIVE_METHOD || type == OBJECT_PRIMITIVE_METHOD || type == OBJECT_BOUND_METHOD;
 	}
 
 	return false;
@@ -401,6 +401,7 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	frame->function = function;
 	frame->slots = fiber->stack;
 	frame->result_ignored = false;
+	frame->return_to_c = false;
 
 	if (function != NULL) {
 		frame->ip = function->chunk.code;
