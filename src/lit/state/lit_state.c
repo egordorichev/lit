@@ -320,12 +320,20 @@ char* lit_patch_file_name(char* file_name) {
 	return file_name;
 }
 
+char* copy_string(const char* string) {
+	size_t length = strlen(string) + 1;
+	char* new_string = malloc(length);
+	memcpy(new_string, string, length);
+
+	return new_string;
+}
+
 bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, const char* output_file) {
 	lit_set_optimization_level(OPTIMIZATION_LEVEL_EXTREME);
 	LitModule* compiled_modules[num_files];
 
 	for (uint i = 0; i < num_files; i++) {
-		char* file_name = files[i];
+		char* file_name = copy_string(files[i]);
 		char* source = lit_read_file(file_name);
 
 		if (source == NULL) {
@@ -339,7 +347,9 @@ bool lit_compile_and_save_files(LitState* state, char* files[], uint num_files, 
 		LitModule* module = lit_compile_module(state, module_name, source);
 
 		compiled_modules[i] = module;
+
 		free((void*) source);
+		free((void*) file_name);
 
 		if (module == NULL) {
 			return false;
@@ -374,27 +384,20 @@ static char* read_source(LitState* state, const char* file, char** patched_file_
 		t = clock();
 	}
 
-	// We have to use this trick because we modify the file_name string, and if
-	// The user provides a string constant, he will get a SEGFAULT
-	// And who wants that?
-
-	size_t length = strlen(file) + 1;
-	char* file_name = malloc(length);
-	memcpy(file_name, file, length);
-
+	char* file_name = copy_string(file);
 	char* source = lit_read_file(file_name);
 
 	if (source == NULL) {
 		lit_error(state, RUNTIME_ERROR, "Failed to open file '%s'", file_name);
 	}
 
-	lit_patch_file_name(file_name);
-	*patched_file_name = file_name;
+	file_name = lit_patch_file_name(file_name);
 
 	if (measure_compilation_time) {
 		printf("Reading source: %gms\n", last_source_time = (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
 	}
 
+	*patched_file_name = file_name;
 	return source;
 }
 
@@ -409,8 +412,6 @@ LitInterpretResult lit_interpret_file(LitState* state, const char* file) {
 	LitInterpretResult result = lit_interpret(state, patched_file_name, source);
 
 	free((void*) source);
-	free((void*) patched_file_name);
-
 	return result;
 }
 
