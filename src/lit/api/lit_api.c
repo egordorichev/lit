@@ -65,95 +65,61 @@ void lit_define_native_primitive(LitState* state, const char* name, LitNativePri
 	lit_pop_roots(state, 2);
 }
 
-LitInterpretResult lit_call(LitState* state, LitModule* module, LitValue callee, LitValue* arguments, uint8_t argument_count) {
-	LitVm* vm = state->vm;
-	LitFiber* fiber = state->api_fiber;
-
+static bool ensure_fiber(LitVm* vm, LitFiber* fiber) {
 	if (fiber == NULL) {
-		fiber = lit_create_fiber(state, module, NULL);
-		fiber->frame_count = 0;
-	} else {
-		// Make it busy
-		state->api_fiber = NULL;
+		lit_runtime_error(vm, "No fiber to run on");
+		return true;
 	}
 
 	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
 		lit_runtime_error(vm, "Stack overflow");
-		return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
+		return true;
 	}
 
 	if (fiber->frame_count + 1 > fiber->frame_capacity) {
 		uint new_capacity = fmin(LIT_CALL_FRAMES_MAX, fiber->frame_capacity * 2);
-		fiber->frames = (LitCallFrame*) lit_reallocate(state, fiber->frames, sizeof(LitCallFrame) * fiber->frame_capacity, sizeof(LitCallFrame) * new_capacity);
+		fiber->frames = (LitCallFrame*) lit_reallocate(vm->state, fiber->frames, sizeof(LitCallFrame) * fiber->frame_capacity, sizeof(LitCallFrame) * new_capacity);
 		fiber->frame_capacity = new_capacity;
 	}
 
-	LitFunction* function = state->api_function;
+	return false;
+}
 
-	if (function == NULL) {
-		function = state->api_function = lit_create_function(state, module);
-		function->chunk.has_line_info = false;
-		function->name = state->api_name;
+LitInterpretResult lit_call(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count) {
+	LitVm* vm = state->vm;
+	LitFiber* fiber = vm->fiber;
+
+	if (ensure_fiber(vm, fiber)) {
+		return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
 	}
 
-	LitChunk* chunk = &function->chunk;
-	chunk->count = 0;
-	chunk->constants.count = 0;
-
-	lit_write_chunk(state, chunk, OP_CALL, 1);
-	lit_write_chunk(state, chunk, argument_count, 1);
-	lit_write_chunk(state, chunk, OP_RETURN, 1);
-
-	function->max_slots = 3 + argument_count;
-
-	lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
+	lit_ensure_fiber_stack(state, fiber, callee->max_slots + (int) (fiber->stack_top - fiber->stack));
 
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 	frame->slots = fiber->stack_top;
 
 	#define PUSH(value) (*fiber->stack_top++ = value)
-	PUSH(OBJECT_VALUE(function));
-	PUSH(callee);
+	PUSH(OBJECT_VALUE(callee));
 
 	for (uint8_t i = 0; i < argument_count; i++) {
 		PUSH(arguments[i]);
 	}
 	#undef PUSH
 
-	frame->ip = function->chunk.code;
+	frame->ip = callee->chunk.code;
 	frame->closure = NULL;
-	frame->function = function;
+	frame->function = callee;
 	frame->result_ignored = false;
+	frame->return_to_c = true;
 
-	LitFiber* previous = state->vm->fiber;
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
-	vm->fiber = previous;
-
-	lit_trace_frame(state->vm->fiber);
-
-	if (state->api_fiber == NULL) {
-		state->api_fiber = fiber;
-	}
+	lit_trace_frame(vm->fiber);
 
 	if (fiber->error != NULL_VALUE) {
-		vm->fiber->error = fiber->error;
-
 		result.result = fiber->error;
-		fiber->error = NULL_VALUE;
-		fiber->abort = false;
-		fiber->stack_top = fiber->stack;
-		fiber->frame_count = 0;
 	}
 
 	return result;
-}
-
-LitInterpretResult lit_call_function(LitState* state, LitModule* module, LitFunction* callee, LitValue* arguments, uint8_t argument_count) {
-	if (callee == NULL) {
-		return (LitInterpretResult) { INTERPRET_INVALID, NULL_VALUE };
-	}
-
-	return lit_call(state, module, OBJECT_VALUE(callee), arguments, argument_count);
 }
 
 LitInterpretResult lit_call_method(LitState* state, LitModule* module, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count) {
@@ -216,6 +182,7 @@ LitInterpretResult lit_call_method(LitState* state, LitModule* module, LitValue 
 	frame->closure = NULL;
 	frame->function = function;
 	frame->result_ignored = false;
+	frame->return_to_c = true;
 
 	LitFiber* previous = state->vm->fiber;
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
@@ -384,25 +351,10 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	}
 
 	LitVm* vm = state->vm;
-	LitFiber* fiber = state->api_fiber;
+	LitFiber* fiber = vm->fiber;
 
-	if (fiber == NULL) {
-		fiber = lit_create_fiber(state, state->vm->fiber->module, NULL);
-		fiber->frame_count = 0;
-	} else {
-		// Make it busy
-		state->api_fiber = NULL;
-	}
-
-	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
-		lit_runtime_error(vm, "Stack overflow");
+	if (ensure_fiber(vm, fiber)) {
 		return CONST_STRING(state, "null");
-	}
-
-	if (fiber->frame_count + 1 > fiber->frame_capacity) {
-		uint new_capacity = fmin(LIT_CALL_FRAMES_MAX, fiber->frame_capacity * 2);
-		fiber->frames = (LitCallFrame*) lit_reallocate(state, fiber->frames, sizeof(LitCallFrame) * fiber->frame_capacity, sizeof(LitCallFrame) * new_capacity);
-		fiber->frame_capacity = new_capacity;
 	}
 
 	LitFunction* function = state->api_function;
@@ -411,20 +363,19 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 		function = state->api_function = lit_create_function(state, fiber->module);
 		function->chunk.has_line_info = false;
 		function->name = state->api_name;
+
+		LitChunk* chunk = &function->chunk;
+		chunk->count = 0;
+		chunk->constants.count = 0;
+		function->max_slots = 3;
+
+		lit_write_chunk(state, chunk, OP_INVOKE, 1);
+		lit_emit_byte(state, chunk, 0);
+		lit_emit_short(state, chunk, lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString")));
+		lit_emit_byte(state, chunk, OP_RETURN);
 	}
 
-	LitChunk* chunk = &function->chunk;
-	chunk->count = 0;
-	chunk->constants.count = 0;
-	function->max_slots = 3;
-
-	lit_write_chunk(state, chunk, OP_INVOKE, 1);
-	lit_emit_byte(state, chunk, 0);
-	lit_emit_short(state, chunk, lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString")));
-	lit_emit_byte(state, chunk, OP_RETURN);
-
 	lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
-
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 
 	frame->ip = function->chunk.code;
@@ -432,21 +383,15 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	frame->function = function;
 	frame->slots = fiber->stack_top;
 	frame->result_ignored = false;
+	frame->return_to_c = true;
 
 	#define PUSH(value) (*fiber->stack_top++ = value)
 	PUSH(OBJECT_VALUE(function));
 	PUSH(object);
 	#undef PUSH
 
-	LitFiber* previous = state->vm->fiber;
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
-	state->vm->fiber = previous;
-
 	lit_trace_frame(state->vm->fiber);
-
-	if (state->api_fiber == NULL) {
-		state->api_fiber = fiber;
-	}
 
 	if (result.type != INTERPRET_OK) {
 		return CONST_STRING(state, "null");
@@ -462,5 +407,9 @@ LitValue lit_call_new(LitVm* vm, const char* name, LitValue* args, uint arg_coun
 		lit_runtime_error_exiting(vm, "Failed to create instance of class %s: class not found", name);
 	}
 
-	return lit_call(vm->state, vm->fiber->module, value, args, arg_count).result;
+	if (!IS_FUNCTION(value)) {
+		lit_runtime_error_exiting(vm, "Constructor of class %s is not a simple function, egor did not implement any function calls yet, bug him about it", name);
+	}
+
+	return lit_call(vm->state, AS_FUNCTION(value), args, arg_count).result;
 }

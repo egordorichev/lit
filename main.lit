@@ -1,6 +1,3 @@
 var a = [ "chicken", "egg", "pig" ]
 
-a.sort()
-print(a)
-a.sort((a, b) => a > b)
-print(a)
+print(a.sort((a, b) => a > b))

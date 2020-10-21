@@ -207,6 +207,7 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	frame->ip = function->chunk.code;
 	frame->slots = fiber->stack_top - arg_count - 1;
 	frame->result_ignored = false;
+	frame->return_to_c = false;
 
 	if (arg_count != function_arg_count) {
 		bool vararg = function->vararg;
@@ -640,6 +641,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			WRITE_FRAME()
 			fiber->frame_count--;
+
+			if (frame->return_to_c) {
+				frame->return_to_c = false;
+				fiber->module->return_value = result;
+				fiber->stack_top = frame->slots;
+
+				return (LitInterpretResult) { INTERPRET_OK, result };
+			}
 
 			if (fiber->frame_count == 0) {
 				fiber->module->return_value = result;

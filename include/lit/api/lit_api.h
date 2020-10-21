@@ -58,8 +58,7 @@ bool lit_global_exists(LitState* state, LitString* name);
 void lit_define_native(LitState* state, const char* name, LitNativeFunctionFn native);
 void lit_define_native_primitive(LitState* state, const char* name, LitNativePrimitiveFn native);
 
-LitInterpretResult lit_call(LitState* state, LitModule* module, LitValue callee, LitValue* arguments, uint8_t argument_count);
-LitInterpretResult lit_call_function(LitState* state, LitModule* module, LitFunction* callee, LitValue* arguments, uint8_t argument_count);
+LitInterpretResult lit_call(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count);
 
 LitInterpretResult lit_call_method(LitState* state, LitModule* module, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count);
 

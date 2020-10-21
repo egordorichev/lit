@@ -1004,17 +1004,16 @@ static void basic_quick_sort(LitState* state, LitValue *l, int length) {
 	basic_quick_sort(state, l + i, length - i);
 }
 
-static void custom_quick_sort(LitVm* vm, LitValue *l, int length, LitValue callee) {
+static void custom_quick_sort(LitVm* vm, LitValue *l, int length, LitFunction* callee) {
 	if (length < 2) {
 		return;
 	}
 
 	LitState* state = vm->state;
-	LitModule* module = vm->fiber->module;
 	LitValue pivot = l[length / 2];
 	int i, j;
 
-	#define COMPARE(a, b) ({ LitInterpretResult r = lit_call(state, module, callee, (LitValue[2]) { a, b }, 2); \
+	#define COMPARE(a, b) ({ LitInterpretResult r = lit_call(state, callee, (LitValue[2]) { a, b }, 2); \
     if (r.type != INTERPRET_OK) return; \
 		!lit_is_falsey(r.result); })
 
@@ -1045,8 +1044,9 @@ static void custom_quick_sort(LitVm* vm, LitValue *l, int length, LitValue calle
 LIT_METHOD(array_sort) {
 	LitValues* values = &AS_ARRAY(instance)->values;
 
-	if (arg_count == 1 && IS_CALLABLE_FUNCTION(args[0])) {
-		custom_quick_sort(vm, values->values, values->count, args[0]);
+	// Fixme: any callable function support (requires api changes)
+	if (arg_count == 1 && IS_FUNCTION(args[0])) {
+		custom_quick_sort(vm, values->values, values->count, AS_FUNCTION(args[0]));
 	} else {
 		basic_quick_sort(vm->state, values->values, values->count);
 	}
