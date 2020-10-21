@@ -1,5 +1,7 @@
 # todo
 
+* c -> lit calls speed improvement pls
+
 * fix runtime error lines, they often show up at the prev lines
 * correct error messages on the start of the file instead of ''
 * expected ) got ) will occur if the file has no more chars left

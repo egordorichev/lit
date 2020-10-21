@@ -1,0 +1,7 @@
+var start = time()
+
+for (var i in 0 .. 999999) {
+	time()
+}
+
+print("elapsed: " + (time() - start))

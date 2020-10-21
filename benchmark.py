@@ -22,6 +22,8 @@ def BENCHMARK(name, pattern):
 	regex = re.compile(pattern + r"elapsed: (\d+\.\d+)", re.MULTILINE)
 	BENCHMARKS.append([name, regex, None])
 
+BENCHMARK("c_call", "")
+BENCHMARK("lit_call", "")
 BENCHMARK("sort", "")
 BENCHMARK("sort_custom", "")
 BENCHMARK("for", r"""499999500000\n""")

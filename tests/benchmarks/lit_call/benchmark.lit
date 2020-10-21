@@ -1,0 +1,12 @@
+class A {
+
+}
+
+var a = new A()
+var start = time()
+
+for (var i in 0 .. 9999) {
+	a.toString()
+}
+
+print("elapsed: " + (time() - start))
