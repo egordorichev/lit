@@ -20,6 +20,13 @@ Sounds good? [Check out some challenge solutions](https://github.com/egordoriche
 
 Lit has no external dependencies (besides Emscripten, but that's only for the HTML5 builds), so you will only need gcc, make & cmake.
 
+_On linux, you will also need to install libreadline:_
+
+```bash
+sudo apt-get install libreadline6 libreadline6-dev
+```
+
+
 ```bash
 git clone https://github.com/egordorichev/lit/ && cd lit 
 cmake .
