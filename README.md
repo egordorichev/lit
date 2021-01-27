@@ -23,7 +23,7 @@ Lit has no external dependencies (besides Emscripten, but that's only for the HT
 _On linux, you will also need to install libreadline:_
 
 ```bash
-sudo apt-get install libreadline6 libreadline6-dev
+sudo apt-get install libreadline6-dev
 ```
 
 
