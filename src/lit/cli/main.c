@@ -12,6 +12,10 @@
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <dirent.h>
 
 // Used for clean up on Ctrl+C / Ctrl+Z
 static LitState* repl_state;
@@ -50,12 +54,84 @@ static void run_repl(LitState* state) {
 			}
 		#endif
 
+		if (strcmp(line, "exit")) {
+			break;
+		}
+
 		LitInterpretResult result = lit_interpret(state, "repl", line);
 
 		if (result.type == INTERPRET_OK && result.result != NULL_VALUE) {
 			printf("%s%s%s\n", COLOR_GREEN, lit_to_string(state, result.result)->chars, COLOR_RESET);
 		}
 	}
+}
+
+static void run_tests(LitState* state) {
+	DIR* dir = opendir(LIT_TESTS_DIRECTORY);
+
+	if (dir == NULL) {
+		fprintf(stderr, "Could not find '%s' directory\n", LIT_TESTS_DIRECTORY);
+		return;
+	}
+
+	struct dirent* ep;
+	struct dirent* node;
+
+	size_t tests_dir_length = strlen(LIT_TESTS_DIRECTORY);
+
+	while ((ep = readdir(dir))) {
+		if (ep->d_type == DT_DIR) {
+			const char* dir_name = ep->d_name;
+
+			if (strcmp(dir_name, "..") == 0 || strcmp(dir_name, ".") == 0) {
+				continue;
+			}
+
+			size_t dir_name_length = strlen(dir_name);
+			size_t total_length = dir_name_length + tests_dir_length + 2;
+
+			char subdir_name[total_length];
+
+			memcpy(subdir_name, LIT_TESTS_DIRECTORY, tests_dir_length);
+			memcpy(subdir_name + tests_dir_length + 1, dir_name, dir_name_length);
+
+			subdir_name[tests_dir_length] = '/';
+			subdir_name[total_length - 1] = '\0';
+
+			DIR* subdir = opendir(subdir_name);
+
+			if (subdir == NULL) {
+				fprintf(stderr, "Failed to open tests subdirectory '%s'\n", subdir_name);
+				continue;
+			}
+
+			while ((node = readdir(subdir))) {
+				if (node->d_type == DT_REG) {
+					const char *file_name = node->d_name;
+					size_t name_length = strlen(file_name);
+
+					if (name_length < 4 || memcmp(".lit", file_name + name_length - 4, 4) != 0) {
+						continue;
+					}
+
+					char file_path[total_length + name_length + 1];
+
+					memcpy(file_path, subdir_name, total_length - 1);
+					memcpy(file_path + total_length, file_name, name_length);
+
+					file_path[total_length - 1] = '/';
+					file_path[total_length + name_length] = '\0';
+
+					printf("Testing %s...\n", file_path);
+					lit_interpret_file(state, file_path);
+				}
+			}
+
+			closedir(subdir);
+		}
+	}
+
+	closedir(dir);
 }
 
 static void show_help() {
@@ -69,6 +145,7 @@ static void show_help() {
 	printf("\t-i --interactive\tStarts an interactive shell.\n");
 	printf("\t-d --dump\t\tDumps all the bytecode chunks from the given file.\n");
 	printf("\t-t --time\t\tMeasures and prints the compilation timings.\n");
+	printf("\t-c --test\t\tRuns all tests (useful for code coverage testing).\n");
 	printf("\t-h --help\t\tI wonder, what this option does.\n");
 	printf("\tIf no code to run is provided, lit will try to run either main.lbc or main.lit and, if fails, default to an interactive shell will start.\n");
 }
@@ -131,6 +208,7 @@ int main(int argc, const char* argv[]) {
 	bool evaled = false;
 	bool showed_help = false;
 	bool create_native = false;
+	bool perform_tests = false;
 
 	char* bytecode_file = NULL;
 
@@ -221,6 +299,8 @@ int main(int argc, const char* argv[]) {
 			lit_enable_compilation_time_measurement();
 		} else if (match_arg(arg, "-i", "--interactive")) {
 			show_repl = true;
+		} else if (match_arg(arg, "-c", "--test")) {
+			perform_tests = true;
 		} else if (match_arg(arg, "-d", "--dump")) {
 			dump = true;
 		} else if (match_arg(arg, "-o", "--output")) {
@@ -282,6 +362,11 @@ int main(int argc, const char* argv[]) {
 				}
 			}
 		}
+	}
+
+	if (perform_tests) {
+		run_tests(state);
+		return 0;
 	}
 
 	if (show_repl) {

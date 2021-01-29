@@ -232,6 +232,8 @@ LIT_METHOD(directory_listFiles) {
 		}
 	}
 
+
+	closedir(dir);
 	return OBJECT_VALUE(array);
 }
 
@@ -252,6 +254,7 @@ LIT_METHOD(directory_listDirectories) {
 		}
 	}
 
+	closedir(dir);
 	return OBJECT_VALUE(array);
 }
 

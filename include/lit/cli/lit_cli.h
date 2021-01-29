@@ -17,4 +17,6 @@
 #define LIT_EXIT_CODE_RUNTIME_ERROR 70
 #define LIT_EXIT_CODE_COMPILE_ERROR 65
 
+#define LIT_TESTS_DIRECTORY "tests"
+
 #endif

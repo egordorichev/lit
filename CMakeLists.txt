@@ -8,9 +8,9 @@ if (NOT CMAKE_BUILD_TYPE)
  set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_C_FLAGS "-no-pie -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-strict-aliasing -Wno-unused-result -Wno-sequence-point")
-set(CMAKE_C_FLAGS_DEBUG "-g")
-set(CMAKE_C_FLAGS_RELEASE "-O3")
+set(CMAKE_C_FLAGS "-no-pie -Wall -Wextra -Wno-unused-variable -Wno-unused-parameter -Wno-unused-function -Wno-strict-aliasing -Wno-unused-result -Wno-sequence-point ${CMAKE_C_FLAGS}")
+set(CMAKE_C_FLAGS_DEBUG "-g ${CMAKE_C_FLAGS_DEBUG}")
+set(CMAKE_C_FLAGS_RELEASE "-O3 ${CMAKE_C_FLAGS_RELEASE}")
 
 option(LIT_DEFINE_TEST "Build code for testing (disables debug output)" OFF)
 option(LIT_STANDALONE "Build in standalone mode" OFF)
@@ -31,6 +31,11 @@ else()
  message("Adding release flag...")
  add_definitions(-DRELEASE)
 endif(DEFINE_TEST)
+
+if (COVERAGE)
+ message("Adding coverage flag...")
+ set(CMAKE_C_FLAGS "--coverage ${CMAKE_C_FLAGS}")
+endif(COVERAGE)
 
 add_library(lit STATIC src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/vm/lit_chunk.c
  src/lit/debug/lit_debug.c src/lit/vm/lit_value.c src/lit/vm/lit_vm.c src/lit/scanner/lit_scanner.c
