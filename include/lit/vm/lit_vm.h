@@ -13,14 +13,12 @@
 
 typedef struct sLitVm {
 	LitState* state;
-
 	LitObject* objects;
 
 	LitTable strings;
 
 	LitMap* modules;
 	LitMap* globals;
-
 	LitFiber* fiber;
 
 	// For garbage collection
@@ -36,15 +34,6 @@ typedef struct sLitInterpretResult {
 
 void lit_init_vm(LitState* state, LitVm* vm);
 void lit_free_vm(LitVm* vm);
-void lit_trace_vm_stack(LitVm* vm);
-
-static inline void lit_push(LitVm* vm, LitValue value) {
-	*vm->fiber->stack_top++ = value;
-}
-
-static inline LitValue lit_pop(LitVm* vm) {
-	return *(--vm->fiber->stack_top);
-}
 
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module);
 LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber);

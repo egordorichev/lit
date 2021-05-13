@@ -13,8 +13,6 @@
 
 #ifdef DEBUG
 #define LIT_TRACE_EXECUTION
-#define LIT_TRACE_STACK
-#define LIT_CHECK_STACK_SIZE
 // #define LIT_TRACE_CHUNK
 // #define LIT_MINIMIZE_CONTAINERS
 // #define LIT_LOG_GC

@@ -19,12 +19,6 @@
 
 static jmp_buf jump_buffer;
 
-static void reset_stack(LitVm* vm) {
-	if (vm->fiber != NULL) {
-		vm->fiber->stack_top = vm->fiber->stack;
-	}
-}
-
 static void reset_vm(LitState* state, LitVm* vm) {
 	vm->state = state;
 	vm->objects = NULL;
@@ -54,33 +48,6 @@ void lit_free_vm(LitVm* vm) {
 	reset_vm(vm->state, vm);
 }
 
-void lit_trace_vm_stack(LitVm* vm) {
-	LitFiber* fiber = vm->fiber;
-
-	if (fiber->stack_top == fiber->stack || fiber->frame_count == 0) {
-		return;
-	}
-
-	LitValue* top = fiber->frames[fiber->frame_count - 1].slots;
-	printf("        | %s", COLOR_GREEN);
-
-	for (LitValue* slot = fiber->stack; slot < top; slot++) {
-		printf("[ ");
-		lit_print_value(*slot);
-		printf(" ]");
-	}
-
-	printf("%s", COLOR_RESET);
-
-	for (LitValue* slot = top; slot < fiber->stack_top; slot++) {
-		printf("[ ");
-		lit_print_value(*slot);
-		printf(" ]");
-	}
-
-	printf("\n");
-}
-
 bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 	LitValue error = OBJECT_VALUE(error_string);
 	LitFiber* fiber = vm->fiber;
@@ -90,8 +57,8 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 
 		if (fiber->catcher) {
 			vm->fiber = fiber->parent;
-			vm->fiber->stack_top -= fiber->arg_count;
-			vm->fiber->stack_top[-1] = error;
+			// vm->fiber->stack_top -= fiber->arg_count;
+			// vm->fiber->stack_top[-1] = error;
 
 			return true;
 		}
@@ -147,7 +114,7 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 
 	start += sprintf(start, "%s", COLOR_RESET);
 	lit_error(vm->state, RUNTIME_ERROR, buffer);
-	reset_stack(vm);
+	// reset_stack(vm);
 
 	return false;
 }
@@ -198,56 +165,18 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	}
 
 	uint function_arg_count = function->arg_count;
-	lit_ensure_fiber_stack(vm->state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
+	lit_ensure_fiber_registers(vm->state, fiber, function->max_slots + (int) (fiber->registers_allocated - fiber->registers_used));
 
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 
 	frame->function = function;
 	frame->closure = closure;
 	frame->ip = function->chunk.code;
-	frame->slots = fiber->stack_top - arg_count - 1;
+	frame->slots = fiber->registers + fiber->registers_used;
 	frame->result_ignored = false;
 	frame->return_to_c = false;
 
-	if (arg_count != function_arg_count) {
-		bool vararg = function->vararg;
-
-		if (arg_count < function_arg_count) {
-			int amount = (int) function_arg_count - arg_count - (vararg ? 1 : 0);
-
-			for (int i = 0; i < amount; i++) {
-				lit_push(vm, NULL_VALUE);
-			}
-
-			if (vararg) {
-				lit_push(vm, OBJECT_VALUE(lit_create_array(vm->state)));
-			}
-		} else if (function->vararg) {
-			LitArray* array = lit_create_array(vm->state);
-			uint vararg_count = arg_count - function_arg_count + 1;
-
-			lit_push_root(vm->state, (LitObject*) array);
-			lit_values_ensure_size(vm->state, &array->values, vararg_count);
-			lit_pop_root(vm->state);
-
-			for (uint i = 0; i < vararg_count; i++) {
-				array->values.values[i] = vm->fiber->stack_top[(int) i - (int) vararg_count];
-			}
-
-			vm->fiber->stack_top -= vararg_count;
-			lit_push(vm, OBJECT_VALUE(array));
-		} else {
-			vm->fiber->stack_top -= (arg_count - function_arg_count);
-		}
-	} else if (function->vararg) {
-		LitArray* array = lit_create_array(vm->state);
-		uint vararg_count = arg_count - function_arg_count + 1;
-
-		lit_push_root(vm->state, (LitObject*) array);
-		lit_values_write(vm->state, &array->values, *(fiber->stack_top - 1));
-		*(fiber->stack_top - 1) = OBJECT_VALUE(array);
-		lit_pop_root(vm->state);
-	}
+	// TODO: pass args
 
 	return true;
 }
@@ -261,113 +190,6 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 		switch (OBJECT_TYPE(callee)) {
 			case OBJECT_FUNCTION: {
 				return call(vm, AS_FUNCTION(callee), NULL, arg_count);
-			}
-
-			case OBJECT_CLOSURE: {
-				LitClosure* closure = AS_CLOSURE(callee);
-				return call(vm, closure->function, closure, arg_count);
-			}
-
-			case OBJECT_NATIVE_FUNCTION: {
-				PUSH_GC(vm->state, false)
-
-				LitValue result = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, vm->fiber->stack_top - arg_count);
-				vm->fiber->stack_top -= arg_count + 1;
-				lit_push(vm, result);
-
-				POP_GC(vm->state)
-				return false;
-			}
-
-			case OBJECT_NATIVE_PRIMITIVE: {
-				PUSH_GC(vm->state, false)
-
-				LitFiber* fiber = vm->fiber;
-				bool result = AS_NATIVE_PRIMITIVE(callee)->function(vm, arg_count, fiber->stack_top - arg_count);
-
-				if (result) {
-					fiber->stack_top -= arg_count;
-				}
-
-				POP_GC(vm->state)
-				return result;
-			}
-
-			case OBJECT_NATIVE_METHOD: {
-				PUSH_GC(vm->state, false)
-
-				LitNativeMethod* method = AS_NATIVE_METHOD(callee);
-				LitFiber* fiber = vm->fiber;
-				LitValue result = method->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count);
-
-				vm->fiber->stack_top -= arg_count + 1;
-				lit_push(vm, result);
-
-				POP_GC(vm->state)
-				return false;
-			}
-
-			case OBJECT_PRIMITIVE_METHOD: {
-				PUSH_GC(vm->state, false)
-
-				LitFiber* fiber = vm->fiber;
-				bool result = AS_PRIMITIVE_METHOD(callee)->method(vm, *(fiber->stack_top - arg_count - 1), arg_count, fiber->stack_top - arg_count);
-
-				if (result) {
-					fiber->stack_top -= arg_count;
-				}
-
-				POP_GC(vm->state)
-				return result;
-			}
-
-			case OBJECT_CLASS: {
-				LitClass* klass = AS_CLASS(callee);
-				LitInstance* instance = lit_create_instance(vm->state, klass);
-
-				vm->fiber->stack_top[-arg_count - 1] = OBJECT_VALUE(instance);
-
-				if (klass->init_method != NULL) {
-					return call_value(vm, OBJECT_VALUE(klass->init_method), arg_count);
-				}
-
-				// Remove the arguments, so that they don't mess up the stack
-				// (default constructor has no arguments)
-				for (uint i = 0; i < arg_count; i++) {
-					lit_pop(vm);
-				}
-
-				return false;
-			}
-
-			case OBJECT_BOUND_METHOD: {
-				LitBoundMethod* bound_method = AS_BOUND_METHOD(callee);
-				LitValue method = bound_method->method;
-
-				if (IS_NATIVE_METHOD(method)) {
-					PUSH_GC(vm->state, false)
-
-					LitValue result = AS_NATIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, vm->fiber->stack_top - arg_count);
-					vm->fiber->stack_top -= arg_count + 1;
-					lit_push(vm, result);
-
-					POP_GC(vm->state)
-					return false;
-				} else if (IS_PRIMITIVE_METHOD(method)) {
-					LitFiber* fiber = vm->fiber;
-					PUSH_GC(vm->state, false)
-
-					if (AS_PRIMITIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, fiber->stack_top - arg_count)) {
-						fiber->stack_top -= arg_count;
-						return true;
-					}
-
-					POP_GC(vm->state)
-					return false;
-				} else {
-					vm->fiber->stack_top[-arg_count - 1] = bound_method->receiver;
-					return call(vm, AS_FUNCTION(method), NULL, arg_count);
-				}
 			}
 
 			default: {
@@ -385,51 +207,13 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 	return true;
 }
 
-static LitUpvalue* capture_upvalue(LitState* state, LitValue* local) {
-	LitUpvalue* previous_upvalue = NULL;
-	LitUpvalue* upvalue = state->vm->fiber->open_upvalues;
-
-	while (upvalue != NULL && upvalue->location > local) {
-		previous_upvalue = upvalue;
-		upvalue = upvalue->next;
-	}
-
-	if (upvalue != NULL && upvalue->location == local) {
-		return upvalue;
-	}
-
-	LitUpvalue* created_upvalue = lit_create_upvalue(state, local);
-	created_upvalue->next = upvalue;
-
-	if (previous_upvalue == NULL) {
-		state->vm->fiber->open_upvalues = created_upvalue;
-	} else {
-		previous_upvalue->next = created_upvalue;
-	}
-
-	return created_upvalue;
-}
-
-static void close_upvalues(register LitVm* vm, const LitValue* last) {
-	LitFiber* fiber = vm->fiber;
-
-	while (fiber->open_upvalues != NULL && fiber->open_upvalues->location >= last) {
-		LitUpvalue* upvalue = fiber->open_upvalues;
-
-		upvalue->closed = *upvalue->location;
-		upvalue->location = &upvalue->closed;
-
-		fiber->open_upvalues = upvalue->next;
-	}
-}
-
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 	register LitVm *vm = state->vm;
 
 	LitFiber* fiber = lit_create_fiber(state, module, module->main_function);
 	vm->fiber = fiber;
 
-	lit_push(vm, OBJECT_VALUE(module->main_function));
+	// lit_push(vm, OBJECT_VALUE(module->main_function));
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 
 	return result;
@@ -459,10 +243,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #undef OPCODE*/
 	};
 
-#define PUSH(value) (*fiber->stack_top++ = value)
-#define POP() (*(--fiber->stack_top))
-#define DROP() (fiber->stack_top--)
-#define DROP_MULTIPLE(amount) (fiber->stack_top -= amount)
 #define READ_BYTE() (*ip++)
 #define READ_SHORT() (ip += 2u, (uint16_t) ((ip[-2] << 8u) | ip[-1]))
 
@@ -470,8 +250,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #define READ_CONSTANT() (current_chunk->constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() (current_chunk->constants.values[READ_SHORT()])
 #define READ_STRING() AS_STRING(READ_CONSTANT())
-#define READ_STRING_LONG() AS_STRING(READ_CONSTANT_LONG())
-#define PEEK(distance) fiber->stack_top[-1 - distance]
 #define READ_FRAME() frame = &fiber->frames[fiber->frame_count - 1]; \
 	current_chunk = &frame->function->chunk; \
 	ip = frame->ip; \
@@ -487,7 +265,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	WRITE_FRAME() \
 	fiber = vm->fiber; \
 	if (fiber == NULL) { \
-		return (LitInterpretResult) { INTERPRET_OK, POP() }; \
+		return (LitInterpretResult) { INTERPRET_OK, NULL_VALUE }; \
 	} \
 	if (fiber->abort) { \
 		RETURN_ERROR() \
@@ -517,25 +295,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #endif
 
 	while (true) {
-#ifdef LIT_TRACE_STACK
-		lit_trace_vm_stack(vm);
-#endif
-
-#ifdef LIT_CHECK_STACK_SIZE
-		if ((fiber->stack_top - frame->slots) > fiber->stack_capacity) {
-			RUNTIME_ERROR_VARG("Fiber stack is not large enough (%i > %i)", (int) (fiber->stack_top - frame->slots), fiber->stack_capacity)
-		}
-#endif
-
 #ifdef LIT_TRACE_EXECUTION
 		instruction = *ip++;
 
 		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
 		// goto *dispatch_table[instruction];
 #else
-		goto *dispatch_table[*ip++];
+		// goto *dispatch_table[*ip++];
 #endif
-
 
 		RUNTIME_ERROR_VARG("Unknown op code '%d'", *ip)
 		break;

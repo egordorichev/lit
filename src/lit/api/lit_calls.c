@@ -40,7 +40,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
 		return NULL;
 	}
 
-	lit_ensure_fiber_stack(state, fiber, callee->max_slots + (int) (fiber->stack_top - fiber->stack));
+	lit_ensure_fiber_registers(state, fiber, callee->max_slots + (int) (fiber->stack_top - fiber->stack));
 
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 	frame->slots = fiber->stack_top;
@@ -150,7 +150,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
 			RETURN_RUNTIME_ERROR()
 		}
 
-		lit_ensure_fiber_stack(state, fiber, 3 + argument_count + (int) (fiber->stack_top - fiber->stack));
+		lit_ensure_fiber_registers(state, fiber, 3 + argument_count + (int) (fiber->stack_top - fiber->stack));
 		LitValue* slot = fiber->stack_top;
 
 		PUSH(instance);
@@ -309,7 +309,7 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 		lit_emit_byte(state, chunk, OP_RETURN);*/
 	}
 
-	lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
+	lit_ensure_fiber_registers(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 
 	frame->ip = function->chunk.code;

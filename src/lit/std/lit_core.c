@@ -562,7 +562,8 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count
 
 	if (frame->ip == frame->function->chunk.code) {
 		fiber->arg_count = arg_count;
-		lit_ensure_fiber_stack(vm->state, fiber, frame->function->max_slots + 1 + (int) (fiber->stack_top - fiber->stack));
+		lit_ensure_fiber_registers(vm->state, fiber,
+		                           frame->function->max_slots + 1 + (int) (fiber->stack_top - fiber->stack));
 
 		frame->slots = fiber->stack_top;
 		lit_push(vm, OBJECT_VALUE(frame->function));

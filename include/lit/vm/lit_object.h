@@ -269,9 +269,9 @@ typedef struct sLitFiber {
 
 	struct sLitFiber* parent;
 
-	LitValue* stack;
-	LitValue* stack_top;
-	uint stack_capacity;
+	LitValue* registers;
+	uint registers_allocated;
+	uint registers_used;
 
 	LitCallFrame* frames;
 	uint frame_capacity;
@@ -287,7 +287,7 @@ typedef struct sLitFiber {
 } LitFiber;
 
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function);
-void lit_ensure_fiber_stack(LitState* state, LitFiber* fiber, uint needed);
+void lit_ensure_fiber_registers(LitState* state, LitFiber* fiber, uint needed);
 
 typedef struct sLitClass {
 	LitObject object;
