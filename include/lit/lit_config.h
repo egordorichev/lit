@@ -4,12 +4,12 @@
 #define LIT_REPOSITORY "https://github.com/egordorichev/lit"
 
 #define LIT_VERSION_MAJOR 0
-#define LIT_VERSION_MINOR 1
-#define LIT_VERSION_STRING "0.1"
+#define LIT_VERSION_MINOR 2
+#define LIT_VERSION_STRING "0.2"
 #define LIT_BYTECODE_VERSION 0
 
-#define TESTING
-// #define DEBUG
+// #define TESTING
+#define DEBUG
 
 #ifdef DEBUG
 #define LIT_TRACE_EXECUTION
