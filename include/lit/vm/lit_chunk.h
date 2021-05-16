@@ -4,14 +4,9 @@
 #include "lit_common.h"
 #include "lit_predefines.h"
 #include "vm/lit_value.h"
+#include "vm/lit_instruction.h"
 
 #include <stdio.h>
-
-typedef enum {
-#define OPCODE(name) OP_##name,
-#include "vm/lit_opcodes.h"
-#undef OPCODE
-} LitOpCode;
 
 typedef struct {
 	uint count;

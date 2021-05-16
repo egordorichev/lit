@@ -36,7 +36,8 @@ void lit_init_vm(LitState* state, LitVm* vm);
 void lit_free_vm(LitVm* vm);
 
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module);
-LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber);
+
+_Noreturn LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber);
 bool lit_handle_runtime_error(LitVm* vm, LitString* error_string);
 bool lit_vruntime_error(LitVm* vm, const char* format, va_list args);
 bool lit_runtime_error(LitVm* vm, const char* format, ...);

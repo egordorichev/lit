@@ -18,19 +18,36 @@ void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source
 		}
 	}
 
-	printf("== %s ==\n", name);
+	printf("^^ %s ^^\n", name);
 
-	for (uint offset = 0; offset < chunk->count;) {
-		offset = lit_disassemble_instruction(chunk, offset, source);
+	for (uint offset = 0; offset < chunk->count; offset++) {
+		lit_disassemble_instruction(chunk, offset, source);
 	}
+
+	printf("vv %s vv\n", name);
 }
 
-static uint print_simple_op(const char* name, uint offset) {
-	printf("%s%s%s\n", COLOR_YELLOW, name, COLOR_RESET);
-	return offset + 1;
+typedef void (*LitDebugInstructionFn)(uint64_t instruction, const char* name);
+
+static void print_abc_instruction(uint64_t instruction, const char* name) {
+	printf("%s%s%s \t%lu \t%lu \t%lu\n", COLOR_YELLOW, name, COLOR_RESET, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction), LIT_INSTRUCTION_C(instruction));
 }
 
-uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* source) {
+static void print_abx_instruction(uint64_t instruction, const char* name) {
+	printf("%s%s%s \t%lu \t%lu\n", COLOR_YELLOW, name, COLOR_RESET, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_BX(instruction));
+}
+
+static void print_asbx_instruction(uint64_t instruction, const char* name) {
+	printf("%s%s%s \t%lu \t%li\n", COLOR_YELLOW, name, COLOR_RESET, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_SBX(instruction));
+}
+
+static LitDebugInstructionFn debug_instruction_functions[] = {
+	print_abc_instruction,
+	print_abx_instruction,
+	print_asbx_instruction
+};
+
+void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* source) {
 	uint line = lit_chunk_get_line(chunk, offset);
 	bool same = !chunk->has_line_info || (offset > 0 && line == lit_chunk_get_line(chunk, offset - 1));
 
@@ -67,12 +84,22 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 		printf("%s%4d%s ", COLOR_BLUE, line, COLOR_RESET);
 	}
 
-	uint8_t instruction = chunk->code[offset];
+	uint64_t instruction = chunk->code[offset];
+	uint8_t opcode = LIT_INSTRUCTION_OPCODE(instruction);
 
-	switch (instruction) {
+	switch (opcode) {
+		// A simple way to automatically generate case printers for all the opcodes
+		#define OPCODE(name, string_name, type) case OP_##name: { \
+				debug_instruction_functions[(int) type](instruction, string_name); \
+				break; \
+			}
+
+		#include "vm/lit_opcodes.h"
+		#undef OPCODE
+
 		default: {
-			printf("Unknown opcode %d\n", instruction);
-			return offset + 1;
+			printf("Unknown opcode %d\n", opcode);
+			break;
 		}
 	}
 }

@@ -244,7 +244,6 @@ void lit_free_statement(LitState* state, LitStatement* statement);
 typedef struct {
 	LitStatement statement;
 	LitExpression* expression;
-	bool pop;
 } LitExpressionStatement;
 
 LitExpressionStatement *lit_create_expression_statement(LitState* state, uint line, LitExpression* expression);

@@ -8,6 +8,7 @@
 #include "util/lit_table.h"
 #include "optimizer/lit_optimizer.h"
 
+#include <math.h>
 #include <string.h>
 
 DEFINE_ARRAY(LitPrivates, LitPrivate, privates)
@@ -44,83 +45,19 @@ void lit_free_emitter(LitEmitter* emitter) {
 	lit_free_uints(emitter->state, &emitter->continues);
 }
 
-static void emit_byte(LitEmitter* emitter, uint16_t line, uint8_t byte) {
-	if (line < emitter->last_line) {
-		// Egor-fail proofing
-		line = emitter->last_line;
-	}
-
-	lit_write_chunk(emitter->state, emitter->chunk, byte, line);
-	emitter->last_line = line;
+static void emit_abc_instruction(LitEmitter* emitter, uint16_t line, uint8_t opcode, uint8_t a, uint16_t b, uint16_t c) {
+	emitter->last_line = fmax(line, emitter->last_line);
+	lit_write_chunk(emitter->state, emitter->chunk, LIT_FORM_ABC_INSTRUCTION(opcode, a, b, c), emitter->last_line);
 }
 
-static void emit_bytes(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b) {
-	if (line < emitter->last_line) {
-		// Egor-fail proofing
-		line = emitter->last_line;
-	}
-
-	lit_write_chunk(emitter->state, emitter->chunk, a, line);
-	lit_write_chunk(emitter->state, emitter->chunk, b, line);
-
-	emitter->last_line = line;
+static void emit_abx_instruction(LitEmitter* emitter, uint16_t line, uint8_t opcode, uint8_t a, uint32_t bx) {
+	emitter->last_line = fmax(line, emitter->last_line);
+	lit_write_chunk(emitter->state, emitter->chunk, LIT_FORM_ABX_INSTRUCTION(opcode, a, bx), emitter->last_line);
 }
 
-static void emit_op(LitEmitter* emitter, uint16_t line, LitOpCode op) {
-	LitCompiler* compiler = emitter->compiler;
-
-	emit_byte(emitter, line, (uint8_t) op);
-	// compiler->slots += stack_effects[(int) op];
-
-	if (compiler->slots > (int) compiler->function->max_slots) {
-		compiler->function->max_slots = (uint) compiler->slots;
-	}
-}
-
-static void emit_ops(LitEmitter* emitter, uint16_t line, LitOpCode a, LitOpCode b) {
-	LitCompiler* compiler = emitter->compiler;
-
-	emit_bytes(emitter, line, (uint8_t) a, (uint8_t) b);
-	// compiler->slots += stack_effects[(int) a] + stack_effects[(int) b];
-
-	if (compiler->slots > (int) compiler->function->max_slots) {
-		compiler->function->max_slots = (uint) compiler->slots;
-	}
-}
-
-static void emit_varying_op(LitEmitter* emitter, uint16_t line, LitOpCode op, uint8_t arg) {
-	LitCompiler* compiler = emitter->compiler;
-
-	emit_bytes(emitter, line, (uint8_t) op, arg);
-	compiler->slots -= arg;
-
-	if (compiler->slots > (int) compiler->function->max_slots) {
-		compiler->function->max_slots = (uint) compiler->slots;
-	}
-}
-
-static void emit_arged_op(LitEmitter* emitter, uint16_t line, LitOpCode op, uint8_t arg) {
-	LitCompiler* compiler = emitter->compiler;
-
-	emit_bytes(emitter, line, (uint8_t) op, arg);
-	// compiler->slots += stack_effects[(int) op];
-
-	if (compiler->slots > (int) compiler->function->max_slots) {
-		compiler->function->max_slots = (uint) compiler->slots;
-	}
-}
-
-static void emit_short(LitEmitter* emitter, uint16_t line, uint16_t value) {
-	emit_bytes(emitter, line, (uint8_t) ((value >> 8) & 0xff), (uint8_t) (value & 0xff));
-}
-
-static void emit_byte_or_short(LitEmitter* emitter, uint16_t line, uint8_t a, uint8_t b, uint16_t index) {
-	if (index > UINT8_MAX) {
-		emit_op(emitter, line, b);
-		emit_short(emitter, line, (uint16_t) index);
-	} else {
-		emit_arged_op(emitter, line, a, (uint8_t) index);
-	}
+static void emit_asbx_instruction(LitEmitter* emitter, uint16_t line, uint8_t opcode, uint8_t a, int32_t sbx) {
+	emitter->last_line = fmax(line, emitter->last_line);
+	lit_write_chunk(emitter->state, emitter->chunk, LIT_FORM_ASBX_INSTRUCTION(opcode, a, sbx), emitter->last_line);
 }
 
 static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctionType type) {
@@ -163,7 +100,7 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 
 static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
 	if (!emitter->compiler->skip_return) {
-		// emit_return(emitter, emitter->last_line);
+		emit_abc_instruction(emitter, emitter->last_line, OP_RETURN, 0, 1, 0);
 		emitter->compiler->skip_return = true;
 	}
 
@@ -179,7 +116,9 @@ static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
 	}
 
 #ifdef LIT_TRACE_CHUNK
-	lit_disassemble_chunk(&function->chunk, function->name->chars, NULL);
+	if (!emitter->state->had_error) {
+		lit_disassemble_chunk(&function->chunk, function->name->chars, NULL);
+	}
 #endif
 
 	return function;
@@ -367,6 +306,11 @@ static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
 
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	switch (expression->type) {
+		case LITERAL_EXPRESSION: {
+			emit_abx_instruction(emitter, expression->line, OP_LOADK, 10, 32);
+			break;
+		}
+
 		default: {
 			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
 			break;
@@ -380,6 +324,11 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	}
 
 	switch (statement->type) {
+		case EXPRESSION_STATEMENT: {
+			emit_expression(emitter, ((LitExpressionStatement*) statement)->expression);
+			break;
+		}
+
 		default: {
 			error(emitter, statement->line, ERROR_UNKNOWN_STATEMENT, (int) statement->type);
 			break;

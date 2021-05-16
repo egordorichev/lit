@@ -235,19 +235,16 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	// Has to be inside of the function in order for goto to work
 	static void* dispatch_table[] = {
-/*#define OPCODE(name, effect) &&OP_##name,
+#define OPCODE(name, a, b) &&OP_##name,
 #include "vm/lit_opcodes.h"
-#undef OPCODE*/
+#undef OPCODE
 	};
 
 #define CASE_CODE(name) OP_##name:
 #define READ_FRAME() frame = &fiber->frames[fiber->frame_count - 1]; \
 	current_chunk = &frame->function->chunk; \
 	ip = frame->ip; \
-	slots = frame->slots; \
 	fiber->module = frame->function->module; \
-	privates = fiber->module->privates; \
-	upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
 
 #define WRITE_FRAME() frame->ip = ip;
 #define RETURN_ERROR() POP_GC(state) return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
@@ -282,20 +279,33 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 #ifdef LIT_TRACE_EXECUTION
 	TRACE_FRAME()
-	uint8_t instruction;
 #endif
+
+	uint64_t instruction;
 
 	while (true) {
-#ifdef LIT_TRACE_EXECUTION
 		instruction = *ip++;
 
+		#ifdef LIT_TRACE_EXECUTION
 		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
-		// goto *dispatch_table[instruction];
-#else
-		// goto *dispatch_table[*ip++];
 #endif
 
-		RUNTIME_ERROR_VARG("Unknown op code '%d'", *ip)
+		goto *dispatch_table[LIT_INSTRUCTION_OPCODE(instruction)];
+
+		CASE_CODE(LOADK) {
+			continue;
+		}
+
+		CASE_CODE(RETURN) {
+			return (LitInterpretResult) { INTERPRET_OK, NULL_VALUE };
+		}
+
+		CASE_CODE(MOVE) {
+
+			continue;
+		}
+
+		RUNTIME_ERROR_VARG("Unknown op code '%d'", LIT_INSTRUCTION_OPCODE(instruction))
 		break;
 	}
 
