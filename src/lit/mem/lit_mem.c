@@ -86,7 +86,7 @@ void lit_free_object(LitState* state, LitObject* object) {
 			LitFiber* fiber = (LitFiber*) object;
 
 			LIT_FREE_ARRAY(state, LitCallFrame, fiber->frames, fiber->frame_capacity);
-			LIT_FREE_ARRAY(state, LitValue, fiber->stack, fiber->stack_capacity);
+			LIT_FREE_ARRAY(state, LitValue, fiber->registers, fiber->registers_allocated);
 			LIT_FREE(state, LitFiber, object);
 
 			break;
@@ -304,8 +304,8 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		case OBJECT_FIBER: {
 			LitFiber* fiber = (LitFiber*) object;
 
-			for (LitValue *slot = fiber->stack; slot < fiber->stack_top; slot++) {
-				lit_mark_value(vm, *slot);
+			for (uint i = 0; i < fiber->registers_allocated; i++) {
+				lit_mark_value(vm, fiber->registers[i]);
 			}
 
 			for (uint i = 0; i < fiber->frame_count; i++) {

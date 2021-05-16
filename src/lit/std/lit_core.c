@@ -560,10 +560,11 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count
 
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
 
+	NOT_IMPLEMENTED
+	/*
 	if (frame->ip == frame->function->chunk.code) {
 		fiber->arg_count = arg_count;
-		lit_ensure_fiber_registers(vm->state, fiber,
-		                           frame->function->max_slots + 1 + (int) (fiber->stack_top - fiber->stack));
+		lit_ensure_fiber_registers(vm->state, fiber, rame->function->max_slots + 1 + (int) (fiber->stack_top - fiber->stack));
 
 		frame->slots = fiber->stack_top;
 		lit_push(vm, OBJECT_VALUE(frame->function));
@@ -592,7 +593,7 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count
 				}
 			}
 		}
-	}
+	}*/
 }
 
 LIT_PRIMITIVE(fiber_run) {
@@ -614,8 +615,8 @@ LIT_PRIMITIVE(fiber_yield) {
 	LitFiber* fiber = vm->fiber;
 
 	vm->fiber = vm->fiber->parent;
-	vm->fiber->stack_top -= fiber->arg_count;
-	vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
+	// vm->fiber->stack_top -= fiber->arg_count;
+	// vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 
 	args[-1] = NULL_VALUE;
 	return true;
@@ -630,8 +631,8 @@ LIT_PRIMITIVE(fiber_yeet) {
 	LitFiber* fiber = vm->fiber;
 
 	vm->fiber = vm->fiber->parent;
-	vm->fiber->stack_top -= fiber->arg_count;
-	vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
+	// vm->fiber->stack_top -= fiber->arg_count;
+	// vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 
 	args[-1] = NULL_VALUE;
 	return true;
@@ -1400,10 +1401,10 @@ static bool interpret(LitVm* vm, LitModule* module) {
 
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
 
-	if (frame->ip == frame->function->chunk.code) {
+	/* if (frame->ip == frame->function->chunk.code) {
 		frame->slots = fiber->stack_top;
 		lit_push(vm, OBJECT_VALUE(frame->function));
-	}
+	}*/
 
 	return true;
 }
@@ -1532,7 +1533,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 			LitModule* loaded_module = AS_MODULE(existing_module);
 
 			if (loaded_module->ran) {
-				vm->fiber->stack_top -= arg_count;
+				// vm->fiber->stack_top -= arg_count;
 				args[-1] = AS_MODULE(existing_module)->return_value;
 			} else {
 				if (interpret(vm, loaded_module)) {

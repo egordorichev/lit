@@ -1,7 +1,6 @@
 #include "vm/lit_chunk.h"
 #include "mem/lit_mem.h"
 #include "state/lit_state.h"
-#include "util/lit_fs.h"
 
 void lit_init_chunk(LitChunk* chunk) {
 	chunk->count = 0;
@@ -24,15 +23,15 @@ void lit_free_chunk(LitState* state, LitChunk* chunk) {
 	lit_init_chunk(chunk);
 }
 
-void lit_write_chunk(LitState* state, LitChunk* chunk, uint8_t byte, uint16_t line) {
+void lit_write_chunk(LitState* state, LitChunk* chunk, uint64_t word, uint16_t line) {
 	if (chunk->capacity < chunk->count + 1) {
 		uint old_capacity = chunk->capacity;
 
 		chunk->capacity = LIT_GROW_CAPACITY(old_capacity);
-		chunk->code = LIT_GROW_ARRAY(state, chunk->code, uint8_t, old_capacity, chunk->capacity);
+		chunk->code = LIT_GROW_ARRAY(state, chunk->code, uint64_t, old_capacity, chunk->capacity);
 	}
 
-	chunk->code[chunk->count] = byte;
+	chunk->code[chunk->count] = word;
 	chunk->count++;
 
 	if (!chunk->has_line_info) {
@@ -112,7 +111,7 @@ void lit_shrink_chunk(LitState* state, LitChunk* chunk) {
 		uint old_capacity = chunk->capacity;
 
 		chunk->capacity = chunk->count;
-		chunk->code = LIT_GROW_ARRAY(state, chunk->code, uint8_t, old_capacity, chunk->capacity);
+		chunk->code = LIT_GROW_ARRAY(state, chunk->code, uint64_t, old_capacity, chunk->capacity);
 	}
 
 	if (chunk->line_capacity > chunk->line_count) {
@@ -121,17 +120,4 @@ void lit_shrink_chunk(LitState* state, LitChunk* chunk) {
 		chunk->line_capacity = chunk->line_count + 2;
 		chunk->lines = LIT_GROW_ARRAY(state, chunk->lines, uint16_t, old_capacity, chunk->line_capacity);
 	}
-}
-
-void lit_emit_byte(LitState* state, LitChunk* chunk, uint8_t byte) {
-	lit_write_chunk(state, chunk, byte, 1);
-}
-
-void lit_emit_bytes(LitState* state, LitChunk* chunk, uint8_t a, uint8_t b) {
-	lit_write_chunk(state, chunk, a, 1);
-	lit_write_chunk(state, chunk, b, 1);
-}
-
-void lit_emit_short(LitState* state, LitChunk* chunk, uint16_t value) {
-	lit_emit_bytes(state, chunk, (uint8_t) ((value >> 8) & 0xff), (uint8_t) (value & 0xff));
 }

@@ -37,12 +37,15 @@ if (COVERAGE)
  set(CMAKE_C_FLAGS "--coverage ${CMAKE_C_FLAGS}")
 endif(COVERAGE)
 
-add_library(lit STATIC src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/vm/lit_chunk.c
+add_library(lit STATIC
+ src/lit/mem/lit_mem.c src/lit/state/lit_state.c src/lit/vm/lit_chunk.c
  src/lit/debug/lit_debug.c src/lit/vm/lit_value.c src/lit/vm/lit_vm.c src/lit/scanner/lit_scanner.c
  src/lit/parser/lit_parser.c src/lit/parser/lit_ast.c src/lit/emitter/lit_emitter.c src/lit/vm/lit_object.c
  src/lit/util/lit_table.c src/lit/util/lit_array.c src/lit/util/lit_fs.c src/lit/api/lit_api.c src/lit/api/lit_calls.c
  src/lit/std/lit_core.c src/lit/std/lit_math.c src/lit/std/lit_file.c src/lit/std/lit_gc.c src/lit/parser/lit_error.c
- src/lit/optimizer/lit_optimizer.c src/lit/util/lit_utf.c src/lit/preprocessor/lit_preprocessor.c)
+ src/lit/optimizer/lit_optimizer.c src/lit/util/lit_utf.c src/lit/preprocessor/lit_preprocessor.c
+
+ src/lit/un/parser/un_parser.c src/lit/un/scanner/un_scanner.c)
 
 target_link_libraries(lit LINK_PUBLIC m) # Lib math
 

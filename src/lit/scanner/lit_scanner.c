@@ -38,7 +38,7 @@ static LitToken make_error_token(LitScanner* scanner, LitError error, ...) {
 
 	LitToken token;
 
-	token.type = TOKEN_ERROR;
+	token.type = LTOKEN_ERROR;
 	token.start = result->chars;
 	token.length = result->length;
 	token.line = scanner->line;
@@ -145,7 +145,7 @@ static bool skip_whitespace(LitScanner* scanner) {
 
 static LitToken parse_string(LitScanner* scanner, bool interpolation) {
 	LitState* state = scanner->state;
-	LitTokenType string_type = TOKEN_STRING;
+	LitTokenType string_type = LTOKEN_STRING;
 
 	LitBytes bytes;
 	lit_init_bytes(&bytes);
@@ -160,7 +160,7 @@ static LitToken parse_string(LitScanner* scanner, bool interpolation) {
 				return make_error_token(scanner, ERROR_INTERPOLATION_NESTING_TOO_DEEP, LIT_MAX_INTERPOLATION_NESTING);
 			}
 
-			string_type = TOKEN_INTERPOLATION;
+			string_type = LTOKEN_INTERPOLATION;
 			scanner->braces[scanner->num_braces++] = 1;
 
 			break;
@@ -259,7 +259,7 @@ static LitToken make_number_token(LitScanner* scanner, bool is_hex, bool is_bina
 		return make_error_token(scanner, ERROR_NUMBER_IS_TOO_BIG);
 	}
 
-	LitToken token = make_token(scanner, TOKEN_NUMBER);
+	LitToken token = make_token(scanner, LTOKEN_NUMBER);
 	token.value = value;
 	return token;
 }
@@ -303,23 +303,23 @@ static LitTokenType check_keyword(LitScanner* scanner, int start, int length, co
 		return type;
 	}
 
-	return TOKEN_IDENTIFIER;
+	return LTOKEN_IDENTIFIER;
 }
 
 static LitTokenType parse_identifier_type(LitScanner* scanner) {
 	switch (scanner->start[0]) {
-		case 'b': return check_keyword(scanner, 1, 4, "reak", TOKEN_BREAK);
+		case 'b': return check_keyword(scanner, 1, 4, "reak", LTOKEN_BREAK);
 
 		case 'c': {
 			if (scanner->current - scanner->start > 1) {
 				switch (scanner->start[1]) {
-					case 'l': return check_keyword(scanner, 2, 3, "ass", TOKEN_CLASS);
+					case 'l': return check_keyword(scanner, 2, 3, "ass", LTOKEN_CLASS);
 
 					case 'o': {
 						if (scanner->current - scanner->start > 3) {
 							switch (scanner->start[3]) {
-								case 's': return check_keyword(scanner, 2, 3, "nst", TOKEN_CONST);
-								case 't': return check_keyword(scanner, 2, 6, "ntinue", TOKEN_CONTINUE);
+								case 's': return check_keyword(scanner, 2, 3, "nst", LTOKEN_CONST);
+								case 't': return check_keyword(scanner, 2, 6, "ntinue", LTOKEN_CONTINUE);
 							}
 						}
 					}
@@ -332,8 +332,8 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 		case 'e': {
 			if (scanner->current - scanner->start > 1) {
 				switch (scanner->start[1]) {
-					case 'l': return check_keyword(scanner, 2, 2, "se", TOKEN_ELSE);
-					case 'x': return check_keyword(scanner, 2, 4, "port", TOKEN_EXPORT);
+					case 'l': return check_keyword(scanner, 2, 2, "se", LTOKEN_ELSE);
+					case 'x': return check_keyword(scanner, 2, 4, "port", LTOKEN_EXPORT);
 				}
 			}
 
@@ -344,9 +344,9 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 		case 'f': {
 			if (scanner->current - scanner->start > 1) {
 				switch (scanner->start[1]) {
-					case 'a': return check_keyword(scanner, 2, 3, "lse", TOKEN_FALSE);
-					case 'o': return check_keyword(scanner, 2, 1, "r", TOKEN_FOR);
-					case 'u': return check_keyword(scanner, 2, 6, "nction", TOKEN_FUNCTION);
+					case 'a': return check_keyword(scanner, 2, 3, "lse", LTOKEN_FALSE);
+					case 'o': return check_keyword(scanner, 2, 1, "r", LTOKEN_FOR);
+					case 'u': return check_keyword(scanner, 2, 6, "nction", LTOKEN_FUNCTION);
 				}
 			}
 
@@ -356,9 +356,9 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 		case 'i': {
 			if (scanner->current - scanner->start > 1) {
 				switch (scanner->start[1]) {
-					case 's': return check_keyword(scanner, 2, 0, "", TOKEN_IS);
-					case 'f': return check_keyword(scanner, 2, 0, "", TOKEN_IF);
-					case 'n': return check_keyword(scanner, 2, 0, "", TOKEN_IN);
+					case 's': return check_keyword(scanner, 2, 0, "", LTOKEN_IS);
+					case 'f': return check_keyword(scanner, 2, 0, "", LTOKEN_IF);
+					case 'n': return check_keyword(scanner, 2, 0, "", LTOKEN_IN);
 				}
 			}
 
@@ -368,8 +368,8 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 		case 'n': {
 			if (scanner->current - scanner->start > 1) {
 				switch (scanner->start[1]) {
-					case 'u': return check_keyword(scanner, 2, 2, "ll", TOKEN_NULL);
-					case 'e': return check_keyword(scanner, 2, 1, "w", TOKEN_NEW);
+					case 'u': return check_keyword(scanner, 2, 2, "ll", LTOKEN_NULL);
+					case 'e': return check_keyword(scanner, 2, 1, "w", LTOKEN_NEW);
 				}
 			}
 
@@ -379,22 +379,22 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 		case 'r': {
 			if (scanner->current - scanner->start > 2) {
 				switch (scanner->start[2]) {
-					case 'f': return check_keyword(scanner, 3, 0, "", TOKEN_REF);
-					case 't': return check_keyword(scanner, 3, 3, "urn", TOKEN_RETURN);
+					case 'f': return check_keyword(scanner, 3, 0, "", LTOKEN_REF);
+					case 't': return check_keyword(scanner, 3, 3, "urn", LTOKEN_RETURN);
 				}
 			}
 
 			break;
 		}
 
-		case 'o': return check_keyword(scanner, 1, 7, "perator", TOKEN_OPERATOR);
+		case 'o': return check_keyword(scanner, 1, 7, "perator", LTOKEN_OPERATOR);
 
 		case 's': {
 			if (scanner->current - scanner->start > 1) {
 				switch (scanner->start[1]) {
-					case 'u': return check_keyword(scanner, 2, 3, "per", TOKEN_SUPER);
-					case 't': return check_keyword(scanner, 2, 4, "atic", TOKEN_STATIC);
-					case 'e': return check_keyword(scanner, 2, 1, "t", TOKEN_SET);
+					case 'u': return check_keyword(scanner, 2, 3, "per", LTOKEN_SUPER);
+					case 't': return check_keyword(scanner, 2, 4, "atic", LTOKEN_STATIC);
+					case 'e': return check_keyword(scanner, 2, 1, "t", LTOKEN_SET);
 				}
 			}
 
@@ -404,20 +404,20 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 		case 't': {
 			if (scanner->current - scanner->start > 1) {
 				switch (scanner->start[1]) {
-					case 'h': return check_keyword(scanner, 2, 2, "is", TOKEN_THIS);
-					case 'r': return check_keyword(scanner, 2, 2, "ue", TOKEN_TRUE);
+					case 'h': return check_keyword(scanner, 2, 2, "is", LTOKEN_THIS);
+					case 'r': return check_keyword(scanner, 2, 2, "ue", LTOKEN_TRUE);
 				}
 			}
 
 			break;
 		}
 
-		case 'v': return check_keyword(scanner, 1, 2, "ar", TOKEN_VAR);
-		case 'w': return check_keyword(scanner, 1, 4, "hile", TOKEN_WHILE);
-		case 'g': return check_keyword(scanner, 1, 2, "et", TOKEN_GET);
+		case 'v': return check_keyword(scanner, 1, 2, "ar", LTOKEN_VAR);
+		case 'w': return check_keyword(scanner, 1, 4, "hile", LTOKEN_WHILE);
+		case 'g': return check_keyword(scanner, 1, 2, "et", LTOKEN_GET);
 	}
 
-	return TOKEN_IDENTIFIER;
+	return LTOKEN_IDENTIFIER;
 }
 
 static LitToken parse_identifier(LitScanner* scanner) {
@@ -430,7 +430,7 @@ static LitToken parse_identifier(LitScanner* scanner) {
 
 LitToken lit_scan_token(LitScanner* scanner) {
 	if (skip_whitespace(scanner)) {
-		LitToken token = make_token(scanner, TOKEN_NEW_LINE);
+		LitToken token = make_token(scanner, LTOKEN_NEW_LINE);
 		scanner->line++;
 
 		return token;
@@ -439,7 +439,7 @@ LitToken lit_scan_token(LitScanner* scanner) {
 	scanner->start = scanner->current;
 
 	if (is_at_end(scanner)) {
-		return make_token(scanner, TOKEN_EOF);
+		return make_token(scanner, LTOKEN_EOF);
 	}
 
 	char c = advance(scanner);
@@ -453,15 +453,15 @@ LitToken lit_scan_token(LitScanner* scanner) {
 	}
 
 	switch (c) {
-		case '(': return make_token(scanner, TOKEN_LEFT_PAREN);
-		case ')': return make_token(scanner, TOKEN_RIGHT_PAREN);
+		case '(': return make_token(scanner, LTOKEN_LEFT_PAREN);
+		case ')': return make_token(scanner, LTOKEN_RIGHT_PAREN);
 
 		case '{': {
 			if (scanner->num_braces > 0) {
 				scanner->braces[scanner->num_braces - 1]++;
 			}
 
-			return make_token(scanner, TOKEN_LEFT_BRACE);
+			return make_token(scanner, LTOKEN_LEFT_BRACE);
 		}
 
 		case '}': {
@@ -470,39 +470,39 @@ LitToken lit_scan_token(LitScanner* scanner) {
 				return parse_string(scanner, true);
 			}
 
-			return make_token(scanner, TOKEN_RIGHT_BRACE);
+			return make_token(scanner, LTOKEN_RIGHT_BRACE);
 		}
 
-		case '[': return make_token(scanner, TOKEN_LEFT_BRACKET);
-		case ']': return make_token(scanner, TOKEN_RIGHT_BRACKET);
-		case ';': return make_token(scanner, TOKEN_SEMICOLON);
-		case ',': return make_token(scanner, TOKEN_COMMA);
-		case ':': return make_token(scanner, TOKEN_COLON);
-		case '~': return make_token(scanner, TOKEN_TILDE);
+		case '[': return make_token(scanner, LTOKEN_LEFT_BRACKET);
+		case ']': return make_token(scanner, LTOKEN_RIGHT_BRACKET);
+		case ';': return make_token(scanner, LTOKEN_SEMICOLON);
+		case ',': return make_token(scanner, LTOKEN_COMMA);
+		case ':': return make_token(scanner, LTOKEN_COLON);
+		case '~': return make_token(scanner, LTOKEN_TILDE);
 
-		case '+': return match_tokens(scanner, '=', '+', TOKEN_PLUS_EQUAL, TOKEN_PLUS_PLUS, TOKEN_PLUS);
-		case '-': return match(scanner, '>') ? make_token(scanner, TOKEN_SMALL_ARROW) : match_tokens(scanner, '=', '-', TOKEN_MINUS_EQUAL, TOKEN_MINUS_MINUS, TOKEN_MINUS);
-		case '/': return match_token(scanner, '=', TOKEN_SLASH_EQUAL, TOKEN_SLASH);
-		case '#': return match_token(scanner, '=', TOKEN_SHARP_EQUAL, TOKEN_SHARP);
-		case '!': return match_token(scanner, '=', TOKEN_BANG_EQUAL, TOKEN_BANG);
-		case '?': return match_token(scanner, '?', TOKEN_QUESTION_QUESTION, TOKEN_QUESTION);
-		case '%': return match_token(scanner, '=', TOKEN_PERCENT_EQUAL, TOKEN_PERCENT);
-		case '^': return match_token(scanner, '=', TOKEN_CARET_EQUAL, TOKEN_CARET);
+		case '+': return match_tokens(scanner, '=', '+', LTOKEN_PLUS_EQUAL, LTOKEN_PLUS_PLUS, LTOKEN_PLUS);
+		case '-': return match(scanner, '>') ? make_token(scanner, LTOKEN_SMALL_ARROW) : match_tokens(scanner, '=', '-', LTOKEN_MINUS_EQUAL, LTOKEN_MINUS_MINUS, LTOKEN_MINUS);
+		case '/': return match_token(scanner, '=', LTOKEN_SLASH_EQUAL, LTOKEN_SLASH);
+		case '#': return match_token(scanner, '=', LTOKEN_SHARP_EQUAL, LTOKEN_SHARP);
+		case '!': return match_token(scanner, '=', LTOKEN_BANG_EQUAL, LTOKEN_BANG);
+		case '?': return match_token(scanner, '?', LTOKEN_QUESTION_QUESTION, LTOKEN_QUESTION);
+		case '%': return match_token(scanner, '=', LTOKEN_PERCENT_EQUAL, LTOKEN_PERCENT);
+		case '^': return match_token(scanner, '=', LTOKEN_CARET_EQUAL, LTOKEN_CARET);
 
-		case '>': return match_tokens(scanner, '=', '>', TOKEN_GREATER_EQUAL, TOKEN_GREATER_GREATER, TOKEN_GREATER);
-		case '<': return match_tokens(scanner, '=', '<', TOKEN_LESS_EQUAL, TOKEN_LESS_LESS, TOKEN_LESS);
-		case '*': return match_tokens(scanner, '=', '*', TOKEN_STAR_EQUAL, TOKEN_STAR_STAR, TOKEN_STAR);
-		case '=': return match_tokens(scanner, '=', '>', TOKEN_EQUAL_EQUAL, TOKEN_ARROW, TOKEN_EQUAL);
-		case '|': return match_tokens(scanner, '=', '|', TOKEN_BAR_EQUAL, TOKEN_BAR_BAR, TOKEN_BAR);
-		case '&': return match_tokens(scanner, '=', '&', TOKEN_AMPERSAND_EQUAL, TOKEN_AMPERSAND_AMPERSAND, TOKEN_AMPERSAND);
+		case '>': return match_tokens(scanner, '=', '>', LTOKEN_GREATER_EQUAL, LTOKEN_GREATER_GREATER, LTOKEN_GREATER);
+		case '<': return match_tokens(scanner, '=', '<', LTOKEN_LESS_EQUAL, LTOKEN_LESS_LESS, LTOKEN_LESS);
+		case '*': return match_tokens(scanner, '=', '*', LTOKEN_STAR_EQUAL, LTOKEN_STAR_STAR, LTOKEN_STAR);
+		case '=': return match_tokens(scanner, '=', '>', LTOKEN_EQUAL_EQUAL, LTOKEN_ARROW, LTOKEN_EQUAL);
+		case '|': return match_tokens(scanner, '=', '|', LTOKEN_BAR_EQUAL, LTOKEN_BAR_BAR, LTOKEN_BAR);
+		case '&': return match_tokens(scanner, '=', '&', LTOKEN_AMPERSAND_EQUAL, LTOKEN_AMPERSAND_AMPERSAND, LTOKEN_AMPERSAND);
 
 
 		case '.': {
 			if (!match(scanner, '.')) {
-				return make_token(scanner, TOKEN_DOT);
+				return make_token(scanner, LTOKEN_DOT);
 			}
 
-			return match_token(scanner, '.', TOKEN_DOT_DOT_DOT, TOKEN_DOT_DOT);
+			return match_token(scanner, '.', LTOKEN_DOT_DOT_DOT, LTOKEN_DOT_DOT);
 		}
 
 		case '$': {

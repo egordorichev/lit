@@ -381,6 +381,7 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 
 	fiber->registers = registers;
 	fiber->registers_allocated = registers_allocated;
+	fiber->registers_used = 0;
 
 	fiber->frames = frames;
 	fiber->frame_capacity = LIT_INITIAL_CALL_FRAMES;

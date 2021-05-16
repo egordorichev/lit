@@ -6,11 +6,11 @@ You can try it out [in your browser](https://egordorichev.github.io/lit-html/?gi
 |                         | Lua      | JavaScript | Lit      |                                                                                                     |
 |-                        |-         |-           |-         |-                                                                                                    |
 | Easy classes            | &#x274C; | &#10004;   | &#10004; | [Example](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/oop.lit)                   |
-| Arrays start from       | 1 (WHAT) | 0          | 0        | Balance in the universe is restored                                                                 |
+| Arrays start from       | 1 (WHAT) | 0          | 0        |                                                                 |
 | String interpolation    | &#x274C; | &#10004;   | &#10004; | [Example](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/interpolation.lit)         |
 | Operator overloading    | &#10004; | &#x274C;   | &#10004; | [Example](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/operator_overloading.lit)  |
 | Easy to embed           | &#10004; | &#x274C;   | &#10004; | [Example](https://github.com/egordorichev/lit/blob/master/html/glue/glue.c)                         |
-| Has no `undefined`      | &#10004; | &#x274C;   | &#10004; | Seriously, why, JS??                                                                                |
+| Has no `undefined`      | &#10004; | &#x274C;   | &#10004; |                                                                              |
 | Syntax sugar like `+=`  | &#x274C; | &#10004;   | &#10004; | [Example](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/syntax_sugar.lit)          |
 | Coroutines (fibers)     | &#10004; | &#x274C;   | &#10004; | [Example](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/fibers.lit)                |
 
