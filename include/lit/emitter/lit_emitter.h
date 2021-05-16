@@ -39,6 +39,8 @@ typedef struct {
 	LitFunctionType type;
 
 	LitCompilerUpvalue upvalues[UINT8_COUNT];
+	uint8_t free_registers[LIT_REGISTERS_MAX];
+	uint8_t registers_used;
 
 	struct LitCompiler* enclosing;
 

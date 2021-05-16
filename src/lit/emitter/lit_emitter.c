@@ -14,7 +14,7 @@
 DEFINE_ARRAY(LitPrivates, LitPrivate, privates)
 DEFINE_ARRAY(LitLocals, LitLocal, locals)
 
-static void emit_expression(LitEmitter* emitter, LitExpression* expression);
+static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression);
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement);
 static void resolve_statement(LitEmitter* emitter, LitStatement* statement);
 
@@ -45,6 +45,13 @@ void lit_free_emitter(LitEmitter* emitter) {
 	lit_free_uints(emitter->state, &emitter->continues);
 }
 
+static void error(LitEmitter* emitter, uint line, LitError error, ...) {
+	va_list args;
+	va_start(args, error);
+	lit_error(emitter->state, COMPILE_ERROR, lit_vformat_error(emitter->state, line, error, args)->chars);
+	va_end(args);
+}
+
 static void emit_abc_instruction(LitEmitter* emitter, uint16_t line, uint8_t opcode, uint8_t a, uint16_t b, uint16_t c) {
 	emitter->last_line = fmax(line, emitter->last_line);
 	lit_write_chunk(emitter->state, emitter->chunk, LIT_FORM_ABC_INSTRUCTION(opcode, a, b, c), emitter->last_line);
@@ -60,6 +67,27 @@ static void emit_asbx_instruction(LitEmitter* emitter, uint16_t line, uint8_t op
 	lit_write_chunk(emitter->state, emitter->chunk, LIT_FORM_ASBX_INSTRUCTION(opcode, a, sbx), emitter->last_line);
 }
 
+static uint8_t reserve_register(LitEmitter* emitter) {
+	LitCompiler* compiler = emitter->compiler;
+
+	if (compiler->registers_used == LIT_REGISTERS_MAX) {
+		error(emitter, emitter->last_line, ERROR_TOO_MANY_REGISTERS);
+		return 0;
+	}
+
+	return compiler->free_registers[compiler->registers_used++];
+}
+
+static void free_register(LitEmitter* emitter, uint8_t reg) {
+	LitCompiler* compiler = emitter->compiler;
+
+	if (compiler->registers_used == 0) {
+		return error(emitter, emitter->last_line, ERROR_INVALID_REGISTER_FREED);
+	}
+
+	compiler->free_registers[--compiler->registers_used] = reg;
+}
+
 static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctionType type) {
 	lit_init_locals(&compiler->locals);
 
@@ -69,6 +97,11 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 	compiler->skip_return = false;
 	compiler->function = lit_create_function(emitter->state, emitter->module);
 	compiler->loop_depth = 0;
+	compiler->registers_used = 0;
+
+	for (uint i = 0; i < LIT_REGISTERS_MAX; i++) {
+		compiler->free_registers[i] = (uint8_t) i;
+	}
 
 	emitter->compiler = compiler;
 
@@ -143,13 +176,6 @@ static void end_scope(LitEmitter* emitter, uint16_t line) {
 
 		locals->count--;
 	}*/
-}
-
-static void error(LitEmitter* emitter, uint line, LitError error, ...) {
-	va_list args;
-	va_start(args, error);
-	lit_error(emitter->state, COMPILE_ERROR, lit_vformat_error(emitter->state, line, error, args)->chars);
-	va_end(args);
 }
 
 static uint16_t add_constant(LitEmitter* emitter, uint line, LitValue value) {
@@ -304,13 +330,14 @@ static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
 	}
 }
 
-static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
+static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
+			uint8_t reg = reserve_register(emitter);
 			uint16_t constant = add_constant(emitter, expression->line, ((LitLiteralExpression*) expression)->value);
-			emit_abx_instruction(emitter, expression->line, OP_LOADK, 10, constant);
 
-			break;
+			emit_abx_instruction(emitter, expression->line, OP_LOADK, reg, constant);
+			return reg;
 		}
 
 		default: {
@@ -318,6 +345,8 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			break;
 		}
 	}
+
+	return 0;
 }
 
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
@@ -327,7 +356,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 	switch (statement->type) {
 		case EXPRESSION_STATEMENT: {
-			emit_expression(emitter, ((LitExpressionStatement*) statement)->expression);
+			free_register(emitter, emit_expression(emitter, ((LitExpressionStatement*) statement)->expression));
 			break;
 		}
 

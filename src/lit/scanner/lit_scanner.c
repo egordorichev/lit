@@ -156,8 +156,8 @@ static LitToken parse_string(LitScanner* scanner, bool interpolation) {
 		if (c == '\"') {
 			break;
 		} else if (interpolation && c == '{') {
-			if (scanner->num_braces >= LIT_MAX_INTERPOLATION_NESTING) {
-				return make_error_token(scanner, ERROR_INTERPOLATION_NESTING_TOO_DEEP, LIT_MAX_INTERPOLATION_NESTING);
+			if (scanner->num_braces >= LIT_INTERPOLATION_NESTING_MAX) {
+				return make_error_token(scanner, ERROR_INTERPOLATION_NESTING_TOO_DEEP, LIT_INTERPOLATION_NESTING_MAX);
 			}
 
 			string_type = LTOKEN_INTERPOLATION;

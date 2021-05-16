@@ -220,19 +220,6 @@ LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 }
 
 LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber) {
-	register LitVm *vm = state->vm;
-	PUSH_GC(state, true);
-
-	vm->fiber = fiber;
-	fiber->abort = false;
-
-	register LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
-	register LitChunk* current_chunk = &frame->function->chunk;
-
-	fiber->module = frame->function->module;
-
-	register uint64_t* ip = frame->ip;
-
 	// Has to be inside of the function in order for goto to work
 	static void* dispatch_table[] = {
 #define OPCODE(name, a, b) &&OP_##name,
@@ -240,11 +227,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #undef OPCODE
 	};
 
+#define DISPATCH_NEXT() goto dispatch;
 #define CASE_CODE(name) OP_##name:
 #define READ_FRAME() frame = &fiber->frames[fiber->frame_count - 1]; \
 	current_chunk = &frame->function->chunk; \
+  constants = current_chunk->constants.values; \
 	ip = frame->ip; \
 	fiber->module = frame->function->module; \
+	registers = fiber->registers;
 
 #define WRITE_FRAME() frame->ip = ip;
 #define RETURN_ERROR() POP_GC(state) return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
@@ -277,33 +267,49 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		RETURN_ERROR() \
 	}
 
+	register LitVm *vm = state->vm;
+	PUSH_GC(state, true)
+
+	vm->fiber = fiber;
+	fiber->abort = false;
+
+	register LitCallFrame* frame;
+	register LitChunk* current_chunk;
+	register uint64_t instruction;
+	register uint64_t* ip;
+	register LitValue* registers;
+	register LitValue* constants;
+
+	READ_FRAME()
+
 #ifdef LIT_TRACE_EXECUTION
 	TRACE_FRAME()
 #endif
 
-	uint64_t instruction;
+	dispatch:
+	instruction = *ip++;
 
-	while (true) {
-		instruction = *ip++;
+	#ifdef LIT_TRACE_EXECUTION
+		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
+	#endif
 
-		#ifdef LIT_TRACE_EXECUTION
-			lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
-		#endif
+	goto *dispatch_table[LIT_INSTRUCTION_OPCODE(instruction)];
 
-		goto *dispatch_table[LIT_INSTRUCTION_OPCODE(instruction)];
-
-		CASE_CODE(LOADK) {
-			continue;
-		}
-
-		CASE_CODE(RETURN) {
-			return (LitInterpretResult) { INTERPRET_OK, NULL_VALUE };
-		}
-
-		CASE_CODE(MOVE) {
-			continue;
-		}
+	CASE_CODE(MOVE) {
+		registers[LIT_INSTRUCTION_A(instruction)] = constants[LIT_INSTRUCTION_B(instruction)];
 	}
+
+	CASE_CODE(LOADK) {
+		registers[LIT_INSTRUCTION_A(instruction)] = constants[LIT_INSTRUCTION_BX(instruction)];
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(RETURN) {
+		// TODO: implement the return of values
+		return (LitInterpretResult) { INTERPRET_OK, NULL_VALUE };
+	}
+
+	RETURN_ERROR()
 
 #undef RUNTIME_ERROR_VARG
 #undef RUNTIME_ERROR
@@ -312,9 +318,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #undef WRITE_FRAME
 #undef READ_FRAME
 #undef CASE_CODE
-
-	RETURN_ERROR()
-
+#undef DISPATCH_NEXT
 #undef RETURN_ERROR
 }
 
