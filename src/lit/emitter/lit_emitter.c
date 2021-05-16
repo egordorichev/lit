@@ -307,7 +307,9 @@ static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
 static void emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
-			emit_abx_instruction(emitter, expression->line, OP_LOADK, 10, 32);
+			uint16_t constant = add_constant(emitter, expression->line, ((LitLiteralExpression*) expression)->value);
+			emit_abx_instruction(emitter, expression->line, OP_LOADK, 10, constant);
+
 			break;
 		}
 

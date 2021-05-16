@@ -20,6 +20,30 @@ void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source
 
 	printf("^^ %s ^^\n", name);
 
+	if (values->count > 0) {
+		printf("%sconstants:%s\n", COLOR_MAGENTA, COLOR_RESET);
+
+		for (uint i = 0; i < values->count; i++) {
+			LitValue value = values->values[i];
+			printf("% 4d ", i);
+
+			if (IS_FUNCTION(value)) {
+				LitString *function_name = AS_FUNCTION(value)->name;
+				printf("%sfunction %.*s\n%s", COLOR_CYAN, function_name->length, function_name->chars, COLOR_RESET);
+			} else if (IS_STRING(value)) {
+				LitString *string = AS_STRING(value);
+				printf("%s\"%.*s\"%s\n", COLOR_CYAN, string->length, string->chars, COLOR_RESET);
+			} else if (IS_NUMBER(value)) {
+				printf("%s%g%s\n", COLOR_CYAN, AS_NUMBER(value), COLOR_RESET);
+			} else {
+				printf("unknown\n");
+			}
+		}
+
+	}
+
+	printf("%stext:%s\n", COLOR_MAGENTA, COLOR_RESET);
+
 	for (uint offset = 0; offset < chunk->count; offset++) {
 		lit_disassemble_instruction(chunk, offset, source);
 	}
