@@ -309,6 +309,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		return (LitInterpretResult) { INTERPRET_OK, NULL_VALUE };
 	}
 
+	CASE_CODE(ADD) {
+
+		registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(AS_NUMBER(registers[LIT_INSTRUCTION_B(instruction)]) + AS_NUMBER(registers[LIT_INSTRUCTION_C(instruction)]));
+		DISPATCH_NEXT()
+	}
+
 	RETURN_ERROR()
 
 #undef RUNTIME_ERROR_VARG

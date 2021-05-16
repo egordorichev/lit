@@ -331,22 +331,32 @@ static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
 }
 
 static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
+	uint8_t reg = reserve_register(emitter);
+
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
-			uint8_t reg = reserve_register(emitter);
 			uint16_t constant = add_constant(emitter, expression->line, ((LitLiteralExpression*) expression)->value);
-
 			emit_abx_instruction(emitter, expression->line, OP_LOADK, reg, constant);
-			return reg;
+
+			break;
+		}
+
+		case BINARY_EXPRESSION: {
+			LitBinaryExpression* expr = (LitBinaryExpression*) expression;
+			emit_abc_instruction(emitter, expression->line, OP_ADD, reg, emit_expression(emitter, expr->left), emit_expression(emitter, expr->right));
+
+			break;
 		}
 
 		default: {
 			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
-			break;
+			free_register(emitter, reg);
+
+			return 0;
 		}
 	}
 
-	return 0;
+	return reg;
 }
 
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
