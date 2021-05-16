@@ -287,8 +287,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		instruction = *ip++;
 
 		#ifdef LIT_TRACE_EXECUTION
-		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
-#endif
+			lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
+		#endif
 
 		goto *dispatch_table[LIT_INSTRUCTION_OPCODE(instruction)];
 
@@ -301,12 +301,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		CASE_CODE(MOVE) {
-
 			continue;
 		}
-
-		RUNTIME_ERROR_VARG("Unknown op code '%d'", LIT_INSTRUCTION_OPCODE(instruction))
-		break;
 	}
 
 #undef RUNTIME_ERROR_VARG

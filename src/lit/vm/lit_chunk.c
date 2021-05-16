@@ -16,7 +16,7 @@ void lit_init_chunk(LitChunk* chunk) {
 }
 
 void lit_free_chunk(LitState* state, LitChunk* chunk) {
-	LIT_FREE_ARRAY(state, uint8_t, chunk->code, chunk->capacity);
+	LIT_FREE_ARRAY(state, uint64_t, chunk->code, chunk->capacity);
 	LIT_FREE_ARRAY(state, uint16_t , chunk->lines, chunk->line_capacity);
 
 	lit_free_values(state, &chunk->constants);
