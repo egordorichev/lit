@@ -19,6 +19,7 @@ bool lit_dir_exists(const char* path);
 void lit_write_uint8_t(FILE* file, uint8_t byte);
 void lit_write_uint16_t(FILE* file, uint16_t byte);
 void lit_write_uint32_t(FILE* file, uint32_t byte);
+void lit_write_uint64_t(FILE* file, uint64_t byte);
 void lit_write_double(FILE* file, double byte);
 void lit_write_string(FILE* file, LitString* string);
 
@@ -38,6 +39,7 @@ void lit_init_emulated_file(LitEmulatedFile* file, const char* source);
 uint8_t lit_read_euint8_t(LitEmulatedFile* file);
 uint16_t lit_read_euint16_t(LitEmulatedFile* file);
 uint32_t lit_read_euint32_t(LitEmulatedFile* file);
+uint64_t lit_read_euint64_t(LitEmulatedFile* file);
 double lit_read_edouble(LitEmulatedFile* file);
 LitString* lit_read_estring(LitState* state, LitEmulatedFile* file);
 

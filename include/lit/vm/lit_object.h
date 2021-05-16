@@ -223,7 +223,7 @@ typedef struct {
 	LitFunction* function;
 	LitClosure* closure;
 
-	uint8_t* ip;
+	uint64_t* ip;
 	LitValue* slots;
 
 	bool result_ignored;

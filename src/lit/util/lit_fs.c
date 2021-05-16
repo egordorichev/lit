@@ -52,6 +52,10 @@ void lit_write_uint32_t(FILE* file, uint32_t byte) {
 	fwrite(&byte, sizeof(uint32_t), 1, file);
 }
 
+void lit_write_uint64_t(FILE* file, uint64_t byte) {
+	fwrite(&byte, sizeof(uint64_t), 1, file);
+}
+
 void lit_write_double(FILE* file, double byte) {
 	fwrite(&byte, sizeof(double), 1, file);
 }
@@ -119,6 +123,10 @@ uint32_t lit_read_euint32_t(LitEmulatedFile* file) {
 	return (uint32_t) (lit_read_euint8_t(file) | (lit_read_euint8_t(file) << 8u) | (lit_read_euint8_t(file) << 16u) | (lit_read_euint8_t(file) << 24u));
 }
 
+uint64_t lit_read_euint64_t(LitEmulatedFile* file) {
+	return (uint64_t) (lit_read_euint32_t(file) | ((uint64_t) lit_read_euint32_t(file) << 32u));
+}
+
 double lit_read_edouble(LitEmulatedFile* file) {
 	uint8_t values[8];
 	double result;
@@ -178,7 +186,7 @@ static void save_chunk(FILE* file, LitChunk* chunk) {
 	lit_write_uint32_t(file, chunk->count);
 
 	for (uint i = 0; i < chunk->count; i++) {
-		lit_write_uint8_t(file, chunk->code[i]);
+		lit_write_uint64_t(file, chunk->code[i]);
 	}
 
 	if (chunk->has_line_info) {
@@ -226,14 +234,14 @@ static void save_chunk(FILE* file, LitChunk* chunk) {
 
 static void load_chunk(LitState* state, LitEmulatedFile* file, LitModule* module, LitChunk* chunk) {
 	lit_init_chunk(chunk);
-
 	uint count = lit_read_euint32_t(file);
-	chunk->code = (uint8_t*) lit_reallocate(state, NULL, 0, sizeof(uint8_t) * count);
+
+	chunk->code = (uint64_t*) lit_reallocate(state, NULL, 0, sizeof(uint64_t) * count);
 	chunk->count = count;
 	chunk->capacity = count;
 
 	for (uint i = 0; i < count; i++) {
-		chunk->code[i] = lit_read_euint8_t(file);
+		chunk->code[i] = lit_read_euint64_t(file);
 	}
 
 	count = lit_read_euint32_t(file);

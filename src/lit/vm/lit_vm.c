@@ -231,10 +231,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	fiber->module = frame->function->module;
 
-	register uint8_t* ip = frame->ip;
-	register LitValue* slots = frame->slots;
-	register LitValue* privates = fiber->module->privates;
-	register LitUpvalue** upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
+	register uint64_t* ip = frame->ip;
 
 	// Has to be inside of the function in order for goto to work
 	static void* dispatch_table[] = {
@@ -243,13 +240,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 #undef OPCODE*/
 	};
 
-#define READ_BYTE() (*ip++)
-#define READ_SHORT() (ip += 2u, (uint16_t) ((ip[-2] << 8u) | ip[-1]))
-
 #define CASE_CODE(name) OP_##name:
-#define READ_CONSTANT() (current_chunk->constants.values[READ_BYTE()])
-#define READ_CONSTANT_LONG() (current_chunk->constants.values[READ_SHORT()])
-#define READ_STRING() AS_STRING(READ_CONSTANT())
 #define READ_FRAME() frame = &fiber->frames[fiber->frame_count - 1]; \
 	current_chunk = &frame->function->chunk; \
 	ip = frame->ip; \
@@ -310,26 +301,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 #undef RUNTIME_ERROR_VARG
 #undef RUNTIME_ERROR
-#undef INVOKE_METHOD
-#undef INVOKE_FROM_CLASS
-#undef INVOKE_FROM_CLASS_ADVANCED
-#undef DROP_MULTIPLE
-#undef PUSH
-#undef DROP
-#undef POP
 #undef CALL_VALUE
 #undef RECOVER_STATE
 #undef WRITE_FRAME
 #undef READ_FRAME
-#undef PEEK
-#undef BITWISE_OP
-#undef BINARY_OP
-#undef READ_CONSTANT_LONG
-#undef READ_CONSTANT
 #undef CASE_CODE
-#undef READ_STRING
-#undef READ_SHORT
-#undef READ_BYTE
 
 	RETURN_ERROR()
 
