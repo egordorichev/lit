@@ -58,15 +58,15 @@ void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source
 typedef void (*LitDebugInstructionFn)(uint64_t instruction, const char* name);
 
 static void print_abc_instruction(uint64_t instruction, const char* name) {
-	printf("%s%s%s \t%lu \t%lu \t%lu\n", COLOR_YELLOW, name, COLOR_RESET, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction), LIT_INSTRUCTION_C(instruction));
+	printf("%s%s%s%*s %lu \t%lu \t%lu\n", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction), LIT_INSTRUCTION_C(instruction));
 }
 
 static void print_abx_instruction(uint64_t instruction, const char* name) {
-	printf("%s%s%s \t%lu \t%lu\n", COLOR_YELLOW, name, COLOR_RESET, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_BX(instruction));
+	printf("%s%s%s%*s %lu \t%lu\n", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_BX(instruction));
 }
 
 static void print_asbx_instruction(uint64_t instruction, const char* name) {
-	printf("%s%s%s \t%lu \t%li\n", COLOR_YELLOW, name, COLOR_RESET, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_SBX(instruction));
+	printf("%s%s%s%*s %lu \t%li\n", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_SBX(instruction));
 }
 
 static void print_constant_or_register(LitChunk* chunk, uint16_t arg) {
@@ -82,13 +82,13 @@ static void print_constant_or_register(LitChunk* chunk, uint16_t arg) {
 }
 
 static void print_unary_instruction(LitChunk* chunk, uint64_t instruction, const char* name) {
-	printf("%s%s%s \t%lu", COLOR_YELLOW, name, COLOR_RESET, LIT_INSTRUCTION_A(instruction));
+	printf("%s%s%s%*s %lu", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction));
 	print_constant_or_register(chunk, LIT_INSTRUCTION_B(instruction));
 	printf("\n");
 }
 
 static void print_binary_instruction(LitChunk* chunk, uint64_t instruction, const char* name) {
-	printf("%s%s%s \t%lu", COLOR_YELLOW, name, COLOR_RESET, LIT_INSTRUCTION_A(instruction));
+	printf("%s%s%s%*s %lu", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction));
 
 	print_constant_or_register(chunk, LIT_INSTRUCTION_B(instruction));
 	print_constant_or_register(chunk, LIT_INSTRUCTION_C(instruction));
@@ -143,10 +143,10 @@ void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 	uint8_t opcode = LIT_INSTRUCTION_OPCODE(instruction);
 
 	switch (opcode) {
-		case OP_LOADK: {
+		case OP_LOAD_CONSTANT: {
 			uint32_t constant = LIT_INSTRUCTION_BX(instruction);
 
-			printf("%sLOADK%s \t%lu \tc%u (", COLOR_YELLOW, COLOR_RESET, LIT_INSTRUCTION_A(instruction), constant);
+			printf("%sLOAD_CONSTANT%s \t%lu \tc%u (", COLOR_YELLOW, COLOR_RESET, LIT_INSTRUCTION_A(instruction), constant);
 			print_constant(chunk->constants.values[constant]);
 			printf(")\n");
 

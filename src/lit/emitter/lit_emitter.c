@@ -360,12 +360,12 @@ static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			uint8_t reg = reserve_register(emitter);
 
 			if (IS_NULL(value)) {
-				emit_abc_instruction(emitter, expression->line, OP_LOADNULL, reg, 0, 0);
+				emit_abc_instruction(emitter, expression->line, OP_LOAD_NULL, reg, 0, 0);
 			} else if (IS_BOOL(value)) {
-				emit_abc_instruction(emitter, expression->line, OP_LOADBOOL, reg, (uint8_t) AS_BOOL(value), 0);
+				emit_abc_instruction(emitter, expression->line, OP_LOAD_BOOL, reg, (uint8_t) AS_BOOL(value), 0);
 			} else {
 				uint16_t constant = add_constant(emitter, expression->line, value);
-				emit_abx_instruction(emitter, expression->line, OP_LOADK, reg, constant);
+				emit_abx_instruction(emitter, expression->line, OP_LOAD_CONSTANT, reg, constant);
 			}
 
 			return reg;

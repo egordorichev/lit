@@ -318,17 +318,17 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		registers[LIT_INSTRUCTION_A(instruction)] = constants[LIT_INSTRUCTION_B(instruction)];
 	}
 
-	CASE_CODE(LOADK) {
+	CASE_CODE(LOAD_CONSTANT) {
 		registers[LIT_INSTRUCTION_A(instruction)] = constants[LIT_INSTRUCTION_BX(instruction)];
 		DISPATCH_NEXT()
 	}
 
-	CASE_CODE(LOADNULL) {
+	CASE_CODE(LOAD_NULL) {
 		registers[LIT_INSTRUCTION_A(instruction)] = NULL_VALUE;
 		DISPATCH_NEXT()
 	}
 
-	CASE_CODE(LOADBOOL) {
+	CASE_CODE(LOAD_BOOL) {
 		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(LIT_INSTRUCTION_B(instruction) != 0);
 		DISPATCH_NEXT()
 	}

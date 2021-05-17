@@ -1,6 +1,8 @@
 #ifndef LIT_INSTRUCTION_H
 #define LIT_INSTRUCTION_H
 
+#define LIT_LONGEST_OP_NAME 13
+
 typedef enum {
 	#define OPCODE(name, a, b) OP_##name,
 	#include "vm/lit_opcodes.h"
