@@ -81,6 +81,12 @@ static void print_constant_or_register(LitChunk* chunk, uint16_t arg) {
 	}
 }
 
+static void print_unary_instruction(LitChunk* chunk, uint64_t instruction, const char* name) {
+	printf("%s%s%s \t%lu", COLOR_YELLOW, name, COLOR_RESET, LIT_INSTRUCTION_A(instruction));
+	print_constant_or_register(chunk, LIT_INSTRUCTION_B(instruction));
+	printf("\n");
+}
+
 static void print_binary_instruction(LitChunk* chunk, uint64_t instruction, const char* name) {
 	printf("%s%s%s \t%lu", COLOR_YELLOW, name, COLOR_RESET, LIT_INSTRUCTION_A(instruction));
 
@@ -152,18 +158,28 @@ void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 			break;
 		}
 
-		case OP_SUB: {
-			print_binary_instruction(chunk, instruction, "SUB");
+		case OP_SUBTRACT: {
+			print_binary_instruction(chunk, instruction, "SUBTRACT");
 			break;
 		}
 
-		case OP_MUL: {
-			print_binary_instruction(chunk, instruction, "MUL");
+		case OP_MULTIPLY: {
+			print_binary_instruction(chunk, instruction, "MULTIPLY");
 			break;
 		}
 
-		case OP_DIV: {
-			print_binary_instruction(chunk, instruction, "DIV");
+		case OP_DIVIDE: {
+			print_binary_instruction(chunk, instruction, "DIVIDE");
+			break;
+		}
+
+		case OP_NEGATE: {
+			print_unary_instruction(chunk, instruction, "NEGATE");
+			break;
+		}
+
+		case OP_NOT: {
+			print_unary_instruction(chunk, instruction, "NOT");
 			break;
 		}
 

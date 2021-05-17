@@ -188,21 +188,6 @@ static uint16_t add_constant(LitEmitter* emitter, uint line, LitValue value) {
 	return constant;
 }
 
-static uint emit_constant(LitEmitter* emitter, uint line, LitValue value) {
-	uint constant = lit_chunk_add_constant(emitter->state, emitter->chunk, value);
-
-	/*if (constant < UINT8_MAX) {
-		emit_arged_op(emitter, line, OP_CONSTANT, constant);
-	} else if (constant < UINT16_MAX) {
-		emit_op(emitter, line, OP_CONSTANT_LONG);
-		emit_short(emitter, line, constant);
-	} else {
-		error(emitter, line, ERROR_TOO_MANY_CONSTANTS);
-	}*/
-
-	return constant;
-}
-
 static int add_private(LitEmitter* emitter, const char* name, uint length, uint line, bool constant) {
 	LitPrivates* privates = &emitter->privates;
 
@@ -330,56 +315,85 @@ static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
 	}
 }
 
-static LitOpCode translate_operator_into_op(LitTokenType token) {
+static LitOpCode translate_unary_operator_into_op(LitTokenType token) {
 	switch (token) {
-		case LTOKEN_MINUS: return OP_SUB;
-		case LTOKEN_STAR: return OP_MUL;
-		case LTOKEN_SLASH: return OP_DIV;
+		case LTOKEN_MINUS: return OP_NEGATE;
+		case LTOKEN_BANG: default: return OP_NOT;
+	}
+}
+
+static LitOpCode translate_binary_operator_into_op(LitTokenType token) {
+	switch (token) {
+		case LTOKEN_MINUS: return OP_SUBTRACT;
+		case LTOKEN_STAR: return OP_MULTIPLY;
+		case LTOKEN_SLASH: return OP_DIVIDE;
 
 		case LTOKEN_PLUS: default: return OP_ADD;
+	}
+}
+
+static uint16_t parse_argument(LitEmitter* emitter, LitExpression* expression) {
+	if (expression->type == LITERAL_EXPRESSION) {
+		LitValue value = ((LitLiteralExpression*) expression)->value;
+
+		if (IS_NUMBER(value) || IS_STRING(value)) {
+			uint16_t arg = add_constant(emitter, expression->line, value);
+			SET_BIT(arg, 8) // Mark that this is a constant
+
+			return arg;
+		}
+	}
+
+	return emit_expression(emitter, expression);
+}
+
+static void free_register_non_literal(LitEmitter* emitter, LitExpression* expr, uint8_t reg) {
+	if (expr->type != LITERAL_EXPRESSION) {
+		free_register(emitter, reg);
 	}
 }
 
 static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
-			uint16_t constant = add_constant(emitter, expression->line, ((LitLiteralExpression*) expression)->value);
+			LitValue value = ((LitLiteralExpression*) expression)->value;
 			uint8_t reg = reserve_register(emitter);
 
-			emit_abx_instruction(emitter, expression->line, OP_LOADK, reg, constant);
+			if (IS_NULL(value)) {
+				emit_abc_instruction(emitter, expression->line, OP_LOADNULL, reg, 0, 0);
+			} else if (IS_BOOL(value)) {
+				emit_abc_instruction(emitter, expression->line, OP_LOADBOOL, reg, (uint8_t) AS_BOOL(value), 0);
+			} else {
+				uint16_t constant = add_constant(emitter, expression->line, value);
+				emit_abx_instruction(emitter, expression->line, OP_LOADK, reg, constant);
+			}
+
 			return reg;
+		}
+
+		case UNARY_EXPRESSION: {
+			LitUnaryExpression* expr = (LitUnaryExpression*) expression;
+
+			uint16_t b = parse_argument(emitter, expr->right);
+			uint8_t reg = reserve_register(emitter);
+
+			emit_abc_instruction(emitter, expression->line, translate_unary_operator_into_op(expr->op), reg, b, 0);
+
+			free_register_non_literal(emitter, expr->right, b);
+			break;
 		}
 
 		case BINARY_EXPRESSION: {
 			LitBinaryExpression* expr = (LitBinaryExpression*) expression;
 
-			uint16_t b;
-			uint16_t c;
-
-			if (expr->left->type == LITERAL_EXPRESSION) {
-				b = add_constant(emitter, expression->line, ((LitLiteralExpression*) expr->left)->value);
-				SET_BIT(b, 8) // Mark that this is a constant
-			} else {
-				b = emit_expression(emitter, expr->left);
-			}
-
-			if (expr->right->type == LITERAL_EXPRESSION) {
-				c = add_constant(emitter, expression->line, ((LitLiteralExpression*) expr->right)->value);
-				SET_BIT(c, 8) // Mark that this is a constant
-			} else {
-				c = emit_expression(emitter, expr->right);
-			}
-
+			uint16_t b = parse_argument(emitter, expr->left);
+			uint16_t c = parse_argument(emitter, expr->right);
 			uint8_t reg = reserve_register(emitter);
-			emit_abc_instruction(emitter, expression->line, translate_operator_into_op(expr->op), reg, b, c);
 
-			if (expr->left->type != LITERAL_EXPRESSION) {
-				free_register(emitter, b);
-			}
+			emit_abc_instruction(emitter, expression->line, translate_binary_operator_into_op(expr->op), reg, b, c);
 
-			if (expr->right->type != LITERAL_EXPRESSION) {
-				free_register(emitter, c);
-			}
+			free_register_non_literal(emitter, expr->left, b);
+			free_register_non_literal(emitter, expr->right, c);
 
 			return reg;
 		}

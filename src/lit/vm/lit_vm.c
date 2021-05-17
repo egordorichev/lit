@@ -267,12 +267,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			RETURN_ERROR() \
 		}
 
+	#define GET_RC(r) (IS_BIT_SET(r, 8) ? constants[r & 0xff] : registers[r])
+
 	// Instruction helpers
 	#define BINARY_INSTRUCTION(type, op, op_string) \
 		uint16_t b = LIT_INSTRUCTION_B(instruction); \
 		uint16_t c = LIT_INSTRUCTION_C(instruction); \
-    LitValue bv = IS_BIT_SET(b, 8) ? constants[b & 0xff] : registers[b]; \
-    LitValue cv = IS_BIT_SET(c, 8) ? constants[c & 0xff] : registers[c]; \
+    LitValue bv = GET_RC(b); \
+    LitValue cv = GET_RC(c); \
 		if (IS_NUMBER(bv)) { \
 			if (!IS_NUMBER(cv)) { \
 				RUNTIME_ERROR_VARG("Attempt to use the operator %s with a number and a %s", op_string, lit_get_value_type(cv)) \
@@ -321,6 +323,16 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(LOADNULL) {
+		registers[LIT_INSTRUCTION_A(instruction)] = NULL_VALUE;
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(LOADBOOL) {
+		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(LIT_INSTRUCTION_B(instruction) != 0);
+		DISPATCH_NEXT()
+	}
+
 	CASE_CODE(RETURN) {
 		for (uint i = 0; i < 3; i++) {
 			printf("%i: ", i);
@@ -337,18 +349,43 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
-	CASE_CODE(SUB) {
+	CASE_CODE(SUBTRACT) {
 		BINARY_INSTRUCTION(NUMBER_VALUE, -, "-")
 		DISPATCH_NEXT()
 	}
 
-	CASE_CODE(MUL) {
+	CASE_CODE(MULTIPLY) {
 		BINARY_INSTRUCTION(NUMBER_VALUE, *, "*")
 		DISPATCH_NEXT()
 	}
 
-	CASE_CODE(DIV) {
+	CASE_CODE(DIVIDE) {
 		BINARY_INSTRUCTION(NUMBER_VALUE, /, "/")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(NEGATE) {
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+    LitValue value = GET_RC(b);
+
+		if (!IS_NUMBER(value)) {
+			// Don't even ask me why
+			// This doesn't kill our performance, since it's a error anyway
+			if (IS_STRING(value) && strcmp(AS_CSTRING(value), "muffin") == 0) {
+				RUNTIME_ERROR("Idk, can you negate a muffin?")
+			} else {
+				RUNTIME_ERROR("Operand must be a number")
+			}
+		}
+
+		registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(-AS_NUMBER(value));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(NOT) {
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(lit_is_falsey(GET_RC(b)));
+
 		DISPATCH_NEXT()
 	}
 
@@ -356,6 +393,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	#undef BINARY_INSTRUCTION
 
+	#undef GET_RC
 	#undef RUNTIME_ERROR_VARG
 	#undef RUNTIME_ERROR
 	#undef CALL_VALUE
