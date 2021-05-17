@@ -6,6 +6,20 @@ void lit_disassemble_module(LitModule* module, const char* source) {
 	lit_disassemble_chunk(&module->main_function->chunk, module->main_function->name->chars, source);
 }
 
+static void print_constant(LitValue value) {
+	if (IS_FUNCTION(value)) {
+		LitString *function_name = AS_FUNCTION(value)->name;
+		printf("%sfunction %.*s%s", COLOR_CYAN, function_name->length, function_name->chars, COLOR_RESET);
+	} else if (IS_STRING(value)) {
+		LitString *string = AS_STRING(value);
+		printf("%s\"%.*s\"%s", COLOR_CYAN, string->length, string->chars, COLOR_RESET);
+	} else if (IS_NUMBER(value)) {
+		printf("%s%g%s", COLOR_CYAN, AS_NUMBER(value), COLOR_RESET);
+	} else {
+		printf("unknown");
+	}
+}
+
 void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source) {
 	LitValues* values = &chunk->constants;
 
@@ -25,21 +39,11 @@ void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source
 
 		for (uint i = 0; i < values->count; i++) {
 			LitValue value = values->values[i];
+
 			printf("% 4d ", i);
-
-			if (IS_FUNCTION(value)) {
-				LitString *function_name = AS_FUNCTION(value)->name;
-				printf("%sfunction %.*s\n%s", COLOR_CYAN, function_name->length, function_name->chars, COLOR_RESET);
-			} else if (IS_STRING(value)) {
-				LitString *string = AS_STRING(value);
-				printf("%s\"%.*s\"%s\n", COLOR_CYAN, string->length, string->chars, COLOR_RESET);
-			} else if (IS_NUMBER(value)) {
-				printf("%s%g%s\n", COLOR_CYAN, AS_NUMBER(value), COLOR_RESET);
-			} else {
-				printf("unknown\n");
-			}
+			print_constant(value);
+			printf("\n");
 		}
-
 	}
 
 	printf("%stext:%s\n", COLOR_MAGENTA, COLOR_RESET);
@@ -63,6 +67,27 @@ static void print_abx_instruction(uint64_t instruction, const char* name) {
 
 static void print_asbx_instruction(uint64_t instruction, const char* name) {
 	printf("%s%s%s \t%lu \t%li\n", COLOR_YELLOW, name, COLOR_RESET, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_SBX(instruction));
+}
+
+static void print_constant_or_register(LitChunk* chunk, uint16_t arg) {
+	if (IS_BIT_SET(arg, 8)) {
+		arg &= 0xff;
+
+		printf(" \tc%hu (", arg);
+		print_constant(chunk->constants.values[arg]);
+		printf(")");
+	} else {
+		printf(" \t%hu", arg);
+	}
+}
+
+static void print_binary_instruction(LitChunk* chunk, uint64_t instruction, const char* name) {
+	printf("%s%s%s \t%lu", COLOR_YELLOW, name, COLOR_RESET, LIT_INSTRUCTION_A(instruction));
+
+	print_constant_or_register(chunk, LIT_INSTRUCTION_B(instruction));
+	print_constant_or_register(chunk, LIT_INSTRUCTION_C(instruction));
+
+	printf("\n");
 }
 
 static LitDebugInstructionFn debug_instruction_functions[] = {
@@ -112,18 +137,37 @@ void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 	uint8_t opcode = LIT_INSTRUCTION_OPCODE(instruction);
 
 	switch (opcode) {
-		// A simple way to automatically generate case printers for all the opcodes
-		#define OPCODE(name, string_name, type) case OP_##name: { \
-				debug_instruction_functions[(int) type](instruction, string_name); \
-				break; \
-			}
+		case OP_LOADK: {
+			uint32_t constant = LIT_INSTRUCTION_BX(instruction);
+			
+			printf("%sLOADK%s \t%lu \tc%u (", COLOR_YELLOW, COLOR_RESET, LIT_INSTRUCTION_A(instruction), constant);
+			print_constant(chunk->constants.values[constant]);
+			printf(")\n");
 
-		#include "vm/lit_opcodes.h"
-		#undef OPCODE
+			break;
+		}
+
+		case OP_ADD: {
+			print_binary_instruction(chunk, instruction, "ADD");
+			break;
+		}
 
 		default: {
-			printf("Unknown opcode %d\n", opcode);
-			break;
+			switch (opcode) {
+				// A simple way to automatically generate case printers for all the opcodes
+				#define OPCODE(name, string_name, type) case OP_##name: { \
+	        debug_instruction_functions[(int) type](instruction, string_name); \
+	        break; \
+	      }
+
+				#include "vm/lit_opcodes.h"
+				#undef OPCODE
+
+				default: {
+					printf("Unknown opcode %d\n", opcode);
+					break;
+				}
+			}
 		}
 	}
 }
