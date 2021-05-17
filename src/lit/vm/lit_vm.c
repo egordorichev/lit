@@ -310,8 +310,15 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(ADD) {
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+		uint16_t c = LIT_INSTRUCTION_C(instruction);
 
-		registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(AS_NUMBER(registers[LIT_INSTRUCTION_B(instruction)]) + AS_NUMBER(registers[LIT_INSTRUCTION_C(instruction)]));
+		registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(AS_NUMBER(
+			IS_BIT_SET(b, 8) ? constants[b & 0xff] : registers[b]
+		) + AS_NUMBER(
+			IS_BIT_SET(c, 8) ? constants[c & 0xff] : registers[c]
+		));
+
 		DISPATCH_NEXT()
 	}
 

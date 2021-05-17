@@ -331,32 +331,58 @@ static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
 }
 
 static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
-	uint8_t reg = reserve_register(emitter);
 
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
 			uint16_t constant = add_constant(emitter, expression->line, ((LitLiteralExpression*) expression)->value);
+			uint8_t reg = reserve_register(emitter);
+
 			emit_abx_instruction(emitter, expression->line, OP_LOADK, reg, constant);
 
-			break;
+			return reg;
 		}
 
 		case BINARY_EXPRESSION: {
 			LitBinaryExpression* expr = (LitBinaryExpression*) expression;
-			emit_abc_instruction(emitter, expression->line, OP_ADD, reg, emit_expression(emitter, expr->left), emit_expression(emitter, expr->right));
 
-			break;
+			uint16_t b;
+			uint16_t c;
+
+			if (expr->left->type == LITERAL_EXPRESSION) {
+				b = add_constant(emitter, expression->line, ((LitLiteralExpression*) expr->left)->value);
+				SET_BIT(b, 8) // Mark that this is a constant
+			} else {
+				b = emit_expression(emitter, expr->left);
+			}
+
+			if (expr->right->type == LITERAL_EXPRESSION) {
+				c = add_constant(emitter, expression->line, ((LitLiteralExpression*) expr->right)->value);
+				SET_BIT(c, 8) // Mark that this is a constant
+			} else {
+				c = emit_expression(emitter, expr->right);
+			}
+
+			uint8_t reg = reserve_register(emitter);
+			emit_abc_instruction(emitter, expression->line, OP_ADD, reg, b, c);
+
+			if (expr->left->type != LITERAL_EXPRESSION) {
+				free_register(emitter, b);
+			}
+
+			if (expr->right->type != LITERAL_EXPRESSION) {
+				free_register(emitter, c);
+			}
+
+			return reg;
 		}
 
 		default: {
 			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
-			free_register(emitter, reg);
-
-			return 0;
+			break;
 		}
 	}
 
-	return reg;
+	return 0;
 }
 
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {

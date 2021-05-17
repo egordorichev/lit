@@ -15,4 +15,7 @@
 
 typedef uint32_t uint;
 
+#define SET_BIT(number, n) number |= 1UL << n;
+#define IS_BIT_SET(number, n) (((number >> n) & 1U) != 0)
+
 #endif
