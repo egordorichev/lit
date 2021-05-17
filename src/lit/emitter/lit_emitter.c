@@ -330,15 +330,23 @@ static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
 	}
 }
 
-static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
+static LitOpCode translate_operator_into_op(LitTokenType token) {
+	switch (token) {
+		case LTOKEN_MINUS: return OP_SUB;
+		case LTOKEN_STAR: return OP_MUL;
+		case LTOKEN_SLASH: return OP_DIV;
 
+		case LTOKEN_PLUS: default: return OP_ADD;
+	}
+}
+
+static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
 			uint16_t constant = add_constant(emitter, expression->line, ((LitLiteralExpression*) expression)->value);
 			uint8_t reg = reserve_register(emitter);
 
 			emit_abx_instruction(emitter, expression->line, OP_LOADK, reg, constant);
-
 			return reg;
 		}
 
@@ -363,7 +371,7 @@ static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			}
 
 			uint8_t reg = reserve_register(emitter);
-			emit_abc_instruction(emitter, expression->line, OP_ADD, reg, b, c);
+			emit_abc_instruction(emitter, expression->line, translate_operator_into_op(expr->op), reg, b, c);
 
 			if (expr->left->type != LITERAL_EXPRESSION) {
 				free_register(emitter, b);
@@ -393,6 +401,20 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	switch (statement->type) {
 		case EXPRESSION_STATEMENT: {
 			free_register(emitter, emit_expression(emitter, ((LitExpressionStatement*) statement)->expression));
+			break;
+		}
+
+		case BLOCK_STATEMENT: {
+			LitStatements* statements = &((LitBlockStatement*) statement)->statements;
+			begin_scope(emitter);
+
+			for (uint i = 0; i < statements->count; i++) {
+				if (emit_statement(emitter, statements->values[i])) {
+					break;
+				}
+			}
+
+			end_scope(emitter, emitter->last_line);
 			break;
 		}
 

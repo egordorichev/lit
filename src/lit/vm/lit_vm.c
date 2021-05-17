@@ -222,50 +222,67 @@ LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber) {
 	// Has to be inside of the function in order for goto to work
 	static void* dispatch_table[] = {
-#define OPCODE(name, a, b) &&OP_##name,
-#include "vm/lit_opcodes.h"
-#undef OPCODE
+		#define OPCODE(name, a, b) &&OP_##name,
+		#include "vm/lit_opcodes.h"
+		#undef OPCODE
 	};
 
-#define DISPATCH_NEXT() goto dispatch;
-#define CASE_CODE(name) OP_##name:
-#define READ_FRAME() frame = &fiber->frames[fiber->frame_count - 1]; \
-	current_chunk = &frame->function->chunk; \
-  constants = current_chunk->constants.values; \
-	ip = frame->ip; \
-	fiber->module = frame->function->module; \
-	registers = fiber->registers;
+	#define DISPATCH_NEXT() goto dispatch;
+	#define CASE_CODE(name) OP_##name:
+	#define READ_FRAME() frame = &fiber->frames[fiber->frame_count - 1]; \
+		current_chunk = &frame->function->chunk; \
+	  constants = current_chunk->constants.values; \
+		ip = frame->ip; \
+		fiber->module = frame->function->module; \
+		registers = fiber->registers;
 
-#define WRITE_FRAME() frame->ip = ip;
-#define RETURN_ERROR() POP_GC(state) return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
+	#define WRITE_FRAME() frame->ip = ip;
+	#define RETURN_ERROR() POP_GC(state) return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
 
-#define RECOVER_STATE() \
-	WRITE_FRAME() \
-	fiber = vm->fiber; \
-	if (fiber == NULL) { \
-		return (LitInterpretResult) { INTERPRET_OK, NULL_VALUE }; \
-	} \
-	if (fiber->abort) { \
-		RETURN_ERROR() \
-	} \
-	READ_FRAME() \
-	TRACE_FRAME()
+	#define RECOVER_STATE() \
+		WRITE_FRAME() \
+		fiber = vm->fiber; \
+		if (fiber == NULL) { \
+			return (LitInterpretResult) { INTERPRET_OK, NULL_VALUE }; \
+		} \
+		if (fiber->abort) { \
+			RETURN_ERROR() \
+		} \
+		READ_FRAME() \
+		TRACE_FRAME()
 
-#define RUNTIME_ERROR(format) \
-	if (lit_runtime_error(vm, format)) { \
-		RECOVER_STATE() \
-		continue; \
-	} else { \
-		RETURN_ERROR() \
-	}
+	#define RUNTIME_ERROR(format) \
+		if (lit_runtime_error(vm, format)) { \
+			RECOVER_STATE() \
+			DISPATCH_NEXT() \
+		} else { \
+			RETURN_ERROR() \
+		}
 
-#define RUNTIME_ERROR_VARG(format, ...) \
-	if (lit_runtime_error(vm, format, __VA_ARGS__)) { \
-		RECOVER_STATE() \
-		continue; \
-	} else { \
-		RETURN_ERROR() \
-	}
+	#define RUNTIME_ERROR_VARG(format, ...) \
+		if (lit_runtime_error(vm, format, __VA_ARGS__)) { \
+			RECOVER_STATE() \
+			DISPATCH_NEXT() \
+		} else { \
+			RETURN_ERROR() \
+		}
+
+	// Instruction helpers
+	#define BINARY_INSTRUCTION(type, op, op_string) \
+		uint16_t b = LIT_INSTRUCTION_B(instruction); \
+		uint16_t c = LIT_INSTRUCTION_C(instruction); \
+    LitValue bv = IS_BIT_SET(b, 8) ? constants[b & 0xff] : registers[b]; \
+    LitValue cv = IS_BIT_SET(c, 8) ? constants[c & 0xff] : registers[c]; \
+		if (IS_NUMBER(bv)) { \
+			if (!IS_NUMBER(cv)) { \
+				RUNTIME_ERROR_VARG("Attempt to use the operator %s with a number and a %s", op_string, lit_get_value_type(cv)) \
+			} \
+			registers[LIT_INSTRUCTION_A(instruction)] = type(AS_NUMBER(bv) op AS_NUMBER(cv)); \
+		} else if (IS_NULL(bv)) { \
+			RUNTIME_ERROR_VARG("Attempt to use the operator %s on a null value", op_string) \
+		} else { \
+			RUNTIME_ERROR("Invoking operator methods not implemented yet") /*INVOKE_METHOD(bv, op_string, 1)*/ \
+		}
 
 	register LitVm *vm = state->vm;
 	PUSH_GC(state, true)
@@ -305,34 +322,49 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(RETURN) {
+		for (uint i = 0; i < 3; i++) {
+			printf("%i: ", i);
+			lit_print_value(registers[i]);
+			printf("\n");
+		}
+
 		// TODO: implement the return of values
 		return (LitInterpretResult) { INTERPRET_OK, NULL_VALUE };
 	}
 
 	CASE_CODE(ADD) {
-		uint16_t b = LIT_INSTRUCTION_B(instruction);
-		uint16_t c = LIT_INSTRUCTION_C(instruction);
+		BINARY_INSTRUCTION(NUMBER_VALUE, +, "+")
+		DISPATCH_NEXT()
+	}
 
-		registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(AS_NUMBER(
-			IS_BIT_SET(b, 8) ? constants[b & 0xff] : registers[b]
-		) + AS_NUMBER(
-			IS_BIT_SET(c, 8) ? constants[c & 0xff] : registers[c]
-		));
+	CASE_CODE(SUB) {
+		BINARY_INSTRUCTION(NUMBER_VALUE, -, "-")
+		DISPATCH_NEXT()
+	}
 
+	CASE_CODE(MUL) {
+		BINARY_INSTRUCTION(NUMBER_VALUE, *, "*")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(DIV) {
+		BINARY_INSTRUCTION(NUMBER_VALUE, /, "/")
 		DISPATCH_NEXT()
 	}
 
 	RETURN_ERROR()
 
-#undef RUNTIME_ERROR_VARG
-#undef RUNTIME_ERROR
-#undef CALL_VALUE
-#undef RECOVER_STATE
-#undef WRITE_FRAME
-#undef READ_FRAME
-#undef CASE_CODE
-#undef DISPATCH_NEXT
-#undef RETURN_ERROR
+	#undef BINARY_INSTRUCTION
+
+	#undef RUNTIME_ERROR_VARG
+	#undef RUNTIME_ERROR
+	#undef CALL_VALUE
+	#undef RECOVER_STATE
+	#undef WRITE_FRAME
+	#undef READ_FRAME
+	#undef CASE_CODE
+	#undef DISPATCH_NEXT
+	#undef RETURN_ERROR
 }
 
 void lit_native_exit_jump() {
