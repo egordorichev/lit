@@ -385,17 +385,41 @@ static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case BINARY_EXPRESSION: {
 			LitBinaryExpression* expr = (LitBinaryExpression*) expression;
+			LitTokenType op = expr->op;
 
-			uint16_t b = parse_argument(emitter, expr->left);
-			uint16_t c = parse_argument(emitter, expr->right);
-			uint8_t reg = reserve_register(emitter);
+			switch (op) {
+				case LTOKEN_BANG_EQUAL:
+				case LTOKEN_EQUAL_EQUAL: {
+					// With those instructions B argument's bit is used to separate != and ==
+					uint16_t b = emit_expression(emitter, expr->left);
+					uint16_t c = parse_argument(emitter, expr->right);
+					uint8_t reg = reserve_register(emitter);
 
-			emit_abc_instruction(emitter, expression->line, translate_binary_operator_into_op(expr->op), reg, b, c);
+					if (op == LTOKEN_EQUAL_EQUAL) {
+						SET_BIT(b, 8); // Otherwise would be interpreted as !=
+					}
 
-			free_register_non_literal(emitter, expr->left, b);
-			free_register_non_literal(emitter, expr->right, c);
+					emit_abc_instruction(emitter, expression->line, OP_EQUAL, reg, b, c);
 
-			return reg;
+					free_register(emitter, b);
+					free_register_non_literal(emitter, expr->right, c);
+
+					return reg;
+				}
+
+				default: {
+					uint16_t b = parse_argument(emitter, expr->left);
+					uint16_t c = parse_argument(emitter, expr->right);
+					uint8_t reg = reserve_register(emitter);
+
+					emit_abc_instruction(emitter, expression->line, translate_binary_operator_into_op(op), reg, b, c);
+
+					free_register_non_literal(emitter, expr->left, b);
+					free_register_non_literal(emitter, expr->right, c);
+
+					return reg;
+				}
+			}
 		}
 
 		default: {

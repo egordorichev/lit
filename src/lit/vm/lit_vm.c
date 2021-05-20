@@ -294,10 +294,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	register LitCallFrame* frame;
 	register LitChunk* current_chunk;
-	register uint64_t instruction;
-	register uint64_t* ip;
 	register LitValue* registers;
 	register LitValue* constants;
+	register uint64_t* ip;
+
+	uint64_t instruction;
 
 	READ_FRAME()
 
@@ -361,6 +362,23 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	CASE_CODE(DIVIDE) {
 		BINARY_INSTRUCTION(NUMBER_VALUE, /, "/")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(JUMP) {
+		ip += LIT_INSTRUCTION_SBX(instruction);
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(EQUAL) {
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+		bool equal = registers[b & 0xff] == GET_RC(LIT_INSTRUCTION_C(instruction));
+
+		if (!IS_BIT_SET(b, 8)) {
+			equal = !equal;
+		}
+
+		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(equal);
 		DISPATCH_NEXT()
 	}
 
