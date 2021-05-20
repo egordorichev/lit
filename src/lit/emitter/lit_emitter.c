@@ -424,13 +424,13 @@ static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			switch (expr->op) {
 				case LTOKEN_LESS:
 				case LTOKEN_LESS_EQUAL:
-				case LTOKEN_BANG_EQUAL:{
+				case LTOKEN_EQUAL_EQUAL:{
 					return emit_binary_expression(emitter, expr, 2);
 				}
 
 				case LTOKEN_GREATER:
 				case LTOKEN_GREATER_EQUAL:
-				case LTOKEN_EQUAL_EQUAL: {
+				case LTOKEN_BANG_EQUAL: {
 					return emit_binary_expression(emitter, expr, 1);
 				}
 
@@ -438,6 +438,17 @@ static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					return emit_binary_expression(emitter, expr, 0);
 				}
 			}
+		}
+
+		case VAR_EXPRESSION: {
+			LitVarExpression* expr = (LitVarExpression*) expression;
+
+			uint8_t reg = reserve_register(emitter);
+			uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+
+			emit_abx_instruction(emitter, expression->line, OP_GET_GLOBAL, reg, constant);
+
+			return reg;
 		}
 
 		default: {

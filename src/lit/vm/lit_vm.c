@@ -293,6 +293,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(IS_BIT_SET(b, 8) ? (bv op cv) : (bv op2 cv));
 
 	register LitVm *vm = state->vm;
+	register LitTable *globals = &vm->globals->values;
+
 	PUSH_GC(state, true)
 
 	vm->fiber = fiber;
@@ -412,6 +414,21 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	CASE_CODE(NOT) {
 		uint16_t b = LIT_INSTRUCTION_B(instruction);
 		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(lit_is_falsey(GET_RC(b)));
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(SET_GLOBAL) {
+		lit_table_set(state, globals, AS_STRING(constants[LIT_INSTRUCTION_BX(instruction)]), registers[LIT_INSTRUCTION_A(instruction)]);
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(GET_GLOBAL) {
+		LitValue *reg = &registers[LIT_INSTRUCTION_A(instruction)];
+
+		if (!lit_table_get(globals, AS_STRING(constants[LIT_INSTRUCTION_BX(instruction)]), reg)) {
+			*reg = NULL_VALUE;
+		}
 
 		DISPATCH_NEXT()
 	}
