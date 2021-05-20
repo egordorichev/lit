@@ -286,6 +286,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			RUNTIME_ERROR("Invoking operator methods not implemented yet") /*INVOKE_METHOD(bv, op_string, 1)*/ \
 		}
 
+	#define COMPARISON_INSTRUCTION(op, op2) \
+		uint16_t b = LIT_INSTRUCTION_B(instruction); \
+    LitValue bv = registers[b & 0xff]; \
+    LitValue cv = GET_RC(LIT_INSTRUCTION_C(instruction)); \
+		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(IS_BIT_SET(b, 8) ? (bv op cv) : (bv op2 cv));
+
 	register LitVm *vm = state->vm;
 	PUSH_GC(state, true)
 
@@ -371,14 +377,17 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(EQUAL) {
-		uint16_t b = LIT_INSTRUCTION_B(instruction);
-		bool equal = registers[b & 0xff] == GET_RC(LIT_INSTRUCTION_C(instruction));
+		COMPARISON_INSTRUCTION(==, !=)
+		DISPATCH_NEXT()
+	}
 
-		if (!IS_BIT_SET(b, 8)) {
-			equal = !equal;
-		}
+	CASE_CODE(LESS) {
+		COMPARISON_INSTRUCTION(<, >)
+		DISPATCH_NEXT()
+	}
 
-		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(equal);
+	CASE_CODE(LESS_EQUAL) {
+		COMPARISON_INSTRUCTION(<=, >=)
 		DISPATCH_NEXT()
 	}
 
@@ -409,6 +418,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	RETURN_ERROR()
 
+	#undef COMPARISON_INSTRUCTION
 	#undef BINARY_INSTRUCTION
 
 	#undef GET_RC
