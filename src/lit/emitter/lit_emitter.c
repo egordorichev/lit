@@ -451,6 +451,50 @@ static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			return reg;
 		}
 
+		case ASSIGN_EXPRESSION: {
+			LitAssignExpression* expr = (LitAssignExpression*) expression;
+
+			if (expr->to->type == VAR_EXPRESSION) {
+				uint8_t reg = emit_expression(emitter, expr->value);
+				LitVarExpression *e = (LitVarExpression *) expr->to;
+				int index = resolve_local(emitter, emitter->compiler, e->name, e->length, expr->to->line);
+
+				if (index == -1) {
+					// index = resolve_upvalue(emitter, emitter->compiler, e->name, e->length, expr->to->line);
+
+					if (index == -1) {
+						// index = resolve_private(emitter, e->name, e->length, expr->to->line);
+
+						if (index == -1) {
+							uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length)));
+							emit_abx_instruction(emitter, expression->line, OP_SET_GLOBAL, reg, constant);
+
+							return reg;
+						} else {
+							if (emitter->privates.values[index].constant) {
+								error(emitter, expression->line, ERROR_CONSTANT_MODIFIED, e->length, e->name);
+							}
+
+							// emit_byte_or_short(emitter, expression->line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
+						}
+					} else {
+						// emit_arged_op(emitter, expression->line, OP_SET_UPVALUE, (uint8_t) index);
+					}
+
+					break;
+				} else {
+					if (emitter->compiler->locals.values[index].constant) {
+						error(emitter, expression->line, ERROR_CONSTANT_MODIFIED, e->length, e->name);
+					}
+
+					// emit_byte_or_short(emitter, expression->line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, index);
+				}
+			}
+
+			error(emitter, expression->line, ERROR_INVALID_ASSIGMENT_TARGET);
+			break;
+		}
+
 		default: {
 			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
 			break;
