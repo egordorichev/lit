@@ -41,6 +41,7 @@ typedef struct {
 	LitFunctionType type;
 
 	LitCompilerUpvalue upvalues[UINT8_COUNT];
+
 	uint8_t free_registers[LIT_REGISTERS_MAX];
 	uint8_t registers_used;
 
@@ -48,9 +49,6 @@ typedef struct {
 
 	bool skip_return;
 	uint loop_depth;
-
-	int slots;
-	int max_slots;
 } LitCompiler;
 
 typedef struct sLitEmitter {

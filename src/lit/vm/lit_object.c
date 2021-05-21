@@ -235,7 +235,7 @@ LitFunction* lit_create_function(LitState* state, LitModule* module) {
 	function->name = NULL;
 	function->arg_count = 0;
 	function->upvalue_count = 0;
-	function->max_slots = 0;
+	function->max_registers = 0;
 	function->module = module;
 	function->vararg = false;
 
@@ -369,7 +369,7 @@ LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMet
 
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function) {
 	// Allocate in advance, just in case GC is triggered
-	uint registers_allocated = function == NULL ? 1 : (uint) lit_closest_power_of_two(function->max_slots + 1);
+	uint8_t registers_allocated = function == NULL ? 1 : (uint8_t) lit_closest_power_of_two(function->max_registers);
 	LitValue* registers = LIT_ALLOCATE(state, LitValue, registers_allocated);
 
 	LitCallFrame* frames = LIT_ALLOCATE(state, LitCallFrame, LIT_INITIAL_CALL_FRAMES);

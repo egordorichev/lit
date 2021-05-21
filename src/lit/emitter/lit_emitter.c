@@ -75,7 +75,8 @@ static uint8_t reserve_register(LitEmitter* emitter) {
 		return 0;
 	}
 
-	return compiler->free_registers[compiler->registers_used++];
+	compiler->function->max_registers = fmax(compiler->function->max_registers, compiler->registers_used++);
+	return compiler->free_registers[compiler->registers_used - 1];
 }
 
 static void free_register(LitEmitter* emitter, uint8_t reg) {
@@ -126,9 +127,6 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 			"", 0, -1, false, false, 0
 		});
 	}
-
-	compiler->slots = 1;
-	compiler->max_slots = 1;
 }
 
 static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {

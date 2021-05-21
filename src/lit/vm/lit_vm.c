@@ -165,7 +165,7 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	}
 
 	uint function_arg_count = function->arg_count;
-	lit_ensure_fiber_registers(vm->state, fiber, function->max_slots + (int) (fiber->registers_allocated - fiber->registers_used));
+	lit_ensure_fiber_registers(vm->state, fiber, function->max_registers + (int) (fiber->registers_allocated - fiber->registers_used));
 
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 

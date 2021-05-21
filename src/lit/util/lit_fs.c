@@ -165,7 +165,7 @@ static void save_function(FILE* file, LitFunction* function) {
 	lit_write_uint8_t(file, function->arg_count);
 	lit_write_uint16_t(file, function->upvalue_count);
 	lit_write_uint8_t(file, (uint8_t) function->vararg);
-	lit_write_uint16_t(file, (uint16_t) function->max_slots);
+	lit_write_uint8_t(file, (uint16_t) function->max_registers);
 }
 
 static LitFunction* load_function(LitState* state, LitEmulatedFile* file, LitModule* module) {
@@ -177,7 +177,7 @@ static LitFunction* load_function(LitState* state, LitEmulatedFile* file, LitMod
 	function->arg_count = lit_read_euint8_t(file);
 	function->upvalue_count = lit_read_euint16_t(file);
 	function->vararg = (bool) lit_read_euint8_t(file);
-	function->max_slots = lit_read_euint16_t(file);
+	function->max_registers = lit_read_euint8_t(file);
 
 	return function;
 }
