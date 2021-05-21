@@ -119,11 +119,11 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 
 	if (type == FUNCTION_METHOD || type == FUNCTION_STATIC_METHOD || type == FUNCTION_CONSTRUCTOR) {
 		lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
-			"this", 4, -1, false, false
+			"this", 4, -1, false, false, 0
 		});
 	} else {
 		lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
-			"", 0, -1, false, false
+			"", 0, -1, false, false, 0
 		});
 	}
 
@@ -161,21 +161,16 @@ static void begin_scope(LitEmitter* emitter) {
 	emitter->compiler->scope_depth++;
 }
 
-static void end_scope(LitEmitter* emitter, uint16_t line) {
+static void end_scope(LitEmitter* emitter) {
 	emitter->compiler->scope_depth--;
 
-	/*LitCompiler* compiler = emitter->compiler;
+	LitCompiler* compiler = emitter->compiler;
 	LitLocals* locals = &compiler->locals;
 
 	while (locals->count > 0 && locals->values[locals->count - 1].depth > compiler->scope_depth) {
-		if (locals->values[locals->count - 1].captured) {
-			emit_op(emitter, line, OP_CLOSE_UPVALUE);
-		} else {
-			emit_op(emitter, line, OP_POP);
-		}
-
+		free_register(emitter, locals->values[locals->count - 1].reg);
 		locals->count--;
-	}*/
+	}
 }
 
 static uint16_t add_constant(LitEmitter* emitter, uint line, LitValue value) {
@@ -240,7 +235,7 @@ static int resolve_private(LitEmitter* emitter, const char* name, uint length, u
 	return -1;
 }
 
-static int add_local(LitEmitter* emitter, const char* name, uint length, uint line, bool constant) {
+static int add_local(LitEmitter* emitter, const char* name, uint length, uint line, bool constant, uint8_t reg) {
 	LitCompiler* compiler = emitter->compiler;
 	LitLocals* locals = &compiler->locals;
 
@@ -261,7 +256,7 @@ static int add_local(LitEmitter* emitter, const char* name, uint length, uint li
 	}
 
 	lit_locals_write(emitter->state, locals, (LitLocal) {
-		name, length, UINT16_MAX, false, constant
+		name, length, UINT16_MAX, false, constant, reg
 	});
 
 	return (int) locals->count - 1;
@@ -305,6 +300,14 @@ static int add_upvalue(LitEmitter* emitter, LitCompiler* compiler, uint8_t index
 	compiler->upvalues[upvalue_count].index = index;
 
 	return compiler->function->upvalue_count++;
+}
+
+static void mark_local_initialized(LitEmitter* emitter, uint index) {
+	emitter->compiler->locals.values[index].depth = emitter->compiler->scope_depth;
+}
+
+static void mark_private_initialized(LitEmitter* emitter, uint index) {
+	emitter->privates.values[index].initialized = true;
 }
 
 static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
@@ -442,11 +445,46 @@ static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 
 		case VAR_EXPRESSION: {
 			LitVarExpression* expr = (LitVarExpression*) expression;
+			bool ref = emitter->emit_reference > 0;
 
+			if (ref) {
+				emitter->emit_reference--;
+			}
+
+			int index = resolve_local(emitter, emitter->compiler, expr->name, expr->length, expression->line);
 			uint8_t reg = reserve_register(emitter);
-			uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 
-			emit_abx_instruction(emitter, expression->line, OP_GET_GLOBAL, reg, constant);
+			if (index == -1) {
+				// index = resolve_upvalue(emitter, emitter->compiler, expr->name, expr->length, expression->line);
+
+				if (index == -1) {
+					// index = resolve_private(emitter, expr->name, expr->length, expression->line);
+
+					if (index == -1) {
+						uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+						emit_abx_instruction(emitter, expression->line, OP_GET_GLOBAL, reg, constant);
+					} else {
+						if (ref) {
+							// emit_op(emitter, expression->line, OP_REFERENCE_PRIVATE);
+							// emit_short(emitter, expression->line, index);
+						} else {
+							// emit_byte_or_short(emitter, expression->line, OP_GET_PRIVATE, OP_GET_PRIVATE_LONG, index);
+						}
+					}
+				} else {
+					// emit_arged_op(emitter, expression->line, ref ? OP_REFERENCE_UPVALUE : OP_GET_UPVALUE, (uint8_t) index);
+				}
+			} else {
+				if (ref) {
+					// emit_op(emitter, expression->line, OP_REFERENCE_LOCAL);
+					// emit_short(emitter, expression->line, index);
+				} else {
+					// fixme: should just return the .reg, but it needes not to be freed
+					uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+					emit_abc_instruction(emitter, expression->line, OP_MOVE, reg, emitter->compiler->locals.values[index].reg, 0);
+				}
+			}
+
 
 			return reg;
 		}
@@ -525,7 +563,35 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				}
 			}
 
-			end_scope(emitter, emitter->last_line);
+			end_scope(emitter);
+			break;
+		}
+
+		case VAR_STATEMENT: {
+			LitVarStatement* stmt = (LitVarStatement*) statement;
+			uint8_t reg;
+
+			bool private = false; // emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
+
+			if (stmt->init == NULL) {
+				reg = reserve_register(emitter);
+				emit_abc_instruction(emitter, statement->line, OP_LOAD_NULL, reg, 0, 0);
+			} else {
+				reg = emit_expression(emitter, stmt->init);
+			}
+
+			int index = private ?
+        resolve_private(emitter, stmt->name, stmt->length, statement->line) :
+        add_local(emitter, stmt->name, stmt->length, statement->line, stmt->constant, reg);
+
+			if (private) {
+				mark_private_initialized(emitter, index);
+				// emit_byte_or_short(emitter, statement->line, OP_SET_PRIVATE, index);
+			} else {
+				mark_local_initialized(emitter, index);
+				// emit_byte_or_short(emitter, statement->line, private ? OP_SET_PRIVATE : OP_SET_LOCAL, private ? OP_SET_PRIVATE_LONG : OP_SET_LOCAL_LONG, index);
+			}
+
 			break;
 		}
 
@@ -587,7 +653,7 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 		}
 	}
 
-	end_scope(emitter, emitter->last_line);
+	end_scope(emitter);
 	module->main_function = end_compiler(emitter, module_name);
 
 	if (new) {

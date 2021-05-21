@@ -22,6 +22,8 @@ typedef struct {
 
 	bool captured;
 	bool constant;
+
+	uint8_t reg;
 } LitLocal;
 
 DECLARE_ARRAY(LitLocals, LitLocal, locals)

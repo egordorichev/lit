@@ -69,6 +69,10 @@ static void print_asbx_instruction(uint64_t instruction, const char* name) {
 	printf("%s%s%s%*s %lu \t%li\n", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_SBX(instruction));
 }
 
+static void print_register(uint16_t reg) {
+	printf(" \t%hu", reg);
+}
+
 static void print_constant_or_register(LitChunk* chunk, uint16_t arg) {
 	if (IS_BIT_SET(arg, 8)) {
 		arg &= 0xff;
@@ -77,7 +81,7 @@ static void print_constant_or_register(LitChunk* chunk, uint16_t arg) {
 		print_constant(chunk->constants.values[arg]);
 		printf(")");
 	} else {
-		printf(" \t%hu", arg);
+		print_register(arg);
 	}
 }
 
@@ -94,6 +98,16 @@ static void print_binary_instruction(LitChunk* chunk, uint64_t instruction, cons
 	print_constant_or_register(chunk, LIT_INSTRUCTION_C(instruction));
 
 	printf("\n");
+}
+
+static void print_comparison_instruction(LitChunk* chunk, uint64_t instruction, const char* name, const char* op_a, const char* op_b) {
+	printf("%s%s%s%*s %lu", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction));
+	uint16_t b = LIT_INSTRUCTION_B(instruction);
+
+	print_register(b & 0xff);
+	print_constant_or_register(chunk, LIT_INSTRUCTION_C(instruction));
+
+	printf(" (%s)\n", IS_BIT_SET(b, 8) ? op_a : op_b);
 }
 
 static LitDebugInstructionFn debug_instruction_functions[] = {
@@ -146,42 +160,23 @@ void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 		case OP_LOAD_CONSTANT: {
 			uint32_t constant = LIT_INSTRUCTION_BX(instruction);
 
-			printf("%sLOAD_CONSTANT%s \t%lu \tc%u (", COLOR_YELLOW, COLOR_RESET, LIT_INSTRUCTION_A(instruction), constant);
+			printf("%sLOAD_CONSTANT%s %lu \tc%u (", COLOR_YELLOW, COLOR_RESET, LIT_INSTRUCTION_A(instruction), constant);
 			print_constant(chunk->constants.values[constant]);
 			printf(")\n");
 
 			break;
 		}
 
-		case OP_ADD: {
-			print_binary_instruction(chunk, instruction, "ADD");
-			break;
-		}
+		case OP_ADD: print_binary_instruction(chunk, instruction, "ADD"); break;
+		case OP_SUBTRACT: print_binary_instruction(chunk, instruction, "SUBTRACT"); break;
+		case OP_MULTIPLY: print_binary_instruction(chunk, instruction, "MULTIPLY"); break;
+		case OP_DIVIDE: print_binary_instruction(chunk, instruction, "DIVIDE"); break;
+		case OP_NEGATE: print_unary_instruction(chunk, instruction, "NEGATE"); break;
+		case OP_NOT: print_unary_instruction(chunk, instruction, "NOT"); break;
 
-		case OP_SUBTRACT: {
-			print_binary_instruction(chunk, instruction, "SUBTRACT");
-			break;
-		}
-
-		case OP_MULTIPLY: {
-			print_binary_instruction(chunk, instruction, "MULTIPLY");
-			break;
-		}
-
-		case OP_DIVIDE: {
-			print_binary_instruction(chunk, instruction, "DIVIDE");
-			break;
-		}
-
-		case OP_NEGATE: {
-			print_unary_instruction(chunk, instruction, "NEGATE");
-			break;
-		}
-
-		case OP_NOT: {
-			print_unary_instruction(chunk, instruction, "NOT");
-			break;
-		}
+		case OP_EQUAL: print_comparison_instruction(chunk, instruction, "EQUAL", "==", "!="); break;
+		case OP_LESS: print_comparison_instruction(chunk, instruction, "LESS", "<", ">"); break;
+		case OP_LESS_EQUAL: print_comparison_instruction(chunk, instruction, "LESS_EQUAL", "<=", ">="); break;
 
 		default: {
 			switch (opcode) {
