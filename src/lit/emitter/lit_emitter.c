@@ -14,7 +14,7 @@
 DEFINE_ARRAY(LitPrivates, LitPrivate, privates)
 DEFINE_ARRAY(LitLocals, LitLocal, locals)
 
-static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression);
+static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression);
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement);
 static void resolve_statement(LitEmitter* emitter, LitStatement* statement);
 
@@ -79,7 +79,11 @@ static uint8_t reserve_register(LitEmitter* emitter) {
 	return compiler->free_registers[compiler->registers_used - 1];
 }
 
-static void free_register(LitEmitter* emitter, uint8_t reg) {
+static void free_register(LitEmitter* emitter, uint16_t reg) {
+	if (IS_BIT_SET(reg, 8)) {
+		return;
+	}
+
 	LitCompiler* compiler = emitter->compiler;
 
 	if (compiler->registers_used == 0) {
@@ -389,7 +393,7 @@ static uint8_t emit_binary_expression(LitEmitter* emitter, LitBinaryExpression* 
 	return reg;
 }
 
-static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
+static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
 			LitValue value = ((LitLiteralExpression*) expression)->value;
@@ -450,7 +454,6 @@ static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 			}
 
 			int index = resolve_local(emitter, emitter->compiler, expr->name, expr->length, expression->line);
-			uint8_t reg = reserve_register(emitter);
 
 			if (index == -1) {
 				// index = resolve_upvalue(emitter, emitter->compiler, expr->name, expr->length, expression->line);
@@ -459,8 +462,11 @@ static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					// index = resolve_private(emitter, expr->name, expr->length, expression->line);
 
 					if (index == -1) {
+						uint8_t reg = reserve_register(emitter);
 						uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+
 						emit_abx_instruction(emitter, expression->line, OP_GET_GLOBAL, reg, constant);
+						return reg;
 					} else {
 						if (ref) {
 							// emit_op(emitter, expression->line, OP_REFERENCE_PRIVATE);
@@ -477,21 +483,21 @@ static uint8_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
 					// emit_op(emitter, expression->line, OP_REFERENCE_LOCAL);
 					// emit_short(emitter, expression->line, index);
 				} else {
-					// fixme: should just return the .reg, but it needes not to be freed
-					uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
-					emit_abc_instruction(emitter, expression->line, OP_MOVE, reg, emitter->compiler->locals.values[index].reg, 0);
+					uint16_t reg = emitter->compiler->locals.values[index].reg;
+					SET_BIT(reg, 8); // Mark as ignored upon register cleanup
+
+					return reg;
 				}
 			}
 
-
-			return reg;
+			return 0;
 		}
 
 		case ASSIGN_EXPRESSION: {
 			LitAssignExpression* expr = (LitAssignExpression*) expression;
 
 			if (expr->to->type == VAR_EXPRESSION) {
-				uint8_t reg = emit_expression(emitter, expr->value);
+				uint16_t reg = emit_expression(emitter, expr->value);
 				LitVarExpression *e = (LitVarExpression *) expr->to;
 				int index = resolve_local(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 

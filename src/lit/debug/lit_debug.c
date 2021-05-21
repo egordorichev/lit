@@ -107,7 +107,7 @@ static void print_comparison_instruction(LitChunk* chunk, uint64_t instruction, 
 	print_register(b & 0xff);
 	print_constant_or_register(chunk, LIT_INSTRUCTION_C(instruction));
 
-	printf(" (%s)\n", IS_BIT_SET(b, 8) ? op_a : op_b);
+	printf(" [%s]\n", IS_BIT_SET(b, 8) ? op_a : op_b);
 }
 
 static LitDebugInstructionFn debug_instruction_functions[] = {
