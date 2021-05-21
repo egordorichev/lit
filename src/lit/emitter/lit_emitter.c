@@ -80,7 +80,7 @@ static uint8_t reserve_register(LitEmitter* emitter) {
 }
 
 static void free_register(LitEmitter* emitter, uint16_t reg) {
-	if (IS_BIT_SET(reg, 8)) {
+	if (IS_BIT_SET(reg, 9)) {
 		return;
 	}
 
@@ -356,7 +356,7 @@ static uint16_t parse_argument(LitEmitter* emitter, LitExpression* expression) {
 	return emit_expression(emitter, expression);
 }
 
-static void free_register_non_literal(LitEmitter* emitter, LitExpression* expr, uint8_t reg) {
+static void free_register_non_literal(LitEmitter* emitter, LitExpression* expr, uint16_t reg) {
 	if (expr->type != LITERAL_EXPRESSION) {
 		free_register(emitter, reg);
 	}
@@ -484,7 +484,7 @@ static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression) 
 					// emit_short(emitter, expression->line, index);
 				} else {
 					uint16_t reg = emitter->compiler->locals.values[index].reg;
-					SET_BIT(reg, 8); // Mark as ignored upon register cleanup
+					SET_BIT(reg, 9); // Mark as ignored upon register cleanup
 
 					return reg;
 				}
@@ -573,7 +573,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case VAR_STATEMENT: {
 			LitVarStatement* stmt = (LitVarStatement*) statement;
-			uint8_t reg;
+			uint16_t reg;
 
 			bool private = false; // emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
 

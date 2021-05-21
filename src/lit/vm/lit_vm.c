@@ -309,10 +309,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	uint64_t instruction;
 
 	READ_FRAME()
-
-#ifdef LIT_TRACE_EXECUTION
 	TRACE_FRAME()
-#endif
+
+	printf("\nstart:\n\n");
 
 	dispatch:
 	instruction = *ip++;
@@ -343,6 +342,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(RETURN) {
+		printf("\ntop registers:\n");
+
 		for (uint i = 0; i < 3; i++) {
 			printf("%i: ", i);
 			lit_print_value(registers[i]);
