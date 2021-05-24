@@ -157,16 +157,7 @@ void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 	uint8_t opcode = LIT_INSTRUCTION_OPCODE(instruction);
 
 	switch (opcode) {
-		case OP_LOAD_CONSTANT: {
-			uint32_t constant = LIT_INSTRUCTION_BX(instruction);
-
-			printf("%sLOAD_CONSTANT%s %lu \tc%u (", COLOR_YELLOW, COLOR_RESET, LIT_INSTRUCTION_A(instruction), constant);
-			print_constant(chunk->constants.values[constant]);
-			printf(")\n");
-
-			break;
-		}
-
+		case OP_MOVE: print_binary_instruction(chunk, instruction, "MOVE"); break;
 		case OP_ADD: print_binary_instruction(chunk, instruction, "ADD"); break;
 		case OP_SUBTRACT: print_binary_instruction(chunk, instruction, "SUBTRACT"); break;
 		case OP_MULTIPLY: print_binary_instruction(chunk, instruction, "MULTIPLY"); break;

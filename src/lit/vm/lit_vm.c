@@ -323,11 +323,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	goto *dispatch_table[LIT_INSTRUCTION_OPCODE(instruction)];
 
 	CASE_CODE(MOVE) {
-		registers[LIT_INSTRUCTION_A(instruction)] = constants[LIT_INSTRUCTION_B(instruction)];
-	}
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+		registers[LIT_INSTRUCTION_A(instruction)] = GET_RC(b);
 
-	CASE_CODE(LOAD_CONSTANT) {
-		registers[LIT_INSTRUCTION_A(instruction)] = constants[LIT_INSTRUCTION_BX(instruction)];
 		DISPATCH_NEXT()
 	}
 
@@ -344,7 +342,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	CASE_CODE(RETURN) {
 		printf("\ntop registers:\n");
 
-		for (uint i = 0; i < 3; i++) {
+		for (uint8_t i = 0; i < frame->function->max_registers; i++) {
 			printf("%i: ", i);
 			lit_print_value(registers[i]);
 			printf("\n");

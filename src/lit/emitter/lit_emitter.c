@@ -75,7 +75,7 @@ static uint8_t reserve_register(LitEmitter* emitter) {
 		return 0;
 	}
 
-	compiler->function->max_registers = fmax(compiler->function->max_registers, compiler->registers_used++);
+	compiler->function->max_registers = fmax(compiler->function->max_registers, ++compiler->registers_used);
 	return compiler->free_registers[compiler->registers_used - 1];
 }
 
@@ -405,7 +405,9 @@ static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression) 
 				emit_abc_instruction(emitter, expression->line, OP_LOAD_BOOL, reg, (uint8_t) AS_BOOL(value), 0);
 			} else {
 				uint16_t constant = add_constant(emitter, expression->line, value);
-				emit_abx_instruction(emitter, expression->line, OP_LOAD_CONSTANT, reg, constant);
+				SET_BIT(constant, 8);
+
+				emit_abx_instruction(emitter, expression->line, OP_MOVE, reg, constant);
 			}
 
 			return reg;
