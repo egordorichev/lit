@@ -100,16 +100,6 @@ static void print_binary_instruction(LitChunk* chunk, uint64_t instruction, cons
 	printf("\n");
 }
 
-static void print_comparison_instruction(LitChunk* chunk, uint64_t instruction, const char* name, const char* op_a, const char* op_b) {
-	printf("%s%s%s%*s %lu", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction));
-	uint16_t b = LIT_INSTRUCTION_B(instruction);
-
-	print_register(b & 0xff);
-	print_constant_or_register(chunk, LIT_INSTRUCTION_C(instruction));
-
-	printf(" [%s]\n", IS_BIT_SET(b, 8) ? op_a : op_b);
-}
-
 static LitDebugInstructionFn debug_instruction_functions[] = {
 	print_abc_instruction,
 	print_abx_instruction,
@@ -165,9 +155,9 @@ void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 		case OP_NEGATE: print_unary_instruction(chunk, instruction, "NEGATE"); break;
 		case OP_NOT: print_unary_instruction(chunk, instruction, "NOT"); break;
 
-		case OP_EQUAL: print_comparison_instruction(chunk, instruction, "EQUAL", "==", "!="); break;
-		case OP_LESS: print_comparison_instruction(chunk, instruction, "LESS", "<", ">"); break;
-		case OP_LESS_EQUAL: print_comparison_instruction(chunk, instruction, "LESS_EQUAL", "<=", ">="); break;
+		case OP_EQUAL: print_binary_instruction(chunk, instruction, "EQUAL"); break;
+		case OP_LESS: print_binary_instruction(chunk, instruction, "LESS"); break;
+		case OP_LESS_EQUAL: print_binary_instruction(chunk, instruction, "LESS_EQUAL"); break;
 
 		default: {
 			switch (opcode) {

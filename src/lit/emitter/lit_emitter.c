@@ -362,34 +362,16 @@ static void free_register_non_literal(LitEmitter* emitter, LitExpression* expr, 
 	}
 }
 
-/*
- * Util for emitting binary operators. Some of them use the extra bits on args b and c
- * to represent if the vm should read a constant or a register value.
- * But with compare operators the 8th bit on b arg is used to indicate inversion of the result.
- *
- * b_bit values represent:
- *  0: b arg is emitted just as c, hints to use a constant
- *  1: b arg is used for comparison, do not invert
- *  2: b arg is used for comparison, DO invert
- */
-static uint8_t emit_binary_expression(LitEmitter* emitter, LitBinaryExpression* expr, uint8_t b_bit) {
-	uint16_t b = b_bit == 0 ? parse_argument(emitter, expr->left) : emit_expression(emitter, expr->left);
+static uint8_t emit_binary_expression(LitEmitter* emitter, LitBinaryExpression* expr, bool swap) {
+	uint16_t b = parse_argument(emitter, expr->left);
 	uint16_t c = parse_argument(emitter, expr->right);
 	uint8_t reg = reserve_register(emitter);
 
-	if (b_bit == 2) {
-		SET_BIT(b, 8);
-	}
+	emit_abc_instruction(emitter, expr->expression.line, translate_binary_operator_into_op(expr->op), reg, swap ? c : b, swap ? b : c);
 
-	emit_abc_instruction(emitter, expr->expression.line, translate_binary_operator_into_op(expr->op), reg, b, c);
-
-	if (b_bit == 0) {
-		free_register_non_literal(emitter, expr->left, b);
-	} else {
-		free_register(emitter, b);
-	}
-
+	free_register_non_literal(emitter, expr->left, b);
 	free_register_non_literal(emitter, expr->right, c);
+
 	return reg;
 }
 
@@ -432,13 +414,19 @@ static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression) 
 				case LTOKEN_LESS:
 				case LTOKEN_LESS_EQUAL:
 				case LTOKEN_EQUAL_EQUAL:{
-					return emit_binary_expression(emitter, expr, 2);
+					return emit_binary_expression(emitter, expr, false);
 				}
 
 				case LTOKEN_GREATER:
-				case LTOKEN_GREATER_EQUAL:
+				case LTOKEN_GREATER_EQUAL:{
+					return emit_binary_expression(emitter, expr, true);
+				}
+
 				case LTOKEN_BANG_EQUAL: {
-					return emit_binary_expression(emitter, expr, 1);
+					uint16_t reg = emit_binary_expression(emitter, expr, true);
+					emit_abc_instruction(emitter, expression->line, OP_NOT, reg, reg, false);
+
+					return reg;
 				}
 
 				default: {
