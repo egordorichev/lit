@@ -378,7 +378,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	CASE_CODE(FALSE_JUMP) {
 		if (lit_is_falsey(registers[LIT_INSTRUCTION_A(instruction)])) {
-			ip += LIT_INSTRUCTION_BX(instruction);
+			ip += LIT_INSTRUCTION_SBX(instruction);
 		}
 
 		DISPATCH_NEXT()
