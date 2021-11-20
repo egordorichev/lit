@@ -73,13 +73,17 @@ static void print_register(uint16_t reg) {
 	printf(" \t%hu", reg);
 }
 
+static void print_constant_arg(LitChunk* chunk, uint16_t arg) {
+	arg &= 0xff;
+
+	printf(" \tc%hu (", arg);
+	print_constant(chunk->constants.values[arg]);
+	printf(")");
+}
+
 static void print_constant_or_register(LitChunk* chunk, uint16_t arg) {
 	if (IS_BIT_SET(arg, 8)) {
-		arg &= 0xff;
-
-		printf(" \tc%hu (", arg);
-		print_constant(chunk->constants.values[arg]);
-		printf(")");
+		print_constant_arg(chunk, arg);
 	} else {
 		print_register(arg);
 	}
@@ -96,6 +100,14 @@ static void print_binary_instruction(LitChunk* chunk, uint64_t instruction, cons
 
 	print_constant_or_register(chunk, LIT_INSTRUCTION_B(instruction));
 	print_constant_or_register(chunk, LIT_INSTRUCTION_C(instruction));
+
+	printf("\n");
+}
+
+static void print_global_instruction(LitChunk* chunk, uint64_t instruction, const char* name) {
+	printf("%s%s%s%*s %lu", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction));
+
+	print_constant_arg(chunk, LIT_INSTRUCTION_BX(instruction));
 
 	printf("\n");
 }
@@ -158,6 +170,9 @@ void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 		case OP_EQUAL: print_binary_instruction(chunk, instruction, "EQUAL"); break;
 		case OP_LESS: print_binary_instruction(chunk, instruction, "LESS"); break;
 		case OP_LESS_EQUAL: print_binary_instruction(chunk, instruction, "LESS_EQUAL"); break;
+
+		case OP_SET_GLOBAL: print_global_instruction(chunk, instruction, "SET_GLOBAL"); break;
+		case OP_GET_GLOBAL: print_global_instruction(chunk, instruction, "GET_GLOBAL"); break;
 
 		default: {
 			switch (opcode) {

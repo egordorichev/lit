@@ -367,6 +367,8 @@ static uint16_t parse_argument(LitEmitter* emitter, LitExpression* expression, u
 		if (index != -1) {
 			return emitter->compiler->locals.values[index].reg;
 		}
+
+		// TODO: privates, globals, etc etc etc
 	}
 
 	emit_expression(emitter, expression, reg);
@@ -453,6 +455,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			int index = resolve_local(emitter, emitter->compiler, expr->name, expr->length, expression->line);
 
 			if (index == -1) {
+				// TODO: when implementing this, also implement in parse_argument()
 				// index = resolve_upvalue(emitter, emitter->compiler, expr->name, expr->length, expression->line);
 
 				if (index == -1) {
