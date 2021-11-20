@@ -425,14 +425,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(SET_GLOBAL) {
-		lit_table_set(state, globals, AS_STRING(constants[LIT_INSTRUCTION_BX(instruction)]), registers[LIT_INSTRUCTION_A(instruction)]);
+		lit_table_set(state, globals, AS_STRING(constants[LIT_INSTRUCTION_A(instruction)]), GET_RC(LIT_INSTRUCTION_BX(instruction)));
 		DISPATCH_NEXT()
 	}
 
 	CASE_CODE(GET_GLOBAL) {
-		LitValue *reg = &registers[LIT_INSTRUCTION_A(instruction)];
+		LitValue *reg = &registers[LIT_INSTRUCTION_BX(instruction)];
 
-		if (!lit_table_get(globals, AS_STRING(constants[LIT_INSTRUCTION_BX(instruction)]), reg)) {
+		if (!lit_table_get(globals, AS_STRING(constants[LIT_INSTRUCTION_A(instruction)]), reg)) {
 			*reg = NULL_VALUE;
 		}
 

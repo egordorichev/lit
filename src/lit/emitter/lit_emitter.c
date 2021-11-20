@@ -463,7 +463,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 
 					if (index == -1) {
 						uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
-						emit_abx_instruction(emitter, expression->line, OP_GET_GLOBAL, reg, constant);
+						emit_abx_instruction(emitter, expression->line, OP_GET_GLOBAL, constant, reg);
 					} else {
 						if (ref) {
 							// emit_op(emitter, expression->line, OP_REFERENCE_PRIVATE);
@@ -498,7 +498,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 				int index = resolve_local(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 
 				if (index == -1) {
-					uint8_t r = parse_argument(emitter, expr->value, reg);
+					uint16_t r = parse_argument(emitter, expr->value, reg);
 					// index = resolve_upvalue(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 
 					if (index == -1) {
@@ -506,7 +506,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 
 						if (index == -1) {
 							uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length)));
-							emit_abx_instruction(emitter, expression->line, OP_SET_GLOBAL, r, constant);
+							emit_abx_instruction(emitter, expression->line, OP_SET_GLOBAL, constant, r);
 						} else {
 							if (emitter->privates.values[index].constant) {
 								error(emitter, expression->line, ERROR_CONSTANT_MODIFIED, e->length, e->name);

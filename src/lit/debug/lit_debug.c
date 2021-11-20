@@ -73,17 +73,17 @@ static void print_register(uint16_t reg) {
 	printf(" \t%hu", reg);
 }
 
-static void print_constant_arg(LitChunk* chunk, uint16_t arg) {
+static void print_constant_arg(LitChunk* chunk, uint16_t arg, bool indent) {
 	arg &= 0xff;
 
-	printf(" \tc%hu (", arg);
+	printf("%sc%hu (", indent ? " \t" : "", arg);
 	print_constant(chunk->constants.values[arg]);
 	printf(")");
 }
 
 static void print_constant_or_register(LitChunk* chunk, uint16_t arg) {
 	if (IS_BIT_SET(arg, 8)) {
-		print_constant_arg(chunk, arg);
+		print_constant_arg(chunk, arg, true);
 	} else {
 		print_register(arg);
 	}
@@ -105,9 +105,10 @@ static void print_binary_instruction(LitChunk* chunk, uint64_t instruction, cons
 }
 
 static void print_global_instruction(LitChunk* chunk, uint64_t instruction, const char* name) {
-	printf("%s%s%s%*s %lu", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction));
+	printf("%s%s%s%*s", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "");
 
-	print_constant_arg(chunk, LIT_INSTRUCTION_BX(instruction));
+	print_constant_arg(chunk, LIT_INSTRUCTION_A(instruction), false);
+	print_constant_or_register(chunk, LIT_INSTRUCTION_BX(instruction));
 
 	printf("\n");
 }
