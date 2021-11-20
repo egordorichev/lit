@@ -605,15 +605,27 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			uint16_t condition_reg = reserve_register(emitter);
 
 			emit_expression(emitter, stmt->condition, condition_reg);
+
 			uint condition_branch_skip = emit_tmp_instruction(emitter);
+			uint else_skip;
+
 			free_register(emitter, condition_reg);
 
 			int64_t start = emitter->chunk->count;
 			emit_statement(emitter, stmt->if_branch);
 
-			// todo: else if, else
+			if (stmt->else_branch) {
+				else_skip = emit_tmp_instruction(emitter);
+			}
 
-			patch_instruction(emitter, condition_branch_skip, LIT_FORM_ASBX_INSTRUCTION(OP_FALSE_JUMP, condition_reg, emitter->chunk->count - start));
+			patch_instruction(emitter, condition_branch_skip, LIT_FORM_ASBX_INSTRUCTION(OP_FALSE_JUMP, condition_reg, (int64_t) emitter->chunk->count - start));
+
+			if (stmt->else_branch) {
+				int64_t else_start = emitter->chunk->count;
+				emit_statement(emitter, stmt->else_branch);
+				patch_instruction(emitter, else_skip, LIT_FORM_ASBX_INSTRUCTION(OP_JUMP, 0, (int64_t) emitter->chunk->count - else_start));
+			}
+
 			break;
 		}
 

@@ -1,5 +1,7 @@
-var a = false
+var a = true
 
-if (!a) {
+if (a) {
 	32 + 4
+} else {
+	null
 }

@@ -53,17 +53,17 @@ typedef enum {
 #define LIT_READ_SBX_INSTRUCTION(instruction) uint8_t a = LIT_INSTRUCTION_A(instruction); \
 	int32_t sbx = LIT_INSTRUCTION_SBX(instruction);
 
-#define LIT_FORM_ABC_INSTRUCTION(opcode, a, b, c) ((opcode & LIT_OPCODE_SIZE) \
-	| ((a & LIT_A_ARG_SIZE) << LIT_A_ARG_POSITION) \
-	| ((b & LIT_B_ARG_SIZE) << LIT_B_ARG_POSITION) \
-	| ((c & LIT_C_ARG_SIZE) << LIT_C_ARG_POSITION))
+#define LIT_FORM_ABC_INSTRUCTION(opcode, a, b, c) (((opcode) & LIT_OPCODE_SIZE) \
+	| (((a) & LIT_A_ARG_SIZE) << LIT_A_ARG_POSITION) \
+	| (((b) & LIT_B_ARG_SIZE) << LIT_B_ARG_POSITION) \
+	| (((c) & LIT_C_ARG_SIZE) << LIT_C_ARG_POSITION))
 
-#define LIT_FORM_ABX_INSTRUCTION(opcode, a, bx) ((opcode & LIT_OPCODE_SIZE) \
-	| ((a & LIT_A_ARG_SIZE) << LIT_A_ARG_POSITION) \
-	| ((bx & LIT_BX_ARG_SIZE) << LIT_BX_ARG_POSITION))
+#define LIT_FORM_ABX_INSTRUCTION(opcode, a, bx) (((opcode) & LIT_OPCODE_SIZE) \
+	| (((a) & LIT_A_ARG_SIZE) << LIT_A_ARG_POSITION) \
+	| (((bx) & LIT_BX_ARG_SIZE) << LIT_BX_ARG_POSITION))
 
-#define LIT_FORM_ASBX_INSTRUCTION(opcode, a, sbx) ((opcode & LIT_OPCODE_SIZE) \
-	| ((a & LIT_A_ARG_SIZE) << LIT_A_ARG_POSITION) \
-	| ((sbx & LIT_SBX_ARG_SIZE) << LIT_SBX_ARG_POSITION))
+#define LIT_FORM_ASBX_INSTRUCTION(opcode, a, sbx) (((opcode) & LIT_OPCODE_SIZE) \
+	| (((a) & LIT_A_ARG_SIZE) << LIT_A_ARG_POSITION) \
+	| (((sbx) & LIT_SBX_ARG_SIZE) << LIT_SBX_ARG_POSITION))
 
 #endif
