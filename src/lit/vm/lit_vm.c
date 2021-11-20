@@ -376,6 +376,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(FALSE_JUMP) {
+		if (lit_is_falsey(registers[LIT_INSTRUCTION_A(instruction)])) {
+			ip += LIT_INSTRUCTION_BX(instruction);
+		}
+
+		DISPATCH_NEXT()
+	}
+
 	CASE_CODE(EQUAL) {
 		COMPARISON_INSTRUCTION(==)
 		DISPATCH_NEXT()

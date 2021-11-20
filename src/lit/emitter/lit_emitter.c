@@ -14,7 +14,7 @@
 DEFINE_ARRAY(LitPrivates, LitPrivate, privates)
 DEFINE_ARRAY(LitLocals, LitLocal, locals)
 
-static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression);
+static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint8_t reg);
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement);
 static void resolve_statement(LitEmitter* emitter, LitStatement* statement);
 
@@ -50,6 +50,15 @@ static void error(LitEmitter* emitter, uint line, LitError error, ...) {
 	va_start(args, error);
 	lit_error(emitter->state, COMPILE_ERROR, lit_vformat_error(emitter->state, line, error, args)->chars);
 	va_end(args);
+}
+
+static uint emit_tmp_instruction(LitEmitter* emitter) {
+	lit_write_chunk(emitter->state, emitter->chunk, 0, emitter->last_line);
+	return emitter->chunk->count - 1;
+}
+
+static void patch_instruction(LitEmitter* emitter, uint64_t position, uint64_t instruction) {
+	emitter->chunk->code[position] = instruction;
 }
 
 static void emit_abc_instruction(LitEmitter* emitter, uint16_t line, uint8_t opcode, uint8_t a, uint16_t b, uint16_t c) {
@@ -341,7 +350,7 @@ static LitOpCode translate_binary_operator_into_op(LitTokenType token) {
 	}
 }
 
-static uint16_t parse_argument(LitEmitter* emitter, LitExpression* expression) {
+static uint16_t parse_argument(LitEmitter* emitter, LitExpression* expression, uint8_t reg) {
 	if (expression->type == LITERAL_EXPRESSION) {
 		LitValue value = ((LitLiteralExpression*) expression)->value;
 
@@ -351,35 +360,33 @@ static uint16_t parse_argument(LitEmitter* emitter, LitExpression* expression) {
 
 			return arg;
 		}
+	} else if (expression->type == VAR_EXPRESSION) {
+		LitVarExpression* expr = ((LitVarExpression*) expression);
+		int index = resolve_local(emitter, emitter->compiler, expr->name, expr->length, expression->line);
+
+		if (index != -1) {
+			return emitter->compiler->locals.values[index].reg;
+		}
 	}
 
-	return emit_expression(emitter, expression);
-}
-
-static void free_register_non_literal(LitEmitter* emitter, LitExpression* expr, uint16_t reg) {
-	if (expr->type != LITERAL_EXPRESSION) {
-		free_register(emitter, reg);
-	}
-}
-
-static uint8_t emit_binary_expression(LitEmitter* emitter, LitBinaryExpression* expr, bool swap) {
-	uint16_t b = parse_argument(emitter, expr->left);
-	uint16_t c = parse_argument(emitter, expr->right);
-	uint8_t reg = reserve_register(emitter);
-
-	emit_abc_instruction(emitter, expr->expression.line, translate_binary_operator_into_op(expr->op), reg, swap ? c : b, swap ? b : c);
-
-	free_register_non_literal(emitter, expr->left, b);
-	free_register_non_literal(emitter, expr->right, c);
-
+	emit_expression(emitter, expression, reg);
 	return reg;
 }
 
-static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression) {
+static void emit_binary_expression(LitEmitter* emitter, LitBinaryExpression* expr, uint8_t reg, bool swap) {
+	uint16_t rc = reserve_register(emitter);
+
+	uint16_t b = parse_argument(emitter, expr->left, reg);
+	uint16_t c = parse_argument(emitter, expr->right, rc);
+
+	emit_abc_instruction(emitter, expr->expression.line, translate_binary_operator_into_op(expr->op), reg, swap ? c : b, swap ? b : c);
+	free_register(emitter, rc);
+}
+
+static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint8_t reg) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
 			LitValue value = ((LitLiteralExpression*) expression)->value;
-			uint8_t reg = reserve_register(emitter);
 
 			if (IS_NULL(value)) {
 				emit_abc_instruction(emitter, expression->line, OP_LOAD_NULL, reg, 0, 0);
@@ -392,18 +399,14 @@ static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression) 
 				emit_abx_instruction(emitter, expression->line, OP_MOVE, reg, constant);
 			}
 
-			return reg;
+			break;
 		}
 
 		case UNARY_EXPRESSION: {
 			LitUnaryExpression* expr = (LitUnaryExpression*) expression;
-
-			uint16_t b = parse_argument(emitter, expr->right);
-			uint8_t reg = reserve_register(emitter);
+			uint16_t b = parse_argument(emitter, expr->right, reg);
 
 			emit_abc_instruction(emitter, expression->line, translate_unary_operator_into_op(expr->op), reg, b, 0);
-
-			free_register_non_literal(emitter, expr->right, b);
 			break;
 		}
 
@@ -414,25 +417,29 @@ static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression) 
 				case LTOKEN_LESS:
 				case LTOKEN_LESS_EQUAL:
 				case LTOKEN_EQUAL_EQUAL:{
-					return emit_binary_expression(emitter, expr, false);
+					emit_binary_expression(emitter, expr, reg, false);
+					break;
 				}
 
 				case LTOKEN_GREATER:
 				case LTOKEN_GREATER_EQUAL:{
-					return emit_binary_expression(emitter, expr, true);
+					emit_binary_expression(emitter, expr, reg, true);
+					break;
 				}
 
 				case LTOKEN_BANG_EQUAL: {
-					uint16_t reg = emit_binary_expression(emitter, expr, true);
+					emit_binary_expression(emitter, expr, reg, true);
 					emit_abc_instruction(emitter, expression->line, OP_NOT, reg, reg, false);
 
-					return reg;
+					break;
 				}
 
 				default: {
-					return emit_binary_expression(emitter, expr, 0);
+					return emit_binary_expression(emitter, expr, reg, false);
 				}
 			}
+
+			break;
 		}
 
 		case VAR_EXPRESSION: {
@@ -452,11 +459,8 @@ static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression) 
 					// index = resolve_private(emitter, expr->name, expr->length, expression->line);
 
 					if (index == -1) {
-						uint8_t reg = reserve_register(emitter);
 						uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
-
 						emit_abx_instruction(emitter, expression->line, OP_GET_GLOBAL, reg, constant);
-						return reg;
 					} else {
 						if (ref) {
 							// emit_op(emitter, expression->line, OP_REFERENCE_PRIVATE);
@@ -476,22 +480,22 @@ static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression) 
 					uint16_t reg = emitter->compiler->locals.values[index].reg;
 					SET_BIT(reg, 9); // Mark as ignored upon register cleanup
 
-					return reg;
+					emit_abx_instruction(emitter, expression->line, OP_MOVE, index, reg);
 				}
 			}
 
-			return 0;
+			break;
 		}
 
 		case ASSIGN_EXPRESSION: {
 			LitAssignExpression* expr = (LitAssignExpression*) expression;
 
 			if (expr->to->type == VAR_EXPRESSION) {
-				uint16_t reg = emit_expression(emitter, expr->value);
 				LitVarExpression *e = (LitVarExpression *) expr->to;
 				int index = resolve_local(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 
 				if (index == -1) {
+					uint8_t r = parse_argument(emitter, expr->value, reg);
 					// index = resolve_upvalue(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 
 					if (index == -1) {
@@ -499,9 +503,7 @@ static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression) 
 
 						if (index == -1) {
 							uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length)));
-							emit_abx_instruction(emitter, expression->line, OP_SET_GLOBAL, reg, constant);
-
-							return reg;
+							emit_abx_instruction(emitter, expression->line, OP_SET_GLOBAL, r, constant);
 						} else {
 							if (emitter->privates.values[index].constant) {
 								error(emitter, expression->line, ERROR_CONSTANT_MODIFIED, e->length, e->name);
@@ -515,11 +517,17 @@ static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression) 
 
 					break;
 				} else {
-					if (emitter->compiler->locals.values[index].constant) {
+					LitLocal local = emitter->compiler->locals.values[index];
+
+					if (local.constant) {
 						error(emitter, expression->line, ERROR_CONSTANT_MODIFIED, e->length, e->name);
 					}
 
-					// emit_byte_or_short(emitter, expression->line, OP_SET_LOCAL, OP_SET_LOCAL_LONG, index);
+					uint16_t r = local.reg;
+					emit_expression(emitter, expr->value, r + 1);
+
+					SET_BIT(r, 9);
+					break;
 				}
 			}
 
@@ -532,8 +540,6 @@ static uint16_t emit_expression(LitEmitter* emitter, LitExpression* expression) 
 			break;
 		}
 	}
-
-	return 0;
 }
 
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
@@ -543,7 +549,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 	switch (statement->type) {
 		case EXPRESSION_STATEMENT: {
-			free_register(emitter, emit_expression(emitter, ((LitExpressionStatement*) statement)->expression));
+			uint16_t reg = reserve_register(emitter);
+			emit_expression(emitter, ((LitExpressionStatement*) statement)->expression, reg);
+			free_register(emitter, reg);
+
 			break;
 		}
 
@@ -563,15 +572,14 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case VAR_STATEMENT: {
 			LitVarStatement* stmt = (LitVarStatement*) statement;
-			uint16_t reg;
+			uint16_t reg = reserve_register(emitter);
 
 			bool private = false; // emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
 
 			if (stmt->init == NULL) {
-				reg = reserve_register(emitter);
 				emit_abc_instruction(emitter, statement->line, OP_LOAD_NULL, reg, 0, 0);
 			} else {
-				reg = emit_expression(emitter, stmt->init);
+				emit_expression(emitter, stmt->init, reg);
 			}
 
 			int index = private ?
@@ -586,6 +594,23 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				// emit_byte_or_short(emitter, statement->line, private ? OP_SET_PRIVATE : OP_SET_LOCAL, private ? OP_SET_PRIVATE_LONG : OP_SET_LOCAL_LONG, index);
 			}
 
+			break;
+		}
+
+		case IF_STATEMENT: {
+			LitIfStatement* stmt = (LitIfStatement*) statement;
+			uint16_t condition_reg = reserve_register(emitter);
+
+			emit_expression(emitter, stmt->condition, condition_reg);
+
+			uint condition_branch_skip = emit_tmp_instruction(emitter);
+
+			free_register(emitter, condition_reg);
+			emit_statement(emitter, stmt->if_branch);
+
+			// todo: else if, else
+
+			patch_instruction(emitter, condition_branch_skip, LIT_FORM_ABX_INSTRUCTION(OP_FALSE_JUMP, condition_reg, 0));
 			break;
 		}
 
