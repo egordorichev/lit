@@ -1,7 +1,3 @@
-var a = true
-
-if (a) {
-	32 + 4
-} else {
-	null
+function hi() {
+	var a = 32
 }

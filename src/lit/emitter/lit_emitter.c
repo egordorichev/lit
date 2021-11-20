@@ -545,6 +545,26 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 	}
 }
 
+static bool emit_parameters(LitEmitter* emitter, LitParameters* parameters, uint line) {
+	for (uint i = 0; i < parameters->count; i++) {
+		LitParameter* parameter = &parameters->values[i];
+		uint8_t reg = reserve_register(emitter);
+
+		parameter->reg = reg;
+
+		int index = add_local(emitter, parameter->name, parameter->length, line, false, reg);
+		mark_local_initialized(emitter, index);
+	}
+
+	return false;
+}
+
+static void free_parameter_registers(LitEmitter* emitter, LitParameters* parameters) {
+	for (uint i = 0; i < parameters->count; i++) {
+		free_register(emitter, parameters->values[i].reg);
+	}
+}
+
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	if (statement == NULL) {
 		return false;
@@ -625,6 +645,35 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_statement(emitter, stmt->else_branch);
 				patch_instruction(emitter, else_skip, LIT_FORM_ASBX_INSTRUCTION(OP_JUMP, 0, (int64_t) emitter->chunk->count - else_start));
 			}
+
+			break;
+		}
+
+		case FUNCTION_STATEMENT: {
+			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
+			LitString* name = lit_copy_string(emitter->state, stmt->name, stmt->length);
+			LitCompiler compiler;
+
+			init_compiler(emitter, &compiler, FUNCTION_REGULAR);
+
+			begin_scope(emitter);
+			emit_parameters(emitter, &stmt->parameters, statement->line);
+
+			emit_statement(emitter, stmt->body);
+
+			free_parameter_registers(emitter, &stmt->parameters);
+			end_scope(emitter);
+
+			LitFunction* function = end_compiler(emitter, name);
+
+			function->arg_count = stmt->parameters.count;
+			function->max_registers += function->arg_count;
+
+			uint16_t function_constant = add_constant(emitter, statement->line, OBJECT_VALUE(function));
+			SET_BIT(function_constant, 8);
+
+			uint16_t name_constant = add_constant(emitter, statement->line, OBJECT_VALUE(function->name));
+			emit_abx_instruction(emitter, statement->line, OP_SET_GLOBAL, name_constant, function_constant);
 
 			break;
 		}

@@ -22,16 +22,6 @@ static void print_constant(LitValue value) {
 
 void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source) {
 	LitValues* values = &chunk->constants;
-
-	for (uint i = 0; i < values->count; i++) {
-		LitValue value = values->values[i];
-
-		if (IS_FUNCTION(value)) {
-			LitFunction* function = AS_FUNCTION(value);
-			lit_disassemble_chunk(&function->chunk, function->name->chars, source);
-		}
-	}
-
 	printf("^^ %s ^^\n", name);
 
 	if (values->count > 0) {

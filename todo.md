@@ -1,3 +1,7 @@
+# register based
+
+* implement else-if's
+
 # todo
 
 * fix runtime error lines, they often show up at the prev lines
