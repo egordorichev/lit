@@ -339,16 +339,24 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(RETURN) {
-		printf("\ntop registers:\n");
+		fiber->frame_count--;
 
-		for (uint8_t i = 0; i < frame->function->max_registers; i++) {
-			printf("%i: ", i);
-			lit_print_value(registers[i]);
-			printf("\n");
+		if (fiber->frame_count == 0) {
+			printf("\ntop registers:\n");
+
+			for (uint8_t i = 0; i < frame->function->max_registers; i++) {
+				printf("%i: ", i);
+				lit_print_value(registers[i]);
+				printf("\n");
+			}
+
+			// TODO: implement the return of values
+			return (LitInterpretResult) {INTERPRET_OK, NULL_VALUE};
 		}
 
-		// TODO: implement the return of values
-		return (LitInterpretResult) { INTERPRET_OK, NULL_VALUE };
+		READ_FRAME()
+		TRACE_FRAME()
+		DISPATCH_NEXT()
 	}
 
 	CASE_CODE(ADD) {
@@ -440,7 +448,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(CALL) {
-		
+		WRITE_FRAME()
+
+		if (!call_value(vm, registers[LIT_INSTRUCTION_A(instruction)], LIT_INSTRUCTION_B(instruction) - 1)) {
+			RETURN_ERROR()
+		}
+
+		READ_FRAME()
 		DISPATCH_NEXT()
 	}
 
