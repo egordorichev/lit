@@ -538,6 +538,29 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			break;
 		}
 
+		case CALL_EXPRESSION: {
+			LitCallExpression* expr = (LitCallExpression*) expression;
+			uint arg_count = expr->args.count;
+			uint16_t arg_regs[arg_count];
+
+			emit_expression(emitter, expr->callee, reg);
+
+			for (uint i = 0; i < arg_count; i++) {
+				uint16_t arg_reg = reserve_register(emitter);
+
+				arg_regs[i] = arg_reg;
+				emit_expression(emitter, expr->args.values[i], arg_reg);
+			}
+
+			emit_abc_instruction(emitter, expression->line, OP_CALL, reg, arg_count + 1, 1);
+
+			for (uint i = 0; i < arg_count; i++) {
+				free_register(emitter, arg_regs[i]);
+			}
+
+			break;
+		}
+
 		default: {
 			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
 			break;

@@ -439,6 +439,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(CALL) {
+		
+		DISPATCH_NEXT()
+	}
+
 	RETURN_ERROR()
 
 	#undef COMPARISON_INSTRUCTION
