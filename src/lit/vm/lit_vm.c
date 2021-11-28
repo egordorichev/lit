@@ -181,7 +181,9 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	return true;
 }
 
-static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
+static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count) {
+	LitValue callee = vm->fiber->registers[callee_register];
+
 	if (IS_OBJECT(callee)) {
 		if (lit_set_native_exit_jump()) {
 			return true;
@@ -190,6 +192,11 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 		switch (OBJECT_TYPE(callee)) {
 			case OBJECT_FUNCTION: {
 				return call(vm, AS_FUNCTION(callee), NULL, arg_count);
+			}
+
+			case OBJECT_NATIVE_FUNCTION: {
+				vm->fiber->registers[callee_register] = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, vm->fiber->registers + callee_register + 1);
+				return true;
 			}
 
 			default: {
@@ -450,7 +457,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	CASE_CODE(CALL) {
 		WRITE_FRAME()
 
-		if (!call_value(vm, registers[LIT_INSTRUCTION_A(instruction)], LIT_INSTRUCTION_B(instruction) - 1)) {
+		if (!call_value(vm, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction) - 1)) {
 			RETURN_ERROR()
 		}
 

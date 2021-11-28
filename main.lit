@@ -1,5 +1,9 @@
+function inner() {
+	print("hi")
+}
+
 function hi() {
-	var a = 32
+	inner()
 }
 
 hi()

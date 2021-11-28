@@ -1386,7 +1386,11 @@ LIT_NATIVE(print) {
 	}
 
 	for (uint i = 0; i < arg_count; i++) {
-		lit_printf(vm->state, "%s\n", lit_to_string(vm->state, args[i])->chars);
+		lit_print_value(args[i]);
+		printf("%s", "\n");
+
+		// FIXME: go and implement .toString()
+		// lit_printf(vm->state, "%s\n", lit_to_string(vm->state, args[i])->chars);
 	}
 
 	return NULL_VALUE;
