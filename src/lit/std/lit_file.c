@@ -200,7 +200,8 @@ LIT_METHOD(file_getLastModified) {
 		return NUMBER_VALUE(0);
 	}
 
-	return NUMBER_VALUE( buffer.st_mtim.tv_sec);
+    UNREACHABLE
+	// return NUMBER_VALUE(buffer.st_mtim.tv_sec);
 }
 
 
@@ -227,9 +228,10 @@ LIT_METHOD(directory_listFiles) {
 	}
 
 	while ((ep = readdir(dir))) {
-		if (ep->d_type == DT_REG) {
+		/*if (ep->d_type == DT_REG) {
 			lit_values_write(state, &array->values, OBJECT_CONST_STRING(state, ep->d_name));
-		}
+		}*/
+        UNREACHABLE
 	}
 
 
@@ -249,9 +251,10 @@ LIT_METHOD(directory_listDirectories) {
 	}
 
 	while ((ep = readdir(dir))) {
-		if (ep->d_type == DT_DIR && strcmp(ep->d_name, "..") != 0 && strcmp(ep->d_name, ".") != 0) {
+		/*if (ep->d_type == DT_DIR && strcmp(ep->d_name, "..") != 0 && strcmp(ep->d_name, ".") != 0) {
 			lit_values_write(state, &array->values, OBJECT_CONST_STRING(state, ep->d_name));
-		}
+		}*/
+        UNREACHABLE
 	}
 
 	closedir(dir);

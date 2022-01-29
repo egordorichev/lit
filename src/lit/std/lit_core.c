@@ -1486,7 +1486,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 			bool found = false;
 
 			while ((ep = readdir(dir))) {
-				if (ep->d_type == DT_REG) {
+				/*if (ep->d_type == DT_REG) {
 					const char* name = ep->d_name;
 					int name_length = strlen(name);
 
@@ -1504,7 +1504,8 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 							found = true;
 						}
 					}
-				}
+				}*/
+                UNREACHABLE
 			}
 
 			if (!found) {

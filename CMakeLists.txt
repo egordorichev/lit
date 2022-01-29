@@ -69,7 +69,7 @@ if (LIT_BUILD_BINARY)
 
  target_link_libraries(litc lit)
 
- if(NOT EMSCRIPTEN AND NOT STANDALONE)
+ if(NOT EMSCRIPTEN AND NOT STANDALONE AND UNIX)
   target_link_libraries(litc readline)
  endif()
 

@@ -146,6 +146,10 @@ LIT_METHOD(random_setSeed) {
 	return NULL_VALUE;
 }
 
+int rand_r(uint* data) {
+    return rand();
+}
+
 LIT_METHOD(random_int) {
 	uint* data = extract_random_data(vm->state, instance);
 
