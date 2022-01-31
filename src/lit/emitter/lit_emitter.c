@@ -488,7 +488,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 					uint16_t r = emitter->compiler->locals.values[index].reg;
 
 					if (reg != r) {
-						SET_BIT(r, 9); // Mark as ignored upon register cleanup
+						// SET_BIT(r, 9); // Mark as ignored upon register cleanup
 						emit_abx_instruction(emitter, expression->line, OP_MOVE, reg, r);
 					}
 				}
@@ -593,12 +593,6 @@ static bool emit_parameters(LitEmitter* emitter, LitParameters* parameters, uint
 	return false;
 }
 
-static void free_parameter_registers(LitEmitter* emitter, LitParameters* parameters) {
-	for (uint i = 0; i < parameters->count; i++) {
-		free_register(emitter, parameters->values[i].reg);
-	}
-}
-
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	if (statement == NULL) {
 		return false;
@@ -695,7 +689,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			emit_statement(emitter, stmt->body);
 
-			free_parameter_registers(emitter, &stmt->parameters);
 			end_scope(emitter);
 
 			LitFunction* function = end_compiler(emitter, name);

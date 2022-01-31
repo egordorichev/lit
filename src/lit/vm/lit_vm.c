@@ -164,7 +164,6 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 		fiber->frame_capacity = new_capacity;
 	}
 
-	uint function_arg_count = function->arg_count;
 	lit_ensure_fiber_registers(vm->state, fiber, function->max_registers + (int) (fiber->registers_allocated - fiber->registers_used));
 
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
@@ -172,7 +171,7 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	frame->function = function;
 	frame->closure = closure;
 	frame->ip = function->chunk.code;
-	frame->slots = fiber->registers + fiber->registers_used;
+	frame->slots = fiber->registers + fiber->registers_used - arg_count;
 	frame->result_ignored = false;
 	frame->return_to_c = false;
 
@@ -182,7 +181,8 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 }
 
 static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count) {
-	LitValue callee = vm->fiber->registers[callee_register];
+	LitCallFrame* frame = &vm->fiber->frames[vm->fiber->frame_count - 1];
+	LitValue callee = frame->slots[callee_register];
 
 	if (IS_OBJECT(callee)) {
 		if (lit_set_native_exit_jump()) {
@@ -195,7 +195,7 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count) {
 			}
 
 			case OBJECT_NATIVE_FUNCTION: {
-				vm->fiber->registers[callee_register] = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, vm->fiber->registers + callee_register + 1);
+				frame->slots[callee_register] = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, frame->slots + callee_register + 1);
 				return true;
 			}
 
@@ -241,7 +241,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	  constants = current_chunk->constants.values; \
 		ip = frame->ip; \
 		fiber->module = frame->function->module; \
-		registers = fiber->registers;
+		registers = frame->slots;
 
 	#define WRITE_FRAME() frame->ip = ip;
 	#define RETURN_ERROR() POP_GC(state) return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
@@ -457,7 +457,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	CASE_CODE(CALL) {
 		WRITE_FRAME()
 
-		if (!call_value(vm, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction) - 1)) {
+	if (!call_value(vm, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction) - 1)) {
 			RETURN_ERROR()
 		}
 
