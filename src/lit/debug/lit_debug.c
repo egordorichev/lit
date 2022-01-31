@@ -42,6 +42,15 @@ void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source
 		lit_disassemble_instruction(chunk, offset, source);
 	}
 
+
+	printf("%shex:%s\n", COLOR_MAGENTA, COLOR_RESET);
+
+	for (uint offset = 0; offset < chunk->count; offset++) {
+		printf("%08X ", chunk->code[offset]);
+	}
+
+	printf("\n");
+
 	printf("vv %s vv\n", name);
 }
 

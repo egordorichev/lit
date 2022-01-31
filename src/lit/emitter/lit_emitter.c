@@ -76,6 +76,15 @@ static void emit_asbx_instruction(LitEmitter* emitter, uint16_t line, uint8_t op
 	lit_write_chunk(emitter->state, emitter->chunk, LIT_FORM_ASBX_INSTRUCTION(opcode, a, sbx), emitter->last_line);
 }
 
+static void dump_used_registers(LitEmitter* emitter) {
+	printf("[ ");
+	for (uint i = 0; i < emitter->compiler->registers_used; i++) {
+		printf("%i ", i);
+	}
+
+	printf("]\n");
+}
+
 static uint8_t reserve_register(LitEmitter* emitter) {
 	LitCompiler* compiler = emitter->compiler;
 
@@ -85,7 +94,7 @@ static uint8_t reserve_register(LitEmitter* emitter) {
 	}
 
 	compiler->function->max_registers = fmax(compiler->function->max_registers, ++compiler->registers_used);
-	return compiler->free_registers[compiler->registers_used - 1];
+	return compiler->registers_used;
 }
 
 static void free_register(LitEmitter* emitter, uint16_t reg) {
@@ -99,7 +108,7 @@ static void free_register(LitEmitter* emitter, uint16_t reg) {
 		return error(emitter, emitter->last_line, ERROR_INVALID_REGISTER_FREED);
 	}
 
-	compiler->free_registers[--compiler->registers_used] = reg;
+	compiler->registers_used -= 1;
 }
 
 static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctionType type) {
@@ -112,10 +121,6 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 	compiler->function = lit_create_function(emitter->state, emitter->module);
 	compiler->loop_depth = 0;
 	compiler->registers_used = 0;
-
-	for (uint i = 0; i < LIT_REGISTERS_MAX; i++) {
-		compiler->free_registers[i] = (uint8_t) i;
-	}
 
 	emitter->compiler = compiler;
 
@@ -481,9 +486,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 					// emit_short(emitter, expression->line, index);
 				} else {
 					uint16_t reg = emitter->compiler->locals.values[index].reg;
-					SET_BIT(reg, 9); // Mark as ignored upon register cleanup
 
-					emit_abx_instruction(emitter, expression->line, OP_MOVE, index, reg);
+					if (index != reg) {
+						SET_BIT(reg, 9); // Mark as ignored upon register cleanup
+						emit_abx_instruction(emitter, expression->line, OP_MOVE, index, reg);
+					}
 				}
 			}
 
@@ -543,15 +550,21 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			uint arg_count = expr->args.count;
 			uint16_t arg_regs[arg_count];
 
+			dump_used_registers(emitter);
 			emit_expression(emitter, expr->callee, reg);
 
 			for (uint i = 0; i < arg_count; i++) {
 				uint16_t arg_reg = reserve_register(emitter);
 
+				if (arg_reg != reg + i + 1) {
+					UNREACHABLE // Something went terribly wrong, can't put
+				}
+
 				arg_regs[i] = arg_reg;
 				emit_expression(emitter, expr->args.values[i], arg_reg);
 			}
 
+			dump_used_registers(emitter);
 			emit_abc_instruction(emitter, expression->line, OP_CALL, reg, arg_count + 1, 1);
 
 			for (uint i = 0; i < arg_count; i++) {

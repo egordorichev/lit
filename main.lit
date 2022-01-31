@@ -1,5 +1,11 @@
 function inner() {
-	print("hi")
+	var a = 1
+	{
+		var b = 32
+	}
+	print("hi", 32)
+	var c = 48
+	print(c, a)
 }
 
 function hi() {
