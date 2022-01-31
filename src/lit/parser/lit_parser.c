@@ -212,7 +212,7 @@ static void parse_parameters(LitParser* parser, LitParameters* parameters) {
 		// Vararg ...
 		if (match(parser, LTOKEN_DOT_DOT_DOT)) {
 			lit_parameters_write(parser->state, parameters, (LitParameter) {
-				"...", 3, NULL
+				"...", 3, 0, NULL
 			});
 
 			return;
@@ -231,7 +231,7 @@ static void parse_parameters(LitParser* parser, LitParameters* parameters) {
 		}
 
 		lit_parameters_write(parser->state, parameters, (LitParameter) {
-			arg_name, arg_length, default_value
+			arg_name, arg_length, 0, default_value
 		});
 
 		if (!match(parser, LTOKEN_COMMA)) {
@@ -269,7 +269,7 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 				def_value = parse_expression(parser);
 			}
 
-			lit_parameters_write(state, &lambda->parameters, (LitParameter) { first_arg_start, first_arg_length, def_value });
+			lit_parameters_write(state, &lambda->parameters, (LitParameter) { first_arg_start, first_arg_length, 0, def_value });
 
 			if (!had_vararg && parser->previous.type == LTOKEN_COMMA) {
 				do {
@@ -292,7 +292,7 @@ static LitExpression* parse_grouping_or_lambda(LitParser* parser, bool can_assig
 						error(parser, ERROR_DEFAULT_ARG_CENTRED);
 					}
 
-					lit_parameters_write(state, &lambda->parameters, (LitParameter) { arg_name, arg_length, default_value });
+					lit_parameters_write(state, &lambda->parameters, (LitParameter) { arg_name, arg_length, 0, default_value });
 
 					if (stop) {
 						break;
