@@ -705,6 +705,22 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			break;
 		}
 
+		case RETURN_STATEMENT: {
+			LitReturnStatement* stmt = (LitReturnStatement*) statement;
+			uint8_t reg = reserve_register(emitter);
+
+			if (stmt->expression == NULL) {
+				emit_abc_instruction(emitter, statement->line, OP_LOAD_NULL, reg, 0, 0);
+			} else {
+				emit_expression(emitter, stmt->expression, reg);
+			}
+
+			emit_abc_instruction(emitter, statement->line, OP_RETURN, reg, 0, 0);
+			free_register(emitter, reg);
+
+			break;
+		}
+
 		default: {
 			error(emitter, statement->line, ERROR_UNKNOWN_STATEMENT, (int) statement->type);
 			break;

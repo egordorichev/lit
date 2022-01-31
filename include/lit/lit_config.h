@@ -27,13 +27,13 @@
 
 #ifdef TESTING
 // So that we can actually test the map contents with a single-line expression
-#define SINGLE_LINE_MAPS
-#define SINGLE_LINE_MAPS_ENABLED true
+#define LIT_SINGLE_LINE_MAPS
+#define LIT_SINGLE_LINE_MAPS_ENABLED true
 
 // Make sure that we did not break anything
 // #define LIT_STRESS_TEST_GC
 #else
-#define SINGLE_LINE_MAPS_ENABLED false
+#define LIT_SINGLE_LINE_MAPS_ENABLED false
 #endif
 
 #define LIT_INTERPOLATION_NESTING_MAX 4

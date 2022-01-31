@@ -348,12 +348,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(RETURN) {
+		LitValue value = registers[LIT_INSTRUCTION_A(instruction)];
 		fiber->frame_count--;
 
 		if (fiber->frame_count == 0) {
-			// TODO: implement the return of values
-			return (LitInterpretResult) {INTERPRET_OK, NULL_VALUE};
+			return (LitInterpretResult) { INTERPRET_OK, value };
 		}
+
+		*frame->slots = value;
 
 		READ_FRAME()
 		TRACE_FRAME()
