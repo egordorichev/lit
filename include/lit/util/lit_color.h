@@ -1,6 +1,8 @@
 #ifndef LIT_COLOR_H
 #define LIT_COLOR_H
 
+#include "lit_config.h"
+
 #if !defined(LIT_DISABLE_COLOR) && !defined(LIT_ENABLE_COLOR) && !(defined(LIT_OS_WINDOWS) || defined(EMSCRIPTEN))
 #define LIT_ENABLE_COLOR
 #endif
