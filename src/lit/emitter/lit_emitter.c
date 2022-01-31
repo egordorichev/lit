@@ -488,7 +488,6 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 					uint16_t r = emitter->compiler->locals.values[index].reg;
 
 					if (reg != r) {
-						// SET_BIT(r, 9); // Mark as ignored upon register cleanup
 						emit_abx_instruction(emitter, expression->line, OP_MOVE, reg, r);
 					}
 				}
@@ -533,10 +532,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 						error(emitter, expression->line, ERROR_CONSTANT_MODIFIED, e->length, e->name);
 					}
 
-					uint16_t r = local.reg;
-					emit_expression(emitter, expr->value, r + 1);
-
-					SET_BIT(r, 9);
+					emit_expression(emitter, expr->value, local.reg);
 					break;
 				}
 			}
@@ -716,6 +712,24 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			emit_abc_instruction(emitter, statement->line, OP_RETURN, reg, 0, 0);
+			free_register(emitter, reg);
+
+			break;
+		}
+
+		case WHILE_STATEMENT: {
+			LitWhileStatement* stmt = (LitWhileStatement*) statement;
+			uint8_t reg = reserve_register(emitter);
+
+			uint before_condition = emit_tmp_instruction(emitter);
+			emit_expression(emitter, stmt->condition, reg);
+
+			uint tmp_instruction = emit_tmp_instruction(emitter);
+			emit_statement(emitter, stmt->body);
+
+			emit_asbx_instruction(emitter, statement->line, OP_JUMP, 0, (int) before_condition - emitter->chunk->count - 1);
+
+			patch_instruction(emitter, tmp_instruction, LIT_FORM_ABX_INSTRUCTION(OP_FALSE_JUMP, reg, emitter->chunk->count - tmp_instruction - 1));
 			free_register(emitter, reg);
 
 			break;

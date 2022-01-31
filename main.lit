@@ -1,5 +1,7 @@
 var a = 3
 
-while (a < 0) {
+while (a > 0) {
 	print(a)
+	print(a > 0)
+	a--
 }

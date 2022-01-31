@@ -1,6 +1,8 @@
 #ifndef LIT_INSTRUCTION_H
 #define LIT_INSTRUCTION_H
 
+#include <math.h>
+
 #define LIT_LONGEST_OP_NAME 13
 
 typedef enum {
@@ -19,14 +21,15 @@ typedef enum {
 #define LIT_A_ARG_SIZE 0xff
 #define LIT_B_ARG_SIZE 0x1ff
 #define LIT_C_ARG_SIZE 0x1ff
-#define LIT_BX_ARG_SIZE 0x3ffff
-#define LIT_SBX_ARG_SIZE 0x3ffff
+#define LIT_BX_ARG_SIZE 0x3ffff // 18 bits max
+#define LIT_SBX_ARG_SIZE 0x1ffff // 17 bits max
 
 #define LIT_A_ARG_POSITION 6
 #define LIT_B_ARG_POSITION 14
 #define LIT_C_ARG_POSITION 23
 #define LIT_BX_ARG_POSITION 14
-#define LIT_SBX_ARG_POSITION 14
+#define LIT_SBX_ARG_POSITION 15
+#define LIT_SBX_FLAG_POSITION 14
 
 /*
  * Instruction can follow one of the three formats:
@@ -41,7 +44,8 @@ typedef enum {
 #define LIT_INSTRUCTION_B(instruction) ((instruction >> LIT_B_ARG_POSITION) & LIT_B_ARG_SIZE)
 #define LIT_INSTRUCTION_C(instruction) ((instruction >> LIT_C_ARG_POSITION) & LIT_C_ARG_SIZE)
 #define LIT_INSTRUCTION_BX(instruction) ((instruction >> LIT_BX_ARG_POSITION) & LIT_BX_ARG_SIZE)
-#define LIT_INSTRUCTION_SBX(instruction) ((*((int64_t*) (&instruction)) >> LIT_SBX_ARG_POSITION) & LIT_SBX_ARG_SIZE)
+#define LIT_INSTRUCTION_SBX(instruction) (((instruction >> LIT_SBX_ARG_POSITION) & LIT_SBX_ARG_SIZE) \
+	* (((instruction >> LIT_SBX_FLAG_POSITION) & 0x1) == 1 ? -1 : 1))
 
 #define LIT_READ_ABC_INSTRUCTION(instruction) uint8_t a = LIT_INSTRUCTION_A(instruction); \
 	uint16_t b = LIT_INSTRUCTION_B(instruction); \
@@ -64,6 +68,7 @@ typedef enum {
 
 #define LIT_FORM_ASBX_INSTRUCTION(opcode, a, sbx) (((opcode) & LIT_OPCODE_SIZE) \
 	| (((a) & LIT_A_ARG_SIZE) << LIT_A_ARG_POSITION) \
-	| (((sbx) & LIT_SBX_ARG_SIZE) << LIT_SBX_ARG_POSITION))
+	| ((abs(sbx) & LIT_SBX_ARG_SIZE) << LIT_SBX_ARG_POSITION)) \
+	| ((((sbx) < 0 ? 1 : 0) << LIT_SBX_FLAG_POSITION))
 
 #endif
