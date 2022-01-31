@@ -485,11 +485,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 					// emit_op(emitter, expression->line, OP_REFERENCE_LOCAL);
 					// emit_short(emitter, expression->line, index);
 				} else {
-					uint16_t reg = emitter->compiler->locals.values[index].reg;
+					uint16_t r = emitter->compiler->locals.values[index].reg;
 
-					if (index != reg) {
-						SET_BIT(reg, 9); // Mark as ignored upon register cleanup
-						emit_abx_instruction(emitter, expression->line, OP_MOVE, index, reg);
+					if (reg != r) {
+						SET_BIT(r, 9); // Mark as ignored upon register cleanup
+						emit_abx_instruction(emitter, expression->line, OP_MOVE, reg, r);
 					}
 				}
 			}
@@ -550,7 +550,6 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			uint arg_count = expr->args.count;
 			uint16_t arg_regs[arg_count];
 
-			dump_used_registers(emitter);
 			emit_expression(emitter, expr->callee, reg);
 
 			for (uint i = 0; i < arg_count; i++) {
@@ -564,7 +563,6 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 				emit_expression(emitter, expr->args.values[i], arg_reg);
 			}
 
-			dump_used_registers(emitter);
 			emit_abc_instruction(emitter, expression->line, OP_CALL, reg, arg_count + 1, 1);
 
 			for (uint i = 0; i < arg_count; i++) {
