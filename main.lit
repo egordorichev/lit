@@ -1,7 +1,12 @@
 var a = 3
 
-while (a > 0) {
+while (true) {
 	a -= 2
-}
 
-print(a)
+	if (a < 0) {
+		break
+	}
+
+	continue
+	print(a)
+}

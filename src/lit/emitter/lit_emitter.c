@@ -759,6 +759,15 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			break;
 		}
 
+		case CONTINUE_STATEMENT: {
+			if (emitter->compiler->loop_depth == 0) {
+				error(emitter, statement->line, ERROR_LOOP_JUMP_MISSUSE, "continue");
+			}
+
+			lit_uints_write(emitter->state, &emitter->continues, emit_tmp_instruction(emitter));
+			break;
+		}
+
 		default: {
 			error(emitter, statement->line, ERROR_UNKNOWN_STATEMENT, (int) statement->type);
 			break;
