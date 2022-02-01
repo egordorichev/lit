@@ -2,6 +2,7 @@
 #define LIT_INSTRUCTION_H
 
 #include <math.h>
+#include <stdlib.h>
 
 #define LIT_LONGEST_OP_NAME 13
 
@@ -68,7 +69,7 @@ typedef enum {
 
 #define LIT_FORM_ASBX_INSTRUCTION(opcode, a, sbx) (((opcode) & LIT_OPCODE_SIZE) \
 	| (((a) & LIT_A_ARG_SIZE) << LIT_A_ARG_POSITION) \
-	| ((abs(sbx) & LIT_SBX_ARG_SIZE) << LIT_SBX_ARG_POSITION)) \
+	| ((abs((int) (sbx)) & LIT_SBX_ARG_SIZE) << LIT_SBX_ARG_POSITION)) \
 	| ((((sbx) < 0 ? 1 : 0) << LIT_SBX_FLAG_POSITION))
 
 #endif

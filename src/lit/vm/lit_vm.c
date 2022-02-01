@@ -293,10 +293,21 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			RUNTIME_ERROR("Invoking operator methods not implemented yet") /*INVOKE_METHOD(bv, op_string, 1)*/ \
 		}
 
-	#define COMPARISON_INSTRUCTION(op) \
+	#define COMPARISON_INSTRUCTION(type, op, op_string) \
 		uint16_t b = LIT_INSTRUCTION_B(instruction); \
-    uint16_t c = LIT_INSTRUCTION_C(instruction); \
-		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(GET_RC(b) op GET_RC(c));
+		uint16_t c = LIT_INSTRUCTION_C(instruction); \
+    LitValue bv = GET_RC(b); \
+    LitValue cv = GET_RC(c); \
+		if (IS_NUMBER(bv)) { \
+			if (!IS_NUMBER(cv)) { \
+				RUNTIME_ERROR_VARG("Attempt to use the operator %s with a number and a %s", op_string, lit_get_value_type(cv)) \
+			} \
+			registers[LIT_INSTRUCTION_A(instruction)] = type(AS_NUMBER(bv) op AS_NUMBER(cv)); \
+		} else if (IS_NULL(bv)) { \
+			RUNTIME_ERROR_VARG("Attempt to use the operator %s on a null value", op_string) \
+		} else { \
+			RUNTIME_ERROR("Invoking operator methods not implemented yet") /*INVOKE_METHOD(bv, op_string, 1)*/ \
+		}
 
 	register LitVm *vm = state->vm;
 	register LitTable *globals = &vm->globals->values;
@@ -396,17 +407,17 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(EQUAL) {
-		COMPARISON_INSTRUCTION(==)
+		COMPARISON_INSTRUCTION(NUMBER_VALUE, ==, "==")
 		DISPATCH_NEXT()
 	}
 
 	CASE_CODE(LESS) {
-		COMPARISON_INSTRUCTION(<)
+		COMPARISON_INSTRUCTION(NUMBER_VALUE, <, "<")
 		DISPATCH_NEXT()
 	}
 
 	CASE_CODE(LESS_EQUAL) {
-		COMPARISON_INSTRUCTION(<=)
+		COMPARISON_INSTRUCTION(NUMBER_VALUE, <=, "<=")
 		DISPATCH_NEXT()
 	}
 

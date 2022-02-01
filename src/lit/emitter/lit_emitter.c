@@ -575,6 +575,14 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 	}
 }
 
+static void patch_loop_jumps(LitEmitter* emitter, LitUInts* breaks) {
+	for (uint i = 0; i < breaks->count; i++) {
+		patch_instruction(emitter, breaks->values[i], LIT_FORM_ASBX_INSTRUCTION(OP_JUMP, 0, (int64_t) emitter->chunk->count - breaks->values[i] - 1));
+	}
+
+	lit_free_uints(emitter->state, breaks);
+}
+
 static bool emit_parameters(LitEmitter* emitter, LitParameters* parameters, uint line) {
 	for (uint i = 0; i < parameters->count; i++) {
 		LitParameter* parameter = &parameters->values[i];
@@ -662,7 +670,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				else_skip = emit_tmp_instruction(emitter);
 			}
 
-			patch_instruction(emitter, condition_branch_skip, LIT_FORM_ASBX_INSTRUCTION(OP_FALSE_JUMP, condition_reg, (int64_t) emitter->chunk->count - start));
+			patch_instruction(emitter, condition_branch_skip, LIT_FORM_ABX_INSTRUCTION(OP_FALSE_JUMP, condition_reg, (int64_t) emitter->chunk->count - start));
 
 			if (stmt->else_branch) {
 				int64_t else_start = emitter->chunk->count;
@@ -719,19 +727,35 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case WHILE_STATEMENT: {
 			LitWhileStatement* stmt = (LitWhileStatement*) statement;
-			uint8_t reg = reserve_register(emitter);
 
+			uint8_t reg = reserve_register(emitter);
 			uint before_condition = emit_tmp_instruction(emitter);
+
+			emitter->loop_start = before_condition;
+			emitter->compiler->loop_depth++;
+
 			emit_expression(emitter, stmt->condition, reg);
 
 			uint tmp_instruction = emit_tmp_instruction(emitter);
 			emit_statement(emitter, stmt->body);
 
+			patch_loop_jumps(emitter, &emitter->continues);
 			emit_asbx_instruction(emitter, statement->line, OP_JUMP, 0, (int) before_condition - emitter->chunk->count - 1);
-
 			patch_instruction(emitter, tmp_instruction, LIT_FORM_ABX_INSTRUCTION(OP_FALSE_JUMP, reg, emitter->chunk->count - tmp_instruction - 1));
+			patch_loop_jumps(emitter, &emitter->breaks);
+
+			emitter->compiler->loop_depth--;
 			free_register(emitter, reg);
 
+			break;
+		}
+
+		case BREAK_STATEMENT: {
+			if (emitter->compiler->loop_depth == 0) {
+				error(emitter, statement->line, ERROR_LOOP_JUMP_MISSUSE, "break");
+			}
+
+			lit_uints_write(emitter->state, &emitter->breaks, emit_tmp_instruction(emitter));
 			break;
 		}
 
