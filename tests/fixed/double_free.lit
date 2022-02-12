@@ -2,3 +2,4 @@ function b() {
 	return "hey"
 }
 
+print(b())

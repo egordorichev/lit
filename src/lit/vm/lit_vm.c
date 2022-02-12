@@ -175,8 +175,6 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	frame->result_ignored = false;
 	frame->return_to_c = false;
 
-	// TODO: pass args
-
 	return true;
 }
 
@@ -342,9 +340,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	goto *dispatch_table[LIT_INSTRUCTION_OPCODE(instruction)];
 
 	CASE_CODE(MOVE) {
-		uint16_t b = LIT_INSTRUCTION_B(instruction);
-		registers[LIT_INSTRUCTION_A(instruction)] = GET_RC(b);
-
+		registers[LIT_INSTRUCTION_A(instruction)] = GET_RC(LIT_INSTRUCTION_B(instruction));
 		DISPATCH_NEXT()
 	}
 
@@ -398,8 +394,24 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(TRUE_JUMP) {
+		if (!lit_is_falsey(registers[LIT_INSTRUCTION_A(instruction)])) {
+			ip += LIT_INSTRUCTION_BX(instruction);
+		}
+
+		DISPATCH_NEXT()
+	}
+
 	CASE_CODE(FALSE_JUMP) {
 		if (lit_is_falsey(registers[LIT_INSTRUCTION_A(instruction)])) {
+			ip += LIT_INSTRUCTION_BX(instruction);
+		}
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(NON_NULL_JUMP) {
+		if (registers[LIT_INSTRUCTION_A(instruction)] != NULL_VALUE) {
 			ip += LIT_INSTRUCTION_BX(instruction);
 		}
 
@@ -464,7 +476,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	CASE_CODE(CALL) {
 		WRITE_FRAME()
 
-	if (!call_value(vm, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction) - 1)) {
+		if (!call_value(vm, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction) - 1)) {
 			RETURN_ERROR()
 		}
 
@@ -480,7 +492,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	#undef GET_RC
 	#undef RUNTIME_ERROR_VARG
 	#undef RUNTIME_ERROR
-	#undef CALL_VALUE
 	#undef RECOVER_STATE
 	#undef WRITE_FRAME
 	#undef READ_FRAME

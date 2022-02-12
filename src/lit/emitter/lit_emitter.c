@@ -148,8 +148,17 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 }
 
 static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
+	if (emitter->compiler->registers_used > 0) {
+		error(emitter, emitter->last_line, ERROR_NOT_ALL_REGISTERS_FREED);
+	}
+
 	if (!emitter->compiler->skip_return) {
-		emit_abc_instruction(emitter, emitter->last_line, OP_RETURN, 0, 1, 0);
+		uint8_t reg = reserve_register(emitter);
+
+		emit_abc_instruction(emitter, emitter->last_line, OP_LOAD_NULL, reg, 0, 0);
+		emit_abc_instruction(emitter, emitter->last_line, OP_RETURN, reg, 1, 0);
+		free_register(emitter, reg);
+
 		emitter->compiler->skip_return = true;
 	}
 
@@ -381,13 +390,24 @@ static uint16_t parse_argument(LitEmitter* emitter, LitExpression* expression, u
 }
 
 static void emit_binary_expression(LitEmitter* emitter, LitBinaryExpression* expr, uint8_t reg, bool swap) {
-	uint16_t rc = reserve_register(emitter);
+	LitTokenType op = expr->op;
 
-	uint16_t b = parse_argument(emitter, expr->left, reg);
-	uint16_t c = parse_argument(emitter, expr->right, rc);
+	if (op == LTOKEN_AMPERSAND_AMPERSAND || op == LTOKEN_BAR_BAR || op == LTOKEN_QUESTION_QUESTION) {
+		emit_expression(emitter, expr->left, reg);
+		uint jump = emit_tmp_instruction(emitter);
+		emit_expression(emitter, expr->right, reg);
 
-	emit_abc_instruction(emitter, expr->expression.line, translate_binary_operator_into_op(expr->op), reg, swap ? c : b, swap ? b : c);
-	free_register(emitter, rc);
+		patch_instruction(emitter, jump, LIT_FORM_ABX_INSTRUCTION(op == LTOKEN_BAR_BAR ? OP_FALSE_JUMP : (op == LTOKEN_QUESTION_QUESTION ? OP_NON_NULL_JUMP : OP_TRUE_JUMP),
+      reg, emitter->chunk->count - jump - 1
+		));
+	} else {
+		uint16_t rc = reserve_register(emitter);
+		uint16_t b = parse_argument(emitter, expr->left, reg);
+		uint16_t c = parse_argument(emitter, expr->right, rc);
+
+		emit_abc_instruction(emitter, expr->expression.line, translate_binary_operator_into_op(op), reg, swap ? c : b, swap ? b : c);
+		free_register(emitter, rc);
+	}
 }
 
 static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint8_t reg) {
