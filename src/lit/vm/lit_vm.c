@@ -164,14 +164,16 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 		fiber->frame_capacity = new_capacity;
 	}
 
-	lit_ensure_fiber_registers(vm->state, fiber, function->max_registers + (int) (fiber->registers_allocated - fiber->registers_used));
+	fiber->registers_used += function->max_registers;
+	lit_ensure_fiber_registers(vm->state, fiber, fiber->registers_used);
 
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
+	LitCallFrame* previous_frame = fiber->frame_count > 1 ? &fiber->frames[fiber->frame_count - 2] : NULL;
 
 	frame->function = function;
 	frame->closure = closure;
 	frame->ip = function->chunk.code;
-	frame->slots = fiber->registers + fiber->registers_used - arg_count;
+	frame->slots = previous_frame ? previous_frame->slots + previous_frame->function->max_registers : fiber->registers;
 	frame->result_ignored = false;
 	frame->return_to_c = false;
 
@@ -225,6 +227,8 @@ LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 }
 
 LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber) {
+	assert(fiber->frame_count == 1);
+
 	// Has to be inside of the function in order for goto to work
 	static void* dispatch_table[] = {
 		#define OPCODE(name, a, b) &&OP_##name,
@@ -326,6 +330,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	READ_FRAME()
 	TRACE_FRAME()
 
+	fiber->registers_used = frame->function->max_registers;
+
 #ifdef LIT_TRACE_EXECUTION
 	printf("\nstart:\n\n");
 #endif
@@ -356,7 +362,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	CASE_CODE(RETURN) {
 		LitValue value = registers[LIT_INSTRUCTION_A(instruction)];
+
 		fiber->frame_count--;
+		fiber->registers_used -= fiber->frames[fiber->frame_count].function->max_registers;
 
 		if (fiber->frame_count == 0) {
 			return (LitInterpretResult) { INTERPRET_OK, value };
