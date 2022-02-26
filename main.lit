@@ -2,4 +2,5 @@ function b() {
 	return "hey"
 }
 
-print(b())
+var a = b()
+print(a)

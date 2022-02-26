@@ -225,6 +225,7 @@ typedef struct {
 
 	uint64_t* ip;
 	LitValue* slots;
+	LitValue* return_address;
 
 	bool result_ignored;
 	bool return_to_c;

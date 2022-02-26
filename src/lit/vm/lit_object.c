@@ -402,6 +402,7 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	frame->slots = fiber->registers;
 	frame->result_ignored = false;
 	frame->return_to_c = false;
+	frame->return_address = NULL;
 
 	if (function != NULL) {
 		frame->ip = function->chunk.code;
