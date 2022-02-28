@@ -397,7 +397,7 @@ static void emit_binary_expression(LitEmitter* emitter, LitBinaryExpression* exp
 		uint jump = emit_tmp_instruction(emitter);
 		emit_expression(emitter, expr->right, reg);
 
-		patch_instruction(emitter, jump, LIT_FORM_ABX_INSTRUCTION(op == LTOKEN_BAR_BAR ? OP_FALSE_JUMP : (op == LTOKEN_QUESTION_QUESTION ? OP_NON_NULL_JUMP : OP_TRUE_JUMP),
+		patch_instruction(emitter, jump, LIT_FORM_ABX_INSTRUCTION(op == LTOKEN_BAR_BAR ? OP_TRUE_JUMP : (op == LTOKEN_QUESTION_QUESTION ? OP_NON_NULL_JUMP : OP_FALSE_JUMP),
       reg, emitter->chunk->count - jump - 1
 		));
 	} else {
