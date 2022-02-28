@@ -4,3 +4,4 @@ function b() {
 
 var a = b()
 print(a) // Expected: hey
+print(b()) // Expected: hey

@@ -410,6 +410,13 @@ static void emit_binary_expression(LitEmitter* emitter, LitBinaryExpression* exp
 	}
 }
 
+static void emit_expression_ignoring_register(LitEmitter* emitter, LitExpression* expression) {
+	uint8_t reg = reserve_register(emitter);
+
+	emit_expression(emitter, expression, reg);
+	free_register(emitter, reg);
+}
+
 static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint8_t reg) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
@@ -766,6 +773,70 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			emitter->compiler->loop_depth--;
 			free_register(emitter, reg);
+
+			break;
+		}
+
+		case FOR_STATEMENT: {
+			LitForStatement* stmt = (LitForStatement*) statement;
+
+			if (stmt->c_style) {
+				if (stmt->var != NULL) {
+					emit_statement(emitter, stmt->var);
+				} else if (stmt->init != NULL) {
+					emit_expression_ignoring_register(emitter, stmt->init);
+				}
+
+				uint start = emitter->chunk->count;
+				uint exit_jump;
+				uint8_t condition_reg;
+
+				if (stmt->condition != NULL) {
+					condition_reg = reserve_register(emitter);
+					emit_expression(emitter, stmt->condition, condition_reg);
+					exit_jump = emit_tmp_instruction(emitter);
+				}
+
+				if (stmt->increment != NULL) {
+					uint body_jump = emit_tmp_instruction(emitter);
+					uint increment_start = emitter->chunk->count;
+
+					emit_expression_ignoring_register(emitter, stmt->increment);
+					emit_asbx_instruction(emitter, statement->line, OP_JUMP, 0, (int) start - emitter->chunk->count - 1);
+
+					start = increment_start;
+					patch_instruction(emitter, body_jump, LIT_FORM_ASBX_INSTRUCTION(OP_JUMP, 0, (int64_t) emitter->chunk->count - body_jump - 1));
+				}
+
+				emitter->loop_start = start;
+				begin_scope(emitter);
+
+				if (stmt->body != NULL) {
+					if (stmt->body->type == BLOCK_STATEMENT) {
+						LitStatements *statements = &((LitBlockStatement*) stmt->body)->statements;
+
+						for (uint i = 0; i < statements->count; i++) {
+							emit_statement(emitter, statements->values[i]);
+						}
+					} else {
+						emit_statement(emitter, stmt->body);
+					}
+				}
+
+				patch_loop_jumps(emitter, &emitter->continues);
+				end_scope(emitter);
+
+				emit_asbx_instruction(emitter, statement->line, OP_JUMP, 0, (int) start - emitter->chunk->count - 1);
+
+				if (stmt->condition != NULL) {
+					int a = emitter->chunk->count;
+					patch_instruction(emitter, exit_jump, LIT_FORM_ABX_INSTRUCTION(OP_FALSE_JUMP, condition_reg, (int64_t) emitter->chunk->count - exit_jump - 1));
+					free_register(emitter, condition_reg);
+				}
+			} else {
+				// TODO: implement
+				UNREACHABLE
+			}
 
 			break;
 		}

@@ -1,6 +1,7 @@
 # register based
 
 * implement else-if's
+* implement non c-style for
 
 # todo
 
