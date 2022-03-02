@@ -790,8 +790,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				}
 
 				uint start = emitter->chunk->count;
-				uint exit_jump;
-				uint8_t condition_reg;
+				uint exit_jump = 0;
+				uint8_t condition_reg = 0;
 
 				if (stmt->condition != NULL) {
 					condition_reg = reserve_register(emitter);

@@ -1,6 +1,6 @@
-function fib(n) {
+function fib(a, n) {
   if (n < 2) return n
-  return fib(n - 2) + fib(n - 1)
+  return fib(a, n - 2) + fib(a, n - 1)
 }
 
-print(fib(35))
+print(fib(10, 35))

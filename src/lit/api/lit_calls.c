@@ -100,6 +100,7 @@ LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, Li
 
 LitString* lit_to_string(LitState* state, LitValue object) {
 	NOT_IMPLEMENTED
+	return NULL;
 }
 
 LitValue lit_call_new(LitVm* vm, const char* name, LitValue* args, uint argument_count) {

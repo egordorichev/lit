@@ -424,6 +424,8 @@ static LitTokenType convert_compound_operator(LitTokenType op) {
 			UNREACHABLE
 		}
 	}
+
+	return LTOKEN_EOF;
 }
 
 static LitExpression* parse_compound(LitParser* parser, LitExpression* prev, bool can_assign) {
@@ -463,6 +465,8 @@ static LitExpression* parse_literal(LitParser* parser, bool can_assign) {
 
 		default: UNREACHABLE
 	}
+
+	return NULL;
 }
 
 static LitExpression* parse_string(LitParser* parser, bool can_assign) {

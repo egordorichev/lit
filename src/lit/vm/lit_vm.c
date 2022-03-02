@@ -173,7 +173,7 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	frame->function = function;
 	frame->closure = closure;
 	frame->ip = function->chunk.code;
-	frame->slots = previous_frame ? previous_frame->slots + previous_frame->function->max_registers : fiber->registers;
+	frame->slots = previous_frame ? previous_frame->return_address : fiber->registers;
 	frame->result_ignored = false;
 	frame->return_to_c = false;
 	frame->return_address = (previous_frame ? previous_frame->slots : fiber->registers) + (int) callee_register;
@@ -484,8 +484,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	CASE_CODE(CALL) {
 		WRITE_FRAME()
+		frame->return_address = &registers[LIT_INSTRUCTION_A(instruction)];
 
-		if (!call_value(vm,LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction) - 1)) {
+		if (!call_value(vm, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction) - 1)) {
 			RETURN_ERROR()
 		}
 
