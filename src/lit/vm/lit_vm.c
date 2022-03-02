@@ -152,6 +152,7 @@ bool lit_runtime_error_exiting(LitVm* vm, const char* format, ...) {
 
 static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure, uint8_t arg_count, uint callee_register) {
 	register LitFiber* fiber = vm->fiber;
+	assert(fiber->frame_count > 0);
 
 	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
 		lit_runtime_error(vm, "Stack overflow");
@@ -168,15 +169,15 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	lit_ensure_fiber_registers(vm->state, fiber, fiber->registers_used);
 
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
-	LitCallFrame* previous_frame = fiber->frame_count > 1 ? &fiber->frames[fiber->frame_count - 2] : NULL;
+	LitCallFrame* previous_frame = &fiber->frames[fiber->frame_count - 2];
 
 	frame->function = function;
 	frame->closure = closure;
 	frame->ip = function->chunk.code;
-	frame->slots = previous_frame ? previous_frame->return_address : fiber->registers;
+	frame->slots = previous_frame->slots + callee_register;
 	frame->result_ignored = false;
 	frame->return_to_c = false;
-	frame->return_address = (previous_frame ? previous_frame->slots : fiber->registers) + (int) callee_register;
+	frame->return_address = previous_frame->slots + (int) callee_register;
 
 	return true;
 }
@@ -341,6 +342,18 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	instruction = *ip++;
 
 	#ifdef LIT_TRACE_EXECUTION
+		if (frame->function->max_registers > 0) {
+			printf("        |\n        | f%i ", fiber->frame_count);
+
+			for (int i = 0; i < frame->function->max_registers; i++) {
+				printf("[ ");
+				lit_print_value(*(registers + i));
+				printf(" ]");
+			}
+
+			printf("\n");
+		}
+
 		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
 	#endif
 
@@ -484,7 +497,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	CASE_CODE(CALL) {
 		WRITE_FRAME()
-		frame->return_address = &registers[LIT_INSTRUCTION_A(instruction)];
 
 		if (!call_value(vm, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction) - 1)) {
 			RETURN_ERROR()
