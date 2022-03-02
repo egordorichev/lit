@@ -85,6 +85,7 @@ static void dump_used_registers(LitEmitter* emitter) {
 	printf("]\n");
 }
 
+// Be very careful with the use of this function, always reserve a register just before using it, do not wait around!
 static uint8_t reserve_register(LitEmitter* emitter) {
 	LitCompiler* compiler = emitter->compiler;
 
@@ -108,7 +109,7 @@ static void free_register(LitEmitter* emitter, uint16_t reg) {
 		return error(emitter, emitter->last_line, ERROR_INVALID_REGISTER_FREED);
 	}
 
-	compiler->registers_used -= 1;
+	compiler->registers_used--;
 }
 
 static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctionType type) {
@@ -401,8 +402,9 @@ static void emit_binary_expression(LitEmitter* emitter, LitBinaryExpression* exp
       reg, emitter->chunk->count - jump - 1
 		));
 	} else {
-		uint16_t rc = reserve_register(emitter);
 		uint16_t b = parse_argument(emitter, expr->left, reg);
+
+		uint16_t rc = reserve_register(emitter);
 		uint16_t c = parse_argument(emitter, expr->right, rc);
 
 		emit_abc_instruction(emitter, expr->expression.line, translate_binary_operator_into_op(op), reg, swap ? c : b, swap ? b : c);
