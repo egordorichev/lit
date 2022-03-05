@@ -707,7 +707,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitVarStatement* stmt = (LitVarStatement*) statement;
 			uint16_t reg = reserve_register(emitter);
 
-			bool private = false; // emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
+			bool private = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
 
 			if (stmt->init == NULL) {
 				emit_abc_instruction(emitter, statement->line, OP_LOAD_NULL, reg, 0, 0);
@@ -721,10 +721,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			if (private) {
 				mark_private_initialized(emitter, index);
-				// emit_byte_or_short(emitter, statement->line, OP_SET_PRIVATE, index);
+				emit_abx_instruction(emitter, statement->line, OP_SET_PRIVATE, reg, index);
+				free_register(emitter, reg);
 			} else {
 				mark_local_initialized(emitter, index);
-				// emit_byte_or_short(emitter, statement->line, private ? OP_SET_PRIVATE : OP_SET_LOCAL, private ? OP_SET_PRIVATE_LONG : OP_SET_LOCAL_LONG, index);
 			}
 
 			break;
