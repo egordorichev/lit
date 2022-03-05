@@ -250,7 +250,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	  constants = current_chunk->constants.values; \
 		ip = frame->ip; \
 		fiber->module = frame->function->module; \
-		registers = frame->slots;
+		registers = frame->slots; \
+		privates = fiber->module->privates;
 
 	#define WRITE_FRAME() frame->ip = ip;
 	#define RETURN_ERROR() POP_GC(state) return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
@@ -330,6 +331,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	register LitChunk* current_chunk;
 	register LitValue* registers;
 	register LitValue* constants;
+	register LitValue* privates;
 	register uint64_t* ip;
 
 	uint64_t instruction;
@@ -501,12 +503,25 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(SET_UPVALUE) {
-		*frame->closure->upvalues[LIT_INSTRUCTION_A(instruction)]->location = registers[LIT_INSTRUCTION_BX(instruction)];
+		*frame->closure->upvalues[LIT_INSTRUCTION_A(instruction)]->location = GET_RC(LIT_INSTRUCTION_BX(instruction));
 		DISPATCH_NEXT()
 	}
 
 	CASE_CODE(GET_UPVALUE) {
 		registers[LIT_INSTRUCTION_A(instruction)] = *frame->closure->upvalues[LIT_INSTRUCTION_BX(instruction)]->location;
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(SET_PRIVATE) {
+		uint8_t a = LIT_INSTRUCTION_A(instruction);
+		uint32_t b = LIT_INSTRUCTION_BX(instruction);
+
+		privates[(uint16_t) b] = IS_BIT_SET(b, 16) ? constants[a] : registers[a];
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(GET_PRIVATE) {
+		registers[LIT_INSTRUCTION_A(instruction)] = privates[LIT_INSTRUCTION_BX(instruction)];
 		DISPATCH_NEXT()
 	}
 

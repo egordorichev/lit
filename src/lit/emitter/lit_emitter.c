@@ -359,6 +359,23 @@ static void mark_private_initialized(LitEmitter* emitter, uint index) {
 
 static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
 	switch (statement->type) {
+		case VAR_STATEMENT: {
+			LitVarStatement* stmt = (LitVarStatement*) statement;
+			mark_private_initialized(emitter, add_private(emitter, stmt->name, stmt->length, statement->line, stmt->constant));
+
+			break;
+		}
+
+		case FUNCTION_STATEMENT: {
+			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
+
+			if (!stmt->exported) {
+				mark_private_initialized(emitter, add_private(emitter, stmt->name, stmt->length, statement->line, false));
+			}
+
+			break;
+		}
+
 		default: {
 			break;
 		}
@@ -513,7 +530,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 				index = resolve_upvalue(emitter, emitter->compiler, expr->name, expr->length, expression->line);
 
 				if (index == -1) {
-					// index = resolve_private(emitter, expr->name, expr->length, expression->line);
+					index = resolve_private(emitter, expr->name, expr->length, expression->line);
 
 					if (index == -1) {
 						if (ref) {
@@ -524,9 +541,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 						}
 					} else {
 						if (ref) {
+							NOT_IMPLEMENTED
 							// emit_op(emitter, expression->line, OP_REFERENCE_PRIVATE);
 							// emit_short(emitter, expression->line, index);
 						} else {
+							emit_abx_instruction(emitter, expression->line, OP_GET_PRIVATE, reg, index);
 							// emit_byte_or_short(emitter, expression->line, OP_GET_PRIVATE, OP_GET_PRIVATE_LONG, index);
 						}
 					}
@@ -747,7 +766,23 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			bool private = !export && emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
 			bool local = !(export || private);
 
+			int index;
+			uint8_t reg;
+
+			if (!export) {
+				index = private ?
+	        resolve_private(emitter, stmt->name, stmt->length, statement->line) :
+	        add_local(emitter, stmt->name, stmt->length, statement->line, false, reg = reserve_register(emitter));
+			}
+
 			LitString* name = lit_copy_string(emitter->state, stmt->name, stmt->length);
+
+			if (local) {
+				mark_local_initialized(emitter, index);
+			} else if (private) {
+				mark_private_initialized(emitter, index);
+			}
+
 			LitCompiler compiler;
 
 			init_compiler(emitter, &compiler, FUNCTION_REGULAR);
@@ -770,12 +805,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			if (export) {
 				uint16_t name_constant = add_constant(emitter, statement->line, OBJECT_VALUE(function->name));
 				emit_abx_instruction(emitter, statement->line, OP_SET_GLOBAL, name_constant, function_constant);
-			} else if (private && false) {
-				NOT_IMPLEMENTED
+			} else if (private) {
+				SET_BIT(index, 16);
+				emit_abx_instruction(emitter, statement->line, OP_SET_PRIVATE, function_constant, index);
 			} else {
-				uint8_t reg = reserve_register(emitter);
-
-				mark_local_initialized(emitter, add_local(emitter, stmt->name, stmt->length, statement->line, false, reg));
 				emit_abc_instruction(emitter, statement->line, OP_MOVE, reg, function_constant, 0);
 			}
 
