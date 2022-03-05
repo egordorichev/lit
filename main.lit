@@ -1,6 +1,11 @@
-function fib(n) {
-  if (n < 2) return n
-  return fib(n - 2) + fib(n - 1)
+function a() {
+	var c = 32
+
+	function b() {
+		return 10 // c
+	}
+
+	return b
 }
 
-print(fib(25))
+print(a()())

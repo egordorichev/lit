@@ -328,6 +328,27 @@ static int add_upvalue(LitEmitter* emitter, LitCompiler* compiler, uint8_t index
 	return compiler->function->upvalue_count++;
 }
 
+static int resolve_upvalue(LitEmitter* emitter, LitCompiler* compiler, const char* name, uint length, uint line) {
+	if (compiler->enclosing == NULL) {
+		return -1;
+	}
+
+	int local = resolve_local(emitter, (LitCompiler*) compiler->enclosing, name, length, line);
+
+	if (local != -1) {
+		((LitCompiler*) compiler->enclosing)->locals.values[local].captured = true;
+		return add_upvalue(emitter, compiler, (uint8_t) local, line, true);
+	}
+
+	int upvalue = resolve_upvalue(emitter, (LitCompiler*) compiler->enclosing, name, length, line);
+
+	if (upvalue != -1) {
+		return add_upvalue(emitter, compiler, (uint8_t) upvalue, line, false);
+	}
+
+	return -1;
+}
+
 static void mark_local_initialized(LitEmitter* emitter, uint index) {
 	emitter->compiler->locals.values[index].depth = emitter->compiler->scope_depth;
 }
@@ -489,15 +510,18 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			int index = resolve_local(emitter, emitter->compiler, expr->name, expr->length, expression->line);
 
 			if (index == -1) {
-				// TODO: when implementing this, also implement in parse_argument()
-				// index = resolve_upvalue(emitter, emitter->compiler, expr->name, expr->length, expression->line);
+				index = resolve_upvalue(emitter, emitter->compiler, expr->name, expr->length, expression->line);
 
 				if (index == -1) {
 					// index = resolve_private(emitter, expr->name, expr->length, expression->line);
 
 					if (index == -1) {
-						uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
-						emit_abx_instruction(emitter, expression->line, OP_GET_GLOBAL, constant, reg);
+						if (ref) {
+							NOT_IMPLEMENTED
+						} else {
+							uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+							emit_abx_instruction(emitter, expression->line, OP_GET_GLOBAL, constant, reg);
+						}
 					} else {
 						if (ref) {
 							// emit_op(emitter, expression->line, OP_REFERENCE_PRIVATE);
@@ -507,10 +531,16 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 						}
 					}
 				} else {
+					if (ref) {
+						NOT_IMPLEMENTED
+					} else {
+						emit_abx_instruction(emitter, expression->line, OP_GET_UPVALUE, reg, index);
+					}
 					// emit_arged_op(emitter, expression->line, ref ? OP_REFERENCE_UPVALUE : OP_GET_UPVALUE, (uint8_t) index);
 				}
 			} else {
 				if (ref) {
+					NOT_IMPLEMENTED
 					// emit_op(emitter, expression->line, OP_REFERENCE_LOCAL);
 					// emit_short(emitter, expression->line, index);
 				} else {
@@ -712,6 +742,11 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case FUNCTION_STATEMENT: {
 			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
+
+			bool export = stmt->exported;
+			bool private = !export && emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
+			bool local = !(export || private);
+
 			LitString* name = lit_copy_string(emitter->state, stmt->name, stmt->length);
 			LitCompiler compiler;
 
@@ -732,8 +767,17 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			uint16_t function_constant = add_constant(emitter, statement->line, OBJECT_VALUE(function));
 			SET_BIT(function_constant, 8);
 
-			uint16_t name_constant = add_constant(emitter, statement->line, OBJECT_VALUE(function->name));
-			emit_abx_instruction(emitter, statement->line, OP_SET_GLOBAL, name_constant, function_constant);
+			if (export) {
+				uint16_t name_constant = add_constant(emitter, statement->line, OBJECT_VALUE(function->name));
+				emit_abx_instruction(emitter, statement->line, OP_SET_GLOBAL, name_constant, function_constant);
+			} else if (private && false) {
+				NOT_IMPLEMENTED
+			} else {
+				uint8_t reg = reserve_register(emitter);
+
+				mark_local_initialized(emitter, add_local(emitter, stmt->name, stmt->length, statement->line, false, reg));
+				emit_abc_instruction(emitter, statement->line, OP_MOVE, reg, function_constant, 0);
+			}
 
 			break;
 		}
