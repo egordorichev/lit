@@ -20,6 +20,7 @@
 #define IS_PRIMITIVE_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_PRIMITIVE_METHOD)
 #define IS_MODULE(value) IS_OBJECTS_TYPE(value, OBJECT_MODULE)
 #define IS_CLOSURE(value) IS_OBJECTS_TYPE(value, OBJECT_CLOSURE)
+#define IS_CLOSURE_PROTOTYPE(value) IS_OBJECTS_TYPE(value, OBJECT_CLOSURE_PROTOTYPE)
 #define IS_UPVALUE(value) IS_OBJECTS_TYPE(value, OBJECT_UPVALUE)
 #define IS_CLASS(value) IS_OBJECTS_TYPE(value, OBJECT_CLASS)
 #define IS_INSTANCE(value) IS_OBJECTS_TYPE(value, OBJECT_INSTANCE)
@@ -43,6 +44,7 @@ bool lit_is_callable_function(LitValue value);
 #define AS_PRIMITIVE_METHOD(value) ((LitPrimitiveMethod*) AS_OBJECT(value))
 #define AS_MODULE(value) ((LitModule*) AS_OBJECT(value))
 #define AS_CLOSURE(value) ((LitClosure*) AS_OBJECT(value))
+#define AS_CLOSURE_PROTOTYPE(value) ((LitClosurePrototype*) AS_OBJECT(value))
 #define AS_UPVALUE(value) ((LitUpvalue*) AS_OBJECT(value))
 #define AS_CLASS(value) ((LitClass*) AS_OBJECT(value))
 #define AS_INSTANCE(value) ((LitInstance*) AS_OBJECT(value))
@@ -69,6 +71,7 @@ typedef enum {
 	OBJECT_FIBER,
 	OBJECT_MODULE,
 	OBJECT_CLOSURE,
+	OBJECT_CLOSURE_PROTOTYPE,
 	OBJECT_UPVALUE,
 	OBJECT_CLASS,
 	OBJECT_INSTANCE,
@@ -91,6 +94,7 @@ static const char* lit_object_type_names[] = {
 	"fiber",
 	"module",
 	"closure",
+	"closure_prototype",
 	"upvalue",
 	"class",
 	"instance",
@@ -174,6 +178,18 @@ typedef struct {
 } LitClosure;
 
 LitClosure* lit_create_closure(LitState* state, LitFunction* function);
+
+typedef struct {
+	LitObject object;
+	LitFunction* function;
+
+	bool* local;
+	uint8_t* indexes;
+
+	uint upvalue_count;
+} LitClosurePrototype;
+
+LitClosurePrototype* lit_create_closure_prototype(LitState* state, LitFunction* function);
 
 typedef LitValue (*LitNativeFunctionFn)(LitVm* vm, uint arg_count, LitValue* args);
 

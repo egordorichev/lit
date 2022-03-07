@@ -27,6 +27,15 @@ static void print_object(LitValue value) {
 			break;
 		}
 
+		case OBJECT_CLOSURE_PROTOTYPE: {
+#ifdef LIT_TRACE_STACK
+			printf("closure %s", AS_CLOSURE_PROTOTYPE(value)->function->name->chars);
+#else
+			printf("function %s", AS_CLOSURE_PROTOTYPE(value)->function->name->chars);
+#endif
+			break;
+		}
+
 		case OBJECT_NATIVE_PRIMITIVE: {
 			printf("function %s", AS_NATIVE_PRIMITIVE(value)->name->chars);
 			break;

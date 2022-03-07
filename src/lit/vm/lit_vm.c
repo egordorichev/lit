@@ -221,6 +221,31 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count) {
 	return true;
 }
 
+static LitUpvalue* capture_upvalue(LitState* state, LitValue* local) {
+	LitUpvalue* previous_upvalue = NULL;
+	LitUpvalue* upvalue = state->vm->fiber->open_upvalues;
+
+	while (upvalue != NULL && upvalue->location > local) {
+		previous_upvalue = upvalue;
+		upvalue = upvalue->next;
+	}
+
+	if (upvalue != NULL && upvalue->location == local) {
+		return upvalue;
+	}
+
+	LitUpvalue* created_upvalue = lit_create_upvalue(state, local);
+	created_upvalue->next = upvalue;
+
+	if (previous_upvalue == NULL) {
+		state->vm->fiber->open_upvalues = created_upvalue;
+	} else {
+		previous_upvalue->next = created_upvalue;
+	}
+
+	return created_upvalue;
+}
+
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 	register LitVm *vm = state->vm;
 
@@ -251,7 +276,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		ip = frame->ip; \
 		fiber->module = frame->function->module; \
 		registers = frame->slots; \
-		privates = fiber->module->privates;
+		privates = fiber->module->privates; \
+		upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
 
 	#define WRITE_FRAME() frame->ip = ip;
 	#define RETURN_ERROR() POP_GC(state) return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
@@ -332,6 +358,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	register LitValue* registers;
 	register LitValue* constants;
 	register LitValue* privates;
+	LitUpvalue** upvalues;
+
 	register uint64_t* ip;
 
 	uint64_t instruction;
@@ -378,6 +406,25 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	CASE_CODE(LOAD_BOOL) {
 		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(LIT_INSTRUCTION_B(instruction) != 0);
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(CLOSURE) {
+		LitClosurePrototype* closure_prototype = AS_CLOSURE_PROTOTYPE(constants[LIT_INSTRUCTION_BX(instruction)]);
+		LitClosure* closure = lit_create_closure(state, closure_prototype->function);
+
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(closure);
+
+		for (uint i = 0; i < closure->function->upvalue_count; i++) {
+			uint8_t index = closure_prototype->indexes[i];
+
+			if (closure_prototype->local[i]) {
+				closure->upvalues[i] = capture_upvalue(state, registers + index);
+			} else {
+				closure->upvalues[i] = upvalues[index];
+			}
+		}
+
 		DISPATCH_NEXT()
 	}
 

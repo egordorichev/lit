@@ -257,6 +257,11 @@ LitValue lit_get_function_name(LitVm* vm, LitValue instance) {
 			break;
 		}
 
+		case OBJECT_CLOSURE_PROTOTYPE: {
+			name = AS_CLOSURE_PROTOTYPE(instance)->function->name;
+			break;
+		}
+
 		case OBJECT_FIELD: {
 			LitField* field = AS_FIELD(instance);
 
@@ -326,6 +331,22 @@ LitClosure* lit_create_closure(LitState* state, LitFunction* function) {
 
 	closure->function = function;
 	closure->upvalues = upvalues;
+	closure->upvalue_count = function->upvalue_count;
+
+	return closure;
+}
+
+LitClosurePrototype* lit_create_closure_prototype(LitState* state, LitFunction* function) {
+	LitClosurePrototype* closure = ALLOCATE_OBJECT(state, LitClosurePrototype, OBJECT_CLOSURE_PROTOTYPE);
+
+	lit_push_root(state, (LitObject*) closure);
+
+	closure->indexes = LIT_ALLOCATE(state, uint8_t, function->upvalue_count);
+	closure->local = LIT_ALLOCATE(state, bool, function->upvalue_count);
+
+	lit_pop_root(state);
+
+	closure->function = function;
 	closure->upvalue_count = function->upvalue_count;
 
 	return closure;

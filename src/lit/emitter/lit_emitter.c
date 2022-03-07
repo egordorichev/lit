@@ -799,17 +799,42 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			function->arg_count = stmt->parameters.count;
 			function->max_registers += function->arg_count;
 
-			uint16_t function_constant = add_constant(emitter, statement->line, OBJECT_VALUE(function));
-			SET_BIT(function_constant, 8);
+			uint16_t function_reg;
+			bool closure = function->upvalue_count > 0;
+
+			if (closure) {
+				function_reg = reserve_register(emitter);
+				LitClosurePrototype* closure_prototype = lit_create_closure_prototype(emitter->state, function);
+
+				for (uint i = 0; i < function->upvalue_count; i++) {
+					LitCompilerUpvalue* upvalue = &compiler.upvalues[i];
+
+					closure_prototype->local[i] = upvalue->isLocal;
+					closure_prototype->indexes[i] = upvalue->index;
+				}
+
+				uint16_t constant_index = add_constant(emitter, statement->line, OBJECT_VALUE(closure_prototype));
+				emit_abx_instruction(emitter, statement->line, OP_CLOSURE, function_reg, constant_index);
+			} else {
+				function_reg = add_constant(emitter, statement->line, OBJECT_VALUE(function));
+				SET_BIT(function_reg, 8);
+			}
 
 			if (export) {
 				uint16_t name_constant = add_constant(emitter, statement->line, OBJECT_VALUE(function->name));
-				emit_abx_instruction(emitter, statement->line, OP_SET_GLOBAL, name_constant, function_constant);
+				emit_abx_instruction(emitter, statement->line, OP_SET_GLOBAL, name_constant, function_reg);
 			} else if (private) {
-				SET_BIT(index, 16);
-				emit_abx_instruction(emitter, statement->line, OP_SET_PRIVATE, function_constant, index);
+				if (!closure) {
+					SET_BIT(index, 16);
+				}
+
+				emit_abx_instruction(emitter, statement->line, OP_SET_PRIVATE, function_reg, index);
 			} else {
-				emit_abc_instruction(emitter, statement->line, OP_MOVE, reg, function_constant, 0);
+				emit_abc_instruction(emitter, statement->line, OP_MOVE, reg, function_reg, 0);
+			}
+
+			if (closure) {
+				free_register(emitter, function_reg);
 			}
 
 			break;

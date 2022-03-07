@@ -1,14 +1,9 @@
-/*function a() {
-	var c = 32
-
+function a(c) {
 	function b() {
-		return 10 // c
+		return c
 	}
 
 	return b
 }
 
-print(a()())*/
-
-var a = 32
-print(a)
+print(a(48)())

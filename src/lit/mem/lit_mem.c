@@ -110,6 +110,17 @@ void lit_free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_CLOSURE_PROTOTYPE: {
+			LitClosurePrototype* closure_prototype = (LitClosurePrototype*) object;
+
+			LIT_FREE_ARRAY(state, uint8_t, closure_prototype->indexes, closure_prototype->upvalue_count);
+			LIT_FREE_ARRAY(state, bool, closure_prototype->local, closure_prototype->upvalue_count);
+
+			LIT_FREE(state, LitClosure, object);
+
+			break;
+		}
+
 		case OBJECT_UPVALUE: {
 			LIT_FREE(state, LitUpvalue, object);
 			break;
@@ -357,6 +368,11 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 				}
 			}
 
+			break;
+		}
+
+		case OBJECT_CLOSURE_PROTOTYPE: {
+			lit_mark_object(vm, (LitObject*) ((LitClosure*) object)->function);
 			break;
 		}
 
