@@ -116,7 +116,7 @@ void lit_free_object(LitState* state, LitObject* object) {
 			LIT_FREE_ARRAY(state, uint8_t, closure_prototype->indexes, closure_prototype->upvalue_count);
 			LIT_FREE_ARRAY(state, bool, closure_prototype->local, closure_prototype->upvalue_count);
 
-			LIT_FREE(state, LitClosure, object);
+			LIT_FREE(state, LitClosurePrototype, object);
 
 			break;
 		}

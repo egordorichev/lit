@@ -65,7 +65,6 @@ typedef struct sLitEmitter {
 	LitString* class_name;
 
 	bool class_has_super;
-	bool previous_was_expression_statement;
 	int emit_reference;
 } sLitEmitter;
 

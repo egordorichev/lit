@@ -41,7 +41,8 @@ static const char* error_messages[ERROR_TOTAL] = {
 	"Invalid refence target",
 	"Too many registers required",
 	"Invalid register was freed",
-	"Not all registers were freed"
+	"Not all registers were freed (%i left)",
+	"Invalid scope ending"
 };
 
 LitString* lit_vformat_error(LitState* state, uint line, LitError error, va_list args) {

@@ -246,6 +246,19 @@ static LitUpvalue* capture_upvalue(LitState* state, LitValue* local) {
 	return created_upvalue;
 }
 
+static void close_upvalues(register LitVm* vm, const LitValue* last) {
+	LitFiber* fiber = vm->fiber;
+
+	while (fiber->open_upvalues != NULL && fiber->open_upvalues->location >= last) {
+		LitUpvalue* upvalue = fiber->open_upvalues;
+
+		upvalue->closed = *upvalue->location;
+		upvalue->location = &upvalue->closed;
+
+		fiber->open_upvalues = upvalue->next;
+	}
+}
+
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 	register LitVm *vm = state->vm;
 
@@ -365,6 +378,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	uint64_t instruction;
 
 	READ_FRAME()
+	registers[0] = OBJECT_VALUE(frame->function);
 	TRACE_FRAME()
 
 	fiber->registers_used = frame->function->max_registers;
@@ -580,6 +594,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		READ_FRAME()
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(CLOSE_UPVALUE) {
+		close_upvalues(vm, &registers[LIT_INSTRUCTION_A(instruction)]);
 		DISPATCH_NEXT()
 	}
 

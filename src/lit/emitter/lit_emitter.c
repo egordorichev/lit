@@ -32,7 +32,6 @@ void lit_init_emitter(LitState* state, LitEmitter* emitter) {
 	emitter->compiler = NULL;
 	emitter->chunk = NULL;
 	emitter->module = NULL;
-	emitter->previous_was_expression_statement = false;
 	emitter->class_has_super = false;
 
 	lit_init_privates(&emitter->privates);
@@ -116,7 +115,7 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 	lit_init_locals(&compiler->locals);
 
 	compiler->type = type;
-	compiler->scope_depth = 0;
+	compiler->scope_depth = -1;
 	compiler->enclosing = (struct LitCompiler*) emitter->compiler;
 	compiler->skip_return = false;
 	compiler->function = lit_create_function(emitter->state, emitter->module);
@@ -150,7 +149,7 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 
 static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
 	if (emitter->compiler->registers_used > 0) {
-		error(emitter, emitter->last_line, ERROR_NOT_ALL_REGISTERS_FREED);
+		error(emitter, emitter->last_line, ERROR_NOT_ALL_REGISTERS_FREED, emitter->compiler->registers_used);
 	}
 
 	if (!emitter->compiler->skip_return) {
@@ -188,13 +187,23 @@ static void begin_scope(LitEmitter* emitter) {
 }
 
 static void end_scope(LitEmitter* emitter) {
+	if (emitter->compiler->scope_depth == -1) {
+		error(emitter, emitter->last_line, ERROR_INVALID_SCOPE_ENDING);
+	}
+
 	emitter->compiler->scope_depth--;
 
 	LitCompiler* compiler = emitter->compiler;
 	LitLocals* locals = &compiler->locals;
 
 	while (locals->count > 0 && locals->values[locals->count - 1].depth > compiler->scope_depth) {
-		free_register(emitter, locals->values[locals->count - 1].reg);
+		LitLocal* local = &locals->values[locals->count - 1];
+
+		if (local->captured) {
+			emit_abc_instruction(emitter, emitter->last_line, OP_CLOSE_UPVALUE, local->reg, 0, 0);
+		}
+
+		free_register(emitter, local->reg);
 		locals->count--;
 	}
 }
@@ -691,15 +700,20 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case BLOCK_STATEMENT: {
 			LitStatements* statements = &((LitBlockStatement*) statement)->statements;
-			begin_scope(emitter);
+			bool ended_scope = false;
 
 			for (uint i = 0; i < statements->count; i++) {
 				if (emit_statement(emitter, statements->values[i])) {
+					ended_scope = true;
+
 					break;
 				}
 			}
 
-			end_scope(emitter);
+			if (ended_scope) {
+				return true;
+			}
+
 			break;
 		}
 
@@ -790,9 +804,9 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			begin_scope(emitter);
 			emit_parameters(emitter, &stmt->parameters, statement->line);
 
-			emit_statement(emitter, stmt->body);
-
-			end_scope(emitter);
+			if (!emit_statement(emitter, stmt->body)) {
+				end_scope(emitter);
+			}
 
 			LitFunction* function = end_compiler(emitter, name);
 
@@ -850,10 +864,11 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_expression(emitter, stmt->expression, reg);
 			}
 
+			end_scope(emitter);
 			emit_abc_instruction(emitter, statement->line, OP_RETURN, reg, 0, 0);
 			free_register(emitter, reg);
 
-			break;
+			return true;
 		}
 
 		case WHILE_STATEMENT: {
@@ -913,6 +928,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				}
 
 				emitter->loop_start = start;
+				bool ended_scope = false;
+
 				begin_scope(emitter);
 
 				if (stmt->body != NULL) {
@@ -920,15 +937,21 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 						LitStatements *statements = &((LitBlockStatement*) stmt->body)->statements;
 
 						for (uint i = 0; i < statements->count; i++) {
-							emit_statement(emitter, statements->values[i]);
+							if (emit_statement(emitter, statements->values[i])) {
+								ended_scope = true;
+								break;
+							}
 						}
 					} else {
-						emit_statement(emitter, stmt->body);
+						ended_scope = emit_statement(emitter, stmt->body);
 					}
 				}
 
 				patch_loop_jumps(emitter, &emitter->continues);
-				end_scope(emitter);
+
+				if (!ended_scope) {
+					end_scope(emitter);
+				}
 
 				emit_asbx_instruction(emitter, statement->line, OP_JUMP, 0, (int) start - emitter->chunk->count - 1);
 
@@ -969,7 +992,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 		}
 	}
 
-	emitter->previous_was_expression_statement = statement->type == EXPRESSION_STATEMENT;
 	return false;
 }
 
@@ -1011,17 +1033,25 @@ LitModule* lit_emit(LitEmitter* emitter, LitStatements* statements, LitString* m
 	init_compiler(emitter, &compiler, FUNCTION_SCRIPT);
 
 	emitter->chunk = &compiler.function->chunk;
+
 	resolve_statements(emitter, statements);
+	begin_scope(emitter);
+
+	bool ended_scope = false;
 
 	for (uint i = 0; i < statements->count; i++) {
 		LitStatement* stmt = statements->values[i];
 
 		if (emit_statement(emitter, stmt)) {
+			ended_scope = true;
 			break;
 		}
 	}
 
-	end_scope(emitter);
+	if (!ended_scope) {
+		end_scope(emitter);
+	}
+
 	module->main_function = end_compiler(emitter, module_name);
 
 	if (new) {

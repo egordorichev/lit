@@ -3,10 +3,10 @@
 * implement else-if's
 * implement non c-style for
 * parse_argument - globals, privates, upvalues
-* privates
 * ref's
 * multiarg
 * & ^ >> << | #
+* lambdas
 
 # todo
 
