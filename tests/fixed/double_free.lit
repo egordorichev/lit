@@ -2,4 +2,4 @@ function b() {
 	return "hey"
 }
 
-print(b())
+print(b()) // Expected: hey

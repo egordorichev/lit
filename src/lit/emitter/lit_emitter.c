@@ -1003,7 +1003,9 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			int name_constant = add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->name));
-			emit_abc_instruction(emitter, statement->line, OP_CLASS, name_constant, has_parent ? b + 1 : 0, 0);
+			uint8_t class_register = reserve_register(emitter);
+
+			emit_abc_instruction(emitter, statement->line, OP_CLASS, name_constant, has_parent ? b + 1 : 0, class_register);
 
 			if (has_parent) {
 				free_register(emitter, b);
@@ -1015,20 +1017,24 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				mark_local_initialized(emitter, super);
 			}
 
-			/*for (uint i = 0; i < stmt->fields.count; i++) {
+			for (uint i = 0; i < stmt->fields.count; i++) {
 				LitStatement* s = stmt->fields.values[i];
 
 				if (s->type == VAR_STATEMENT) {
 					LitVarStatement* var = (LitVarStatement*) s;
+					uint8_t reg = reserve_register(emitter);
 
-					emit_expression(emitter, var->init);
+					emit_expression(emitter, var->init, reg);
+					int field_name_constant = add_constant(emitter, statement->line, OBJECT_VALUE(lit_copy_string(emitter->state, var->name, var->length)));
 
-					emit_op(emitter, statement->line, OP_STATIC_FIELD);
-					emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(lit_copy_string(emitter->state, var->name, var->length))));
+					emit_abc_instruction(emitter, s->line, OP_STATIC_FIELD, class_register, field_name_constant, reg);
+					free_register(emitter, reg);
 				} else {
 					emit_statement(emitter, s);
 				}
-			}*/
+			}
+
+			free_register(emitter, class_register);
 
 			if (stmt->parent != NULL) {
 				end_scope(emitter);

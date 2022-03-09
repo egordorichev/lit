@@ -606,9 +606,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		LitString* name = AS_STRING(constants[LIT_INSTRUCTION_A(instruction)]);
 		LitClass* klass = lit_create_class(state, name);
 
-		lit_push_root(state, (LitObject*) klass);
+		registers[LIT_INSTRUCTION_C(instruction)] = OBJECT_VALUE(klass);
 		lit_table_set(state, &vm->globals->values, name, OBJECT_VALUE(klass));
-		lit_pop_root(state);
 
 		uint16_t b = LIT_INSTRUCTION_B(instruction);
 
@@ -633,6 +632,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			lit_table_add_all(state, &klass->super->static_fields, &klass->static_fields);
 		}
 
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(STATIC_FIELD) {
+		lit_table_set(state, &AS_CLASS(registers[LIT_INSTRUCTION_A(instruction)])->static_fields, AS_STRING(constants[LIT_INSTRUCTION_B(instruction)]), registers[LIT_INSTRUCTION_C(instruction)]);
 		DISPATCH_NEXT()
 	}
 
