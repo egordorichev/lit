@@ -148,6 +148,7 @@ LitClass* lit_get_class_for(LitState* state, LitValue value) {
 			case OBJECT_FIELD:
 			case OBJECT_FUNCTION:
 			case OBJECT_CLOSURE:
+			case OBJECT_CLOSURE_PROTOTYPE:
 			case OBJECT_NATIVE_FUNCTION:
 			case OBJECT_NATIVE_PRIMITIVE:
 			case OBJECT_BOUND_METHOD:

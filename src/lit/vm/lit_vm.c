@@ -602,6 +602,40 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(CLASS) {
+		LitString* name = AS_STRING(constants[LIT_INSTRUCTION_A(instruction)]);
+		LitClass* klass = lit_create_class(state, name);
+
+		lit_push_root(state, (LitObject*) klass);
+		lit_table_set(state, &vm->globals->values, name, OBJECT_VALUE(klass));
+		lit_pop_root(state);
+
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+
+		if (b == 0) {
+			klass->super = state->object_class;
+
+			lit_table_add_all(state, &klass->super->methods, &klass->methods);
+			lit_table_add_all(state, &klass->super->static_fields, &klass->static_fields);
+		} else {
+			LitValue super = registers[--b];
+
+			if (!IS_CLASS(super)) {
+				RUNTIME_ERROR("Superclass must be a class")
+			}
+
+			LitClass* super_klass = AS_CLASS(super);
+
+			klass->super = super_klass;
+			klass->init_method = super_klass->init_method;
+
+			lit_table_add_all(state, &super_klass->methods, &klass->methods);
+			lit_table_add_all(state, &klass->super->static_fields, &klass->static_fields);
+		}
+
+		DISPATCH_NEXT()
+	}
+
 	RETURN_ERROR()
 
 	#undef COMPARISON_INSTRUCTION

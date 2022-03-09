@@ -10,6 +10,12 @@ static void print_constant(LitValue value) {
 	if (IS_FUNCTION(value)) {
 		LitString *function_name = AS_FUNCTION(value)->name;
 		printf("%sfunction %.*s%s", COLOR_CYAN, function_name->length, function_name->chars, COLOR_RESET);
+	} else if (IS_CLOSURE(value)) {
+		LitString *function_name = AS_CLOSURE(value)->function->name;
+		printf("%sclosure %.*s%s", COLOR_CYAN, function_name->length, function_name->chars, COLOR_RESET);
+	} else if (IS_CLOSURE_PROTOTYPE(value)) {
+		LitString *function_name = AS_CLOSURE_PROTOTYPE(value)->function->name;
+		printf("%sclosure prototype %.*s%s", COLOR_CYAN, function_name->length, function_name->chars, COLOR_RESET);
 	} else if (IS_STRING(value)) {
 		LitString *string = AS_STRING(value);
 		printf("%s\"%.*s\"%s", COLOR_CYAN, string->length, string->chars, COLOR_RESET);

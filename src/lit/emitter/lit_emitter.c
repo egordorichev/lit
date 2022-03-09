@@ -429,8 +429,6 @@ static uint16_t parse_argument(LitEmitter* emitter, LitExpression* expression, u
 		if (index != -1) {
 			return emitter->compiler->locals.values[index].reg;
 		}
-
-		// TODO: privates, globals, etc etc etc
 	}
 
 	emit_expression(emitter, expression, reg);
@@ -592,10 +590,10 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 
 				if (index == -1) {
 					uint16_t r = parse_argument(emitter, expr->value, reg);
-					// index = resolve_upvalue(emitter, emitter->compiler, e->name, e->length, expr->to->line);
+					index = resolve_upvalue(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 
 					if (index == -1) {
-						// index = resolve_private(emitter, e->name, e->length, expr->to->line);
+						index = resolve_private(emitter, e->name, e->length, expr->to->line);
 
 						if (index == -1) {
 							uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length)));
@@ -605,10 +603,14 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 								error(emitter, expression->line, ERROR_CONSTANT_MODIFIED, e->length, e->name);
 							}
 
-							// emit_byte_or_short(emitter, expression->line, OP_SET_PRIVATE, OP_SET_PRIVATE_LONG, index);
+							if (IS_BIT_SET(r, 8)) {
+								SET_BIT(index, 16);
+							}
+
+							emit_abx_instruction(emitter, expression->line, OP_SET_PRIVATE, r, index);
 						}
 					} else {
-						// emit_arged_op(emitter, expression->line, OP_SET_UPVALUE, (uint8_t) index);
+						emit_abx_instruction(emitter, expression->line, OP_SET_UPVALUE, index, r);
 					}
 
 					break;
@@ -781,7 +783,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			bool local = !(export || private);
 
 			int index;
-			uint8_t reg;
+			uint8_t reg = 0;
 
 			if (!export) {
 				index = private ?
@@ -983,6 +985,58 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			lit_uints_write(emitter->state, &emitter->continues, emit_tmp_instruction(emitter));
+			break;
+		}
+
+		case CLASS_STATEMENT: {
+			LitClassStatement* stmt = (LitClassStatement*) statement;
+			bool has_parent = stmt->parent != NULL;
+			uint16_t b = 0;
+
+			emitter->class_name = stmt->name;
+
+			if (has_parent) {
+				uint16_t constant = add_constant(emitter, statement->line, OBJECT_VALUE(stmt->parent));
+
+				b = reserve_register(emitter);
+				emit_abx_instruction(emitter, statement->line, OP_GET_GLOBAL, constant, b);
+			}
+
+			int name_constant = add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->name));
+			emit_abc_instruction(emitter, statement->line, OP_CLASS, name_constant, has_parent ? b + 1 : 0, 0);
+
+			if (has_parent) {
+				free_register(emitter, b);
+				emitter->class_has_super = true;
+
+				begin_scope(emitter);
+
+				uint8_t super = add_local(emitter, "super", 5, emitter->last_line, false, reserve_register(emitter));
+				mark_local_initialized(emitter, super);
+			}
+
+			/*for (uint i = 0; i < stmt->fields.count; i++) {
+				LitStatement* s = stmt->fields.values[i];
+
+				if (s->type == VAR_STATEMENT) {
+					LitVarStatement* var = (LitVarStatement*) s;
+
+					emit_expression(emitter, var->init);
+
+					emit_op(emitter, statement->line, OP_STATIC_FIELD);
+					emit_short(emitter, statement->line, add_constant(emitter, statement->line, OBJECT_VALUE(lit_copy_string(emitter->state, var->name, var->length))));
+				} else {
+					emit_statement(emitter, s);
+				}
+			}*/
+
+			if (stmt->parent != NULL) {
+				end_scope(emitter);
+			}
+
+			emitter->class_name = NULL;
+			emitter->class_has_super = false;
+
 			break;
 		}
 
