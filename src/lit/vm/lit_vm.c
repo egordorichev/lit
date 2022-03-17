@@ -251,6 +251,35 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 				return true;
 			}
 
+			case OBJECT_BOUND_METHOD: {
+				LitBoundMethod* bound_method = AS_BOUND_METHOD(callee);
+				LitValue method = bound_method->method;
+
+				if (IS_NATIVE_METHOD(method)) {
+					PUSH_GC(vm->state, false)
+					frame->slots[callee_register] = AS_NATIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, frame->slots + callee_register + 1);
+					POP_GC(vm->state)
+
+					return true;
+				} else if (IS_PRIMITIVE_METHOD(method)) {
+					LitFiber* fiber = vm->fiber;
+					PUSH_GC(vm->state, false)
+
+					if (AS_PRIMITIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, frame->slots + callee_register + 1)) {
+						POP_GC(vm->state)
+						return false;
+					}
+
+					POP_GC(vm->state)
+					return true;
+				} else {
+					frame->slots[callee_register] = bound_method->receiver;
+					return call(vm, AS_FUNCTION(method), NULL, arg_count, alternate_callee);
+				}
+
+				return true;
+			}
+
 			default: {
 				break;
 			}
