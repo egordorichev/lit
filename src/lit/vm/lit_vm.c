@@ -206,6 +206,16 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 				return true;
 			}
 
+			case OBJECT_NATIVE_PRIMITIVE: {
+				PUSH_GC(vm->state, false)
+
+				LitFiber* fiber = vm->fiber;
+				bool result = AS_NATIVE_PRIMITIVE(callee)->function(vm, arg_count, frame->slots + callee_register + 1);
+
+				POP_GC(vm->state)
+				return result;
+			}
+
 			case OBJECT_NATIVE_METHOD: {
 				PUSH_GC(vm->state, false)
 
@@ -216,6 +226,16 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 				POP_GC(vm->state)
 
 				return false;
+			}
+
+			case OBJECT_PRIMITIVE_METHOD: {
+				PUSH_GC(vm->state, false)
+
+				LitFiber* fiber = vm->fiber;
+				bool result = AS_PRIMITIVE_METHOD(callee)->method(vm, *(frame->slots + callee_register + 1), arg_count, frame->slots + callee_register + 2);
+
+				POP_GC(vm->state)
+				return result;
 			}
 
 			default: {
@@ -737,13 +757,101 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			} else {
 				value = NULL_VALUE;
 			}
-
-			registers[result_reg] = value;
-			DISPATCH_NEXT()
 		}
+
+		registers[result_reg] = value;
+		DISPATCH_NEXT()
 	}
 
-	RUNTIME_ERROR("Unknown op")
+	CASE_CODE(SET_FIELD) {
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+		LitValue instance = registers[result_reg];
+
+		if (IS_NULL(instance)) {
+			RUNTIME_ERROR("Attempt to index a null value")
+		}
+
+		LitValue value = registers[LIT_INSTRUCTION_C(instruction)];
+		int b = LIT_INSTRUCTION_B(instruction);
+		LitString *field_name = AS_STRING(constants[LIT_INSTRUCTION_B(instruction)]);
+
+		if (IS_CLASS(instance)) {
+			LitClass *klass = AS_CLASS(instance);
+			LitValue setter;
+
+			if (lit_table_get(&klass->static_fields, field_name, &setter) && IS_FIELD(setter)) {
+				LitField *field = AS_FIELD(setter);
+
+				if (field->setter == NULL) {
+					RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", klass->name->chars, field_name->chars)
+				}
+
+				WRITE_FRAME()
+				CALL_VALUE(OBJECT_VALUE(field->setter), result_reg, 1)
+				READ_FRAME()
+				DISPATCH_NEXT()
+			}
+
+			if (IS_NULL(value)) {
+				lit_table_delete(&klass->static_fields, field_name);
+			} else {
+				lit_table_set(state, &klass->static_fields, field_name, value);
+			}
+
+			// fiber->stack_top[-1] = value;
+		} else if (IS_INSTANCE(instance)) {
+			LitInstance *inst = AS_INSTANCE(instance);
+			LitValue setter;
+
+			if (lit_table_get(&inst->klass->methods, field_name, &setter) && IS_FIELD(setter)) {
+				LitField *field = AS_FIELD(setter);
+
+				if (field->setter == NULL) {
+					RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", inst->klass->name->chars, field_name->chars)
+				}
+
+				WRITE_FRAME()
+				CALL_VALUE(OBJECT_VALUE(field->setter), result_reg, 1)
+				READ_FRAME()
+				DISPATCH_NEXT()
+			}
+
+			if (IS_NULL(value)) {
+				lit_table_delete(&inst->fields, field_name);
+			} else {
+				lit_table_set(state, &inst->fields, field_name, value);
+			}
+
+			// fiber->stack_top[-1] = value;
+		} else {
+			LitClass *klass = lit_get_class_for(state, instance);
+
+			if (klass == NULL) {
+				RUNTIME_ERROR("Only instances and classes have fields")
+			}
+
+			LitValue setter;
+
+			if (lit_table_get(&klass->methods, field_name, &setter) && IS_FIELD(setter)) {
+				LitField *field = AS_FIELD(setter);
+
+				if (field->setter == NULL) {
+					RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", klass->name->chars, field_name->chars)
+				}
+
+				WRITE_FRAME()
+				CALL_VALUE(OBJECT_VALUE(field->setter), result_reg, 1)
+				READ_FRAME()
+				DISPATCH_NEXT()
+			} else {
+				RUNTIME_ERROR_VARG("Class %s does not contain field %s", klass->name->chars, field_name->chars)
+			}
+		}
+
+		DISPATCH_NEXT()
+	}
+
+	RUNTIME_ERROR_VARG("Unknown op %i", instruction)
 	RETURN_ERROR()
 
 	#undef COMPARISON_INSTRUCTION

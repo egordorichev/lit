@@ -681,15 +681,29 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			} else if (!expr->ignore_emit) {
 				int constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 
-				// emit_op(emitter, emitter->last_line, ref ? OP_REFERENCE_FIELD : OP_GET_FIELD);
-
 				if (ref) {
+					// emit_op(emitter, emitter->last_line, ref ? OP_REFERENCE_FIELD : OP_GET_FIELD);
 					NOT_IMPLEMENTED
 				}
 
 				emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, r, constant);
 				free_register(emitter, r);
 			}
+
+			break;
+		}
+
+		case SET_EXPRESSION: {
+			LitSetExpression* expr = (LitSetExpression*) expression;
+			uint8_t where_reg = reserve_register(emitter);
+
+			emit_expression(emitter, expr->where, where_reg);
+			emit_expression(emitter, expr->value, reg);
+
+			int constant = add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+
+			emit_abc_instruction(emitter, emitter->last_line, OP_SET_FIELD, where_reg, constant, reg);
+			free_register(emitter, where_reg);
 
 			break;
 		}

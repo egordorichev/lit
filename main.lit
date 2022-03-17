@@ -1,4 +1,5 @@
 class A {
 }
 
-print(A.super)
+print(A.test = 32)
+print(A.test)
