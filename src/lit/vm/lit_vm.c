@@ -428,6 +428,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	uint64_t instruction;
 
 	READ_FRAME()
+
+#ifdef LIT_TRACE_EXECUTION
+	// Make sure we don't crash printing out some mess from the memory
+	for (int i = 1; i <= frame->function->max_registers; i++) {
+		registers[i] = NUMBER_VALUE(0);
+	}
+#endif
+
 	registers[0] = OBJECT_VALUE(frame->function);
 	TRACE_FRAME()
 

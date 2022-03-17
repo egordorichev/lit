@@ -1097,6 +1097,11 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			break;
 		}
 
+		case METHOD_STATEMENT: {
+
+			break;
+		}
+
 		default: {
 			error(emitter, statement->line, ERROR_UNKNOWN_STATEMENT, (int) statement->type);
 			break;

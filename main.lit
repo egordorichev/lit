@@ -1,4 +1,10 @@
 class A {
+	constructor() {
+		print("hi")
+	}
 }
 
-print(new A())
+var a = new A()
+print(a.b)
+a.b = 48
+print(a.b)
