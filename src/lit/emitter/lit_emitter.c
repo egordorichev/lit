@@ -657,6 +657,43 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			break;
 		}
 
+		case GET_EXPRESSION: {
+			LitGetExpression* expr = (LitGetExpression*) expression;
+			bool ref = emitter->emit_reference > 0;
+
+			if (ref) {
+				emitter->emit_reference--;
+			}
+
+			uint8_t r = reserve_register(emitter);
+			emit_expression(emitter, expr->where, r);
+
+			if (expr->jump == 0) {
+				/*expr->jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
+
+				if (!expr->ignore_emit) {
+					emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+					emit_op(emitter, emitter->last_line, ref ? OP_REFERENCE_FIELD : OP_GET_FIELD);
+				}
+
+				patch_jump(emitter, expr->jump, emitter->last_line);*/
+				NOT_IMPLEMENTED
+			} else if (!expr->ignore_emit) {
+				int constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+
+				// emit_op(emitter, emitter->last_line, ref ? OP_REFERENCE_FIELD : OP_GET_FIELD);
+
+				if (ref) {
+					NOT_IMPLEMENTED
+				}
+
+				emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, r, constant);
+				free_register(emitter, r);
+			}
+
+			break;
+		}
+
 		default: {
 			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
 			break;

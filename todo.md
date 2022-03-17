@@ -6,6 +6,7 @@
 * multiarg
 * & ^ >> << | #
 * lambdas
+* thing?.call()
 
 # todo
 

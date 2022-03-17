@@ -182,9 +182,9 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	return true;
 }
 
-static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count) {
+static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitValue alternate_callee) {
 	LitCallFrame* frame = &vm->fiber->frames[vm->fiber->frame_count - 1];
-	LitValue callee = frame->slots[callee_register];
+	LitValue callee = IS_NULL(alternate_callee) ? frame->slots[callee_register] : alternate_callee;
 
 	if (IS_OBJECT(callee)) {
 		if (lit_set_native_exit_jump()) {
@@ -204,6 +204,18 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count) {
 			case OBJECT_NATIVE_FUNCTION: {
 				frame->slots[callee_register] = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, frame->slots + callee_register + 1);
 				return true;
+			}
+
+			case OBJECT_NATIVE_METHOD: {
+				PUSH_GC(vm->state, false)
+
+				LitNativeMethod* method = AS_NATIVE_METHOD(callee);
+				LitFiber* fiber = vm->fiber;
+
+				frame->slots[callee_register] = method->method(vm, *(frame->slots + callee_register + 1), arg_count, frame->slots + callee_register + 2);
+				POP_GC(vm->state)
+
+				return false;
 			}
 
 			default: {
@@ -307,6 +319,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		READ_FRAME() \
 		TRACE_FRAME()
 
+	#define CALL_VALUE(callee, reg, arg_count) \
+		if (call_value(vm, reg, arg_count, callee)) { \
+			RECOVER_STATE() \
+		}
+
 	#define RUNTIME_ERROR(format) \
 		if (lit_runtime_error(vm, format)) { \
 			RECOVER_STATE() \
@@ -394,7 +411,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		if (frame->function->max_registers > 0) {
 			printf("        |\n        | f%i ", fiber->frame_count);
 
-			for (int i = 0; i < frame->function->max_registers; i++) {
+			for (int i = 0; i <= frame->function->max_registers; i++) {
 				printf("[ ");
 				lit_print_value(*(registers + i));
 				printf(" ]");
@@ -589,7 +606,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	CASE_CODE(CALL) {
 		WRITE_FRAME()
 
-		if (!call_value(vm, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction) - 1)) {
+		if (!call_value(vm, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction) - 1, NULL_VALUE)) {
 			RETURN_ERROR()
 		}
 
@@ -640,6 +657,93 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(GET_FIELD) {
+		LitValue object = registers[LIT_INSTRUCTION_B(instruction)];
+
+		if (IS_NULL(object)) {
+			RUNTIME_ERROR("Attempt to index a null value")
+		}
+
+		LitValue value;
+		LitString *name = AS_STRING(constants[LIT_INSTRUCTION_C(instruction)]);
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+
+		if (IS_INSTANCE(object)) {
+			LitInstance *instance = AS_INSTANCE(object);
+
+			if (!lit_table_get(&instance->fields, name, &value)) {
+				if (lit_table_get(&instance->klass->methods, name, &value)) {
+					if (IS_FIELD(value)) {
+						LitField *field = AS_FIELD(value);
+
+						if (field->getter == NULL) {
+							RUNTIME_ERROR_VARG("Class %s does not have a getter for the field %s", instance->klass->name->chars, name->chars)
+						}
+
+						WRITE_FRAME()
+						CALL_VALUE(OBJECT_VALUE(AS_FIELD(value)->getter), result_reg, 0)
+						READ_FRAME()
+						DISPATCH_NEXT()
+					} else {
+						value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(instance), value));
+					}
+				} else {
+					value = NULL_VALUE;
+				}
+			}
+		} else if (IS_CLASS(object)) {
+			LitClass *klass = AS_CLASS(object);
+
+			if (lit_table_get(&klass->static_fields, name, &value)) {
+				if (IS_NATIVE_METHOD(value) || IS_PRIMITIVE_METHOD(value)) {
+					value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klass), value));
+				} else if (IS_FIELD(value)) {
+					LitField* field = AS_FIELD(value);
+
+					if (field->getter == NULL) {
+						RUNTIME_ERROR_VARG("Class %s does not have a getter for the field %s", klass->name->chars, name->chars)
+					}
+
+					WRITE_FRAME()
+					CALL_VALUE(OBJECT_VALUE(field->getter), result_reg, 0)
+					READ_FRAME()
+					DISPATCH_NEXT()
+				}
+			} else {
+				value = NULL_VALUE;
+			}
+		} else {
+			LitClass *klass = lit_get_class_for(state, object);
+
+			if (klass == NULL) {
+				RUNTIME_ERROR("Only instances and classes have fields")
+			}
+
+			if (lit_table_get(&klass->methods, name, &value)) {
+				if (IS_FIELD(value)) {
+					LitField *field = AS_FIELD(value);
+
+					if (field->getter == NULL) {
+						RUNTIME_ERROR_VARG("Class %s does not have a getter for the field %s", klass->name->chars, name->chars)
+					}
+
+					WRITE_FRAME()
+					CALL_VALUE(OBJECT_VALUE(AS_FIELD(value)->getter), result_reg, 0)
+					READ_FRAME()
+					DISPATCH_NEXT()
+				} else if (IS_NATIVE_METHOD(value) || IS_PRIMITIVE_METHOD(value)) {
+					value = OBJECT_VALUE(lit_create_bound_method(state, object, value));
+				}
+			} else {
+				value = NULL_VALUE;
+			}
+
+			registers[result_reg] = value;
+			DISPATCH_NEXT()
+		}
+	}
+
+	RUNTIME_ERROR("Unknown op")
 	RETURN_ERROR()
 
 	#undef COMPARISON_INSTRUCTION
@@ -648,6 +752,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	#undef GET_RC
 	#undef RUNTIME_ERROR_VARG
 	#undef RUNTIME_ERROR
+	#undef CALL_VALUE
 	#undef RECOVER_STATE
 	#undef WRITE_FRAME
 	#undef READ_FRAME

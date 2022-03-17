@@ -1,3 +1,4 @@
 class A {
-	static var c = 32
 }
+
+print(A.super)
