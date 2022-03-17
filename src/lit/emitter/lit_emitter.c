@@ -1055,6 +1055,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			int name_constant = add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->name));
 			uint8_t class_register = reserve_register(emitter);
+			emitter->class_register = class_register;
 
 			emit_abc_instruction(emitter, statement->line, OP_CLASS, name_constant, has_parent ? b + 1 : 0, class_register);
 
@@ -1098,6 +1099,54 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 		}
 
 		case METHOD_STATEMENT: {
+			LitMethodStatement* stmt = (LitMethodStatement*) statement;
+			bool constructor = stmt->name->length == 11 && memcmp(stmt->name->chars, "constructor", 11) == 0;
+
+			if (constructor && stmt->is_static) {
+				error(emitter, statement->line, ERROR_STATIC_CONSTRUCTOR);
+			}
+
+			LitCompiler compiler;
+			init_compiler(emitter, &compiler, constructor ? FUNCTION_CONSTRUCTOR : (stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD));
+
+			begin_scope(emitter);
+
+			bool vararg = emit_parameters(emitter, &stmt->parameters, statement->line);
+			emit_statement(emitter, stmt->body);
+			end_scope(emitter);
+
+			LitFunction* function = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:@", OBJECT_VALUE(emitter->class_name), stmt->name)));
+			function->arg_count = stmt->parameters.count;
+			function->max_registers += function->arg_count;
+			function->vararg = vararg;
+
+			uint16_t function_reg;
+			bool closure = function->upvalue_count > 0;
+
+			if (closure) {
+				function_reg = reserve_register(emitter);
+				LitClosurePrototype* closure_prototype = lit_create_closure_prototype(emitter->state, function);
+
+				for (uint i = 0; i < function->upvalue_count; i++) {
+					LitCompilerUpvalue* upvalue = &compiler.upvalues[i];
+
+					closure_prototype->local[i] = upvalue->isLocal;
+					closure_prototype->indexes[i] = upvalue->index;
+				}
+
+				uint16_t constant_index = add_constant(emitter, statement->line, OBJECT_VALUE(closure_prototype));
+				emit_abx_instruction(emitter, statement->line, OP_CLOSURE, function_reg, constant_index);
+			} else {
+				function_reg = add_constant(emitter, statement->line, OBJECT_VALUE(function));
+				SET_BIT(function_reg, 8);
+			}
+
+			int field_name_constant = add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name));
+			emit_abc_instruction(emitter, statement->line, stmt->is_static ? OP_STATIC_FIELD : OP_METHOD, emitter->class_register, field_name_constant, function_reg);
+
+			if (closure) {
+				free_register(emitter, function_reg);
+			}
 
 			break;
 		}

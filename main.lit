@@ -4,7 +4,4 @@ class A {
 	}
 }
 
-var a = new A()
-print(a.b)
-a.b = 48
-print(a.b)
+new A()

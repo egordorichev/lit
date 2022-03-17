@@ -694,7 +694,19 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(STATIC_FIELD) {
-		lit_table_set(state, &AS_CLASS(registers[LIT_INSTRUCTION_A(instruction)])->static_fields, AS_STRING(constants[LIT_INSTRUCTION_B(instruction)]), registers[LIT_INSTRUCTION_C(instruction)]);
+		lit_table_set(state, &AS_CLASS(registers[LIT_INSTRUCTION_A(instruction)])->static_fields, AS_STRING(constants[LIT_INSTRUCTION_B(instruction)]), GET_RC(LIT_INSTRUCTION_C(instruction)));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(METHOD) {
+		LitClass* klass = AS_CLASS(registers[LIT_INSTRUCTION_A(instruction)]);
+		LitString* name = AS_STRING(constants[LIT_INSTRUCTION_B(instruction)]);
+
+		if ((klass->init_method == NULL || (klass->super != NULL && klass->init_method == ((LitClass*) klass->super)->init_method)) && name->length == 11 && memcmp(name->chars, "constructor", 11) == 0) {
+			klass->init_method = AS_OBJECT(GET_RC(LIT_INSTRUCTION_C(instruction)));
+		}
+
+		lit_table_set(state, &klass->methods, name, GET_RC(LIT_INSTRUCTION_C(instruction)));
 		DISPATCH_NEXT()
 	}
 

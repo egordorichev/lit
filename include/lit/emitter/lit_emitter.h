@@ -63,6 +63,7 @@ typedef struct sLitEmitter {
 
 	LitModule* module;
 	LitString* class_name;
+	uint8_t class_register;
 
 	bool class_has_super;
 	int emit_reference;
