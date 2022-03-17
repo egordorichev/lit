@@ -225,7 +225,7 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 				frame->slots[callee_register] = method->method(vm, *(frame->slots + callee_register + 1), arg_count, frame->slots + callee_register + 2);
 				POP_GC(vm->state)
 
-				return false;
+				return true;
 			}
 
 			case OBJECT_PRIMITIVE_METHOD: {
@@ -236,6 +236,19 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 
 				POP_GC(vm->state)
 				return result;
+			}
+
+			case OBJECT_CLASS: {
+				LitClass* klass = AS_CLASS(callee);
+				LitInstance* instance = lit_create_instance(vm->state, klass);
+
+				frame->slots[callee_register] = OBJECT_VALUE(instance);
+
+				if (klass->init_method != NULL) {
+					return call_value(vm, callee_register, arg_count, OBJECT_VALUE(klass->init_method));
+				}
+
+				return true;
 			}
 
 			default: {

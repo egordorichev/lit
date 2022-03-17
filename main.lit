@@ -1,5 +1,4 @@
 class A {
 }
 
-print(A.test = 32)
-print(A.test)
+print(new A())
