@@ -407,8 +407,11 @@ static LitOpCode translate_binary_operator_into_op(LitTokenType token) {
 		case LTOKEN_MINUS: return OP_SUBTRACT;
 		case LTOKEN_STAR: return OP_MULTIPLY;
 		case LTOKEN_SLASH: return OP_DIVIDE;
+		case LTOKEN_PLUS: return OP_ADD;
 
-		case LTOKEN_PLUS: default: return OP_ADD;
+		case LTOKEN_IS: return OP_IS;
+
+		default: UNREACHABLE
 	}
 }
 
@@ -448,12 +451,24 @@ static void emit_binary_expression(LitEmitter* emitter, LitBinaryExpression* exp
 		));
 	} else {
 		uint16_t b = parse_argument(emitter, expr->left, reg);
+		LitOpCode opcode = translate_binary_operator_into_op(op);
 
-		uint16_t rc = reserve_register(emitter);
-		uint16_t c = parse_argument(emitter, expr->right, rc);
+		if (opcode == OP_IS) {
+			if (expr->right->type != VAR_EXPRESSION) {
+				return error(emitter, expr->expression.line, ERROR_IS_NOT_USED_WITH_VAR);
+			}
 
-		emit_abc_instruction(emitter, expr->expression.line, translate_binary_operator_into_op(op), reg, swap ? c : b, swap ? b : c);
-		free_register(emitter, rc);
+			LitVarExpression* e = (LitVarExpression*) expr->right;
+
+			int constant = add_constant(emitter, expr->expression.line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length)));
+			emit_abc_instruction(emitter, expr->expression.line, opcode, reg, b, constant);
+		} else {
+			uint16_t rc = reserve_register(emitter);
+			uint16_t c = parse_argument(emitter, expr->right, rc);
+
+			emit_abc_instruction(emitter, expr->expression.line, opcode, reg, swap ? c : b, swap ? b : c);
+			free_register(emitter, rc);
+		}
 	}
 }
 

@@ -913,6 +913,43 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(IS) {
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+		LitValue instance = GET_RC(LIT_INSTRUCTION_B(instruction));
+
+		if (IS_NULL(instance)) {
+			registers[result_reg] = FALSE_VALUE;
+			DISPATCH_NEXT()
+		}
+
+		LitClass* instance_klass = lit_get_class_for(state, instance);
+		LitValue klass;
+
+		if (!lit_table_get(globals, AS_STRING(constants[LIT_INSTRUCTION_C(instruction)]), &klass)) {
+			registers[result_reg] = FALSE_VALUE;
+			DISPATCH_NEXT()
+		}
+
+		if (instance_klass == NULL || !IS_CLASS(klass)) {
+			RUNTIME_ERROR("Operands must be an instance and a class")
+		}
+
+		LitClass* type = AS_CLASS(klass);
+		bool found = false;
+
+		while (instance_klass != NULL) {
+			if (instance_klass == type) {
+				found = true;
+				break;
+			}
+
+			instance_klass = (LitClass*) instance_klass->super;
+		}
+
+		registers[result_reg] = BOOL_VALUE(found);
+		DISPATCH_NEXT()
+	}
+
 	RUNTIME_ERROR_VARG("Unknown op %i", instruction)
 	RETURN_ERROR()
 

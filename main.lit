@@ -1,7 +1,6 @@
 class A {
-	b() {
-		print("hi")
-	}
+
 }
 
-new A().b()
+print(String)
+print("" is String)
