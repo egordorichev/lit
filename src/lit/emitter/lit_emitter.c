@@ -1153,8 +1153,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			begin_scope(emitter);
 
 			bool vararg = emit_parameters(emitter, &stmt->parameters, statement->line);
-			emit_statement(emitter, stmt->body);
-			end_scope(emitter);
+
+			if (!emit_statement(emitter, stmt->body)) {
+				end_scope(emitter);
+			}
 
 			LitFunction* function = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:@", OBJECT_VALUE(emitter->class_name), stmt->name)));
 			function->arg_count = stmt->parameters.count;

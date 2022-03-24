@@ -420,8 +420,23 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		} else if (IS_NULL(bv)) { \
 			RUNTIME_ERROR_VARG("Attempt to use the operator %s on a null value", op_string) \
 		} else { \
-			RUNTIME_ERROR("Invoking operator methods not implemented yet") /*INVOKE_METHOD(bv, op_string, 1)*/ \
+			INVOKE_METHOD(bv, op_string, 1) \
 		}
+
+	#define INVOKE_METHOD(bv, m, arg_count) \
+		WRITE_FRAME() \
+		LitClass* klass = lit_get_class_for(state, bv); \
+		if (klass == NULL) { \
+			RUNTIME_ERROR("Only instances and classes have methods") \
+		} \
+		LitString* method_name = CONST_STRING(vm->state, m); \
+		LitValue method; \
+		if ((IS_INSTANCE(bv) && (lit_table_get(&AS_INSTANCE(bv)->fields, method_name, &method))) || lit_table_get(&klass->methods, method_name, &method)) { \
+			CALL_VALUE(method, b, arg_count) \
+		} else { \
+			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars) \
+		} \
+		READ_FRAME()
 
 	#define COMPARISON_INSTRUCTION(type, op, op_string) \
 		uint16_t b = LIT_INSTRUCTION_B(instruction); \
