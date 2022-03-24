@@ -4,4 +4,4 @@ class A {
 	}
 }
 
-print(new A() + 1)
+print(new A() + 1) // Expected: 33

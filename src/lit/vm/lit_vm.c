@@ -420,10 +420,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		} else if (IS_NULL(bv)) { \
 			RUNTIME_ERROR_VARG("Attempt to use the operator %s on a null value", op_string) \
 		} else { \
-			INVOKE_METHOD(bv, op_string, 1) \
+			INVOKE_METHOD(b, bv, op_string, 1) \
 		}
 
-	#define INVOKE_METHOD(bv, m, arg_count) \
+	#define INVOKE_METHOD(reg, bv, m, arg_count) \
 		WRITE_FRAME() \
 		LitClass* klass = lit_get_class_for(state, bv); \
 		if (klass == NULL) { \
@@ -432,7 +432,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		LitString* method_name = CONST_STRING(vm->state, m); \
 		LitValue method; \
 		if ((IS_INSTANCE(bv) && (lit_table_get(&AS_INSTANCE(bv)->fields, method_name, &method))) || lit_table_get(&klass->methods, method_name, &method)) { \
-			CALL_VALUE(method, b, arg_count) \
+			CALL_VALUE(method, reg, arg_count) \
 		} else { \
 			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars) \
 		} \
@@ -451,7 +451,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		} else if (IS_NULL(bv)) { \
 			RUNTIME_ERROR_VARG("Attempt to use the operator %s on a null value", op_string) \
 		} else { \
-			RUNTIME_ERROR("Invoking operator methods not implemented yet") /*INVOKE_METHOD(bv, op_string, 1)*/ \
+			RUNTIME_ERROR("Invoking operator methods not implemented yet") \
 		}
 
 	register LitVm *vm = state->vm;
@@ -646,9 +646,15 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(NOT) {
-		uint16_t b = LIT_INSTRUCTION_B(instruction);
-		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(lit_is_falsey(GET_RC(b)));
+		uint8_t b = LIT_INSTRUCTION_B(instruction);
+		LitValue value = GET_RC(b);
 
+		if (IS_INSTANCE(value)) {
+			INVOKE_METHOD(b, value, "!", 0)
+			DISPATCH_NEXT()
+		}
+
+		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(lit_is_falsey(value));
 		DISPATCH_NEXT()
 	}
 
