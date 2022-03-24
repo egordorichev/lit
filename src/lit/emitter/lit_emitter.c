@@ -650,6 +650,15 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			uint arg_count = expr->args.count;
 			uint16_t arg_regs[arg_count];
 
+			bool method = expr->callee->type == GET_EXPRESSION;
+			bool super = expr->callee->type == SUPER_EXPRESSION;
+
+			if (method) {
+				((LitGetExpression*) expr->callee)->ignore_emit = true;
+			} else if (super) {
+				((LitSuperExpression*) expr->callee)->ignore_emit = true;
+			}
+
 			emit_expression(emitter, expr->callee, reg);
 
 			for (uint i = 0; i < arg_count; i++) {
@@ -663,7 +672,20 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 				emit_expression(emitter, expr->args.values[i], arg_reg);
 			}
 
-			emit_abc_instruction(emitter, expression->line, OP_CALL, reg, arg_count + 1, 1);
+			if (method) {
+				if (expr->callee->type != GET_EXPRESSION) {
+					UNREACHABLE // TODO: replace with a proper error code?
+				}
+
+				LitGetExpression *e = (LitGetExpression*) expr->callee;
+
+				int constant = add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length)));
+				emit_abc_instruction(emitter, expression->line, OP_INVOKE, reg, arg_count + 1, constant);
+			} else if (super) {
+				NOT_IMPLEMENTED
+			} else {
+				emit_abc_instruction(emitter, expression->line, OP_CALL, reg, arg_count + 1, 1);
+			}
 
 			for (uint i = 0; i < arg_count; i++) {
 				free_register(emitter, arg_regs[i]);

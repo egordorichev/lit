@@ -5,11 +5,12 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "util/lit_color.h"
 
-#define UNREACHABLE assert(false && "Unreachable code was reached");
-#define NOT_IMPLEMENTED assert(false && "Unimplemented code was reached");
+#define UNREACHABLE fprintf(stderr, "Unreachable code was reached at %s:%i\n", __FILE__, __LINE__); assert(false);
+#define NOT_IMPLEMENTED fprintf(stderr, "Unimplemented code was reached at %s:%i\n", __FILE__, __LINE__); assert(false);
 #define UINT8_COUNT UINT8_MAX + 1
 #define UINT16_COUNT UINT16_MAX + 1
 
