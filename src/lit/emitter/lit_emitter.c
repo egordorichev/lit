@@ -600,7 +600,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			LitAssignExpression* expr = (LitAssignExpression*) expression;
 
 			if (expr->to->type == VAR_EXPRESSION) {
-				LitVarExpression *e = (LitVarExpression *) expr->to;
+				LitVarExpression* e = (LitVarExpression*) expr->to;
 				int index = resolve_local(emitter, emitter->compiler, e->name, e->length, expr->to->line);
 
 				if (index == -1) {
@@ -639,6 +639,21 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 					emit_expression(emitter, expr->value, local.reg);
 					break;
 				}
+			} else if (expr->to->type == SUBSCRIPT_EXPRESSION) {
+				LitSubscriptExpression* e = (LitSubscriptExpression*) expr->to;
+				emit_expression(emitter, e->array, reg);
+
+				uint8_t reg_a = reserve_register(emitter);
+				emit_expression(emitter, e->index, reg_a);
+
+				uint8_t reg_b = reserve_register(emitter);
+				emit_expression(emitter, expr->value, reg_b);
+
+				emit_abc_instruction(emitter, emitter->last_line, OP_SUBSCRIPT_SET, reg, reg_a, reg_b);
+				free_register(emitter, reg_a);
+				free_register(emitter, reg_b);
+
+				break;
 			}
 
 			error(emitter, expression->line, ERROR_INVALID_ASSIGMENT_TARGET);

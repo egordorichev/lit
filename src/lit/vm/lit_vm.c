@@ -1007,20 +1007,15 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
 		LitValue instance = GET_RC(result_reg);
 
-	WRITE_FRAME() \
-		LitClass* klass = lit_get_class_for(state, instance); \
-		if (klass == NULL) { \
-			RUNTIME_ERROR("Only instances and classes have methods") \
-		} \
-		LitString* method_name = CONST_STRING(vm->state, "[]"); \
-		LitValue method; \
-		if ((IS_INSTANCE(instance) && (lit_table_get(&AS_INSTANCE(instance)->fields, method_name, &method))) || lit_table_get(&klass->methods, method_name, &method)) { \
-			CALL_VALUE(method, result_reg, 1) \
-		} else { \
-			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars) \
-		} \
-		READ_FRAME()
-		// INVOKE_METHOD(result_reg, instance, "[]", 1)
+		INVOKE_METHOD(result_reg, instance, "[]", 1)
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(SUBSCRIPT_SET) {
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+		LitValue instance = GET_RC(result_reg);
+
+		INVOKE_METHOD(result_reg, instance, "[]", 2)
 		DISPATCH_NEXT()
 	}
 

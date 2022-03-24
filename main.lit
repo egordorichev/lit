@@ -2,5 +2,6 @@ class A {
 }
 
 var a = new A()
+a.test = 32
 print(a["test"])
 // print(new A()["test"]) // Expected: 33
