@@ -288,8 +288,10 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 
 	if (IS_NULL(callee)) {
 		lit_runtime_error(vm, "Attempt to call a null value");
+		return false;
 	} else {
 		lit_runtime_error(vm, "Can only call functions and classes, got %s", lit_get_value_type(callee));
+		return false;
 	}
 
 	return true;
@@ -382,7 +384,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		TRACE_FRAME()
 
 	#define CALL_VALUE(callee, reg, arg_count) \
-		if (call_value(vm, reg, arg_count, callee)) { \
+		if (!call_value(vm, reg, arg_count, callee)) { \
 			RECOVER_STATE() \
 		}
 
@@ -960,6 +962,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			RUNTIME_ERROR("Attempt to index a null value")
 		}
 
+		lit_print_value(instance);
+		printf("\n\n");
 		LitClass* klass = lit_get_class_for(state, instance);
 
 		if (klass == NULL) {

@@ -665,7 +665,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 				uint16_t arg_reg = reserve_register(emitter);
 
 				if (arg_reg != reg + i + 1) {
-					UNREACHABLE // Something went terribly wrong, can't put
+					UNREACHABLE // Something went terribly wrong
 				}
 
 				arg_regs[i] = arg_reg;
@@ -724,9 +724,9 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 				}
 
 				emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, r, constant);
-				free_register(emitter, r);
 			}
 
+			free_register(emitter, r);
 			break;
 		}
 

@@ -1,7 +1,10 @@
+null()
+print("hi")
+
 class A {
 	test() {
 		print("test")
 	}
 }
 
-new A().test()
+(new A()).test()
