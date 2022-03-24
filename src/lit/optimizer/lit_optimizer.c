@@ -12,7 +12,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot);
 
 static const char* optimization_level_descriptions[OPTIMIZATION_LEVEL_TOTAL] = {
 	"No optimizations (same as -Ono-all)",
-	"Super light optimizations, sepcific to interactive shell.",
+	"Super light optimizations, specific to interactive shell.",
 	"(default) Recommended optimization level for the development.",
 	"Medium optimization, recommended for the release.",
 	"(default for bytecode) Extreme optimization, throws out most of the variable/function names, used for bytecode compilation."

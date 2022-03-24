@@ -749,6 +749,19 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			break;
 		}
 
+		case SUBSCRIPT_EXPRESSION: {
+			LitSubscriptExpression* expr = (LitSubscriptExpression*) expression;
+			emit_expression(emitter, expr->array, reg);
+
+			uint8_t r = reserve_register(emitter);
+			emit_expression(emitter, expr->index, r);
+
+			emit_abc_instruction(emitter, expression->line, OP_SUBSCRIPT_GET, reg, r, 0);
+			free_register(emitter, r);
+
+			break;
+		}
+
 		default: {
 			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
 			break;

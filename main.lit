@@ -1,7 +1,6 @@
 class A {
-	operator + (b) {
-		return 32 + b
-	}
 }
 
-print(new A() + 1)
+var a = new A()
+print(a["test"])
+// print(new A()["test"]) // Expected: 33

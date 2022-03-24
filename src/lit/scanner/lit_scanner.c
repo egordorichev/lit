@@ -496,7 +496,6 @@ LitToken lit_scan_token(LitScanner* scanner) {
 		case '|': return match_tokens(scanner, '=', '|', LTOKEN_BAR_EQUAL, LTOKEN_BAR_BAR, LTOKEN_BAR);
 		case '&': return match_tokens(scanner, '=', '&', LTOKEN_AMPERSAND_EQUAL, LTOKEN_AMPERSAND_AMPERSAND, LTOKEN_AMPERSAND);
 
-
 		case '.': {
 			if (!match(scanner, '.')) {
 				return make_token(scanner, LTOKEN_DOT);

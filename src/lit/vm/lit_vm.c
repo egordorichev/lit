@@ -203,7 +203,7 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 
 			case OBJECT_NATIVE_FUNCTION: {
 				frame->slots[callee_register] = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, frame->slots + callee_register + 1);
-				return true;
+				return !vm->fiber->abort;
 			}
 
 			case OBJECT_NATIVE_PRIMITIVE: {
@@ -222,17 +222,17 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 				LitNativeMethod* method = AS_NATIVE_METHOD(callee);
 				LitFiber* fiber = vm->fiber;
 
-				frame->slots[callee_register] = method->method(vm, *(frame->slots + callee_register + 1), arg_count, frame->slots + callee_register + 2);
+				frame->slots[callee_register] = method->method(vm, *(frame->slots + callee_register), arg_count, frame->slots + callee_register + 1);
 				POP_GC(vm->state)
 
-				return true;
+				return !fiber->abort;
 			}
 
 			case OBJECT_PRIMITIVE_METHOD: {
 				PUSH_GC(vm->state, false)
 
 				LitFiber* fiber = vm->fiber;
-				bool result = AS_PRIMITIVE_METHOD(callee)->method(vm, *(frame->slots + callee_register + 1), arg_count, frame->slots + callee_register + 2);
+				bool result = AS_PRIMITIVE_METHOD(callee)->method(vm, *(frame->slots + callee_register), arg_count, frame->slots + callee_register + 1);
 
 				POP_GC(vm->state)
 				return result;
@@ -260,7 +260,7 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 					frame->slots[callee_register] = AS_NATIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, frame->slots + callee_register + 1);
 					POP_GC(vm->state)
 
-					return true;
+					return !vm->fiber->abort;
 				} else if (IS_PRIMITIVE_METHOD(method)) {
 					LitFiber* fiber = vm->fiber;
 					PUSH_GC(vm->state, false)
@@ -277,7 +277,7 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 					return call(vm, AS_FUNCTION(method), NULL, arg_count, alternate_callee);
 				}
 
-				return true;
+				return !vm->fiber->abort;
 			}
 
 			default: {
@@ -1000,6 +1000,27 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		READ_FRAME()
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(SUBSCRIPT_GET) {
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+		LitValue instance = GET_RC(result_reg);
+
+	WRITE_FRAME() \
+		LitClass* klass = lit_get_class_for(state, instance); \
+		if (klass == NULL) { \
+			RUNTIME_ERROR("Only instances and classes have methods") \
+		} \
+		LitString* method_name = CONST_STRING(vm->state, "[]"); \
+		LitValue method; \
+		if ((IS_INSTANCE(instance) && (lit_table_get(&AS_INSTANCE(instance)->fields, method_name, &method))) || lit_table_get(&klass->methods, method_name, &method)) { \
+			CALL_VALUE(method, result_reg, 1) \
+		} else { \
+			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars) \
+		} \
+		READ_FRAME()
+		// INVOKE_METHOD(result_reg, instance, "[]", 1)
 		DISPATCH_NEXT()
 	}
 

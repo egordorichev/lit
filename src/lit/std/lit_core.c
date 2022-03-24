@@ -165,17 +165,13 @@ LIT_METHOD(object_subscript) {
 
 	LitInstance* inst = AS_INSTANCE(instance);
 
-	if (arg_count == 2) {
-		if (!IS_STRING(args[0])) {
-			lit_runtime_error_exiting(vm, "Object index must be a string");
-		}
-
-		lit_table_set(vm->state, &inst->fields, AS_STRING(args[0]), args[1]);
-		return args[1];
-	}
-
 	if (!IS_STRING(args[0])) {
 		lit_runtime_error_exiting(vm, "Object index must be a string");
+	}
+
+	if (arg_count == 2) {
+		lit_table_set(vm->state, &inst->fields, AS_STRING(args[0]), args[1]);
+		return args[1];
 	}
 
 	LitValue value;
