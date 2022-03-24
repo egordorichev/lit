@@ -962,8 +962,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			RUNTIME_ERROR("Attempt to index a null value")
 		}
 
-		lit_print_value(instance);
-		printf("\n\n");
 		LitClass* klass = lit_get_class_for(state, instance);
 
 		if (klass == NULL) {

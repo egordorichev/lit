@@ -702,10 +702,13 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 				emitter->emit_reference--;
 			}
 
-			uint8_t r = reserve_register(emitter);
+			bool jump = expr->jump == 0;
+			bool emit = !expr->ignore_emit;
+
+			uint8_t r = jump || emit ? reserve_register(emitter) : reg;
 			emit_expression(emitter, expr->where, r);
 
-			if (expr->jump == 0) {
+			if (jump) {
 				/*expr->jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
 
 				if (!expr->ignore_emit) {
@@ -715,7 +718,8 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 
 				patch_jump(emitter, expr->jump, emitter->last_line);*/
 				NOT_IMPLEMENTED
-			} else if (!expr->ignore_emit) {
+				free_register(emitter, r);
+			} else if (emit) {
 				int constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 
 				if (ref) {
@@ -724,9 +728,9 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 				}
 
 				emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, r, constant);
+				free_register(emitter, r);
 			}
 
-			free_register(emitter, r);
 			break;
 		}
 
@@ -1123,11 +1127,11 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				}
 			}
 
-			free_register(emitter, class_register);
-
 			if (stmt->parent != NULL) {
 				end_scope(emitter);
 			}
+
+			free_register(emitter, class_register);
 
 			emitter->class_name = NULL;
 			emitter->class_has_super = false;
