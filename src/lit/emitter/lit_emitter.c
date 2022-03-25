@@ -394,7 +394,10 @@ static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
 static LitOpCode translate_unary_operator_into_op(LitTokenType token) {
 	switch (token) {
 		case LTOKEN_MINUS: return OP_NEGATE;
-		case LTOKEN_BANG: default: return OP_NOT;
+		case LTOKEN_BANG: return OP_NOT;
+		case LTOKEN_TILDE: return OP_BNOT;
+
+		default: UNREACHABLE
 	}
 }
 
@@ -414,6 +417,7 @@ static LitOpCode translate_binary_operator_into_op(LitTokenType token) {
 
 		case LTOKEN_LESS_LESS: return OP_LSHIFT;
 		case LTOKEN_GREATER_GREATER: return OP_RSHIFT;
+		case LTOKEN_CARET: return OP_BXOR;
 
 		case LTOKEN_IS: return OP_IS;
 

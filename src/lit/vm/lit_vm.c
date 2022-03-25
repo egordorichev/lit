@@ -653,6 +653,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(BXOR) {
+		BITWISE_INSTRUCTION(^, "^")
+		DISPATCH_NEXT()
+	}
+
 	CASE_CODE(JUMP) {
 		ip += LIT_INSTRUCTION_SBX(instruction);
 		DISPATCH_NEXT()
@@ -698,8 +703,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(NEGATE) {
-		uint16_t b = LIT_INSTRUCTION_B(instruction);
-    LitValue value = GET_RC(b);
+		LitValue value = GET_RC(LIT_INSTRUCTION_B(instruction));
 
 		if (!IS_NUMBER(value)) {
 			// Don't even ask me why
@@ -725,6 +729,17 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		}
 
 		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(lit_is_falsey(value));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(BNOT) {
+		LitValue value = GET_RC(LIT_INSTRUCTION_B(instruction));
+
+		if (!IS_NUMBER(value)) {
+			RUNTIME_ERROR("Operand must be a number")
+		}
+
+		registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(~((int) AS_NUMBER(value)));
 		DISPATCH_NEXT()
 	}
 
