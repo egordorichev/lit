@@ -622,6 +622,19 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(POWER) {
+		LitValue bv = GET_RC(LIT_INSTRUCTION_B(instruction));
+		LitValue cv = GET_RC(LIT_INSTRUCTION_C(instruction));
+
+		if (IS_NUMBER(bv) && IS_NUMBER(cv)) {
+			registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(pow(AS_NUMBER(bv), AS_NUMBER(cv)));
+		} else {
+			INVOKE_METHOD(LIT_INSTRUCTION_B(instruction), bv, "**", 1)
+		}
+
+		DISPATCH_NEXT()
+	}
+
 	CASE_CODE(JUMP) {
 		ip += LIT_INSTRUCTION_SBX(instruction);
 		DISPATCH_NEXT()
