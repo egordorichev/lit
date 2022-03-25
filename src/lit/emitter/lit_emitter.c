@@ -472,6 +472,20 @@ static void emit_binary_expression(LitEmitter* emitter, LitBinaryExpression* exp
 	}
 }
 
+static bool emit_parameters(LitEmitter* emitter, LitParameters* parameters, uint line) {
+	for (uint i = 0; i < parameters->count; i++) {
+		LitParameter* parameter = &parameters->values[i];
+		uint8_t reg = reserve_register(emitter);
+
+		parameter->reg = reg;
+
+		int index = add_local(emitter, parameter->name, parameter->length, line, false, reg);
+		mark_local_initialized(emitter, index);
+	}
+
+	return false;
+}
+
 static void emit_expression_ignoring_register(LitEmitter* emitter, LitExpression* expression) {
 	uint8_t reg = reserve_register(emitter);
 
@@ -820,6 +834,72 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			break;
 		}
 
+		case LAMBDA_EXPRESSION: {
+			LitLambdaExpression* expr = (LitLambdaExpression*) expression;
+			LitString* name = AS_STRING(lit_string_format(emitter->state, "lambda @:@", OBJECT_VALUE(emitter->module->name), lit_number_to_string(emitter->state, expression->line)));
+
+			LitCompiler compiler;
+			init_compiler(emitter, &compiler, FUNCTION_REGULAR);
+
+			begin_scope(emitter);
+			bool vararg = emit_parameters(emitter, &expr->parameters, expression->line);
+
+			if (expr->body != NULL) {
+				bool single_expression = expr->body->type == EXPRESSION_STATEMENT;
+
+				if (single_expression) {
+					compiler.skip_return = true;
+				}
+
+				if (single_expression) {
+					uint8_t r = reserve_register(emitter);
+
+					emit_expression(emitter, ((LitExpressionStatement*) expr->body)->expression, r);
+					emit_abc_instruction(emitter, expr->body->line, OP_RETURN, r, 0, 0);
+					free_register(emitter, r);
+				} else {
+					emit_statement(emitter, expr->body);
+				}
+			}
+
+			end_scope(emitter);
+
+			LitFunction* function = end_compiler(emitter, name);
+
+			function->arg_count = expr->parameters.count;
+			function->max_registers += function->arg_count;
+			function->vararg = vararg;
+
+			uint16_t function_reg;
+			bool closure = function->upvalue_count > 0;
+
+			if (closure) {
+				function_reg = reserve_register(emitter);
+				LitClosurePrototype* closure_prototype = lit_create_closure_prototype(emitter->state, function);
+
+				for (uint i = 0; i < function->upvalue_count; i++) {
+					LitCompilerUpvalue* upvalue = &compiler.upvalues[i];
+
+					closure_prototype->local[i] = upvalue->isLocal;
+					closure_prototype->indexes[i] = upvalue->index;
+				}
+
+				uint16_t constant_index = add_constant(emitter, expression->line, OBJECT_VALUE(closure_prototype));
+				emit_abx_instruction(emitter, expression->line, OP_CLOSURE, function_reg, constant_index);
+			} else {
+				function_reg = add_constant(emitter, expression->line, OBJECT_VALUE(function));
+				SET_BIT(function_reg, 8);
+			}
+
+			emit_abc_instruction(emitter, expression->line, OP_MOVE, reg, function_reg, 0);
+
+			if (closure) {
+				free_register(emitter, function_reg);
+			}
+
+			break;
+		}
+
 		default: {
 			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
 			break;
@@ -833,20 +913,6 @@ static void patch_loop_jumps(LitEmitter* emitter, LitUInts* breaks) {
 	}
 
 	lit_free_uints(emitter->state, breaks);
-}
-
-static bool emit_parameters(LitEmitter* emitter, LitParameters* parameters, uint line) {
-	for (uint i = 0; i < parameters->count; i++) {
-		LitParameter* parameter = &parameters->values[i];
-		uint8_t reg = reserve_register(emitter);
-
-		parameter->reg = reg;
-
-		int index = add_local(emitter, parameter->name, parameter->length, line, false, reg);
-		mark_local_initialized(emitter, index);
-	}
-
-	return false;
 }
 
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
