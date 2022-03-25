@@ -100,7 +100,7 @@ static void print_object(LitValue value) {
 				LitArray* array = AS_ARRAY(value);
 				uint size = array->values.count;
 
-				printf("(%u) [", size);
+				printf("[");
 
 				if (size > 32) {
 					printf(" (too big to be displayed) ");
@@ -129,7 +129,7 @@ static void print_object(LitValue value) {
 			#else
 				LitMap* map = AS_MAP(value);
 				uint size = map->values.count;
-				printf("(%u) {", size);
+				printf("{");
 				bool had_before = false;
 
 				if (size > 16) {

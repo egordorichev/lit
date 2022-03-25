@@ -912,6 +912,19 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			break;
 		}
 
+		case RANGE_EXPRESSION: {
+			LitRangeExpression* expr = (LitRangeExpression*) expression;
+			emit_expression(emitter, expr->to, reg);
+
+			uint8_t reg_b = reserve_register(emitter);
+			emit_expression(emitter, expr->from, reg_b);
+
+			emit_abc_instruction(emitter, expression->line, OP_RANGE, reg, reg_b, reg);
+			free_register(emitter, reg_b);
+
+			break;
+		}
+
 		default: {
 			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
 			break;

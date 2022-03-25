@@ -1,1 +1,1 @@
-print(69 & 420) // Expected: 4
+print(1 .. 10)

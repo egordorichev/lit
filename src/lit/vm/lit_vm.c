@@ -567,6 +567,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(RANGE) {
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_range(state, AS_NUMBER(GET_RC(LIT_INSTRUCTION_B(instruction))), AS_NUMBER(GET_RC(LIT_INSTRUCTION_C(instruction)))));
+		DISPATCH_NEXT()
+	}
+
 	CASE_CODE(RETURN) {
 		LitValue value = registers[LIT_INSTRUCTION_A(instruction)];
 
