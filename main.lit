@@ -1,2 +1,4 @@
-var a = [ 10, "test", 128 ]
-print(a[1])
+var a = {
+	a: 32
+}
+print(a.a)

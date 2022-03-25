@@ -7,8 +7,8 @@
 * & ^ >> << | #
 * lambdas
 * thing?.call()
-* invoking operator methods
 * interpolation
+* invoking static methods
 
 # todo
 

@@ -513,7 +513,7 @@ static LitExpression* parse_object(LitParser* parser, bool can_assign) {
 		lit_values_write(parser->state, &object->keys, OBJECT_VALUE(lit_copy_string(parser->state, parser->previous.start, parser->previous.length)));
 
 		ignore_new_lines(parser);
-		consume(parser, LTOKEN_EQUAL, "'=' after key string");
+		consume(parser, LTOKEN_COLON, "':' after key string");
 
 		ignore_new_lines(parser);
 		lit_expressions_write(parser->state, &object->values, parse_expression(parser));

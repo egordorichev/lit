@@ -78,8 +78,8 @@ print(array.contains("coal")) // Expected: false
 // And for the desert, we have maps:
 
 var book = new Map {
-	author = "John",
-	name = "Magical Operators"
+	author: "John",
+	name: "Magical Operators"
 }
 
 print(book["author"]) // Expected: John

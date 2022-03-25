@@ -554,6 +554,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(OBJECT) {
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_instance(state, state->object_class));
+		DISPATCH_NEXT()
+	}
+
 	CASE_CODE(RETURN) {
 		LitValue value = registers[LIT_INSTRUCTION_A(instruction)];
 
@@ -1030,6 +1035,22 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	CASE_CODE(PUSH_ARRAY_ELEMENT) {
 		LitValues* array = &AS_ARRAY(registers[LIT_INSTRUCTION_A(instruction)])->values;
 		array->values[array->count++] = GET_RC(LIT_INSTRUCTION_BX(instruction));
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(PUSH_OBJECT_ELEMENT) {
+		LitValue operand = registers[LIT_INSTRUCTION_A(instruction)];
+		LitString* key = AS_STRING(constants[LIT_INSTRUCTION_B(instruction)]);
+		LitValue value = registers[LIT_INSTRUCTION_C(instruction)];
+
+		if (IS_MAP(operand)) {
+			lit_table_set(state, &AS_MAP(operand)->values, key, value);
+		} else if (IS_INSTANCE(operand)) {
+			lit_table_set(state, &AS_INSTANCE(operand)->fields, key, value);
+		} else {
+			RUNTIME_ERROR_VARG("Expected an object or a map as the operand, got %s", lit_get_value_type(operand));
+		}
 
 		DISPATCH_NEXT()
 	}
