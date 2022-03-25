@@ -454,6 +454,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			INVOKE_METHOD(b, bv, op_string, 1) \
 		}
 
+	#define BITWISE_INSTRUCTION(op, op_string) \
+    LitValue bv = GET_RC(LIT_INSTRUCTION_B(instruction)); \
+    LitValue cv = GET_RC(LIT_INSTRUCTION_C(instruction)); \
+		if (!IS_NUMBER(bv) && !IS_NUMBER(cv)) { \
+			RUNTIME_ERROR_VARG("Operands of bitwise op %s must be two numbers, got %s and %s", op_string, lit_get_value_type(bv), lit_get_value_type(cv)) \
+		} \
+		registers[LIT_INSTRUCTION_A(instruction)] = (NUMBER_VALUE((int) AS_NUMBER(bv) op (int) AS_NUMBER(cv)));
+
 	register LitVm *vm = state->vm;
 	register LitTable *globals = &vm->globals->values;
 
@@ -632,6 +640,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			INVOKE_METHOD(LIT_INSTRUCTION_B(instruction), bv, "**", 1)
 		}
 
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(LSHIFT) {
+		BITWISE_INSTRUCTION(<<, "<<")
 		DISPATCH_NEXT()
 	}
 
@@ -1097,6 +1110,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	RUNTIME_ERROR_VARG("Unknown op %i", instruction)
 	RETURN_ERROR()
 
+	#undef BITWISE_INSTRUCTION
 	#undef COMPARISON_INSTRUCTION
 	#undef BINARY_INSTRUCTION
 

@@ -9,6 +9,7 @@
 * thing?.call()
 * interpolation
 * invoking static methods
+* statistics on time spent in each instruction
 
 # todo
 
