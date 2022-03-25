@@ -1,7 +1,5 @@
-print(10 # 3) // Expected: 3
-/*print(4 % 2) // Expected: 0
 print(3 ** 2) // Expected: 9
-print(1 << 2) // Expected: 4
+/*print(1 << 2) // Expected: 4
 print(4 >> 1) // Expected: 2
 print(3 ^ 4) // Expected: 7
 print(~45) // Expected: -46

@@ -409,6 +409,7 @@ static LitOpCode translate_binary_operator_into_op(LitTokenType token) {
 		case LTOKEN_PLUS: return OP_ADD;
 		case LTOKEN_SLASH: return OP_DIVIDE;
 		case LTOKEN_SHARP: return OP_FLOOR_DIVIDE;
+		case LTOKEN_PERCENT: return OP_MOD;
 
 		case LTOKEN_IS: return OP_IS;
 
