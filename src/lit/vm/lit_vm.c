@@ -648,6 +648,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(RSHIFT) {
+		BITWISE_INSTRUCTION(>>, ">>")
+		DISPATCH_NEXT()
+	}
+
 	CASE_CODE(JUMP) {
 		ip += LIT_INSTRUCTION_SBX(instruction);
 		DISPATCH_NEXT()
