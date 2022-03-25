@@ -1244,7 +1244,7 @@ LIT_METHOD(map_toString) {
 
 			values_converted[i] = value;
 			keys[i] = entry->key;
-			string_length += entry->key->length + 3 + value->length +
+			string_length += entry->key->length + 2 + value->length +
 			#ifdef LIT_SINGLE_LINE_MAPS
 				(i == value_amount - 1 ? 1 : 2);
 			#else
@@ -1276,8 +1276,8 @@ LIT_METHOD(map_toString) {
 		memcpy(&buffer[buffer_index], key->chars, key->length);
 		buffer_index += key->length;
 
-		memcpy(&buffer[buffer_index], " = ", 3);
-		buffer_index += 3;
+		memcpy(&buffer[buffer_index], ": ", 2);
+		buffer_index += 2;
 
 		memcpy(&buffer[buffer_index], value->chars, value->length);
 		buffer_index += value->length;

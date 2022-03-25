@@ -1,4 +1,4 @@
-var a = {
+var a = new Map {
 	a: 32
 }
-print(a.a)
+print(a)

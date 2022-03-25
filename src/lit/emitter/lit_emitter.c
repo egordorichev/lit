@@ -706,6 +706,22 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 				free_register(emitter, arg_regs[i]);
 			}
 
+			if (expr->init == NULL) {
+				break;
+			}
+
+			LitObjectExpression* init = (LitObjectExpression*) expr->init;
+			uint8_t r = reserve_register(emitter);
+
+			for (uint i = 0; i < init->values.count; i++) {
+				LitExpression* e = init->values.values[i];
+				emitter->last_line = e->line;
+
+				emit_expression(emitter, e, r);
+				emit_abc_instruction(emitter, emitter->last_line, OP_PUSH_OBJECT_ELEMENT, reg, add_constant(emitter, emitter->last_line, init->keys.values[i]), r);
+			}
+
+			free_register(emitter, r);
 			break;
 		}
 
@@ -720,8 +736,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			bool jump = expr->jump == 0;
 			bool emit = !expr->ignore_emit;
 
-			uint8_t r = jump || emit ? reserve_register(emitter) : reg;
-			emit_expression(emitter, expr->where, r);
+			emit_expression(emitter, expr->where, reg);
 
 			if (jump) {
 				/*expr->jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
@@ -733,7 +748,6 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 
 				patch_jump(emitter, expr->jump, emitter->last_line);*/
 				NOT_IMPLEMENTED
-				free_register(emitter, r);
 			} else if (emit) {
 				int constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 
@@ -742,8 +756,7 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 					NOT_IMPLEMENTED
 				}
 
-				emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, r, constant);
-				free_register(emitter, r);
+				emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, reg, constant);
 			}
 
 			break;

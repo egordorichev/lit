@@ -145,7 +145,7 @@ static void print_object(LitValue value) {
 								printf(" ");
 							}
 
-							printf("%s = ", entry->key->chars);
+							printf("%s: ", entry->key->chars);
 							lit_print_value(entry->value);
 							had_before = true;
 						}
