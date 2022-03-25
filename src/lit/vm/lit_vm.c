@@ -451,7 +451,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		} else if (IS_NULL(bv)) { \
 			RUNTIME_ERROR_VARG("Attempt to use the operator %s on a null value", op_string) \
 		} else { \
-			RUNTIME_ERROR("Invoking operator methods not implemented yet") \
+			INVOKE_METHOD(b, bv, op_string, 1) \
 		}
 
 	register LitVm *vm = state->vm;
@@ -593,6 +593,19 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	CASE_CODE(DIVIDE) {
 		BINARY_INSTRUCTION(NUMBER_VALUE, /, "/")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(FLOOR_DIVIDE) {
+    LitValue bv = GET_RC(LIT_INSTRUCTION_B(instruction));
+    LitValue cv = GET_RC(LIT_INSTRUCTION_C(instruction));
+
+		if (IS_NUMBER(bv) && IS_NUMBER(cv)) {
+			registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(floor(AS_NUMBER(bv) / AS_NUMBER(cv)));
+		} else {
+			INVOKE_METHOD(LIT_INSTRUCTION_B(instruction), bv, "#", 1)
+		}
+
 		DISPATCH_NEXT()
 	}
 
