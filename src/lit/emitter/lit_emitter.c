@@ -418,6 +418,8 @@ static LitOpCode translate_binary_operator_into_op(LitTokenType token) {
 		case LTOKEN_LESS_LESS: return OP_LSHIFT;
 		case LTOKEN_GREATER_GREATER: return OP_RSHIFT;
 		case LTOKEN_CARET: return OP_BXOR;
+		case LTOKEN_AMPERSAND: return OP_BAND;
+		case LTOKEN_BAR: return OP_BOR;
 
 		case LTOKEN_IS: return OP_IS;
 
