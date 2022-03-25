@@ -777,6 +777,21 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 			break;
 		}
 
+		case ARRAY_EXPRESSION: {
+			LitArrayExpression* expr = (LitArrayExpression*) expression;
+			emit_abx_instruction(emitter, expression->line, OP_ARRAY, reg, expr->values.count);
+
+			uint8_t r = reserve_register(emitter);
+
+			for (uint i = 0; i < expr->values.count; i++) {
+				emit_expression(emitter, expr->values.values[i], r);
+				emit_abx_instruction(emitter, emitter->last_line, OP_PUSH_ARRAY_ELEMENT, reg, r);
+			}
+
+			free_register(emitter, r);
+			break;
+		}
+
 		default: {
 			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
 			break;

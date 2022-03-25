@@ -210,6 +210,14 @@ void lit_print_value(LitValue value) {
 }
 
 void lit_values_ensure_size(LitState* state, LitValues* values, uint size) {
+	lit_values_ensure_size_empty(state, values, size);
+
+	if (values->count < size) {
+		values->count = size;
+	}
+}
+
+void lit_values_ensure_size_empty(LitState* state, LitValues* values, uint size) {
 	if (values->capacity < size) {
 		uint old_capacity = values->capacity;
 		values->capacity = size;
@@ -218,10 +226,6 @@ void lit_values_ensure_size(LitState* state, LitValues* values, uint size) {
 		for (uint i = old_capacity; i < size; i++) {
 			values->values[i] = NULL_VALUE;
 		}
-	}
-
-	if (values->count < size) {
-		values->count = size;
 	}
 }
 

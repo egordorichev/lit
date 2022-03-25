@@ -546,6 +546,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(ARRAY) {
+		LitArray* array = lit_create_array(state);
+		lit_values_ensure_size_empty(state, &array->values, LIT_INSTRUCTION_B(instruction));
+
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(array);
+		DISPATCH_NEXT()
+	}
+
 	CASE_CODE(RETURN) {
 		LitValue value = registers[LIT_INSTRUCTION_A(instruction)];
 
@@ -1016,6 +1024,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		LitValue instance = GET_RC(result_reg);
 
 		INVOKE_METHOD(result_reg, instance, "[]", 2)
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(PUSH_ARRAY_ELEMENT) {
+		LitValues* array = &AS_ARRAY(registers[LIT_INSTRUCTION_A(instruction)])->values;
+		array->values[array->count++] = GET_RC(LIT_INSTRUCTION_BX(instruction));
+
 		DISPATCH_NEXT()
 	}
 

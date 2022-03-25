@@ -1,7 +1,2 @@
-class A {
-}
-
-var a = new A()
-a.test = 32
-print(a["test"])
-// print(new A()["test"]) // Expected: 33
+var a = [ 10, "test", 128 ]
+print(a[1])
