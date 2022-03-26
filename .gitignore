@@ -13,3 +13,5 @@ venv
 *.lbc
 dist*
 install_manifest.txt
+*node_modules*
+wiki/.docusaurus
