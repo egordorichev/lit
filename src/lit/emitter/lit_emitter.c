@@ -1329,6 +1329,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			LitFunction* function = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:@", OBJECT_VALUE(emitter->class_name), stmt->name)));
+
 			function->arg_count = stmt->parameters.count;
 			function->max_registers += function->arg_count;
 			function->vararg = vararg;
