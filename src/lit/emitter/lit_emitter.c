@@ -940,6 +940,14 @@ static void patch_loop_jumps(LitEmitter* emitter, LitUInts* breaks) {
 	lit_free_uints(emitter->state, breaks);
 }
 
+static void emit_statement_scoped(LitEmitter* emitter, LitStatement* statement) {
+	begin_scope(emitter);
+
+	if (!emit_statement(emitter, statement)) {
+		end_scope(emitter);
+	}
+}
+
 static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 	if (statement == NULL) {
 		return false;
@@ -977,7 +985,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitVarStatement* stmt = (LitVarStatement*) statement;
 			uint16_t reg = reserve_register(emitter);
 
-			bool private = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
+			bool private = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == -1;
 
 			if (stmt->init == NULL) {
 				emit_abc_instruction(emitter, statement->line, OP_LOAD_NULL, reg, 0, 0);
@@ -1012,7 +1020,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			free_register(emitter, condition_reg);
 
 			int64_t start = emitter->chunk->count;
-			emit_statement(emitter, stmt->if_branch);
+			emit_statement_scoped(emitter, stmt->if_branch);
 
 			if (stmt->else_branch) {
 				else_skip = emit_tmp_instruction(emitter);
@@ -1022,7 +1030,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			if (stmt->else_branch) {
 				int64_t else_start = emitter->chunk->count;
-				emit_statement(emitter, stmt->else_branch);
+				emit_statement_scoped(emitter, stmt->else_branch);
 				patch_instruction(emitter, else_skip, LIT_FORM_ASBX_INSTRUCTION(OP_JUMP, 0, (int64_t) emitter->chunk->count - else_start));
 			}
 
@@ -1033,7 +1041,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
 
 			bool export = stmt->exported;
-			bool private = !export && emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
+			bool private = !export && emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == -1;
 			bool local = !(export || private);
 
 			int index;
@@ -1139,7 +1147,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_expression(emitter, stmt->condition, reg);
 
 			uint tmp_instruction = emit_tmp_instruction(emitter);
-			emit_statement(emitter, stmt->body);
+			emit_statement_scoped(emitter, stmt->body);
 
 			patch_loop_jumps(emitter, &emitter->continues);
 			emit_asbx_instruction(emitter, statement->line, OP_JUMP, 0, (int) before_condition - emitter->chunk->count - 1);
@@ -1218,7 +1226,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				}
 			} else {
 				// TODO: implement
-				UNREACHABLE
+				NOT_IMPLEMENTED
 			}
 
 			break;

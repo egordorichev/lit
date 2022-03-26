@@ -1,1 +1,5 @@
-print(1 .. 10)
+if (true) {
+	var a = 32
+}
+
+print(a)
