@@ -16,7 +16,6 @@ _On linux, you will also need to install libreadline:_
 sudo apt-get install libreadline6-dev
 ```
 
-
 ```bash
 git clone https://github.com/egordorichev/lit/
 cd lit 
