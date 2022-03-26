@@ -10,9 +10,11 @@
 * interpolation
 * invoking static methods
 * statistics on time spent in each instruction
-* args array is null??
+* args array is null?
 
 # todo
+
+* Date class
 
 * easier  object creation: {
  name = name

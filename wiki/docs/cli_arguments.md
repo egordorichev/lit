@@ -1,6 +1,6 @@
 # CLI arguments
 
-Lit CLI has a lot of arguments, that you pass to it in order to manipulate its behaviour. As usual, you can get a list of them via `--help` argument:
+Lit CLI has arguments, that you pass to it in order to manipulate its behaviour. You can get a list of them via `--help` argument:
 
 ```bash
 ~ $ lit --help
