@@ -1,5 +1,5 @@
-{
-	var a = 32
+function getSum(a, b) {
+    return a + b
 }
 
-print(a)
+print(getSum(10, 9))
