@@ -8,8 +8,8 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 const config = {
   title: 'Lit wiki',
   tagline: 'Reference',
-  url: 'https://egordorichev.github.io/lit',
-  baseUrl: '/',
+  url: 'https://egordorichev.github.io/',
+  baseUrl: '/lit-wiki/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',

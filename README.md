@@ -46,13 +46,11 @@ Just run it, and you should see the familiar message in your terminal:
 lit hello.lit
 ```
 
-That's it! Now you are ready to face a more serious challenge, like the [examples](https://github.com/egordorichev/lit/tree/master/tests/examples) or [challenges](https://github.com/egordorichev/lit/tree/master/tests/challenges)!
-Or alternatively, [lit runs just fine in browsers](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/hello_world.lit).
+That's it! If you want to learn more about lit, [visit the wiki](https://egordorichev.github.io/lit-wiki/docs/getting_started/)!
 
 ### Syntax Highlighting
 
 If you want syntax highlighting in Visual Studio Code, see [lit-vscode](https://github.com/egordorichev/lit-vscode).
-
 
 ###### History
 

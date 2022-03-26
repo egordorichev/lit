@@ -3,6 +3,8 @@
 As your program grows, the need for repeating code arises. In order to avoid copy-pasting or to hide some implementation details,
 programmers for decades have been using chunks of code with names - functions. They can accept arguments and return a single value.
 
+Functions are instances of the [Function](/docs/modules/core_module/function) class.
+
 ## Creating a function
 
 Lit has a special function statement for creating functions. It contains the function name, arguments and its body.
