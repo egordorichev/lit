@@ -1,4 +1,4 @@
 # GC module
 ## Classes
 
-* [GC](/docs/module/gc_module/gc)
+* [GC](/docs/modules/gc_module/gc)

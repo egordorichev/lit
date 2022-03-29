@@ -85,3 +85,23 @@ function shout(a, ...) {
 
 shout("freedom", "to", "potatoes")
 ```
+
+### Lambdas
+
+Lit also supports functions without a name, also known as anonymous functions or lambdas. They are really useful as callbacks,
+where you don't want to define a whole new function with a random name just to get some result from somewhere.
+
+```js
+function call(what) {
+    what("result", 32)
+}
+
+call((string, number) => {
+    print(string, number)
+})
+
+// If lambda has a single argument, you can drop the parens
+call(string => {
+    print(string)
+})
+```

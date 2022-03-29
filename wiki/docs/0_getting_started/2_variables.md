@@ -17,7 +17,12 @@ cake = "apple pie"
 print(cake) // apple pie
 ```
 
+### Globals
+
 If you try to write to a variable, that is not directly declared in the current scope, lit will modify global variables.
+
+### Privates
+
 Top-level module variables are called privates and are accessible by their names via their names:
 
 ```js

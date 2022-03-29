@@ -1,5 +1,5 @@
 # File module
 ## Classes
 
-* [File](/docs/module/file_module/file)
-* [Directory](/docs/module/file_module/file)
+* [File](/docs/modules/file_module/file)
+* [Directory](/docs/modules/file_module/file)

@@ -1,17 +1,17 @@
 # Core module
 ## Classes
 
-* [Class](/docs/module/core_module/class)
-* [Object](/docs/module/core_module/object)
-* [Number](/docs/module/core_module/number)
-* [String](/docs/module/core_module/string)
-* [Bool](/docs/module/core_module/bool)
-* [Function](/docs/module/core_module/function)
-* [Fiber](/docs/module/core_module/fiber)
-* [Module](/docs/module/core_module/module)
-* [Array](/docs/module/core_module/array)
-* [Map](/docs/module/core_module/map)
-* [Range](/docs/module/core_module/range)
+* [Class](/docs/modules/core_module/class)
+* [Object](/docs/modules/core_module/object)
+* [Number](/docs/modules/core_module/number)
+* [String](/docs/modules/core_module/string)
+* [Bool](/docs/modules/core_module/bool)
+* [Function](/docs/modules/core_module/function)
+* [Fiber](/docs/moduless/core_module/fiber)
+* [Module](/docs/modules/core_module/module)
+* [Array](/docs/modules/core_module/array)
+* [Map](/docs/modules/core_module/map)
+* [Range](/docs/modules/core_module/range)
 
 ## Globals
 
