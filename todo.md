@@ -22,6 +22,18 @@
 * binary operators (like floor divide)
 * default arg values
 
+# api
+
+* File.remove()
+* File.create()
+* Directory.remove()
+* Directory.create()
+* File.writeNumber() -> File.writeInt()
+* File.readNumber() -> File.readInt()
+* File.writeDouble()
+* File.readDouble()
+* String.byteLength
+
 # todo
 
 * Date class

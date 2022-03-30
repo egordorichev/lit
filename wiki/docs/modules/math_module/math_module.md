@@ -1,7 +1,6 @@
 # Math module
 
 Math module provides utils for generating random numbers, converting between units and mathematical functions.
-To import the module, use `require("math")`
 
 ## Classes
 
