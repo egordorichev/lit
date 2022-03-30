@@ -413,8 +413,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	#define GET_RC(r) (IS_BIT_SET(r, 8) ? constants[r & 0xff] : registers[r])
 
+	#define WRAP_CONSTANT(r, to) \
+		if (IS_BIT_SET(r, 8)) { \
+      registers[to] = constants[r & 0xff]; \
+		}
+
 	// Instruction helpers
 	#define BINARY_INSTRUCTION(type, op, op_string) \
+    uint8_t a = LIT_INSTRUCTION_A(instruction); \
 		uint16_t b = LIT_INSTRUCTION_B(instruction); \
 		uint16_t c = LIT_INSTRUCTION_C(instruction); \
     LitValue bv = GET_RC(b); \
@@ -423,11 +429,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			if (!IS_NUMBER(cv)) { \
 				RUNTIME_ERROR_VARG("Attempt to use the operator %s with a number and a %s", op_string, lit_get_value_type(cv)) \
 			} \
-			registers[LIT_INSTRUCTION_A(instruction)] = type(AS_NUMBER(bv) op AS_NUMBER(cv)); \
+			registers[a] = type(AS_NUMBER(bv) op AS_NUMBER(cv)); \
 		} else if (IS_NULL(bv)) { \
 			RUNTIME_ERROR_VARG("Attempt to use the operator %s on a null value", op_string) \
 		} else { \
-			INVOKE_METHOD(b, bv, op_string, 1) \
+      WRAP_CONSTANT(b, a) \
+      WRAP_CONSTANT(c, a + 1) \
+			INVOKE_METHOD(a, registers[a + 1], op_string, 1) \
 		}
 
 	#define INVOKE_METHOD(reg, bv, m, arg_count) \
@@ -446,6 +454,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		READ_FRAME()
 
 	#define COMPARISON_INSTRUCTION(type, op, op_string) \
+		uint8_t a = LIT_INSTRUCTION_A(instruction); \
 		uint16_t b = LIT_INSTRUCTION_B(instruction); \
 		uint16_t c = LIT_INSTRUCTION_C(instruction); \
     LitValue bv = GET_RC(b); \
@@ -454,11 +463,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			if (!IS_NUMBER(cv)) { \
 				RUNTIME_ERROR_VARG("Attempt to use the operator %s with a number and a %s", op_string, lit_get_value_type(cv)) \
 			} \
-			registers[LIT_INSTRUCTION_A(instruction)] = type(AS_NUMBER(bv) op AS_NUMBER(cv)); \
+			registers[a] = type(AS_NUMBER(bv) op AS_NUMBER(cv)); \
 		} else if (IS_NULL(bv)) { \
 			RUNTIME_ERROR_VARG("Attempt to use the operator %s on a null value", op_string) \
 		} else { \
-			INVOKE_METHOD(b, bv, op_string, 1) \
+			WRAP_CONSTANT(b, a) \
+      WRAP_CONSTANT(c, a + 1) \
+			INVOKE_METHOD(a, registers[a + 1], op_string, 1) \
 		}
 
 	#define BITWISE_INSTRUCTION(op, op_string) \
@@ -610,39 +621,57 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(FLOOR_DIVIDE) {
-    LitValue bv = GET_RC(LIT_INSTRUCTION_B(instruction));
-    LitValue cv = GET_RC(LIT_INSTRUCTION_C(instruction));
+		uint8_t a = LIT_INSTRUCTION_A(instruction);
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+		uint16_t c = LIT_INSTRUCTION_C(instruction);
+
+    LitValue bv = GET_RC(b);
+    LitValue cv = GET_RC(c);
 
 		if (IS_NUMBER(bv) && IS_NUMBER(cv)) {
-			registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(floor(AS_NUMBER(bv) / AS_NUMBER(cv)));
+			registers[a] = NUMBER_VALUE(floor(AS_NUMBER(bv) / AS_NUMBER(cv)));
 		} else {
-			INVOKE_METHOD(LIT_INSTRUCTION_B(instruction), bv, "#", 1)
+			WRAP_CONSTANT(b, a)
+      WRAP_CONSTANT(c, a + 1)
+			INVOKE_METHOD(a, registers[a + 1], "#", 1)
 		}
 
 		DISPATCH_NEXT()
 	}
 
 	CASE_CODE(MOD) {
-		LitValue bv = GET_RC(LIT_INSTRUCTION_B(instruction));
-		LitValue cv = GET_RC(LIT_INSTRUCTION_C(instruction));
+		uint8_t a = LIT_INSTRUCTION_A(instruction);
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+		uint16_t c = LIT_INSTRUCTION_C(instruction);
+
+		LitValue bv = GET_RC(b);
+		LitValue cv = GET_RC(c);
 
 		if (IS_NUMBER(bv) && IS_NUMBER(cv)) {
-			registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(fmod(AS_NUMBER(bv), AS_NUMBER(cv)));
+			registers[a] = NUMBER_VALUE(fmod(AS_NUMBER(bv), AS_NUMBER(cv)));
 		} else {
-			INVOKE_METHOD(LIT_INSTRUCTION_B(instruction), bv, "%", 1)
+			WRAP_CONSTANT(b, a)
+			WRAP_CONSTANT(c, a + 1)
+			INVOKE_METHOD(a, registers[a + 1], "%", 1)
 		}
 
 		DISPATCH_NEXT()
 	}
 
 	CASE_CODE(POWER) {
-		LitValue bv = GET_RC(LIT_INSTRUCTION_B(instruction));
-		LitValue cv = GET_RC(LIT_INSTRUCTION_C(instruction));
+		uint8_t a = LIT_INSTRUCTION_A(instruction);
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+		uint16_t c = LIT_INSTRUCTION_C(instruction);
+
+		LitValue bv = GET_RC(b);
+		LitValue cv = GET_RC(c);
 
 		if (IS_NUMBER(bv) && IS_NUMBER(cv)) {
-			registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(pow(AS_NUMBER(bv), AS_NUMBER(cv)));
+			registers[a] = NUMBER_VALUE(pow(AS_NUMBER(bv), AS_NUMBER(cv)));
 		} else {
-			INVOKE_METHOD(LIT_INSTRUCTION_B(instruction), bv, "**", 1)
+			WRAP_CONSTANT(b, a)
+			WRAP_CONSTANT(c, a + 1)
+			INVOKE_METHOD(a, registers[a + 1], "**", 1)
 		}
 
 		DISPATCH_NEXT()
@@ -711,12 +740,19 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(EQUAL) {
-		LitValue a = GET_RC(LIT_INSTRUCTION_B(instruction));
+		uint8_t a = LIT_INSTRUCTION_A(instruction);
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+		uint16_t c = LIT_INSTRUCTION_C(instruction);
 
-		if (IS_INSTANCE(a)) {
-			INVOKE_METHOD(LIT_INSTRUCTION_B(instruction), a, "==", 1)
+		LitValue bv = GET_RC(LIT_INSTRUCTION_B(instruction));
+
+		if (IS_INSTANCE(bv)) {
+
+			WRAP_CONSTANT(b, a)
+			WRAP_CONSTANT(c, a + 1)
+			INVOKE_METHOD(a, registers[a + 1], "==", 1)
 		} else {
-			registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(a == GET_RC(LIT_INSTRUCTION_C(instruction)));
+			registers[a] = BOOL_VALUE(bv == GET_RC(c));
 		}
 
 		DISPATCH_NEXT()
@@ -1163,6 +1199,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	#undef BITWISE_INSTRUCTION
 	#undef COMPARISON_INSTRUCTION
 	#undef BINARY_INSTRUCTION
+	#undef WRAP_CONSTANT
 
 	#undef GET_RC
 	#undef RUNTIME_ERROR_VARG

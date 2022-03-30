@@ -10,7 +10,6 @@
 * OP_INVOKE_SUPER_IGNORING
 * OP_GET_SUPER
 * OP_INVOKE_IGNORING
-* interpolation
 
 # docs
 
@@ -39,8 +38,8 @@
 * statistics on time spent in each instruction
 
 * easier  object creation: {
- name = name
-} could be just { = name } or smth
+ name: name
+} could be just { name } or smth
 
 * this.fun?() or smth i need this
 * some sort of main function?

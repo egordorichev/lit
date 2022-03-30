@@ -961,6 +961,23 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 			break;
 		}
 
+		case INTERPOLATION_EXPRESSION: {
+			LitInterpolationExpression* expr = (LitInterpolationExpression*) expression;
+			emit_abx_instruction(emitter, expression->line, OP_ARRAY, reg, expr->expressions.count);
+
+			uint8_t r = reserve_register(emitter);
+
+			for (uint i = 0; i < expr->expressions.count; i++) {
+				emit_expression(emitter, expr->expressions.values[i], r);
+				emit_abx_instruction(emitter, emitter->last_line, OP_PUSH_ARRAY_ELEMENT, reg, r);
+			}
+
+			free_register(emitter, r);
+			emit_abc_instruction(emitter, emitter->last_line, OP_INVOKE, reg, 2, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "join")));
+
+			break;
+		}
+
 		default: {
 			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
 			break;
