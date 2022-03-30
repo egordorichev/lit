@@ -1,11 +1,13 @@
-var a = 10
-var b = 32
+var count = 0
 
-print(b) // Expected: 32
-a = b
-print(a) // Expected: 32
-a = b = 48
+for (var j = 0; j < 2; j++) {
+	for (var i = 0; i < 10; i++) {
+		if (i > 4) {
+			break
+		}
 
-print(a) // Expected: 48
-print(b) // Expected: 48
-print((a = 32) + 2) // Expected: 34
+		count++
+	}
+}
+
+print(count) // Expected: 10

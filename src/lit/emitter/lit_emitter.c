@@ -1191,8 +1191,11 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 		case FOR_STATEMENT: {
 			LitForStatement* stmt = (LitForStatement*) statement;
+			emitter->compiler->loop_depth++;
 
 			if (stmt->c_style) {
+				begin_scope(emitter);
+
 				if (stmt->var != NULL) {
 					emit_statement(emitter, stmt->var);
 				} else if (stmt->init != NULL) {
@@ -1223,6 +1226,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emitter->loop_start = start;
 				bool ended_scope = false;
 
+				emitter->loop_start = start;
 				begin_scope(emitter);
 
 				if (stmt->body != NULL) {
@@ -1253,10 +1257,15 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 					patch_instruction(emitter, exit_jump, LIT_FORM_ABX_INSTRUCTION(OP_FALSE_JUMP, condition_reg, (int64_t) emitter->chunk->count - exit_jump - 1));
 					free_register(emitter, condition_reg);
 				}
+
+				end_scope(emitter);
 			} else {
 				// TODO: implement
 				NOT_IMPLEMENTED
 			}
+
+			patch_loop_jumps(emitter, &emitter->breaks);
+			emitter->compiler->loop_depth--;
 
 			break;
 		}

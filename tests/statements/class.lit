@@ -99,7 +99,7 @@ print(c.field) // Expected: null
 print(c.test) // Expected: 32
 
 c = new Creature("dog") {
-	nope = true
+	nope: true
 }
 
 print(c.field) // Expected: dog
