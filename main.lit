@@ -1,6 +1,1 @@
-
-class ImRunningOutOfNames {
-    static var name = "Pumba"
-}
-
-print(ImRunningOutOfNames.name)
+print(args)

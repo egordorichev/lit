@@ -1,20 +1,31 @@
 # register based
 
-* implement else-if's
-* implement non c-style for
+* else-if's
+* non c-style for
 * ref's
-* multiarg
-* & ^ >> << | #
-* lambdas
+* varg
+* make sure missing args are null
+* arg default values
 * thing?.call()
+* OP_INVOKE_SUPER
+* OP_INVOKE_SUPER_IGNORING
+* OP_GET_SUPER
+* OP_INVOKE_IGNORING
 * interpolation
-* invoking static methods
-* statistics on time spent in each instruction
-* args array is null?
+
+# docs
+
+* ??
+* ?.
+* ->
+* refs
+* binary operators (like floor divide)
+* default arg values
 
 # todo
 
 * Date class
+* statistics on time spent in each instruction
 
 * easier  object creation: {
  name = name

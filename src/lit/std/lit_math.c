@@ -127,7 +127,10 @@ LIT_METHOD(random_constructor) {
 		uint number = (uint) LIT_CHECK_NUMBER(0);
 		*data = number;
 	} else {
-		*data = time(NULL);
+		uint value = time(NULL);
+
+		*data = value;
+		static_random_data = value;
 	}
 
 	return OBJECT_VALUE(instance);
