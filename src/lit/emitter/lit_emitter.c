@@ -695,6 +695,19 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				free_register(emitter, reg_b);
 
 				break;
+			} else if (expr->to->type == GET_EXPRESSION) {
+				LitGetExpression* e = (LitGetExpression*) expr->to;
+				uint8_t r = reserve_register(emitter);
+
+				emit_expression(emitter, e->where, r);
+				emit_expression(emitter, expr->value, reg);
+
+				int constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length)));
+
+				emit_abc_instruction(emitter, expression->line, OP_SET_FIELD, r, constant, reg);
+				free_register(emitter, r);
+
+				break;
 			}
 
 			error(emitter, expression->line, ERROR_INVALID_ASSIGMENT_TARGET);
