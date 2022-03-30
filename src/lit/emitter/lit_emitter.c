@@ -516,6 +516,10 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 }
 
 static void emit_expression_full(LitEmitter* emitter, LitExpression* expression, uint8_t reg, bool ignored) {
+	if (expression == NULL) {
+		return;
+	}
+
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
 			LitValue value = ((LitLiteralExpression*) expression)->value;

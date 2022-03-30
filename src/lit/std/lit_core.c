@@ -1125,8 +1125,6 @@ LIT_METHOD(array_toString) {
 }
 
 LIT_METHOD(array_length) {
-	lit_print_value(instance);
-	printf("\n");
 	return NUMBER_VALUE(AS_ARRAY(instance)->values.count);
 }
 

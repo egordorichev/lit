@@ -703,7 +703,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(EQUAL) {
-		COMPARISON_INSTRUCTION(NUMBER_VALUE, ==, "==")
+		LitValue a = GET_RC(LIT_INSTRUCTION_B(instruction));
+
+		if (IS_INSTANCE(a)) {
+			INVOKE_METHOD(LIT_INSTRUCTION_B(instruction), a, "==", 1)
+		} else {
+			registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(a == GET_RC(LIT_INSTRUCTION_C(instruction)));
+		}
+
 		DISPATCH_NEXT()
 	}
 

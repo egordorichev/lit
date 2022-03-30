@@ -1,3 +1,4 @@
-var a = "hi"
-var b = []
-print(a + b)
+var array = [ "banana", "orange" ]
+
+// The usual stuff
+print(array.length)
