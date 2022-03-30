@@ -1321,7 +1321,7 @@ LIT_METHOD(range_iterator) {
 	if (IS_NUMBER(args[0])) {
 		number = AS_NUMBER(args[0]);
 
-		if (range->to > range->from ? number >= range->to : number >= range->from) {
+		if (range->to > range->from ? number >= range->to : number <= range->to) {
 			return NULL_VALUE;
 		}
 

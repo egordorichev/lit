@@ -1257,15 +1257,73 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_asbx_instruction(emitter, statement->line, OP_JUMP, 0, (int) start - emitter->chunk->count - 1);
 
 				if (stmt->condition != NULL) {
-					int a = emitter->chunk->count;
 					patch_instruction(emitter, exit_jump, LIT_FORM_ABX_INSTRUCTION(OP_FALSE_JUMP, condition_reg, (int64_t) emitter->chunk->count - exit_jump - 1));
 					free_register(emitter, condition_reg);
 				}
 
 				end_scope(emitter);
 			} else {
-				// TODO: implement
-				NOT_IMPLEMENTED
+				uint sequence = add_local(emitter, "seq ", 4, statement->line, false, reserve_register(emitter));
+				mark_local_initialized(emitter, sequence);
+
+				uint8_t condition_reg = reserve_register(emitter);
+				emit_expression(emitter, stmt->condition, condition_reg);
+
+				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, sequence, condition_reg, 0);
+
+				uint iterator = add_local(emitter, "iter ", 5, statement->line, false, reserve_register(emitter));
+				mark_local_initialized(emitter, iterator);
+
+				emit_abc_instruction(emitter, emitter->last_line, OP_LOAD_NULL, iterator, 0, 0);
+
+				uint start = emitter->chunk->count;
+				emitter->loop_start = emitter->chunk->count;
+
+				// iter = seq.iterator(iter)
+				uint8_t tmp_reg_a = reserve_register(emitter);
+				uint8_t tmp_reg_b = reserve_register(emitter);
+
+				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, tmp_reg_a, sequence, 0);
+				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, tmp_reg_b, iterator, 0);
+				emit_abc_instruction(emitter, emitter->last_line, OP_INVOKE, tmp_reg_a, 2, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iterator")));
+				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, iterator, tmp_reg_a, 0);
+
+				// If iter is null, just get out of the loop
+				uint exit_jump = emit_tmp_instruction(emitter);
+				free_register(emitter, condition_reg);
+
+				begin_scope(emitter);
+
+				// var i = seq.iteratorValue(iter)
+				LitVarStatement* var = (LitVarStatement*) stmt->var;
+				uint local = add_local(emitter, var->name, var->length, statement->line, false, reserve_register(emitter));
+				mark_local_initialized(emitter, local);
+
+				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, tmp_reg_a, sequence, 0);
+				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, tmp_reg_b, iterator, 0);
+				emit_abc_instruction(emitter, emitter->last_line, OP_INVOKE, tmp_reg_a, 2, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iteratorValue")));
+				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, local, tmp_reg_a, 0);
+
+				free_register(emitter, tmp_reg_a);
+				free_register(emitter, tmp_reg_b);
+
+				if (stmt->body != NULL) {
+					if (stmt->body->type == BLOCK_STATEMENT) {
+						LitStatements *statements = &((LitBlockStatement*) stmt->body)->statements;
+
+						for (uint i = 0; i < statements->count; i++) {
+							emit_statement(emitter, statements->values[i]);
+						}
+					} else {
+						emit_statement(emitter, stmt->body);
+					}
+				}
+
+				patch_loop_jumps(emitter, &emitter->continues);
+				end_scope(emitter);
+
+				emit_asbx_instruction(emitter, statement->line, OP_JUMP, 0, (int) start - emitter->chunk->count - 1);
+				patch_instruction(emitter, exit_jump, LIT_FORM_ABX_INSTRUCTION(OP_NULL_JUMP, condition_reg, (int64_t) emitter->chunk->count - exit_jump - 1));
 			}
 
 			patch_loop_jumps(emitter, &emitter->breaks);

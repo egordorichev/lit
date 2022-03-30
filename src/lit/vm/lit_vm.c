@@ -702,6 +702,14 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(NULL_JUMP) {
+		if (registers[LIT_INSTRUCTION_A(instruction)] == NULL_VALUE) {
+			ip += LIT_INSTRUCTION_BX(instruction);
+		}
+
+		DISPATCH_NEXT()
+	}
+
 	CASE_CODE(EQUAL) {
 		LitValue a = GET_RC(LIT_INSTRUCTION_B(instruction));
 

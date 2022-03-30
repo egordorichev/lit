@@ -1,7 +1,6 @@
 # register based
 
 * else-if's
-* non c-style for
 * ref's
 * varg
 * make sure missing args are null
