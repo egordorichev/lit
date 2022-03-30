@@ -1,1 +1,9 @@
-print(args)
+function c() {
+	return () => {
+		var a = 32
+		print(a += 2) // Expected: 34
+		print(a)
+	}
+}
+
+c()()

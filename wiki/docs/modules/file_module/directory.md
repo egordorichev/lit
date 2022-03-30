@@ -1,5 +1,7 @@
 # Directory
 
+## Static methods
+
 ### exists(path)
 
 Returns `true` if a directory exists at the given path.

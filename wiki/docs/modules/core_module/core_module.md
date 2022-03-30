@@ -15,13 +15,12 @@
 
 ## Globals
 
-lit_set_global(state, CONST_STRING(state, "globals"), OBJECT_VALUE(state->vm->globals));
+### globals
 
 ## Functions
 
-lit_define_native(state, "time", time_native);
-lit_define_native(state, "systemTime", systemTime_native);
-lit_define_native(state, "print", print_native);
-
-lit_define_native_primitive(state, "require", require_primitive);
-lit_define_native_primitive(state, "eval", eval_primitive);
+### time
+### systemTime
+### print
+### require
+### eval

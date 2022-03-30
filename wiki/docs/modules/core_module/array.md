@@ -1,22 +1,25 @@
 # Array
-LIT_INHERIT_CLASS(state->object_class)
-LIT_BIND_CONSTRUCTOR(array_constructor)
 
-LIT_BIND_METHOD("[]", array_subscript)
-LIT_BIND_METHOD("add", array_add)
-LIT_BIND_METHOD("insert", array_insert)
-LIT_BIND_METHOD("slice", array_slice)
-LIT_BIND_METHOD("addAll", array_addAll)
-LIT_BIND_METHOD("remove", array_remove)
-LIT_BIND_METHOD("removeAt", array_removeAt)
-LIT_BIND_METHOD("indexOf", array_indexOf)
-LIT_BIND_METHOD("contains", array_contains)
-LIT_BIND_METHOD("clear", array_clear)
-LIT_BIND_METHOD("iterator", array_iterator)
-LIT_BIND_METHOD("iteratorValue", array_iteratorValue)
-LIT_BIND_METHOD("join", array_join)
-LIT_BIND_METHOD("sort", array_sort)
-LIT_BIND_METHOD("clone", array_clone)
-LIT_BIND_METHOD("toString", array_toString)
+## Instance fields
 
-LIT_BIND_GETTER("length", array_length)
+### length
+
+## Instance methods
+
+### constructor
+
+### add
+### insert
+### slice
+### addAll
+### remove
+### removeAt
+### indexOf
+### contains
+### clear
+### iterator
+### iteratorValue
+### join
+### sort
+### clone
+### toString

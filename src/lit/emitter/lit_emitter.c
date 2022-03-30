@@ -399,6 +399,8 @@ static LitOpCode translate_unary_operator_into_op(LitTokenType token) {
 
 		default: UNREACHABLE
 	}
+
+	return OP_RETURN;
 }
 
 static LitOpCode translate_binary_operator_into_op(LitTokenType token) {
@@ -425,6 +427,8 @@ static LitOpCode translate_binary_operator_into_op(LitTokenType token) {
 
 		default: UNREACHABLE
 	}
+
+	return OP_RETURN;
 }
 
 static uint16_t parse_argument(LitEmitter* emitter, LitExpression* expression, uint8_t reg) {
@@ -498,14 +502,20 @@ static bool emit_parameters(LitEmitter* emitter, LitParameters* parameters, uint
 	return false;
 }
 
+static void emit_expression_full(LitEmitter* emitter, LitExpression* expression, uint8_t reg, bool ignored);
+
 static void emit_expression_ignoring_register(LitEmitter* emitter, LitExpression* expression) {
 	uint8_t reg = reserve_register(emitter);
 
-	emit_expression(emitter, expression, reg);
+	emit_expression_full(emitter, expression, reg, true);
 	free_register(emitter, reg);
 }
 
 static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint8_t reg) {
+	emit_expression_full(emitter, expression, reg, false);
+}
+
+static void emit_expression_full(LitEmitter* emitter, LitExpression* expression, uint8_t reg, bool ignored) {
 	switch (expression->type) {
 		case LITERAL_EXPRESSION: {
 			LitValue value = ((LitLiteralExpression*) expression)->value;
@@ -663,6 +673,11 @@ static void emit_expression(LitEmitter* emitter, LitExpression* expression, uint
 					}
 
 					emit_expression(emitter, expr->value, local.reg);
+
+					if (!ignored && reg != local.reg) {
+						emit_abc_instruction(emitter, expression->line, OP_MOVE, reg, local.reg, 0);
+					}
+
 					break;
 				}
 			} else if (expr->to->type == SUBSCRIPT_EXPRESSION) {
@@ -955,10 +970,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 	switch (statement->type) {
 		case EXPRESSION_STATEMENT: {
-			uint16_t reg = reserve_register(emitter);
-			emit_expression(emitter, ((LitExpressionStatement*) statement)->expression, reg);
-			free_register(emitter, reg);
-
+			emit_expression_ignoring_register(emitter, ((LitExpressionStatement*) statement)->expression);
 			break;
 		}
 
@@ -985,7 +997,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitVarStatement* stmt = (LitVarStatement*) statement;
 			uint16_t reg = reserve_register(emitter);
 
-			bool private = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == -1;
+			bool private = emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
 
 			if (stmt->init == NULL) {
 				emit_abc_instruction(emitter, statement->line, OP_LOAD_NULL, reg, 0, 0);
@@ -1041,7 +1053,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitFunctionStatement* stmt = (LitFunctionStatement*) statement;
 
 			bool export = stmt->exported;
-			bool private = !export && emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == -1;
+			bool private = !export && emitter->compiler->enclosing == NULL && emitter->compiler->scope_depth == 0;
 			bool local = !(export || private);
 
 			int index;
