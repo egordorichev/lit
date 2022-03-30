@@ -160,6 +160,7 @@ LIT_METHOD(object_toString) {
 
 LIT_METHOD(object_subscript) {
 	if (!IS_INSTANCE(instance)) {
+		LitObjectType type = OBJECT_TYPE(instance);
 		lit_runtime_error_exiting(vm, "Can't modify built-in types");
 	}
 

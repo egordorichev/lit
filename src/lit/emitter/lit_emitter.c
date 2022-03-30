@@ -1197,9 +1197,9 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			LitForStatement* stmt = (LitForStatement*) statement;
 			emitter->compiler->loop_depth++;
 
-			if (stmt->c_style) {
-				begin_scope(emitter);
+			begin_scope(emitter);
 
+			if (stmt->c_style) {
 				if (stmt->var != NULL) {
 					emit_statement(emitter, stmt->var);
 				} else if (stmt->init != NULL) {
@@ -1260,8 +1260,6 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 					patch_instruction(emitter, exit_jump, LIT_FORM_ABX_INSTRUCTION(OP_FALSE_JUMP, condition_reg, (int64_t) emitter->chunk->count - exit_jump - 1));
 					free_register(emitter, condition_reg);
 				}
-
-				end_scope(emitter);
 			} else {
 				uint sequence = add_local(emitter, "seq ", 4, statement->line, false, reserve_register(emitter));
 				mark_local_initialized(emitter, sequence);
@@ -1302,7 +1300,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, tmp_reg_a, sequence, 0);
 				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, tmp_reg_b, iterator, 0);
 				emit_abc_instruction(emitter, emitter->last_line, OP_INVOKE, tmp_reg_a, 2, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iteratorValue")));
-				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, local, tmp_reg_a, 0);
+				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, emitter->compiler->locals.values[local].reg, tmp_reg_a, 0);
 
 				free_register(emitter, tmp_reg_a);
 				free_register(emitter, tmp_reg_b);
@@ -1327,6 +1325,8 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			patch_loop_jumps(emitter, &emitter->breaks);
+			end_scope(emitter);
+
 			emitter->compiler->loop_depth--;
 
 			break;

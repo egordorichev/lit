@@ -506,7 +506,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		if (frame->function->max_registers > 0) {
 			printf("        |\n        | f%i ", fiber->frame_count);
 
-			for (int i = 0; i < frame->function->max_registers; i++) {
+			for (int i = 0; i <= frame->function->max_registers; i++) {
 				printf("[ ");
 				lit_print_value(*(registers + i));
 				printf(" ]");
