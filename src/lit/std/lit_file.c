@@ -223,7 +223,7 @@ LIT_METHOD(directory_listFiles) {
 	struct dirent* ep;
 
 	LitState* state = vm->state;
-    const char* path = LIT_CHECK_STRING(0);
+  const char* path = LIT_CHECK_STRING(0);
 	DIR* dir = opendir(path);
 	LitArray* array = lit_create_array(state);
 
