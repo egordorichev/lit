@@ -176,7 +176,6 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	frame->ip = function->chunk.code;
 	frame->slots = previous_frame->slots + callee_register;
 	frame->result_ignored = false;
-	frame->return_to_c = false;
 	frame->return_address = previous_frame->slots + (int) callee_register;
 
 	return true;
@@ -202,7 +201,10 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 			}
 
 			case OBJECT_NATIVE_FUNCTION: {
-				frame->slots[callee_register] = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, frame->slots + callee_register + 1);
+				// For some reason, single line expression doesn't work
+				LitValue value = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, frame->slots + callee_register + 1);
+				frame->slots[callee_register] = value;
+
 				return !vm->fiber->abort;
 			}
 
@@ -222,7 +224,10 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 				LitNativeMethod* method = AS_NATIVE_METHOD(callee);
 				LitFiber* fiber = vm->fiber;
 
-				frame->slots[callee_register] = method->method(vm, *(frame->slots + callee_register), arg_count, frame->slots + callee_register + 1);
+				// For some reason, single line expression doesn't work
+				LitValue value = method->method(vm, *(frame->slots + callee_register), arg_count, frame->slots + callee_register + 1);
+				frame->slots[callee_register] = value;
+
 				POP_GC(vm->state)
 
 				return !fiber->abort;
@@ -257,7 +262,9 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 
 				if (IS_NATIVE_METHOD(method)) {
 					PUSH_GC(vm->state, false)
-					frame->slots[callee_register] = AS_NATIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, frame->slots + callee_register + 1);
+					// For some reason, single line expression doesn't work
+					LitValue value = AS_NATIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, frame->slots + callee_register + 1);
+					frame->slots[callee_register] = value;
 					POP_GC(vm->state)
 
 					return !vm->fiber->abort;
@@ -348,7 +355,7 @@ LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 }
 
 LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber) {
-	assert(fiber->frame_count == 1);
+	assert(fiber->frame_count > 0);
 
 	// Has to be inside of the function in order for goto to work
 	static void* dispatch_table[] = {
@@ -483,13 +490,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	READ_FRAME()
 
-#ifdef LIT_TRACE_EXECUTION
-	// Make sure we don't crash printing out some mess from the memory
-	for (int i = 1; i <= frame->function->max_registers; i++) {
-		registers[i] = NUMBER_VALUE(0);
-	}
-#endif
-
 	registers[0] = OBJECT_VALUE(frame->function);
 	TRACE_FRAME()
 
@@ -506,7 +506,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		if (frame->function->max_registers > 0) {
 			printf("        |\n        | f%i ", fiber->frame_count);
 
-			for (int i = 0; i <= frame->function->max_registers; i++) {
+			for (int i = 0; i < frame->function->max_registers; i++) {
 				printf("[ ");
 				lit_print_value(*(registers + i));
 				printf(" ]");
@@ -578,7 +578,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		fiber->frame_count--;
 		fiber->registers_used -= fiber->frames[fiber->frame_count].function->max_registers;
 
-		if (fiber->frame_count == 0) {
+		if (fiber->frame_count == 0 || frame->return_address == NULL) {
 			return (LitInterpretResult) { INTERPRET_OK, value };
 		}
 

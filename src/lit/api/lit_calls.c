@@ -99,8 +99,71 @@ LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, Li
 }
 
 LitString* lit_to_string(LitState* state, LitValue object) {
-	NOT_IMPLEMENTED
-	return NULL;
+	if (IS_STRING(object)) {
+		return AS_STRING(object);
+	} else if (!IS_OBJECT(object)) {
+		if (IS_NULL(object)) {
+			return CONST_STRING(state, "null");
+		} else if (IS_NUMBER(object)) {
+			return AS_STRING(lit_number_to_string(state, AS_NUMBER(object)));
+		} else if (IS_BOOL(object)) {
+			return CONST_STRING(state, AS_BOOL(object) ? "true" : "false");
+		}
+	} else if (IS_REFERENCE(object)) {
+		LitValue* slot = AS_REFERENCE(object)->slot;
+
+		if (slot == NULL) {
+			return CONST_STRING(state, "null");
+		}
+
+		return lit_to_string(state, *slot);
+	}
+
+	LitVm* vm = state->vm;
+	LitFiber* fiber = vm->fiber;
+
+	if (ensure_fiber(vm, fiber)) {
+		return CONST_STRING(state, "null");
+	}
+
+	LitFunction* function = state->api_function;
+
+	if (function == NULL) {
+		function = state->api_function = lit_create_function(state, fiber->module);
+		function->chunk.has_line_info = false;
+		function->name = state->api_name;
+
+		LitChunk* chunk = &function->chunk;
+		chunk->count = 0;
+		chunk->constants.count = 0;
+		function->max_registers = 2;
+
+		int constant = lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString"));
+
+		lit_write_chunk(state, chunk, LIT_FORM_ABC_INSTRUCTION(OP_INVOKE, 1, 1, constant), 1);
+		lit_write_chunk(state, chunk, LIT_FORM_ABC_INSTRUCTION(OP_RETURN, 1, 0, 0), 1);
+	}
+
+	lit_ensure_fiber_registers(state, fiber, function->max_registers + fiber->registers_used);
+	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
+
+	frame->ip = function->chunk.code;
+	frame->closure = NULL;
+	frame->function = function;
+	frame->slots = fiber->registers + fiber->registers_used;
+	frame->result_ignored = false;
+	frame->return_address = NULL;
+
+	frame->slots[0] = OBJECT_VALUE(function);
+	frame->slots[1] = object;
+
+	LitInterpretResult result = lit_interpret_fiber(state, fiber);
+
+	if (result.type != INTERPRET_OK) {
+		return CONST_STRING(state, "null");
+	}
+
+	return AS_STRING(result.result);
 }
 
 LitValue lit_call_new(LitVm* vm, const char* name, LitValue* args, uint argument_count) {
