@@ -664,6 +664,10 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 						emit_abx_instruction(emitter, expression->line, OP_SET_UPVALUE, index, r);
 					}
 
+					if (!ignored && reg != r) {
+						emit_abc_instruction(emitter, expression->line, OP_MOVE, reg, r, 0);
+					}
+
 					break;
 				} else {
 					LitLocal local = emitter->compiler->locals.values[index];

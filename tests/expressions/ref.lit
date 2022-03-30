@@ -17,7 +17,7 @@ function test() {
 test()()
 
 var z = {
-	me = "Egor"
+	me: "Egor"
 }
 
 print(ref z.me) // Expected: Egor

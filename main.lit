@@ -1,22 +1,11 @@
-var a = 32
+var a = 10
+var b = 32
 
-print((a += 2)) // Expected: 34
-print((a -= 2)) // Expected: 32
-print((a *= 2)) // Expected: 64
-print((a /= 4)) // Expected: 16
+print(b) // Expected: 32
+a = b
+print(a) // Expected: 32
+a = b = 48
 
-print((a++)) // Expected: 17
-print((a--)) // Expected: 16
-
-print((a %= 3)) // Expected: 1
-
-print(a |= 3) // Expected: 3
-print(a &= 10) // Expected: 2
-print(a ^= 31) // Expected: 29
-
-class Test {}
-var test = new Test()
-test.a = 32
-
-print(test.a += 32) // Expected: 64
-print(test.a #= 3) // Expected: 21
+print(a) // Expected: 48
+print(b) // Expected: 48
+print((a = 32) + 2) // Expected: 34
