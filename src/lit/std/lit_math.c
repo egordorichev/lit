@@ -127,10 +127,8 @@ LIT_METHOD(random_constructor) {
 		uint number = (uint) LIT_CHECK_NUMBER(0);
 		*data = number;
 	} else {
-		uint value = time(NULL);
-
-		*data = value;
-		static_random_data = value;
+		int r = rand();
+		*data = *((uint*) &r);
 	}
 
 	return OBJECT_VALUE(instance);
@@ -150,8 +148,8 @@ LIT_METHOD(random_setSeed) {
 }
 
 int custom_random(uint* data) {
-    *data = *data * 1664525 + 1013904223;
-    return *((int*) data) >> 24;
+	*data = (*data * 125) % 2796203;
+	return *data;
 }
 
 LIT_METHOD(random_int) {
@@ -274,7 +272,9 @@ void lit_open_math_library(LitState* state) {
 	LIT_END_CLASS()
 
 	srand(time(NULL));
-	static_random_data = time(NULL);
+
+	int r = rand();
+	static_random_data = *((uint*) &r);
 
 	LIT_BEGIN_CLASS("Random")
 		LIT_BIND_CONSTRUCTOR(random_constructor)

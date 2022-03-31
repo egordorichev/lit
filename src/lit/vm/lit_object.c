@@ -401,6 +401,11 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	}
 
 	fiber->registers = registers;
+
+	for (uint8_t i = 0; i < registers_allocated; i++) {
+		fiber->registers[i] = NULL_VALUE;
+	}
+
 	fiber->registers_allocated = registers_allocated;
 	fiber->registers_used = function->max_registers;
 
@@ -440,6 +445,11 @@ void lit_ensure_fiber_registers(LitState* state, LitFiber* fiber, uint needed) {
 	LitValue* old_registers = fiber->registers;
 
 	fiber->registers = (LitValue*) lit_reallocate(state, fiber->registers, sizeof(LitValue) * fiber->registers_allocated, sizeof(LitValue) * capacity);
+
+	for (uint i = fiber->registers_allocated; i < capacity; i++) {
+		fiber->registers[i] = NULL_VALUE;
+	}
+
 	fiber->registers_allocated = capacity;
 
 	if (fiber->registers != old_registers) {

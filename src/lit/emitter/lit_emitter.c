@@ -155,7 +155,15 @@ static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
 	if (!emitter->compiler->skip_return) {
 		uint8_t reg = reserve_register(emitter);
 
-		emit_abc_instruction(emitter, emitter->last_line, OP_LOAD_NULL, reg, 0, 0);
+		LitFunctionType type = emitter->compiler->type;
+
+		if (type == FUNCTION_CONSTRUCTOR) {
+			// Load this
+			emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, reg, 0, 0);
+		} else {
+			emit_abc_instruction(emitter, emitter->last_line, OP_LOAD_NULL, reg, 0, 0);
+		}
+
 		emit_abc_instruction(emitter, emitter->last_line, OP_RETURN, reg, 1, 0);
 		free_register(emitter, reg);
 
@@ -826,10 +834,10 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 
 		case SET_EXPRESSION: {
 			LitSetExpression* expr = (LitSetExpression*) expression;
-			uint8_t where_reg = reserve_register(emitter);
-
-			emit_expression(emitter, expr->where, where_reg);
 			emit_expression(emitter, expr->value, reg);
+
+			uint8_t where_reg = reserve_register(emitter);
+			emit_expression(emitter, expr->where, where_reg);
 
 			int constant = add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 
@@ -974,6 +982,28 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 
 			free_register(emitter, r);
 			emit_abc_instruction(emitter, emitter->last_line, OP_INVOKE, reg, 2, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "join")));
+
+			break;
+		}
+
+		case THIS_EXPRESSION: {
+			LitFunctionType type = emitter->compiler->type;
+
+			if (type == FUNCTION_STATIC_METHOD) {
+				error(emitter, expression->line, ERROR_THIS_MISSUSE, "in static methods");
+			}
+
+			if (type == FUNCTION_CONSTRUCTOR || type == FUNCTION_METHOD) {
+				// The instance is always in register 0
+				emit_abc_instruction(emitter, expression->line, OP_MOVE, reg, 0, 0);
+			} else {
+				if (emitter->compiler->enclosing == NULL) {
+					error(emitter, expression->line, ERROR_THIS_MISSUSE, "in functions outside of any class");
+				} else {
+					int local = resolve_local(emitter, (LitCompiler *) emitter->compiler->enclosing, "this", 4, expression->line);
+					emit_abx_instruction(emitter, expression->line, OP_GET_UPVALUE, reg, add_upvalue(emitter, emitter->compiler, local, expression->line, true));
+				}
+			}
 
 			break;
 		}
@@ -1278,15 +1308,19 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 					free_register(emitter, condition_reg);
 				}
 			} else {
-				uint sequence = add_local(emitter, "seq ", 4, statement->line, false, reserve_register(emitter));
+				uint sequence = reserve_register(emitter);
+
+				add_local(emitter, "seq ", 4, statement->line, false, sequence);
 				mark_local_initialized(emitter, sequence);
 
 				uint8_t condition_reg = reserve_register(emitter);
-				emit_expression(emitter, stmt->condition, condition_reg);
 
+				emit_expression(emitter, stmt->condition, condition_reg);
 				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, sequence, condition_reg, 0);
 
-				uint iterator = add_local(emitter, "iter ", 5, statement->line, false, reserve_register(emitter));
+				uint iterator = reserve_register(emitter);
+
+				add_local(emitter, "iter ", 5, statement->line, false, iterator);
 				mark_local_initialized(emitter, iterator);
 
 				emit_abc_instruction(emitter, emitter->last_line, OP_LOAD_NULL, iterator, 0, 0);
@@ -1305,22 +1339,20 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 				// If iter is null, just get out of the loop
 				uint exit_jump = emit_tmp_instruction(emitter);
-				free_register(emitter, condition_reg);
 
 				begin_scope(emitter);
 
 				// var i = seq.iteratorValue(iter)
 				LitVarStatement* var = (LitVarStatement*) stmt->var;
-				uint local = add_local(emitter, var->name, var->length, statement->line, false, reserve_register(emitter));
+				uint local = reserve_register(emitter);
+
+				add_local(emitter, var->name, var->length, statement->line, false, local);
 				mark_local_initialized(emitter, local);
 
 				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, tmp_reg_a, sequence, 0);
 				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, tmp_reg_b, iterator, 0);
 				emit_abc_instruction(emitter, emitter->last_line, OP_INVOKE, tmp_reg_a, 2, add_constant(emitter, emitter->last_line, OBJECT_CONST_STRING(emitter->state, "iteratorValue")));
-				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, emitter->compiler->locals.values[local].reg, tmp_reg_a, 0);
-
-				free_register(emitter, tmp_reg_a);
-				free_register(emitter, tmp_reg_b);
+				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, local, tmp_reg_a, 0);
 
 				if (stmt->body != NULL) {
 					if (stmt->body->type == BLOCK_STATEMENT) {
@@ -1338,7 +1370,11 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				end_scope(emitter);
 
 				emit_asbx_instruction(emitter, statement->line, OP_JUMP, 0, (int) start - emitter->chunk->count - 1);
-				patch_instruction(emitter, exit_jump, LIT_FORM_ABX_INSTRUCTION(OP_NULL_JUMP, condition_reg, (int64_t) emitter->chunk->count - exit_jump - 1));
+				patch_instruction(emitter, exit_jump, LIT_FORM_ABX_INSTRUCTION(OP_NULL_JUMP, iterator, (int64_t) emitter->chunk->count - exit_jump - 1));
+
+				free_register(emitter, tmp_reg_a);
+				free_register(emitter, tmp_reg_b);
+				free_register(emitter, condition_reg);
 			}
 
 			patch_loop_jumps(emitter, &emitter->breaks);

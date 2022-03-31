@@ -10,6 +10,7 @@
 * OP_INVOKE_SUPER_IGNORING
 * OP_GET_SUPER
 * OP_INVOKE_IGNORING
+* check all operator overloads with constants
 
 # docs
 
