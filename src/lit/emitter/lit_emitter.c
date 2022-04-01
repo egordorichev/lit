@@ -618,16 +618,15 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 							// emit_short(emitter, expression->line, index);
 						} else {
 							emit_abx_instruction(emitter, expression->line, OP_GET_PRIVATE, reg, index);
-							// emit_byte_or_short(emitter, expression->line, OP_GET_PRIVATE, OP_GET_PRIVATE_LONG, index);
 						}
 					}
 				} else {
 					if (ref) {
 						NOT_IMPLEMENTED
+						// emit_arged_op(emitter, expression->line, ref ? OP_REFERENCE_UPVALUE : OP_GET_UPVALUE, (uint8_t) index);
 					} else {
 						emit_abx_instruction(emitter, expression->line, OP_GET_UPVALUE, reg, index);
 					}
-					// emit_arged_op(emitter, expression->line, ref ? OP_REFERENCE_UPVALUE : OP_GET_UPVALUE, (uint8_t) index);
 				}
 			} else {
 				if (ref) {
@@ -1311,9 +1310,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				}
 			} else {
 				uint sequence = reserve_register(emitter);
-
-				add_local(emitter, "seq ", 4, statement->line, false, sequence);
-				mark_local_initialized(emitter, sequence);
+				mark_local_initialized(emitter, add_local(emitter, "seq ", 4, statement->line, false, sequence));
 
 				uint8_t condition_reg = reserve_register(emitter);
 
@@ -1321,9 +1318,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, sequence, condition_reg, 0);
 
 				uint iterator = reserve_register(emitter);
-
-				add_local(emitter, "iter ", 5, statement->line, false, iterator);
-				mark_local_initialized(emitter, iterator);
+				mark_local_initialized(emitter, add_local(emitter, "iter ", 5, statement->line, false, iterator));
 
 				emit_abc_instruction(emitter, emitter->last_line, OP_LOAD_NULL, iterator, 0, 0);
 
@@ -1348,8 +1343,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				LitVarStatement* var = (LitVarStatement*) stmt->var;
 				uint local = reserve_register(emitter);
 
-				add_local(emitter, var->name, var->length, statement->line, false, local);
-				mark_local_initialized(emitter, local);
+				mark_local_initialized(emitter, add_local(emitter, var->name, var->length, statement->line, false, local));
 
 				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, tmp_reg_a, sequence, 0);
 				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, tmp_reg_b, iterator, 0);

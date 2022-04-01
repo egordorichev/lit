@@ -285,6 +285,7 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	frame->ip = function->chunk.code;
 	frame->closure = NULL;
 	frame->function = function;
+
 	// "Duplicated" code due to lit_ensure_fiber_registers messing with register pointers
 	frame->slots = (fiber->frame_count > 1 ? (fiber->frames[fiber->frame_count - 2].slots + (int) fiber->frames[fiber->frame_count - 2].function->max_registers) : fiber->registers);
 	frame->result_ignored = false;
