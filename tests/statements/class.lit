@@ -92,7 +92,7 @@ class Creature {
 }
 
 var c = new Creature {
-	test = 32
+	test: 32
 }
 
 print(c.field) // Expected: null

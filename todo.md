@@ -1,14 +1,11 @@
 # register based
 
-* else-if's
 * ref's
 * varg
 * make sure missing args are null
 * arg default values
 * OP_INVOKE_SUPER
-* OP_INVOKE_SUPER_IGNORING
 * OP_GET_SUPER
-* OP_INVOKE_IGNORING
 * check all operator overloads with constants
 
 # docs

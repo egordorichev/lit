@@ -1,22 +1,81 @@
-class Awesome {
 
+if (false) {
+    print("bad")
+} else if (false) {
+    print("bad")
+} else {
+    print("good") // Expected: good
 }
 
-var instance = new Awesome()
-print(instance.test) // Expected: null
+if (false) {
+    print("bad")
+} else if (true) {
+    print("good") // Expected: good
+} else {
+    print("bad")
+}
 
-instance.test = 32
-print(instance.test) // Expected: 32
+if (true) {
+    print("good") // Expected: good
+} else if (true) {
+    print("bad")
+} else {
+    print("bad")
+}
 
-print(instance.test = 48) // Expected: 48
-print(instance.test) // Expected: 48
+if (false) {
+    print("bad")
+} else if (false) {
+    print("bad")
+} else if (false) {
+    print("bad")
+} else {
+    print("good") // Expected: good
+}
 
-var a = null
-print(a?.prop) // Expected: null
-a = instance
+if (false) {
+    print("bad")
+} else if (false) {
+    print("bad")
+} else if (true) {
+    print("good") // Expected: good
+} else {
+    print("bad")
+}
 
-print(a?.prop) // Expected: null
-print(a?.prop?.test) // Expected: null
+if (true) {
+    print("good") // Expected: good
+} else if (true) {
+    print("bad")
+} else if (false) {
+    print("bad")
+} else {
+    print("bad")
+}
 
-a.prop = 32
-print(a?.prop) // Expected: 32
+if (false) {
+    print("bad")
+} else if (true) {
+    print("good") // Expected: good
+} else if (false) {
+    print("bad")
+} else {
+    print("bad")
+}
+
+if !(false) {
+    print("good") // Expected: good
+}
+
+if (false) {
+    print("bad")
+} else if !(false) {
+    print("good") // Expected: good
+}
+
+if !(true && true) {
+    print("oops")
+}
+
+print(true ? 32 : 10) // Expected: 32
+print(10 > 40 ? 59 : 9) // Expected: 9

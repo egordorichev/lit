@@ -1011,6 +1011,29 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 			break;
 		}
 
+		case IF_EXPRESSION: {
+			LitIfExpression* expr = (LitIfExpression*) expression;
+			uint8_t condition_reg = reserve_register(emitter);
+
+			emit_expression(emitter, expr->condition, condition_reg);
+
+			uint condition_branch_skip = emit_tmp_instruction(emitter);
+			free_register(emitter, condition_reg);
+
+			int64_t start = emitter->chunk->count;
+			emit_expression(emitter, expr->if_branch, reg);
+
+			uint else_skip = emit_tmp_instruction(emitter);
+
+			patch_instruction(emitter, condition_branch_skip, LIT_FORM_ABX_INSTRUCTION(OP_FALSE_JUMP, condition_reg, (int64_t) emitter->chunk->count - start));
+
+			int64_t else_start = emitter->chunk->count;
+			emit_expression(emitter, expr->else_branch, reg);
+			patch_instruction(emitter, else_skip, LIT_FORM_ASBX_INSTRUCTION(OP_JUMP, 0, (int64_t) emitter->chunk->count - else_start));
+
+			break;
+		}
+
 		default: {
 			error(emitter, expression->line, ERROR_UNKNOWN_EXPRESSION, (int) expression->type);
 			break;
@@ -1098,7 +1121,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			emit_expression(emitter, stmt->condition, condition_reg);
 
 			uint condition_branch_skip = emit_tmp_instruction(emitter);
-			uint else_skip;
+			uint else_skip = 0;
 
 			free_register(emitter, condition_reg);
 
@@ -1111,10 +1134,40 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			patch_instruction(emitter, condition_branch_skip, LIT_FORM_ABX_INSTRUCTION(OP_FALSE_JUMP, condition_reg, (int64_t) emitter->chunk->count - start));
 
+			uint end_jump_count = stmt->elseif_branches == NULL ? 0 : stmt->elseif_branches->count;
+			uint64_t end_jumps[end_jump_count];
+
+			if (stmt->elseif_branches != NULL) {
+				for (uint i = 0; i < stmt->elseif_branches->count; i++) {
+					LitExpression *e = stmt->elseif_conditions->values[i];
+
+					if (e == NULL) {
+						continue;
+					}
+
+					uint8_t elseif_condition_reg = reserve_register(emitter);
+					emit_expression(emitter, e, elseif_condition_reg);
+					uint64_t next_jump = emit_tmp_instruction(emitter);
+					free_register(emitter, elseif_condition_reg);
+
+					emit_statement_scoped(emitter, stmt->elseif_branches->values[i]);
+					end_jumps[i] = emit_tmp_instruction(emitter);
+					patch_instruction(emitter, next_jump, LIT_FORM_ABX_INSTRUCTION(OP_FALSE_JUMP, elseif_condition_reg, (int64_t) emitter->chunk->count - next_jump - 1));
+				}
+			}
+
 			if (stmt->else_branch) {
 				int64_t else_start = emitter->chunk->count;
 				emit_statement_scoped(emitter, stmt->else_branch);
-				patch_instruction(emitter, else_skip, LIT_FORM_ASBX_INSTRUCTION(OP_JUMP, 0, (int64_t) emitter->chunk->count - else_start));
+				patch_instruction(emitter, else_skip, LIT_FORM_ASBX_INSTRUCTION(OP_JUMP, 0, (int64_t) emitter->chunk->count - else_skip - 1));
+			}
+
+			for (uint i = 0; i < end_jump_count; i++) {
+				if (stmt->elseif_conditions->values[i] == NULL) {
+					continue;
+				}
+
+				patch_instruction(emitter, end_jumps[i], LIT_FORM_ASBX_INSTRUCTION(OP_JUMP, 0, (int64_t) emitter->chunk->count - end_jumps[i] - 1));
 			}
 
 			break;
