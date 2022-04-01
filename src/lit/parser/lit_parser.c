@@ -606,7 +606,7 @@ static LitExpression* parse_range(LitParser* parser, LitExpression* previous, bo
 static LitExpression* parse_ternary_or_question(LitParser* parser, LitExpression* previous, bool can_assign) {
 	uint line = parser->previous.line;
 
-	if (match(parser, LTOKEN_DOT) || match(parser, LTOKEN_SMALL_ARROW)) {
+	if (match(parser, LTOKEN_DOT)/* || match(parser, LTOKEN_SMALL_ARROW)*/) {
 		bool ignored = parser->previous.type == LTOKEN_SMALL_ARROW;
 		consume(parser, LTOKEN_IDENTIFIER, ignored ? "property name after '->'" : "property name after '.'");
 		return (LitExpression*) lit_create_get_expression(parser->state, line, previous, parser->previous.start, parser->previous.length, true, ignored);
@@ -1256,7 +1256,7 @@ static void setup_rules() {
 	rules[LTOKEN_BAR_BAR] = (LitParseRule) { NULL, parse_or, PREC_AND };
 	rules[LTOKEN_QUESTION_QUESTION] = (LitParseRule) { NULL, parse_null_filter, PREC_NULL };
 	rules[LTOKEN_DOT] = (LitParseRule) { NULL, parse_dot, PREC_CALL };
-	rules[LTOKEN_SMALL_ARROW] = (LitParseRule) { NULL, parse_dot, PREC_CALL };
+	// rules[LTOKEN_SMALL_ARROW] = (LitParseRule) { NULL, parse_dot, PREC_CALL };
 	rules[LTOKEN_DOT_DOT] = (LitParseRule) { NULL, parse_range, PREC_RANGE };
 	rules[LTOKEN_DOT_DOT_DOT] = (LitParseRule) { parse_variable_expression, NULL, PREC_ASSIGNMENT };
 	rules[LTOKEN_LEFT_BRACKET] = (LitParseRule) { parse_array, parse_subscript, PREC_NONE };

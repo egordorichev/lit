@@ -810,15 +810,17 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 			emit_expression(emitter, expr->where, reg);
 
 			if (jump) {
-				/*expr->jump = emit_jump(emitter, OP_JUMP_IF_NULL, emitter->last_line);
+				expr->jump = emit_tmp_instruction(emitter);
 
 				if (!expr->ignore_emit) {
-					emit_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
-					emit_op(emitter, emitter->last_line, ref ? OP_REFERENCE_FIELD : OP_GET_FIELD);
+					if (ref) {
+						NOT_IMPLEMENTED
+					} else {
+						emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, reg, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length))));
+					}
 				}
 
-				patch_jump(emitter, expr->jump, emitter->last_line);*/
-				NOT_IMPLEMENTED
+				patch_instruction(emitter, expr->jump, LIT_FORM_ASBX_INSTRUCTION(OP_NULL_JUMP, reg, (int64_t) emitter->chunk->count - expr->jump - 1));
 			} else if (emit) {
 				int constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 

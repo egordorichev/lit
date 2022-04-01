@@ -5,7 +5,6 @@
 * varg
 * make sure missing args are null
 * arg default values
-* thing?.call()
 * OP_INVOKE_SUPER
 * OP_INVOKE_SUPER_IGNORING
 * OP_GET_SUPER
@@ -16,7 +15,6 @@
 
 * ??
 * ?.
-* ->
 * refs
 * binary operators (like floor divide)
 * default arg values
