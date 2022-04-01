@@ -10,7 +10,7 @@ class B : A {
 	}
 
 	hey() {
-		super.test()
+		print(super.test)
 	}
 }
 

@@ -1011,6 +1011,23 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(GET_SUPER_METHOD) {
+		LitValue instance = registers[LIT_INSTRUCTION_B(instruction)];
+		LitClass* klass = AS_INSTANCE(instance)->klass->super;
+		LitString* method_name = AS_STRING(constants[LIT_INSTRUCTION_C(instruction)]);
+
+		LitValue value;
+
+		if (lit_table_get(&klass->methods, method_name, &value)) {
+			value = OBJECT_VALUE(lit_create_bound_method(state, instance, value));
+		} else {
+			value = NULL_VALUE;
+		}
+
+		registers[LIT_INSTRUCTION_A(instruction)] = value;
+		DISPATCH_NEXT()
+	}
+
 	CASE_CODE(SET_FIELD) {
 		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
 		LitValue instance = registers[result_reg];

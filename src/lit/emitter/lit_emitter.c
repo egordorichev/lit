@@ -1049,12 +1049,13 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 
 			if (!expr->ignore_emit) {
 				uint8_t index = resolve_upvalue(emitter, emitter->compiler, "super", 5, emitter->last_line);
+				emit_abc_instruction(emitter, expression->line, OP_MOVE, reg, 0, 0);
 
-				/*emit_arged_op(emitter, expression->line, OP_GET_LOCAL, 0);
-				emit_arged_op(emitter, expression->line, OP_GET_UPVALUE, index);
-				emit_op(emitter, expression->line, OP_GET_SUPER_METHOD);
-				emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(expr->method)));*/
-				NOT_IMPLEMENTED
+				uint8_t tmp_reg = reserve_register(emitter);
+				emit_abx_instruction(emitter, expression->line, OP_GET_UPVALUE, tmp_reg, index);
+				emit_abc_instruction(emitter, expression->line, OP_GET_SUPER_METHOD, reg, tmp_reg, add_constant(emitter, expression->line, OBJECT_VALUE(expr->method)));
+
+				free_register(emitter, tmp_reg);
 			}
 
 			break;
