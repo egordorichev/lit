@@ -165,9 +165,6 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 		fiber->frame_capacity = new_capacity;
 	}
 
-	fiber->registers_used += function->max_registers;
-	lit_ensure_fiber_registers(vm->state, fiber, fiber->registers_used);
-
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 	LitCallFrame* previous_frame = &fiber->frames[fiber->frame_count - 2];
 
@@ -177,6 +174,8 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	frame->slots = previous_frame->slots + callee_register;
 	frame->result_ignored = false;
 	frame->return_address = previous_frame->slots + (int) callee_register;
+
+	lit_ensure_fiber_registers(vm->state, fiber, frame->slots - fiber->registers + function->max_registers);
 
 	return true;
 }
@@ -348,7 +347,6 @@ LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 	LitFiber* fiber = lit_create_fiber(state, module, module->main_function);
 	vm->fiber = fiber;
 
-	// lit_push(vm, OBJECT_VALUE(module->main_function));
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 
 	return result;
@@ -520,8 +518,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	registers[0] = OBJECT_VALUE(frame->function);
 	TRACE_FRAME()
 
-	fiber->registers_used = frame->function->max_registers;
-
 #ifdef LIT_TRACE_EXECUTION
 	printf("\nstart:\n\n");
 #endif
@@ -533,7 +529,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		if (frame->function->max_registers > 0) {
 			printf("        |\n        | f%i ", fiber->frame_count);
 
-			for (int i = 0; i <= frame->function->max_registers; i++) {
+			for (int i = 0; i < frame->function->max_registers; i++) {
 				printf("[ ");
 				lit_print_value(*(registers + i));
 				printf(" ]");
@@ -603,7 +599,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		LitValue value = registers[LIT_INSTRUCTION_A(instruction)];
 
 		fiber->frame_count--;
-		fiber->registers_used -= fiber->frames[fiber->frame_count].function->max_registers;
 
 		if (fiber->frame_count == 0 || frame->return_address == NULL) {
 			return (LitInterpretResult) { INTERPRET_OK, value };

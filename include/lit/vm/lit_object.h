@@ -287,7 +287,6 @@ typedef struct sLitFiber {
 
 	LitValue* registers;
 	uint registers_allocated;
-	uint registers_used;
 
 	LitCallFrame* frames;
 	uint frame_capacity;

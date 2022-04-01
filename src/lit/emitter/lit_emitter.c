@@ -94,7 +94,7 @@ static uint8_t reserve_register(LitEmitter* emitter) {
 	}
 
 	compiler->function->max_registers = fmax(compiler->function->max_registers, ++compiler->registers_used);
-	return compiler->registers_used;
+	return compiler->registers_used - 1;
 }
 
 static void free_register(LitEmitter* emitter, uint16_t reg) {
@@ -138,16 +138,18 @@ static void init_compiler(LitEmitter* emitter, LitCompiler* compiler, LitFunctio
 
 	if (type == FUNCTION_METHOD || type == FUNCTION_STATIC_METHOD || type == FUNCTION_CONSTRUCTOR) {
 		lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
-			"this", 4, -1, false, false, 0
+			"this", 4, -1, false, false, reserve_register(emitter)
 		});
 	} else {
 		lit_locals_write(emitter->state, &compiler->locals, (LitLocal) {
-			"", 0, -1, false, false, 0
+			"", 0, -1, false, false, reserve_register(emitter)
 		});
 	}
 }
 
 static LitFunction* end_compiler(LitEmitter* emitter, LitString* name) {
+	free_register(emitter, 0);
+
 	if (emitter->compiler->registers_used > 0) {
 		error(emitter, emitter->last_line, ERROR_NOT_ALL_REGISTERS_FREED, emitter->compiler->registers_used);
 	}

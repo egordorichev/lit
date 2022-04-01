@@ -155,7 +155,7 @@ LIT_METHOD(object_class) {
 }
 
 LIT_METHOD(object_toString) {
-	return OBJECT_VALUE(lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_get_class_for(vm->state, instance)->name)));
+	return lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_get_class_for(vm->state, instance)->name));
 }
 
 LIT_METHOD(object_subscript) {
