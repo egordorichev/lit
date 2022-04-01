@@ -1,81 +1,17 @@
-
-if (false) {
-    print("bad")
-} else if (false) {
-    print("bad")
-} else {
-    print("good") // Expected: good
+class A {
+	test() {
+		print("yes")
+	}
 }
 
-if (false) {
-    print("bad")
-} else if (true) {
-    print("good") // Expected: good
-} else {
-    print("bad")
+class B : A {
+	test() {
+		print("no")
+	}
+
+	hey() {
+		super.test()
+	}
 }
 
-if (true) {
-    print("good") // Expected: good
-} else if (true) {
-    print("bad")
-} else {
-    print("bad")
-}
-
-if (false) {
-    print("bad")
-} else if (false) {
-    print("bad")
-} else if (false) {
-    print("bad")
-} else {
-    print("good") // Expected: good
-}
-
-if (false) {
-    print("bad")
-} else if (false) {
-    print("bad")
-} else if (true) {
-    print("good") // Expected: good
-} else {
-    print("bad")
-}
-
-if (true) {
-    print("good") // Expected: good
-} else if (true) {
-    print("bad")
-} else if (false) {
-    print("bad")
-} else {
-    print("bad")
-}
-
-if (false) {
-    print("bad")
-} else if (true) {
-    print("good") // Expected: good
-} else if (false) {
-    print("bad")
-} else {
-    print("bad")
-}
-
-if !(false) {
-    print("good") // Expected: good
-}
-
-if (false) {
-    print("bad")
-} else if !(false) {
-    print("good") // Expected: good
-}
-
-if !(true && true) {
-    print("oops")
-}
-
-print(true ? 32 : 10) // Expected: 32
-print(10 > 40 ? 59 : 9) // Expected: 9
+new B().hey()

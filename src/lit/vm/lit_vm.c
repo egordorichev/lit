@@ -1168,6 +1168,38 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		DISPATCH_NEXT()
 	}
 
+	CASE_CODE(INVOKE_SUPER) {
+		WRITE_FRAME()
+
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+		LitValue instance = registers[result_reg];
+
+		if (IS_NULL(instance)) {
+			RUNTIME_ERROR("Attempt to index a null value")
+		}
+
+		LitClass* klass = lit_get_class_for(state, instance)->super;
+
+		if (klass == NULL) {
+			RUNTIME_ERROR("Only instances and classes have methods")
+		}
+
+		LitString* method_name = AS_STRING(constants[LIT_INSTRUCTION_C(instruction)]);
+		int arg_count = LIT_INSTRUCTION_B(instruction) - 1;
+		LitValue method;
+
+		if ((IS_INSTANCE(instance) && (lit_table_get(&AS_INSTANCE(instance)->fields, method_name, &method))) || lit_table_get(&klass->methods, method_name, &method)) {
+			CALL_VALUE(method, result_reg, arg_count)
+		} else if (IS_CLASS(instance)&& (lit_table_get(&AS_CLASS(instance)->static_fields, method_name, &method))) {
+			CALL_VALUE(method, result_reg, arg_count)
+		} else {
+			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars)
+		}
+
+		READ_FRAME()
+		DISPATCH_NEXT()
+	}
+
 	CASE_CODE(SUBSCRIPT_GET) {
 		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
 		LitValue instance = GET_RC(result_reg);

@@ -4,8 +4,6 @@
 * varg
 * make sure missing args are null
 * arg default values
-* OP_INVOKE_SUPER
-* OP_GET_SUPER
 * check all operator overloads with constants
 
 # docs

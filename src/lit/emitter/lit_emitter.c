@@ -768,7 +768,11 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				int constant = add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length)));
 				emit_abc_instruction(emitter, expression->line, OP_INVOKE, reg, arg_count + 1, constant);
 			} else if (super) {
-				NOT_IMPLEMENTED
+				LitSuperExpression *e = (LitSuperExpression*) expr->callee;
+				uint8_t index = resolve_upvalue(emitter, emitter->compiler, "super", 5, emitter->last_line);
+
+				emit_abx_instruction(emitter, expression->line, OP_GET_UPVALUE, reg, index);
+				emit_abc_instruction(emitter, emitter->last_line, OP_INVOKE_SUPER, reg, arg_count + 1, add_constant(emitter, emitter->last_line, OBJECT_VALUE(e->method)));
 			} else {
 				emit_abc_instruction(emitter, expression->line, OP_CALL, reg, arg_count + 1, 1);
 			}
@@ -1030,6 +1034,28 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 			int64_t else_start = emitter->chunk->count;
 			emit_expression(emitter, expr->else_branch, reg);
 			patch_instruction(emitter, else_skip, LIT_FORM_ASBX_INSTRUCTION(OP_JUMP, 0, (int64_t) emitter->chunk->count - else_start));
+
+			break;
+		}
+
+		case SUPER_EXPRESSION: {
+			if (emitter->compiler->type == FUNCTION_STATIC_METHOD) {
+				error(emitter, expression->line, ERROR_SUPER_MISSUSE, "in static methods");
+			} else if (!emitter->class_has_super) {
+				error(emitter, expression->line, ERROR_NO_SUPER, emitter->class_name->chars);
+			}
+
+			LitSuperExpression* expr = (LitSuperExpression*) expression;
+
+			if (!expr->ignore_emit) {
+				uint8_t index = resolve_upvalue(emitter, emitter->compiler, "super", 5, emitter->last_line);
+
+				/*emit_arged_op(emitter, expression->line, OP_GET_LOCAL, 0);
+				emit_arged_op(emitter, expression->line, OP_GET_UPVALUE, index);
+				emit_op(emitter, expression->line, OP_GET_SUPER_METHOD);
+				emit_short(emitter, expression->line, add_constant(emitter, expression->line, OBJECT_VALUE(expr->method)));*/
+				NOT_IMPLEMENTED
+			}
 
 			break;
 		}
