@@ -1250,9 +1250,70 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		} else if (IS_INSTANCE(operand)) {
 			lit_table_set(state, &AS_INSTANCE(operand)->fields, key, value);
 		} else {
-			RUNTIME_ERROR_VARG("Expected an object or a map as the operand, got %s", lit_get_value_type(operand));
+			RUNTIME_ERROR_VARG("Expected an object or a map as the operand, got %s", lit_get_value_type(operand))
 		}
 
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(REFERENCE_GLOBAL) {
+		LitString* name = AS_STRING(constants[LIT_INSTRUCTION_BX(instruction)]);
+		LitValue* value;
+
+		if (lit_table_get_slot(&vm->globals->values, name, &value)) {
+			registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_reference(state, value));
+		} else {
+			RUNTIME_ERROR("Attempt to reference a null value")
+		}
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(REFERENCE_PRIVATE) {
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_reference(state, &privates[LIT_INSTRUCTION_BX(instruction)]));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(REFERENCE_LOCAL) {
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_reference(state, &registers[LIT_INSTRUCTION_B(instruction)]));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(REFERENCE_UPVALUE) {
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_reference(state, upvalues[LIT_INSTRUCTION_BX(instruction)]->location));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(REFERENCE_FIELD) {
+		LitValue object = registers[LIT_INSTRUCTION_B(instruction)];
+
+		if (IS_NULL(object)) {
+			RUNTIME_ERROR("Attempt to index a null value")
+		}
+
+		LitValue* value;
+		LitString* name = AS_STRING(constants[LIT_INSTRUCTION_C(instruction)]);
+
+		if (IS_INSTANCE(object)) {
+			if (!lit_table_get_slot(&AS_INSTANCE(object)->fields, name, &value)) {
+				RUNTIME_ERROR("Attempt to reference a null value")
+			}
+		} else {
+			RUNTIME_ERROR("You can only reference fields of real instances")
+		}
+
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_reference(state, value));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(SET_REFERENCE) {
+		LitValue reference = registers[LIT_INSTRUCTION_A(instruction)];
+
+		if (!IS_REFERENCE(reference)) {
+			RUNTIME_ERROR("Provided value is not a reference")
+		}
+
+		*AS_REFERENCE(reference)->slot = registers[LIT_INSTRUCTION_B(instruction)];
 		DISPATCH_NEXT()
 	}
 
