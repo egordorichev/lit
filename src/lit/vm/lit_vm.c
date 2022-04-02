@@ -183,10 +183,10 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitValue alternate_callee) {
 	LitCallFrame* frame = &vm->fiber->frames[vm->fiber->frame_count - 1];
 	LitValue callee = IS_NULL(alternate_callee) ? frame->slots[callee_register] : alternate_callee;
-
+	
 	if (IS_OBJECT(callee)) {
 		if (lit_set_native_exit_jump()) {
-			return true;
+			return false;
 		}
 
 		switch (OBJECT_TYPE(callee)) {

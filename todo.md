@@ -5,6 +5,7 @@
 * make sure missing args are null
 * arg default values
 * check all operator overloads with constants
+* c errors don't stop the flow (like failed to require module)
 
 # docs
 

@@ -1478,33 +1478,33 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 
 			bool found = false;
 
-            // TODO: was rewritten to work on windows, needs checks!!!
-            while ((ep = readdir(dir))) {
-                const char* name = ep->d_name;
-                int name_length = (int) strlen(name);
+      // TODO: was rewritten to work on windows, needs checks!!!
+      while ((ep = readdir(dir))) {
+        const char* name = ep->d_name;
+        int name_length = (int) strlen(name);
 
-                if (name_length <= 4 || !(strcmp(name + name_length - 4, ".lit") == 0 || strcmp(name + name_length - 4, ".lbc") == 0)) {
-                    continue;
-                }
+        if (name_length <= 4 || !(strcmp(name + name_length - 4, ".lit") == 0 || strcmp(name + name_length - 4, ".lbc") == 0)) {
+            continue;
+        }
 
-                char dir_path[length + name_length - 2];
-                dir_path[length + name_length - 3] = '\0';
+        char dir_path[length + name_length - 2];
+        dir_path[length + name_length - 3] = '\0';
 
-                memcpy((void*) dir_path, path, length);
-                memcpy((void*) dir_path + length + 1, name, name_length - 4);
-                dir_path[length] = '/';
+        memcpy((void*) dir_path, path, length);
+        memcpy((void*) dir_path + length + 1, name, name_length - 4);
+        dir_path[length] = '/';
 
-                struct stat st;
-                stat(dir_path, &st);
+        struct stat st;
+        stat(dir_path, &st);
 
-                if (S_ISREG(st.st_mode)) {
-                    dir_path[length] = '.';
+        if (S_ISREG(st.st_mode)) {
+          dir_path[length] = '.';
 
-                    if (!attempt_to_require(vm, args + arg_count, 0, dir_path, false, false)) {
-                        lit_runtime_error_exiting(vm, "Failed to require module '%s'", name);
-                    } else {
-                        found = true;
-                    }
+          if (!attempt_to_require(vm, args + arg_count, 0, dir_path, false, false)) {
+              lit_runtime_error_exiting(vm, "Failed to require module '%s'", name);
+          } else {
+              found = true;
+          }
 				}
 			}
 
