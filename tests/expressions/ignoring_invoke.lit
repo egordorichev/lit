@@ -1,4 +1,6 @@
-class Awesome {
+// Outdated feature
+
+/*class Awesome {
 	setup() {
 		this.prop = "test"
 		return 32
@@ -29,4 +31,4 @@ class Test : Awesome {
 
 var t = new Test()
 t.performTest() // Expected: test
-t.testSelf() // Expected: 48
+t.testSelf() // Expected: 48*/

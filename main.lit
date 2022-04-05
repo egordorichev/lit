@@ -1,5 +1,2 @@
-function a(b) {
-	print(b)
-}
-
-a()
+var a = null
+print(a?.d)

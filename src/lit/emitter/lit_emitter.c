@@ -377,6 +377,10 @@ static void mark_private_initialized(LitEmitter* emitter, uint index) {
 }
 
 static void resolve_statement(LitEmitter* emitter, LitStatement* statement) {
+	if (statement == NULL) {
+		return;
+	}
+
 	switch (statement->type) {
 		case VAR_STATEMENT: {
 			LitVarStatement* stmt = (LitVarStatement*) statement;
@@ -507,6 +511,18 @@ static bool emit_parameters(LitEmitter* emitter, LitParameters* parameters, uint
 
 		int index = add_local(emitter, parameter->name, parameter->length, line, false, reg);
 		mark_local_initialized(emitter, index);
+
+		// Vararg ...
+		if (parameter->length == 3 && memcmp(parameter->name, "...", 3) == 0) {
+			return true;
+		}
+
+		if (parameter->default_value != NULL) {
+			uint jump = emit_tmp_instruction(emitter);
+
+			emit_expression(emitter, parameter->default_value, reg);
+			patch_instruction(emitter, jump, LIT_FORM_ABX_INSTRUCTION(OP_NON_NULL_JUMP, reg, (int64_t) emitter->chunk->count - jump - 1));
+		}
 	}
 
 	return false;
@@ -830,7 +846,7 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 					}
 				}
 
-				patch_instruction(emitter, expr->jump, LIT_FORM_ASBX_INSTRUCTION(OP_NULL_JUMP, reg, (int64_t) emitter->chunk->count - expr->jump - 1));
+				patch_instruction(emitter, expr->jump, LIT_FORM_ABX_INSTRUCTION(OP_NULL_JUMP, reg, (int64_t) emitter->chunk->count - expr->jump - 1));
 			} else if (emit) {
 				int constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 
