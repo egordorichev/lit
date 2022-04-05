@@ -542,7 +542,7 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				uint16_t constant = add_constant(emitter, expression->line, value);
 				SET_BIT(constant, 8);
 
-				emit_abx_instruction(emitter, expression->line, OP_MOVE, reg, constant);
+				emit_abc_instruction(emitter, expression->line, OP_MOVE, reg, constant, 0);
 			}
 
 			break;
@@ -605,40 +605,34 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 					index = resolve_private(emitter, expr->name, expr->length, expression->line);
 
 					if (index == -1) {
+						uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+
 						if (ref) {
-							NOT_IMPLEMENTED
+							emit_abx_instruction(emitter, expression->line, OP_REFERENCE_GLOBAL, reg, constant);
 						} else {
-							uint16_t constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
-							emit_abx_instruction(emitter, expression->line, OP_GET_GLOBAL, constant, reg);
+							emit_abx_instruction(emitter, expression->line, OP_GET_GLOBAL,  reg, constant);
 						}
 					} else {
 						if (ref) {
-							NOT_IMPLEMENTED
-							// emit_op(emitter, expression->line, OP_REFERENCE_PRIVATE);
-							// emit_short(emitter, expression->line, index);
+							emit_abx_instruction(emitter, expression->line, OP_REFERENCE_PRIVATE, reg, index);
 						} else {
 							emit_abx_instruction(emitter, expression->line, OP_GET_PRIVATE, reg, index);
 						}
 					}
 				} else {
 					if (ref) {
-						NOT_IMPLEMENTED
-						// emit_arged_op(emitter, expression->line, ref ? OP_REFERENCE_UPVALUE : OP_GET_UPVALUE, (uint8_t) index);
+						emit_abx_instruction(emitter, expression->line, OP_REFERENCE_UPVALUE, reg, index);
 					} else {
 						emit_abx_instruction(emitter, expression->line, OP_GET_UPVALUE, reg, index);
 					}
 				}
 			} else {
-				if (ref) {
-					NOT_IMPLEMENTED
-					// emit_op(emitter, expression->line, OP_REFERENCE_LOCAL);
-					// emit_short(emitter, expression->line, index);
-				} else {
-					uint16_t r = emitter->compiler->locals.values[index].reg;
+				uint16_t r = emitter->compiler->locals.values[index].reg;
 
-					if (reg != r) {
-						emit_abx_instruction(emitter, expression->line, OP_MOVE, reg, r);
-					}
+				if (ref) {
+					emit_abc_instruction(emitter, expression->line, OP_REFERENCE_LOCAL, reg, r, 0);
+				} else if (reg != r) {
+					emit_abc_instruction(emitter, expression->line, OP_MOVE, reg, r, 0);
 				}
 			}
 
@@ -722,6 +716,16 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				int constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length)));
 
 				emit_abc_instruction(emitter, expression->line, OP_SET_FIELD, r, constant, reg);
+				free_register(emitter, r);
+
+				break;
+			} else if (expr->to->type == REFERENCE_EXPRESSION) {
+				uint8_t r = reserve_register(emitter);
+				emit_expression(emitter, ((LitReferenceExpression *) expr->to)->to, r);
+
+				emit_expression(emitter, expr->value, reg);
+
+				emit_abc_instruction(emitter, expression->line, OP_SET_REFERENCE, r, reg, 0);
 				free_register(emitter, r);
 
 				break;
@@ -817,10 +821,11 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				expr->jump = emit_tmp_instruction(emitter);
 
 				if (!expr->ignore_emit) {
+					int constant = add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 					if (ref) {
-						NOT_IMPLEMENTED
+						emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, reg, constant);
 					} else {
-						emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, reg, add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length))));
+						emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, reg, constant);
 					}
 				}
 
@@ -829,11 +834,10 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				int constant = add_constant(emitter, expression->line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 
 				if (ref) {
-					// emit_op(emitter, emitter->last_line, ref ? OP_REFERENCE_FIELD : OP_GET_FIELD);
-					NOT_IMPLEMENTED
+					emit_abc_instruction(emitter, expression->line, OP_REFERENCE_FIELD, reg, reg, constant);
+				} else {
+					emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, reg, constant);
 				}
-
-				emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, reg, constant);
 			}
 
 			break;
@@ -1057,6 +1061,23 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 
 				free_register(emitter, tmp_reg);
 			}
+
+			break;
+		}
+
+		case REFERENCE_EXPRESSION: {
+			LitExpression* to = ((LitReferenceExpression*) expression)->to;
+
+			if (to->type != VAR_EXPRESSION && to->type != GET_EXPRESSION && to->type != THIS_EXPRESSION && to->type != SUPER_EXPRESSION) {
+				error(emitter, expression->line, ERROR_INVALID_REFERENCE_TARGET);
+				break;
+			}
+
+			int old = emitter->emit_reference;
+
+			emitter->emit_reference++;
+			emit_expression(emitter, to, reg);
+			emitter->emit_reference = old;
 
 			break;
 		}
@@ -1492,7 +1513,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 				uint16_t constant = add_constant(emitter, statement->line, OBJECT_VALUE(stmt->parent));
 
 				b = reserve_register(emitter);
-				emit_abx_instruction(emitter, statement->line, OP_GET_GLOBAL, constant, b);
+				emit_abx_instruction(emitter, statement->line, OP_GET_GLOBAL,  b, constant);
 			}
 
 			int name_constant = add_constant(emitter, emitter->last_line, OBJECT_VALUE(stmt->name));

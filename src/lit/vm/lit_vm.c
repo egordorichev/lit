@@ -827,9 +827,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(GET_GLOBAL) {
-		LitValue *reg = &registers[LIT_INSTRUCTION_BX(instruction)];
+		LitValue *reg = &registers[LIT_INSTRUCTION_A(instruction)];
 
-		if (!lit_table_get(globals, AS_STRING(constants[LIT_INSTRUCTION_A(instruction)]), reg)) {
+		if (!lit_table_get(globals, AS_STRING(constants[LIT_INSTRUCTION_BX(instruction)]), reg)) {
 			*reg = NULL_VALUE;
 		}
 

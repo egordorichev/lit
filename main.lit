@@ -1,21 +1,30 @@
-require("tests.examples.libs.example_library")
+var a = "Test"
+print(ref a) // Expected: Test
 
-// Since this function is defined without the export keyword, it won't be visible in this module
-print(moneyPrinter) // Expected: null
+g = 10
+print(ref g) // Expected: 10
 
-// But this function will be
-exampleFunction() // Expected: Hello, from the library!
+function test() {
+	var a = 32
+	print(ref a) // Expected: 32
+	a = 90
 
-// You can also return values from modules:
-print(require("libs.example_library")) // Expected: 1
+	return () => {
+		print(ref a) // Expected: 90
+	}
+}
 
-// Module class has also a few special tricks:
-var a = 32 + 2
-var b = "test"
+test()()
 
-// Note, that d is already in that array, even tho it was not initializated yet!
-print(Module.privates) // Expected: { _module = Module tests.examples.modules, d = null, a = 34, b = test }
-print(Module.loaded) // Expected: { tests.examples.modules = Module tests.examples.modules, tests.examples.libs.example_library = Module tests.examples.libs.example_library }
+var z = {
+	me: "Egor"
+}
 
-var d = 48
-print(Module.privates) // Expected: { _module = Module tests.examples.modules, d = 48, a = 34, b = test }
+print(ref z.me) // Expected: Egor
+
+function change(a) {
+	ref a = "Test"
+}
+
+change(ref z.me)
+print(z.me) // Expected: Test
