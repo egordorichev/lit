@@ -947,6 +947,7 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 
 			begin_scope(emitter);
 			bool vararg = emit_parameters(emitter, &expr->parameters, expression->line);
+			bool ended = false;
 
 			if (expr->body != NULL) {
 				bool single_expression = expr->body->type == EXPRESSION_STATEMENT;
@@ -962,11 +963,13 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 					emit_abc_instruction(emitter, expr->body->line, OP_RETURN, r, 0, 0);
 					free_register(emitter, r);
 				} else {
-					emit_statement(emitter, expr->body);
+					ended = emit_statement(emitter, expr->body);
 				}
 			}
 
-			end_scope(emitter);
+			if (!ended) {
+				end_scope(emitter);
+			}
 
 			LitFunction* function = end_compiler(emitter, name);
 
@@ -1650,6 +1653,50 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			if (closure) {
 				free_register(emitter, function_reg);
 			}
+
+			break;
+		}
+
+		case FIELD_STATEMENT: {
+			LitFieldStatement* stmt = (LitFieldStatement*) statement;
+			LitFunction* getter = NULL;
+			LitFunction* setter = NULL;
+
+			if (stmt->getter != NULL) {
+				LitCompiler compiler;
+				init_compiler(emitter, &compiler, stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD);
+
+				begin_scope(emitter);
+
+				if (!emit_statement(emitter, stmt->getter)) {
+					end_scope(emitter);
+				}
+
+				getter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:get @", OBJECT_VALUE(emitter->class_name), stmt->name)));
+			}
+
+			if (stmt->setter != NULL) {
+				LitCompiler compiler;
+				init_compiler(emitter, &compiler, stmt->is_static ? FUNCTION_STATIC_METHOD : FUNCTION_METHOD);
+
+				uint8_t reg = reserve_register(emitter);
+				mark_local_initialized(emitter, add_local(emitter, "value", 5, statement->line, false, reg));
+
+				begin_scope(emitter);
+
+				if (!emit_statement(emitter, stmt->setter)) {
+					end_scope(emitter);
+				}
+
+				free_register(emitter, reg);
+
+				setter = end_compiler(emitter, AS_STRING(lit_string_format(emitter->state, "@:set @", OBJECT_VALUE(emitter->class_name), stmt->name)));
+				setter->arg_count = 1;
+				setter->max_registers++;
+			}
+
+			LitField* field = lit_create_field(emitter->state, (LitObject*) getter, (LitObject*) setter);
+			emit_abc_instruction(emitter, statement->line, stmt->is_static ? OP_STATIC_FIELD : OP_METHOD, emitter->class_register, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)),add_constant(emitter, statement->line, OBJECT_VALUE(field)));
 
 			break;
 		}

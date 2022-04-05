@@ -1,11 +1,23 @@
-var a = null
-a?.test()
-
 class Awesome {
+	constructor(a) {
+		this.prop = a
+	}
+
 	test() {
-		print("Yes")
+		return 48
 	}
 }
 
-a = new Awesome()
-a?.test() // Expected: Yes
+class Best : Awesome {
+	getTest() {
+		return super.test
+	}
+}
+
+var z = new Best(32)
+var d = z.getTest()
+print(d())
+// print(z()) // Expected: bad
+
+//        | f1 [ function main ][ function print ][ function Awesome:test ][ Best instance ]
+//        | f1 [ function main ][ 48 ][ 48 ][ Best instance ]

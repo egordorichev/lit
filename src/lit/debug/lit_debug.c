@@ -112,8 +112,8 @@ static void print_binary_instruction(LitChunk* chunk, uint64_t instruction, cons
 static void print_global_instruction(LitChunk* chunk, uint64_t instruction, const char* name) {
 	printf("%s%s%s%*s", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "");
 
-	print_constant_arg(chunk, LIT_INSTRUCTION_A(instruction), false);
-	print_constant_or_register(chunk, LIT_INSTRUCTION_BX(instruction));
+	print_constant_arg(chunk, LIT_INSTRUCTION_BX(instruction), false);
+	print_constant_or_register(chunk, LIT_INSTRUCTION_A(instruction));
 
 	printf("\n");
 }

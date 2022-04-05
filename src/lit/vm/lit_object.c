@@ -452,12 +452,16 @@ void lit_ensure_fiber_registers(LitState* state, LitFiber* fiber, uint needed) {
 	fiber->registers_allocated = capacity;
 
 	if (fiber->registers != old_registers) {
-		for (uint i = 0; i < fiber->frame_capacity; i++) {
+		for (uint i = 0; i < fiber->frame_count; i++) {
 			LitCallFrame* frame = &fiber->frames[i];
 			int difference = (frame->slots - old_registers);
 
+			LitValue* old_slots = frame->slots;
 			frame->slots = fiber->registers + difference;
-			frame->return_address = fiber->registers + difference;
+
+			if (frame->return_address != NULL) {
+				frame->return_address = fiber->registers + (old_slots - old_registers);
+			}
 		}
 
 		for (LitUpvalue* upvalue = fiber->open_upvalues; upvalue != NULL; upvalue = upvalue->next) {

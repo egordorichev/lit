@@ -526,7 +526,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	TRACE_FRAME()
 
 #ifdef LIT_TRACE_EXECUTION
-	printf("\nstart:\n\n");
+	printf("fiber start:\n");
 #endif
 
 	dispatch:
@@ -604,10 +604,15 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	CASE_CODE(RETURN) {
 		LitValue value = registers[LIT_INSTRUCTION_A(instruction)];
+		close_upvalues(vm, registers);
 
 		fiber->frame_count--;
 
 		if (fiber->frame_count == 0 || frame->return_address == NULL) {
+			if (fiber->frame_count == 0) {
+				fiber->module->return_value = value;
+			}
+
 			return (LitInterpretResult) { INTERPRET_OK, value };
 		}
 
