@@ -30,5 +30,5 @@ class Test : Awesome {
 }
 
 var t = new Test()
-t.performTest() // Expected: test
-t.testSelf() // Expected: 48*/
+t.performTest()
+t.testSelf() */

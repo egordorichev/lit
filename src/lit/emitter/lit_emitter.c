@@ -801,6 +801,26 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				free_register(emitter, arg_regs[i]);
 			}
 
+			if (method) {
+				LitExpression* get = expr->callee;
+
+				while (get != NULL) {
+					if (get->type == GET_EXPRESSION) {
+						LitGetExpression* getter = (LitGetExpression*) get;
+
+						if (getter->jump > 0) {
+							patch_instruction(emitter, getter->jump, LIT_FORM_ABX_INSTRUCTION(OP_NULL_JUMP, reg, (int64_t) emitter->chunk->count - getter->jump - 1));
+						}
+
+						get = getter->where;
+					} else if (get->type == SUBSCRIPT_EXPRESSION) {
+						get = ((LitSubscriptExpression*) get)->array;
+					} else {
+						break;
+					}
+				}
+			}
+
 			if (expr->init == NULL) {
 				break;
 			}
