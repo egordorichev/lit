@@ -822,8 +822,9 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 
 				if (!expr->ignore_emit) {
 					int constant = add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
+
 					if (ref) {
-						emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, reg, constant);
+						emit_abc_instruction(emitter, expression->line, OP_REFERENCE_FIELD, reg, reg, constant);
 					} else {
 						emit_abc_instruction(emitter, expression->line, OP_GET_FIELD, reg, reg, constant);
 					}

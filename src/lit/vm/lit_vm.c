@@ -176,6 +176,13 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	frame->return_address = previous_frame->slots + (int) callee_register;
 
 	lit_ensure_fiber_registers(vm->state, fiber, frame->slots - fiber->registers + function->max_registers);
+	uint target_arg_count = (function == NULL ? closure->function : function)->arg_count;
+
+	if (target_arg_count > arg_count) {
+		for (uint i = arg_count; i < target_arg_count; i++) {
+			*(frame->slots + i + 1) = NULL_VALUE;
+		}
+	}
 
 	return true;
 }
