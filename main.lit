@@ -1,4 +1,12 @@
-class Awesome {
+function a(...) {
+	for (var b in ...) {
+		print(b)
+	}
+}
+
+a(10, 32)
+
+/*class Awesome {
 	constructor(a) {
 		this.prop = a
 	}
@@ -16,8 +24,4 @@ class Best : Awesome {
 
 var z = new Best(32)
 var d = z.getTest()
-print(d())
-// print(z()) // Expected: bad
-
-//        | f1 [ function main ][ function print ][ function Awesome:test ][ Best instance ]
-//        | f1 [ function main ][ 48 ][ 48 ][ Best instance ]
+print(d())*/

@@ -769,13 +769,25 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 
 			for (uint i = 0; i < arg_count; i++) {
 				uint16_t arg_reg = reserve_register(emitter);
+				LitExpression* e = expr->args.values[i];
 
 				if (arg_reg != reg + i + 1) {
 					UNREACHABLE // Something went terribly wrong
 				}
 
 				arg_regs[i] = arg_reg;
-				emit_expression(emitter, expr->args.values[i], arg_reg);
+
+				if (e->type == VAR_EXPRESSION) {
+					LitVarExpression* ee = (LitVarExpression*) e;
+
+					// Vararg ...
+					if (ee->length == 3 && memcmp(ee->name, "...", 3) == 0) {
+						emit_abc_instruction(emitter, e->line, OP_VARARG, resolve_local(emitter, emitter->compiler, "...", 3, expression->line));
+						break;
+					}
+				}
+
+				emit_expression(emitter, e, arg_reg);
 			}
 
 			if (method) {

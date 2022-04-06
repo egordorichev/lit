@@ -1,4 +1,4 @@
-# lit
+![logo.png](logo.png)
 
 Lit is a dynamicaly-typed language, inspired by highly-hackable Lua and familiar C-styled JavaScipt.
 You can try it out [in your browser](https://egordorichev.github.io/lit-html/?github=egordorichev/lit/tests/examples/hello_world.lit)!

@@ -1,9 +1,9 @@
 # register based
 
-* ref's
 * varg
 * check all operator overloads with constants
 * c errors don't stop the flow (like failed to require module)
+* super.test
 
 # docs
 
