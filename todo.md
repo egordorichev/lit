@@ -2,7 +2,6 @@
 
 * varg
 * check all operator overloads with constants
-* c errors don't stop the flow (like failed to require module)
 * super.test
 
 # docs
@@ -15,6 +14,9 @@
 
 # api
 
+* json
+* http
+* event loop
 * File.remove()
 * File.create()
 * Directory.remove()

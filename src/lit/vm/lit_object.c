@@ -417,6 +417,7 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	fiber->error = NULL_VALUE;
 	fiber->open_upvalues = NULL;
 	fiber->abort = false;
+	fiber->return_address = NULL;
 
 	LitCallFrame* frame = &fiber->frames[0];
 

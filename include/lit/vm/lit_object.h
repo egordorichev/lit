@@ -293,6 +293,7 @@ typedef struct sLitFiber {
 	uint frame_count;
 	uint arg_count;
 
+	LitValue* return_address;
 	LitUpvalue* open_upvalues;
 	LitModule* module;
 	LitValue error;

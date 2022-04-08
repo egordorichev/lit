@@ -1532,6 +1532,7 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 
 			if (loaded_module->ran) {
 				args[-1] = AS_MODULE(existing_module)->return_value;
+				should_update_locals = true;
 			} else {
 				if (interpret(vm, loaded_module)) {
 					should_update_locals = true;
@@ -1581,6 +1582,8 @@ static bool attempt_to_require_combined(LitVm* vm, LitValue* args, uint arg_coun
 }
 
 LIT_NATIVE_PRIMITIVE(require) {
+	vm->fiber->return_address = args - 1;
+
 	LitString* name = LIT_CHECK_OBJECT_STRING(0);
 	bool ignore_previous = arg_count > 1 && IS_BOOL(args[1]) && AS_BOOL(args[1]);
 

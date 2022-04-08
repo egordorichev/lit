@@ -619,6 +619,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			if (fiber->parent != NULL) {
 				vm->fiber = fiber->parent;
+				*vm->fiber->return_address = value;
+
 				READ_FRAME()
 				DISPATCH_NEXT()
 			}
@@ -1084,8 +1086,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			} else {
 				lit_table_set(state, &klass->static_fields, field_name, value);
 			}
-
-			// fiber->stack_top[-1] = value;
 		} else if (IS_INSTANCE(instance)) {
 			LitInstance *inst = AS_INSTANCE(instance);
 			LitValue setter;
@@ -1108,8 +1108,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			} else {
 				lit_table_set(state, &inst->fields, field_name, value);
 			}
-
-			// fiber->stack_top[-1] = value;
 		} else {
 			LitClass *klass = lit_get_class_for(state, instance);
 
@@ -1135,6 +1133,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			}
 		}
 
+		registers[result_reg] = value;
 		DISPATCH_NEXT()
 	}
 
