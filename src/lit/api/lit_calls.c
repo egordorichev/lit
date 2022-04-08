@@ -44,7 +44,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
 	lit_ensure_fiber_registers(vm->state, fiber, start - fiber->registers + callee->max_registers);
 
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
-	frame->slots = fiber->registers;
+	frame->slots = fiber->frame_count > 1 ? fiber->frames[fiber->frame_count - 2].slots + fiber->frames[fiber->frame_count - 2].function->max_registers : fiber->registers;
 
 	for (int i = argument_count + 1; i < callee->max_registers; i++) {
 		frame->slots[i] = NULL_VALUE;
@@ -125,10 +125,9 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
 			RETURN_RUNTIME_ERROR()
 		}
 
-		LitValue* slot = fiber->registers + fiber->registers_allocated;
-
 		LitValue* start = fiber->frame_count > 0 ? fiber->frames[fiber->frame_count - 1].slots + fiber->frames[fiber->frame_count - 1].function->max_registers : fiber->registers;
 		lit_ensure_fiber_registers(vm->state, fiber, start - fiber->registers + 3 + argument_count);
+		LitValue* slot = fiber->frame_count > 0 ? fiber->frames[fiber->frame_count - 1].slots + fiber->frames[fiber->frame_count - 1].function->max_registers : fiber->registers;
 
 		for (int i = argument_count; i < argument_count + 3; i++) {
 			*(slot + i) = NULL_VALUE;
@@ -138,9 +137,21 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
 
 		if (type != OBJECT_CLASS) {
 			for (uint8_t i = 0; i < argument_count; i++) {
-				*(slot + i) = arguments[i];
+				*(slot + i + 1) = arguments[i];
 			}
 		}
+
+#ifdef LIT_TRACE_EXECUTION
+		printf("        |\n        | f%i ", fiber->frame_count);
+
+		for (int i = 0; i <= argument_count; i++) {
+			printf("[ ");
+			lit_print_value(*(slot + i));
+			printf(" ]");
+		}
+
+		printf("\n");
+#endif
 
 		switch (type) {
 			case OBJECT_NATIVE_FUNCTION: {

@@ -493,7 +493,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		} else { \
 			WRAP_CONSTANT(b, a, tmp_a) \
       WRAP_CONSTANT(c, a + 1, tmp_b) \
-			INVOKE_METHOD(b & 0xff, registers[b & 0xff], op_string, 1) \
+			INVOKE_METHOD(a, registers[a], op_string, 1) \
       UNWRAP_CONSTANT(c, a + 1, tmp_b) \
 		}
 
