@@ -782,7 +782,8 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 
 					// Vararg ...
 					if (ee->length == 3 && memcmp(ee->name, "...", 3) == 0) {
-						emit_abc_instruction(emitter, e->line, OP_VARARG, resolve_local(emitter, emitter->compiler, "...", 3, expression->line));
+						NOT_IMPLEMENTED
+						// emit_abc_instruction(emitter, e->line, OP_VARARG, resolve_local(emitter, emitter->compiler, "...", 3, expression->line));
 						break;
 					}
 				}

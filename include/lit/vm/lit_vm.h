@@ -9,6 +9,8 @@
 
 #include "lit_config.h"
 
+#include <setjmp.h>
+
 #define INTERPRET_RUNTIME_FAIL ((LitInterpretResult) {INTERPRET_INVALID, NULL_VALUE})
 
 typedef struct sLitVm {
@@ -43,7 +45,8 @@ bool lit_vruntime_error(LitVm* vm, const char* format, va_list args);
 bool lit_runtime_error(LitVm* vm, const char* format, ...);
 bool lit_runtime_error_exiting(LitVm* vm, const char* format, ...);
 
+extern jmp_buf jump_buffer;
 void lit_native_exit_jump();
-bool lit_set_native_exit_jump();
+#define lit_set_native_exit_jump() setjmp(jump_buffer)
 
 #endif

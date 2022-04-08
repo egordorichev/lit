@@ -1,6 +1,6 @@
 #include "vm/lit_vm.h"
 #include "vm/lit_object.h"
-#include"debug/lit_debug.h"
+#include "debug/lit_debug.h"
 #include "mem/lit_mem.h"
 
 #include <stdio.h>
@@ -17,7 +17,7 @@
 #define PUSH_GC(state, allow) bool was_allowed = state->allow_gc; state->allow_gc = allow;
 #define POP_GC(state) state->allow_gc = was_allowed;
 
-static jmp_buf jump_buffer;
+jmp_buf jump_buffer;
 
 static void reset_vm(LitState* state, LitVm* vm) {
 	vm->state = state;
@@ -57,6 +57,8 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 
 		if (fiber->catcher) {
 			vm->fiber = fiber->parent;
+
+			NOT_IMPLEMENTED
 			// vm->fiber->stack_top -= fiber->arg_count;
 			// vm->fiber->stack_top[-1] = error;
 
@@ -221,7 +223,7 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 				bool result = AS_NATIVE_PRIMITIVE(callee)->function(vm, arg_count, frame->slots + callee_register + 1);
 
 				POP_GC(vm->state)
-				return result;
+				return !result;
 			}
 
 			case OBJECT_NATIVE_METHOD: {
@@ -246,7 +248,7 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 				bool result = AS_PRIMITIVE_METHOD(callee)->method(vm, *(frame->slots + callee_register), arg_count, frame->slots + callee_register + 1);
 
 				POP_GC(vm->state)
-				return result;
+				return !result;
 			}
 
 			case OBJECT_CLASS: {
@@ -1262,7 +1264,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		} else if (IS_INSTANCE(operand)) {
 			lit_table_set(state, &AS_INSTANCE(operand)->fields, key, value);
 		} else {
-			RUNTIME_ERROR_VARG("Expected an object or a map as the operand, got %s", lit_get_value_type(operand))
+			RUNTIME_ERROR_VARG("slotted an object or a map as the operand, got %s", lit_get_value_type(operand))
 		}
 
 		DISPATCH_NEXT()
@@ -1352,10 +1354,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 void lit_native_exit_jump() {
 	longjmp(jump_buffer, 1);
-}
-
-bool lit_set_native_exit_jump() {
-	return setjmp(jump_buffer);
 }
 
 #undef PUSH_GC
