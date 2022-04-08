@@ -1396,13 +1396,6 @@ static bool interpret(LitVm* vm, LitModule* module) {
 	fiber->parent = vm->fiber;
 	vm->fiber = fiber;
 
-	LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
-
-	/* if (frame->ip == frame->function->chunk.code) {
-		frame->slots = fiber->stack_top;
-		lit_push(vm, OBJECT_VALUE(frame->function));
-	}*/
-
 	return true;
 }
 
@@ -1538,7 +1531,6 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 			LitModule* loaded_module = AS_MODULE(existing_module);
 
 			if (loaded_module->ran) {
-				// vm->fiber->stack_top -= arg_count;
 				args[-1] = AS_MODULE(existing_module)->return_value;
 			} else {
 				if (interpret(vm, loaded_module)) {
@@ -1594,7 +1586,7 @@ LIT_NATIVE_PRIMITIVE(require) {
 
 	// First check, if a file with this name exists in the local path
 	if (attempt_to_require(vm, args, arg_count, name->chars, ignore_previous, false)) {
-		return should_update_locals;
+		return !should_update_locals;
 	}
 
 	// If not, we join the path of the current module to it (the path goes all the way from the root)
@@ -1611,12 +1603,12 @@ LIT_NATIVE_PRIMITIVE(require) {
 		buffer[length] = '\0';
 
 		if (attempt_to_require_combined(vm, args, arg_count, (const char*) &buffer, name->chars, ignore_previous)) {
-			return should_update_locals;
+			return !should_update_locals;
 		}
 	}
 
 	lit_runtime_error_exiting(vm, "Failed to require module '%s'", name->chars);
-	return false;
+	return true;
 }
 
 void lit_open_core_library(LitState* state) {

@@ -373,7 +373,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	#define DISPATCH_NEXT() goto dispatch;
 	#define CASE_CODE(name) OP_##name:
-	#define READ_FRAME() frame = &fiber->frames[fiber->frame_count - 1]; \
+	#define READ_FRAME() \
+    fiber = vm->fiber; \
+		frame = &fiber->frames[fiber->frame_count - 1]; \
 		current_chunk = &frame->function->chunk; \
 	  constants = current_chunk->constants.values; \
 		ip = frame->ip; \
@@ -510,7 +512,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	PUSH_GC(state, true)
 
-	vm->fiber = fiber;
 	fiber->abort = false;
 
 	register LitCallFrame* frame;
@@ -524,6 +525,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	uint64_t instruction;
 
 	READ_FRAME()
+	vm->fiber = fiber;
 	registers[0] = OBJECT_VALUE(frame->function);
 	TRACE_FRAME()
 
@@ -613,6 +615,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		if (fiber->frame_count == 0 || frame->return_address == NULL) {
 			if (fiber->frame_count == 0) {
 				fiber->module->return_value = value;
+			}
+
+			if (fiber->parent != NULL) {
+				vm->fiber = fiber->parent;
+				READ_FRAME()
+				DISPATCH_NEXT()
 			}
 
 			return (LitInterpretResult) { INTERPRET_OK, value };
