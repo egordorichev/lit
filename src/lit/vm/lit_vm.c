@@ -531,6 +531,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 #ifdef LIT_TRACE_EXECUTION
 	printf("fiber start:\n");
+	LitCallFrame* previous_frame = frame;
 #endif
 
 	dispatch:
@@ -549,7 +550,8 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			printf("\n");
 		}
 
-		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
+		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL, frame != previous_frame);
+		previous_frame = frame;
 	#endif
 
 	goto *dispatch_table[LIT_INSTRUCTION_OPCODE(instruction)];

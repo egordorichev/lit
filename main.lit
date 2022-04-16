@@ -1,46 +1,55 @@
-class Person {
-	constructor(name, age) {
-		this.name = name
-		this.age = age
+class Awesome {
+	constructor(a) {
+		this.prop = a
 	}
 
-	greet() {
-		print($"Hello, my name is {this.name}, I'm {this.age}!")
-	}
-}
-
-class Employee : Person {
-	constructor(name, age, profession) {
-		// Pass the name and age to the constructor of Person (defined at line 2).
-		super(name, age)
-
-		this.profession = profession
-	}
-
-	greet() {
-		print($"Hello, my name is {this.name}, I'm a {this.profession}")
-	}
-
-	yeet(object) {
-		print($"{this.name} yeeted {object} out of the window!")
+	test() {
+		return this.prop
 	}
 }
 
-var bob = new Person("Bob", 23)
-bob.greet() // Expected: Hello, my name is Bob, I'm 23!
+print(Awesome) // Expected: class Awesome
+var a = new Awesome("good")
 
-var dug = new Person("Dug", 32)
-dug.greet() // Expected: Hello, my name is Dug, I'm 32!
+print(a) // Expected: Awesome instance
 
-var maanex = new Employee("Maanex", 42, "programmer")
-maanex.greet() // Expected: Hello, my name is Maanex, I'm a programmer
+print(a.prop) // Expected: good
+print(a.test()) // Expected: good
 
-// The Person class doesn't define the method, it's defined in it's child class.
-print(bob.yeet) // Expected: null
-maanex.yeet("potato") // Expected: Maanex yeeted potato out of the window!
+a.prop = "awesome"
 
-print(bob is Person) // Expected: true
-print(bob is Employee) // Expected: false
+print(a.test()) // Expected: awesome
 
-print(maanex is Person) // Expected: true
-print(maanex is Employee) // Expected: true
+class Best : Awesome {
+	constructor() {
+		super("good")
+	}
+
+	printTest() {
+		print(this.test())
+	}
+
+	test() {
+		this.prop = "bad"
+		return super.test()
+	}
+
+	getTest() {
+		return super.test
+	}
+
+	z => 32
+
+	d {
+		get {
+			return this.prop
+		}
+
+		set => this.prop = value
+	}
+}
+
+var b = new Best()
+b.printTest() // Expected: bad
+var z = b.getTest()
+print(z()) // Expected: bad

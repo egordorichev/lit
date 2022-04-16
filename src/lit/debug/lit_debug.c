@@ -45,7 +45,7 @@ void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source
 	printf("%stext:%s\n", COLOR_MAGENTA, COLOR_RESET);
 
 	for (uint offset = 0; offset < chunk->count; offset++) {
-		lit_disassemble_instruction(chunk, offset, source);
+		lit_disassemble_instruction(chunk, offset, source, false);
 	}
 
 
@@ -124,7 +124,7 @@ static LitDebugInstructionFn debug_instruction_functions[] = {
 	print_asbx_instruction
 };
 
-void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* source) {
+void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* source, bool force_line) {
 	uint line = lit_chunk_get_line(chunk, offset);
 	bool same = !chunk->has_line_info || (offset > 0 && line == lit_chunk_get_line(chunk, offset - 1));
 
@@ -155,7 +155,7 @@ void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 
 	printf("%04d ", offset);
 
-	if (same) {
+	if (same && !force_line) {
 		printf("   | ");
 	} else {
 		printf("%s%4d%s ", COLOR_BLUE, line, COLOR_RESET);

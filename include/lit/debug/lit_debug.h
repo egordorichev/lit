@@ -5,7 +5,7 @@
 
 void lit_disassemble_module(LitModule* module, const char* source);
 void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source);
-void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* source);
+void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* source, bool force_line);
 
 void lit_trace_frame(LitFiber* fiber);
 
