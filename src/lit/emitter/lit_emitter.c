@@ -800,9 +800,8 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				emit_abc_instruction(emitter, expression->line, OP_INVOKE, reg, arg_count + 1, constant);
 			} else if (super) {
 				LitSuperExpression *e = (LitSuperExpression*) expr->callee;
-				uint8_t index = resolve_upvalue(emitter, emitter->compiler, "super", 5, emitter->last_line);
 
-				emit_abx_instruction(emitter, expression->line, OP_GET_UPVALUE, reg, index);
+				emit_abx_instruction(emitter, expression->line, OP_MOVE, reg, 0);
 				emit_abc_instruction(emitter, emitter->last_line, OP_INVOKE_SUPER, reg, arg_count + 1, add_constant(emitter, emitter->last_line, OBJECT_VALUE(e->method)));
 			} else {
 				emit_abc_instruction(emitter, expression->line, OP_CALL, reg, arg_count + 1, 1);
