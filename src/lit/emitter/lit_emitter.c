@@ -420,8 +420,10 @@ static LitOpCode translate_unary_operator_into_op(LitTokenType token) {
 static LitOpCode translate_binary_operator_into_op(LitTokenType token) {
 	switch (token) {
 		case LTOKEN_BANG_EQUAL: case LTOKEN_EQUAL_EQUAL: return OP_EQUAL;
-		case LTOKEN_LESS: case LTOKEN_GREATER: return OP_LESS;
-		case LTOKEN_LESS_EQUAL: case LTOKEN_GREATER_EQUAL: return OP_LESS_EQUAL;
+		case LTOKEN_LESS: return OP_LESS;
+		case LTOKEN_LESS_EQUAL: return OP_LESS_EQUAL;
+		case LTOKEN_GREATER: return OP_GREATER;
+		case LTOKEN_GREATER_EQUAL: return OP_GREATER_EQUAL;
 
 		case LTOKEN_PLUS: return OP_ADD;
 		case LTOKEN_MINUS: return OP_SUBTRACT;
@@ -576,6 +578,8 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 			LitBinaryExpression* expr = (LitBinaryExpression*) expression;
 
 			switch (expr->op) {
+				case LTOKEN_GREATER:
+				case LTOKEN_GREATER_EQUAL:
 				case LTOKEN_LESS:
 				case LTOKEN_LESS_EQUAL:
 				case LTOKEN_EQUAL_EQUAL:{
@@ -583,14 +587,8 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 					break;
 				}
 
-				case LTOKEN_GREATER:
-				case LTOKEN_GREATER_EQUAL:{
-					emit_binary_expression(emitter, expr, reg, true);
-					break;
-				}
-
 				case LTOKEN_BANG_EQUAL: {
-					emit_binary_expression(emitter, expr, reg, true);
+					emit_binary_expression(emitter, expr, reg, false);
 					emit_abc_instruction(emitter, expression->line, OP_NOT, reg, reg, false);
 
 					break;
