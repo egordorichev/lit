@@ -46,6 +46,10 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 	frame->slots = fiber->frame_count > 1 ? fiber->frames[fiber->frame_count - 2].slots + fiber->frames[fiber->frame_count - 2].function->max_registers : fiber->registers;
 
+#ifdef LIT_TRACE_NULL_FILL
+	printf("Filling with nulls\n");
+#endif
+
 	for (int i = argument_count + 1; i < callee->max_registers; i++) {
 		frame->slots[i] = NULL_VALUE;
 	}
@@ -128,6 +132,10 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
 		LitValue* start = fiber->frame_count > 0 ? fiber->frames[fiber->frame_count - 1].slots + fiber->frames[fiber->frame_count - 1].function->max_registers : fiber->registers;
 		lit_ensure_fiber_registers(vm->state, fiber, start - fiber->registers + 3 + argument_count);
 		LitValue* slot = fiber->frame_count > 0 ? fiber->frames[fiber->frame_count - 1].slots + fiber->frames[fiber->frame_count - 1].function->max_registers : fiber->registers;
+
+#ifdef LIT_TRACE_NULL_FILL
+		printf("Filling with nulls\n");
+#endif
 
 		for (int i = argument_count; i < argument_count + 3; i++) {
 			*(slot + i) = NULL_VALUE;

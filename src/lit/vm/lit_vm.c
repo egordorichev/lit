@@ -181,6 +181,10 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	uint target_arg_count = (function == NULL ? closure->function : function)->arg_count;
 
 	if (target_arg_count > arg_count) {
+#ifdef LIT_TRACE_NULL_FILL
+		printf("Filling with nulls\n");
+#endif
+
 		for (uint i = arg_count; i < target_arg_count; i++) {
 			*(frame->slots + i + 1) = NULL_VALUE;
 		}
@@ -289,7 +293,7 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 					return true;
 				} else {
 					frame->slots[callee_register] = bound_method->receiver;
-					return call(vm, AS_FUNCTION(method), NULL, arg_count, alternate_callee);
+					return call(vm, AS_FUNCTION(method), NULL, arg_count, callee_register);
 				}
 
 				return !vm->fiber->abort;

@@ -892,15 +892,23 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 
 		case SET_EXPRESSION: {
 			LitSetExpression* expr = (LitSetExpression*) expression;
-			emit_expression(emitter, expr->value, reg);
 
 			uint8_t where_reg = reserve_register(emitter);
 			emit_expression(emitter, expr->where, where_reg);
 
+			uint8_t value_reg = reserve_register(emitter);
+			emit_expression(emitter, expr->value, value_reg);
+
 			int constant = add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, expr->name, expr->length)));
 
-			emit_abc_instruction(emitter, emitter->last_line, OP_SET_FIELD, where_reg, constant, reg);
+			emit_abc_instruction(emitter, emitter->last_line, OP_SET_FIELD, where_reg, constant, value_reg);
+
+			if (!ignored && reg != value_reg) {
+				emit_abc_instruction(emitter, emitter->last_line, OP_MOVE, reg, value_reg, 0); // Pains me to do this, but we gotta ensure that the value is after the where
+			}
+
 			free_register(emitter, where_reg);
+			free_register(emitter, value_reg);
 
 			break;
 		}
@@ -963,11 +971,8 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				bool single_expression = expr->body->type == EXPRESSION_STATEMENT;
 
 				if (single_expression) {
-					compiler.skip_return = true;
-				}
-
-				if (single_expression) {
 					uint8_t r = reserve_register(emitter);
+					compiler.skip_return = true;
 
 					emit_expression(emitter, ((LitExpressionStatement*) expr->body)->expression, r);
 					emit_abc_instruction(emitter, expr->body->line, OP_RETURN, r, 0, 0);
@@ -1678,6 +1683,15 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 				begin_scope(emitter);
 
+				if (stmt->getter->type == EXPRESSION_STATEMENT) {
+					uint8_t r = reserve_register(emitter);
+					compiler.skip_return = true;
+
+					emit_expression(emitter, ((LitExpressionStatement*) stmt->getter)->expression, r);
+					emit_abc_instruction(emitter, stmt->getter->line, OP_RETURN, r, 0, 0);
+					free_register(emitter, r);
+				}
+
 				if (!emit_statement(emitter, stmt->getter)) {
 					end_scope(emitter);
 				}
@@ -1706,7 +1720,10 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			}
 
 			LitField* field = lit_create_field(emitter->state, (LitObject*) getter, (LitObject*) setter);
-			emit_abc_instruction(emitter, statement->line, stmt->is_static ? OP_STATIC_FIELD : OP_METHOD, emitter->class_register, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)),add_constant(emitter, statement->line, OBJECT_VALUE(field)));
+			int constant = add_constant(emitter, statement->line, OBJECT_VALUE(field));
+			SET_BIT(constant, 8);
+
+			emit_abc_instruction(emitter, statement->line, stmt->is_static ? OP_STATIC_FIELD : OP_METHOD, emitter->class_register, add_constant(emitter, statement->line, OBJECT_VALUE(stmt->name)),constant);
 
 			break;
 		}

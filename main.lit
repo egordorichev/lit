@@ -8,18 +8,6 @@ class Awesome {
 	}
 }
 
-print(Awesome) // Expected: class Awesome
-var a = new Awesome("good")
-
-print(a) // Expected: Awesome instance
-
-print(a.prop) // Expected: good
-print(a.test()) // Expected: good
-
-a.prop = "awesome"
-
-print(a.test()) // Expected: awesome
-
 class Best : Awesome {
 	constructor() {
 		super("good")
@@ -45,11 +33,15 @@ class Best : Awesome {
 			return this.prop
 		}
 
-		set => this.prop = value
+		set {
+			this.prop = value
+		}
 	}
 }
 
 var b = new Best()
-b.printTest() // Expected: bad
-var z = b.getTest()
-print(z()) // Expected: bad
+
+print(b.d) // Expected: good
+b.d = "help"
+
+print(b.d) // Expected: good
