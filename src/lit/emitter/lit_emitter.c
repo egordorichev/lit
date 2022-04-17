@@ -775,7 +775,7 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 
 				arg_regs[i] = arg_reg;
 
-				if (e->type == VAR_EXPRESSION) {
+				/*if (e->type == VAR_EXPRESSION) {
 					LitVarExpression* ee = (LitVarExpression*) e;
 
 					// Vararg ...
@@ -784,7 +784,7 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 						// emit_abc_instruction(emitter, e->line, OP_VARARG, resolve_local(emitter, emitter->compiler, "...", 3, expression->line));
 						break;
 					}
-				}
+				}*/
 
 				emit_expression(emitter, e, arg_reg);
 			}

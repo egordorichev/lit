@@ -1,47 +1,5 @@
-class Awesome {
-	constructor(a) {
-		this.prop = a
-	}
-
-	test() {
-		return this.prop
-	}
+function test(...) {
+	print(...)
 }
 
-class Best : Awesome {
-	constructor() {
-		super("good")
-	}
-
-	printTest() {
-		print(this.test())
-	}
-
-	test() {
-		this.prop = "bad"
-		return super.test()
-	}
-
-	getTest() {
-		return super.test
-	}
-
-	z => 32
-
-	d {
-		get {
-			return this.prop
-		}
-
-		set {
-			this.prop = value
-		}
-	}
-}
-
-var b = new Best()
-
-print(b.d) // Expected: good
-b.d = "help"
-
-print(b.d) // Expected: good
+test(1, 2)
