@@ -24,7 +24,8 @@
 #define IS_UPVALUE(value) IS_OBJECTS_TYPE(value, OBJECT_UPVALUE)
 #define IS_CLASS(value) IS_OBJECTS_TYPE(value, OBJECT_CLASS)
 #define IS_INSTANCE(value) IS_OBJECTS_TYPE(value, OBJECT_INSTANCE)
-#define IS_ARRAY(value) IS_OBJECTS_TYPE(value, OBJECT_ARRAY)
+#define IS_ARRAY(value) (IS_OBJECTS_TYPE(value, OBJECT_ARRAY) || IS_OBJECTS_TYPE(value, OBJECT_VARARG_ARRAY))
+#define IS_VARARG_ARRAY(value) IS_OBJECTS_TYPE(value, OBJECT_VARARG_ARRAY)
 #define IS_MAP(value) IS_OBJECTS_TYPE(value, OBJECT_MAP)
 #define IS_BOUND_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_BOUND_METHOD)
 #define IS_USERDATA(value) IS_OBJECTS_TYPE(value, OBJECT_USERDATA)
@@ -77,6 +78,7 @@ typedef enum {
 	OBJECT_INSTANCE,
 	OBJECT_BOUND_METHOD,
 	OBJECT_ARRAY,
+	OBJECT_VARARG_ARRAY,
 	OBJECT_MAP,
 	OBJECT_USERDATA,
 	OBJECT_RANGE,
@@ -99,6 +101,7 @@ static const char* lit_object_type_names[] = {
 	"class",
 	"instance",
 	"bound_method",
+	"array",
 	"array",
 	"map",
 	"userdata",
@@ -343,6 +346,12 @@ typedef struct {
 } LitArray;
 
 LitArray* lit_create_array(LitState* state);
+
+typedef struct {
+	LitArray array;
+} LitVarargArray;
+
+LitVarargArray* lit_create_vararg_array(LitState* state);
 
 typedef void (*LitCleanupFn)(LitState* state, LitUserdata* userdata, bool mark);
 

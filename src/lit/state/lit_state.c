@@ -171,7 +171,7 @@ LitClass* lit_get_class_for(LitState* state, LitValue value) {
 
 			case OBJECT_INSTANCE: return AS_INSTANCE(value)->klass;
 			case OBJECT_CLASS: return state->class_class;
-			case OBJECT_ARRAY: return state->array_class;
+			case OBJECT_ARRAY: case OBJECT_VARARG_ARRAY: return state->array_class;
 			case OBJECT_MAP: return state->map_class;
 			case OBJECT_RANGE: return state->range_class;
 

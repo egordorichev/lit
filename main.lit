@@ -1,5 +1,9 @@
-function test(...) {
+function b(...) {
 	print(...)
 }
 
-test()
+function test(...) {
+	b(...)
+}
+
+test(1, 2)

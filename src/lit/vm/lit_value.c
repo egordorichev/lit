@@ -93,6 +93,7 @@ static void print_object(LitValue value) {
 			return;
 		}
 
+		case OBJECT_VARARG_ARRAY:
 		case OBJECT_ARRAY: {
 			#ifdef LIT_MINIMIZE_CONTAINERS
 				printf("array");

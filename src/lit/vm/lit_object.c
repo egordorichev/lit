@@ -523,6 +523,12 @@ LitArray* lit_create_array(LitState* state) {
 	return array;
 }
 
+LitVarargArray* lit_create_vararg_array(LitState* state) {
+	LitVarargArray* array = ALLOCATE_OBJECT(state, LitVarargArray, OBJECT_VARARG_ARRAY);
+	lit_init_values(&array->array.values);
+	return array;
+}
+
 LitMap* lit_create_map(LitState* state) {
 	LitMap* map = ALLOCATE_OBJECT(state, LitMap, OBJECT_MAP);
 

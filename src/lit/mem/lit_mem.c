@@ -156,6 +156,13 @@ void lit_free_object(LitState* state, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_VARARG_ARRAY: {
+			lit_free_values(state, &((LitVarargArray*) object)->array.values);
+			LIT_FREE(state, LitVarargArray, object);
+
+			break;
+		}
+
 		case OBJECT_MAP: {
 			lit_free_table(state, &((LitMap*) object)->values);
 			LIT_FREE(state, LitMap, object);
@@ -413,6 +420,11 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 
 		case OBJECT_ARRAY: {
 			mark_array(vm, &((LitArray*) object)->values);
+			break;
+		}
+
+		case OBJECT_VARARG_ARRAY: {
+			mark_array(vm, &((LitVarargArray*) object)->array.values);
 			break;
 		}
 

@@ -194,16 +194,20 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 			*(frame->slots + target_arg_count) = OBJECT_VALUE(lit_create_array(vm->state));
 		}
 	} else if (vararg) {
-		LitArray* array = lit_create_array(vm->state);
-		lit_values_ensure_size(vm->state, &array->values, arg_count - target_arg_count + 1);
+		if (target_arg_count == arg_count && IS_VARARG_ARRAY(*(frame->slots + target_arg_count))) {
+			// No need to repack the arguments
+		} else {
+			LitArray *array = &lit_create_vararg_array(vm->state)->array;
+			lit_values_ensure_size(vm->state, &array->values, arg_count - target_arg_count + 1);
 
-		uint j = 0;
+			uint j = 0;
 
-		for (uint i = target_arg_count - 1; i < arg_count; i++) {
-			array->values.values[j++] = *(frame->slots + i + 1);
+			for (uint i = target_arg_count - 1; i < arg_count; i++) {
+				array->values.values[j++] = *(frame->slots + i + 1);
+			}
+
+			*(frame->slots + target_arg_count) = OBJECT_VALUE(array);
 		}
-
-		*(frame->slots + target_arg_count) = OBJECT_VALUE(array);
 	}
 
 	return true;
