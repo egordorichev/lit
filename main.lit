@@ -2,4 +2,4 @@ function test(...) {
 	print(...)
 }
 
-test(1, 2)
+test()

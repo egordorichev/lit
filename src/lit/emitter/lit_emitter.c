@@ -1305,7 +1305,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 			init_compiler(emitter, &compiler, FUNCTION_REGULAR);
 
 			begin_scope(emitter);
-			emit_parameters(emitter, &stmt->parameters, statement->line);
+			bool vararg = emit_parameters(emitter, &stmt->parameters, statement->line);
 
 			if (!emit_statement(emitter, stmt->body)) {
 				end_scope(emitter);
@@ -1315,6 +1315,7 @@ static bool emit_statement(LitEmitter* emitter, LitStatement* statement) {
 
 			function->arg_count = stmt->parameters.count;
 			function->max_registers += function->arg_count;
+			function->vararg = vararg;
 
 			uint16_t function_reg;
 			bool closure = function->upvalue_count > 0;

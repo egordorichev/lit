@@ -189,7 +189,11 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 		for (uint i = arg_count; i < target_arg_count; i++) {
 			*(frame->slots + i + 1) = NULL_VALUE;
 		}
-	} else {
+
+		if (vararg) {
+			*(frame->slots + target_arg_count) = OBJECT_VALUE(lit_create_array(vm->state));
+		}
+	} else if (vararg) {
 		LitArray* array = lit_create_array(vm->state);
 		lit_values_ensure_size(vm->state, &array->values, arg_count - target_arg_count + 1);
 
