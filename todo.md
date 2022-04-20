@@ -1,9 +1,3 @@
-# register based
-
-* varg
-* check all operator overloads with constants
-* super.test
-
 # docs
 
 * ??
@@ -29,6 +23,7 @@
 
 # todo
 
+* Operator () overloading
 * Date class
 * statistics on time spent in each instruction
 

@@ -557,28 +557,33 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count
 
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
 
-	NOT_IMPLEMENTED
-	/*
 	if (frame->ip == frame->function->chunk.code) {
 		fiber->arg_count = arg_count;
-		lit_ensure_fiber_registers(vm->state, fiber, rame->function->max_registers + 1 + (int) (fiber->stack_top - fiber->stack));
+		LitFunction* function = frame->function;
 
-		frame->slots = fiber->stack_top;
-		lit_push(vm, OBJECT_VALUE(frame->function));
+		LitValue* start = fiber->frame_count > 1 ? fiber->frames[fiber->frame_count - 2].slots + fiber->frames[fiber->frame_count - 2].function->max_registers : fiber->registers;
+		lit_ensure_fiber_registers(vm->state, fiber, start - fiber->registers + function->max_registers);
+
+		frame->slots = fiber->frame_count > 1 ? fiber->frames[fiber->frame_count - 2].slots + fiber->frames[fiber->frame_count - 2].function->max_registers : fiber->registers;
+
+		for (int i = arg_count + 1; i < function->max_registers; i++) {
+			frame->slots[i] = NULL_VALUE;
+		}
+
+		frame->slots[0] = OBJECT_VALUE(function);
+
+		for (uint8_t i = 0; i < arg_count; i++) {
+			frame->slots[i + 1] = args[i];
+		}
 
 		bool vararg = frame->function->vararg;
-		int function_arg_count = frame->function->arg_count;
-		int to = function_arg_count - (vararg ? 1 : 0);
+		int function_arg_count = function->arg_count;
 
 		fiber->arg_count = function_arg_count;
 
-		for (int i = 0; i < to; i++) {
-			lit_push(vm, i < (int) arg_count ? args[i] : NULL_VALUE);
-		}
-
 		if (vararg) {
-			LitArray* array = lit_create_array(vm->state);
-			lit_push(vm, OBJECT_VALUE(array));
+			LitArray* array = &lit_create_vararg_array(vm->state)->array;
+			*(frame->slots + function_arg_count) = OBJECT_VALUE(array);
 
 			int vararg_count = arg_count - function_arg_count + 1;
 
@@ -590,7 +595,11 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count
 				}
 			}
 		}
-	}*/
+	}
+
+#ifdef LIT_TRACE_EXECUTION
+	printf("fiber start:\n");
+#endif
 }
 
 LIT_PRIMITIVE(fiber_run) {
@@ -615,7 +624,7 @@ LIT_PRIMITIVE(fiber_yield) {
 	// vm->fiber->stack_top -= fiber->arg_count;
 	// vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 
-	args[-1] = NULL_VALUE;
+	args[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 	return true;
 }
 
@@ -631,7 +640,7 @@ LIT_PRIMITIVE(fiber_yeet) {
 	// vm->fiber->stack_top -= fiber->arg_count;
 	// vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 
-	args[-1] = NULL_VALUE;
+	args[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 	return true;
 }
 

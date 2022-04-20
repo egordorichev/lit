@@ -387,6 +387,7 @@ LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 
 LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber) {
 	assert(fiber->frame_count > 0);
+	state->vm->fiber = fiber;
 
 	// Has to be inside of the function in order for goto to work
 	static void* dispatch_table[] = {
@@ -645,7 +646,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			if (fiber->parent != NULL) {
 				vm->fiber = fiber->parent;
-				*vm->fiber->return_address = value;
+
+				if (vm->fiber->return_address != NULL) {
+					*vm->fiber->return_address = value;
+				}
+
+				printf("fiber continue:\n");
 
 				READ_FRAME()
 				DISPATCH_NEXT()

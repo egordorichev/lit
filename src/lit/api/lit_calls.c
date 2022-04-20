@@ -319,6 +319,10 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 		return CONST_STRING(state, "null");
 	}
 
+	if (!IS_STRING(result.result)) {
+		return CONST_STRING(state, "invalid toString()");
+	}
+
 	return AS_STRING(result.result);
 }
 

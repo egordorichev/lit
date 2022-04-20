@@ -410,7 +410,7 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	fiber->frames = frames;
 	fiber->frame_capacity = LIT_INITIAL_CALL_FRAMES;
 	fiber->parent = NULL;
-	fiber->frame_count = 1;
+	fiber->frame_count = function == NULL ? 0 : 1;
 	fiber->arg_count = 0;
 	fiber->module = module;
 	fiber->catcher = false;
@@ -419,17 +419,16 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	fiber->abort = false;
 	fiber->return_address = NULL;
 
-	LitCallFrame* frame = &fiber->frames[0];
-
-	frame->closure = NULL;
-	frame->function = function;
-	frame->slots = fiber->registers;
-	frame->result_ignored = false;
-	frame->return_address = NULL;
-
-	lit_ensure_fiber_registers(state, fiber, function->max_registers);
-
 	if (function != NULL) {
+		LitCallFrame* frame = &fiber->frames[0];
+
+		frame->closure = NULL;
+		frame->function = function;
+		frame->slots = fiber->registers;
+		frame->result_ignored = false;
+		frame->return_address = NULL;
+
+		lit_ensure_fiber_registers(state, fiber, function->max_registers);
 		frame->ip = function->chunk.code;
 	}
 

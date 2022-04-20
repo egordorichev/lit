@@ -1,9 +1,5 @@
-function b(...) {
+var f = new Fiber((...) => {
 	print(...)
-}
+})
 
-function test(...) {
-	b(...)
-}
-
-test(1, 2)
+f.run(10, 32)

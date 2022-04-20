@@ -10,13 +10,11 @@
 void lit_init_api(LitState* state) {
 	state->api_name = lit_copy_string(state, "c", 1);
 	state->api_function = NULL;
-	state->api_fiber = NULL;
 }
 
 void lit_free_api(LitState* state) {
 	state->api_name = NULL;
 	state->api_function = NULL;
-	state->api_fiber = NULL;
 }
 
 LitValue lit_get_global(LitState* state, LitString* name) {
