@@ -247,6 +247,7 @@ typedef struct {
 	LitValue* return_address;
 
 	bool result_ignored;
+	bool return_to_c;
 } LitCallFrame;
 
 typedef LitValue (*LitMapIndexFn)(LitVm* vm, struct sLitMap* map, LitString* index, LitValue* value);

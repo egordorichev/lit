@@ -72,6 +72,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
 	frame->closure = NULL;
 	frame->function = callee;
 	frame->result_ignored = false;
+	frame->return_to_c = true;
 	frame->return_address = NULL;
 
 	return frame;
@@ -308,6 +309,7 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 	// "Duplicated" code due to lit_ensure_fiber_registers messing with register pointers
 	frame->slots = (fiber->frame_count > 1 ? (fiber->frames[fiber->frame_count - 2].slots + (int) fiber->frames[fiber->frame_count - 2].function->max_registers) : fiber->registers);
 	frame->result_ignored = false;
+	frame->return_to_c = true;
 	frame->return_address = NULL;
 
 	frame->slots[0] = OBJECT_VALUE(function);

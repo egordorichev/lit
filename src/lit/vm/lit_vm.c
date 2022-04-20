@@ -175,6 +175,7 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 	frame->ip = function->chunk.code;
 	frame->slots = previous_frame->slots + callee_register;
 	frame->result_ignored = false;
+	frame->return_to_c = false;
 	frame->return_address = previous_frame->slots + (int) callee_register;
 
 	lit_ensure_fiber_registers(vm->state, fiber, frame->slots - fiber->registers + function->max_registers);
@@ -639,6 +640,13 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 		fiber->frame_count--;
 
+		if (frame->return_to_c) {
+			frame->return_to_c = false;
+			fiber->module->return_value = value;
+
+			return (LitInterpretResult) { INTERPRET_OK, value };
+		}
+
 		if (fiber->frame_count == 0 || frame->return_address == NULL) {
 			if (fiber->frame_count == 0) {
 				fiber->module->return_value = value;
@@ -651,7 +659,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 					*vm->fiber->return_address = value;
 				}
 
-				printf("fiber continue:\n");
+				#ifdef LIT_TRACE_EXECUTION
+					printf("fiber continue:\n");
+				#endif
 
 				READ_FRAME()
 				DISPATCH_NEXT()
