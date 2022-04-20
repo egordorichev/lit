@@ -1,5 +1,6 @@
-var f = new Fiber(() => {
-	Fiber.yield(32)
+fiber = new Fiber(() => {
+  Fiber.abort("ono")
 })
 
-print(f.try())
+print(fiber.try()) // Expected: ono
+print(fiber.error) // Expected: ono

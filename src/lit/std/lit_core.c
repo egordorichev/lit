@@ -577,21 +577,25 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count
 		}
 
 		bool vararg = frame->function->vararg;
-		int function_arg_count = function->arg_count;
+		uint function_arg_count = function->arg_count;
 
 		fiber->arg_count = function_arg_count;
 
 		if (vararg) {
-			LitArray* array = &lit_create_vararg_array(vm->state)->array;
-			*(frame->slots + function_arg_count) = OBJECT_VALUE(array);
+			if (function_arg_count == arg_count && IS_VARARG_ARRAY(*(frame->slots + function_arg_count))) {
+				// No need to repack the arguments
+			} else {
+				LitArray *array = &lit_create_vararg_array(vm->state)->array;
+				*(frame->slots + function_arg_count) = OBJECT_VALUE(array);
 
-			int vararg_count = arg_count - function_arg_count + 1;
+				int vararg_count = arg_count - function_arg_count + 1;
 
-			if (vararg_count > 0) {
-				lit_values_ensure_size(vm->state, &array->values, vararg_count);
+				if (vararg_count > 0) {
+					lit_values_ensure_size(vm->state, &array->values, vararg_count);
 
-				for (int i = 0; i < vararg_count; i++) {
-					array->values.values[i] = args[i + function_arg_count - 1];
+					for (int i = 0; i < vararg_count; i++) {
+						array->values.values[i] = args[i + function_arg_count - 1];
+					}
 				}
 			}
 		}
@@ -639,8 +643,11 @@ LIT_PRIMITIVE(fiber_yeet) {
 }
 
 LIT_PRIMITIVE(fiber_abort) {
-	lit_handle_runtime_error(vm, arg_count == 0 ? CONST_STRING(vm->state, "Fiber was aborted") : lit_to_string(vm->state, args[0]));
-	args[-1] = NULL_VALUE;
+	LitString* value = arg_count == 0 ? CONST_STRING(vm->state, "Fiber was aborted") : lit_to_string(vm->state, args[0]);
+
+	lit_handle_runtime_error(vm, value);
+	*vm->fiber->return_address = OBJECT_VALUE(value);
+
 	return true;
 }
 
