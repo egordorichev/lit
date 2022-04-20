@@ -58,9 +58,9 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 		if (fiber->catcher) {
 			vm->fiber = fiber->parent;
 
-			NOT_IMPLEMENTED
-			// vm->fiber->stack_top -= fiber->arg_count;
-			// vm->fiber->stack_top[-1] = error;
+			if (vm->fiber->return_address != NULL) {
+				*vm->fiber->return_address = error;
+			}
 
 			return true;
 		}
@@ -116,7 +116,6 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 
 	start += sprintf(start, "%s", COLOR_RESET);
 	lit_error(vm->state, RUNTIME_ERROR, buffer);
-	// reset_stack(vm);
 
 	return false;
 }
@@ -327,11 +326,9 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 	}
 
 	if (IS_NULL(callee)) {
-		lit_runtime_error(vm, "Attempt to call a null value");
-		return false;
+		return lit_runtime_error(vm, "Attempt to call a null value");
 	} else {
-		lit_runtime_error(vm, "Can only call functions and classes, got %s", lit_get_value_type(callee));
-		return false;
+		return lit_runtime_error(vm, "Can only call functions and classes, got %s", lit_get_value_type(callee));
 	}
 
 	return true;

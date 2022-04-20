@@ -603,11 +603,13 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count
 }
 
 LIT_PRIMITIVE(fiber_run) {
+	vm->fiber->return_address = args - 1;
 	run_fiber(vm, AS_FIBER(instance), args, arg_count, false);
 	return true;
 }
 
 LIT_PRIMITIVE(fiber_try) {
+	vm->fiber->return_address = args - 1;
 	run_fiber(vm, AS_FIBER(instance), args, arg_count, true);
 	return true;
 }
@@ -618,13 +620,9 @@ LIT_PRIMITIVE(fiber_yield) {
 		return true;
 	}
 
-	LitFiber* fiber = vm->fiber;
-
 	vm->fiber = vm->fiber->parent;
-	// vm->fiber->stack_top -= fiber->arg_count;
-	// vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
+	*vm->fiber->return_address = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 
-	args[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 	return true;
 }
 
@@ -634,13 +632,9 @@ LIT_PRIMITIVE(fiber_yeet) {
 		return true;
 	}
 
-	LitFiber* fiber = vm->fiber;
-
 	vm->fiber = vm->fiber->parent;
-	// vm->fiber->stack_top -= fiber->arg_count;
-	// vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
+	*vm->fiber->return_address = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 
-	args[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 	return true;
 }
 

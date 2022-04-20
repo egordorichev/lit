@@ -1,5 +1,5 @@
-var f = new Fiber((...) => {
-	print(...)
+var f = new Fiber(() => {
+	Fiber.yield(32)
 })
 
-f.run(10, 32)
+print(f.try())
