@@ -1233,7 +1233,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			RUNTIME_ERROR("Attempt to index a null value")
 		}
 
-		LitClass* klass = lit_get_class_for(state, instance);
+		LitClass* klass = IS_CLASS(instance) ? AS_CLASS(instance) : lit_get_class_for(state, instance);
 
 		if (klass == NULL) {
 			RUNTIME_ERROR("Only instances and classes have methods")
@@ -1243,9 +1243,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		int arg_count = LIT_INSTRUCTION_B(instruction) - 1;
 		LitValue method;
 
-		if ((IS_INSTANCE(instance) && (lit_table_get(&AS_INSTANCE(instance)->fields, method_name, &method))) || lit_table_get(&klass->methods, method_name, &method)) {
+		if (IS_INSTANCE(instance) && ((lit_table_get(&AS_INSTANCE(instance)->fields, method_name, &method)) || lit_table_get(&klass->methods, method_name, &method))) {
 			CALL_VALUE(method, result_reg, arg_count)
-		} else if (IS_CLASS(instance)&& (lit_table_get(&AS_CLASS(instance)->static_fields, method_name, &method))) {
+		} else if (IS_CLASS(instance) && lit_table_get(&klass->static_fields, method_name, &method)) {
 			CALL_VALUE(method, result_reg, arg_count)
 		} else {
 			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars)

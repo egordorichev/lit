@@ -5,10 +5,10 @@
 * refs
 * binary operators (like floor divide)
 * default arg values
+* json
 
 # api
 
-* json
 * http
 * event loop
 * File.remove()

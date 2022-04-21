@@ -28,6 +28,7 @@ bool lit_table_get_slot(LitTable* table, LitString* key, LitValue** value);
 bool lit_table_delete(LitTable* table, LitString* key);
 LitString* lit_table_find_string(LitTable* table, const char* chars, uint length, uint32_t hash);
 void lit_table_add_all(LitState* state, LitTable* from, LitTable* to);
+void lit_table_add_all_ignoring(LitState* state, LitTable* from, LitTable* to);
 
 void lit_table_remove_white(LitTable* table);
 void lit_mark_table(LitVm* vm, LitTable* table);

@@ -230,8 +230,163 @@ LIT_METHOD(json_parse) {
 	return OBJECT_VALUE(last_value);
 }
 
+LitString* json_to_string(LitVm* vm, LitValue instance, uint indentation);
+
+LitString* json_map_to_string(LitVm* vm, LitValue instance, uint indentation) {
+	indentation++;
+
+	LitState* state = vm->state;
+	LitMap* map = AS_MAP(instance);
+	LitTable* values = &map->values;
+
+	if (values->count == 0) {
+		return CONST_STRING(state, "{}");
+	}
+
+	bool has_wrapper = map->index_fn != NULL;
+	uint value_amount = values->count;
+
+	LitString* values_converted[value_amount];
+	LitString* keys[value_amount];
+
+	uint string_length = 2 + indentation;
+
+	uint i = 0;
+	uint index = 0;
+
+	do {
+		LitTableEntry* entry = &values->entries[index++];
+
+		if (entry->key != NULL) {
+			// Special hidden key
+			LitValue field = has_wrapper ? map->index_fn(vm, map, entry->key, NULL) : entry->value;
+			LitString* value = json_to_string(state->vm, field, indentation);
+
+			lit_push_root(state, (LitObject*) value);
+
+			if (IS_STRING(field)) {
+				value = AS_STRING(lit_string_format(state, "\"@\"", OBJECT_VALUE(value)));
+			}
+
+			values_converted[i] = value;
+			keys[i] = entry->key;
+			string_length += entry->key->length + 4 + value->length + (i == value_amount - 1 ? 1 : 2) + indentation;
+
+			i++;
+		}
+	} while (i < value_amount);
+
+	char buffer[string_length + 1];
+	uint buffer_index = 2;
+
+	memcpy(buffer, "{\n", 2);
+
+	for (i = 0; i < value_amount; i++) {
+		LitString *key = keys[i];
+		LitString *value = values_converted[i];
+
+		for (uint j = 0; j < indentation; j++) {
+			buffer[buffer_index++] = '\t';
+		}
+
+		buffer[buffer_index++] = '\"';
+		memcpy(&buffer[buffer_index], key->chars, key->length);
+		buffer_index += key->length;
+		buffer[buffer_index++] = '\"';
+
+		memcpy(&buffer[buffer_index], ": ", 2);
+		buffer_index += 2;
+
+		memcpy(&buffer[buffer_index], value->chars, value->length);
+		buffer_index += value->length;
+
+		if (i == value_amount - 1) {
+			buffer[buffer_index++] = '\n';
+
+			for (uint j = 0; j < indentation - 1; j++) {
+				buffer[buffer_index++] = '\t';
+			}
+
+			buffer[buffer_index++] = '}';
+		} else {
+			memcpy(&buffer[buffer_index], ",\n", 2);
+			buffer_index += 2;
+		}
+
+		lit_pop_root(state);
+	}
+
+	return lit_copy_string(vm->state, buffer, buffer_index);
+}
+
+LitString* json_array_to_string(LitVm* vm, LitValue instance, uint indentation) {
+	LitValues* values = &AS_ARRAY(instance)->values;
+	LitState* state = vm->state;
+
+	if (values->count == 0) {
+		return CONST_STRING(state, "[]");
+	}
+
+	uint value_amount = values->count;
+	LitString* values_converted[value_amount];
+
+	uint string_length = 3; // "[ ]"
+
+	for (uint i = 0; i < value_amount; i++) {
+		LitValue field = values->values[i];
+		LitString* value = lit_to_string(state, field, 0);
+
+		lit_push_root(state, (LitObject*) value);
+
+		if (IS_STRING(field)) {
+			value = AS_STRING(lit_string_format(state, "\"@\"", OBJECT_VALUE(value)));
+		}
+
+		values_converted[i] = value;
+		string_length += value->length + (i == value_amount - 1 ? 1 : 2);
+	}
+
+	char buffer[string_length + 1];
+	memcpy(buffer, "[ ", 2);
+
+	uint buffer_index = 2;
+
+	for (uint i = 0; i < value_amount; i++) {
+		LitString* part = values_converted[i];
+
+		memcpy(&buffer[buffer_index], part->chars, part->length);
+		buffer_index += part->length;
+
+		memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " ]" : ", ", 2);
+		buffer_index += 2;
+
+		lit_pop_root(state);
+	}
+
+	return lit_copy_string(vm->state, buffer, buffer_index);
+}
+
+LitString* json_to_string(LitVm* vm, LitValue instance, uint indentation) {
+	if (IS_MAP(instance)) {
+		return json_map_to_string(vm, instance, indentation);
+	} else if (IS_ARRAY(instance)) {
+		return json_array_to_string(vm, instance, indentation);
+	} else if (IS_STRING(instance)) {
+		return AS_STRING(instance);
+	} else if (IS_NUMBER(instance)) {
+		return lit_to_string(vm->state, instance, indentation);
+	}
+
+	return CONST_STRING(vm->state, "invalid json");
+}
+
+LIT_METHOD(json_toString) {
+	return OBJECT_VALUE(json_to_string(vm, args[0], 0));
+}
+
 void lit_open_json_library(LitState* state) {
 	LIT_BEGIN_CLASS("JSON")
 		LIT_BIND_STATIC_METHOD("parse", json_parse)
+		LIT_BIND_STATIC_METHOD("toString", json_toString)
 	LIT_END_CLASS()
 }
