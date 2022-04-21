@@ -4,7 +4,7 @@
 #define LIT_REPOSITORY "https://github.com/egordorichev/lit"
 
 #define LIT_VERSION_MAJOR 0
-#define LIT_VERSION_MINOR 2
+#define LIT_VERSION_MINOR 3
 #define LIT_VERSION_STRING "0.3"
 #define LIT_BYTECODE_VERSION 0
 
