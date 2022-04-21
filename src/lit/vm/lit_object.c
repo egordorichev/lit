@@ -235,7 +235,7 @@ LitFunction* lit_create_function(LitState* state, LitModule* module) {
 	function->name = NULL;
 	function->arg_count = 0;
 	function->upvalue_count = 0;
-	function->max_slots = 0;
+	function->max_registers = 0;
 	function->module = module;
 	function->vararg = false;
 
@@ -254,6 +254,11 @@ LitValue lit_get_function_name(LitVm* vm, LitValue instance) {
 
 		case OBJECT_CLOSURE: {
 			name = AS_CLOSURE(instance)->function->name;
+			break;
+		}
+
+		case OBJECT_CLOSURE_PROTOTYPE: {
+			name = AS_CLOSURE_PROTOTYPE(instance)->function->name;
 			break;
 		}
 
@@ -331,6 +336,22 @@ LitClosure* lit_create_closure(LitState* state, LitFunction* function) {
 	return closure;
 }
 
+LitClosurePrototype* lit_create_closure_prototype(LitState* state, LitFunction* function) {
+	LitClosurePrototype* closure = ALLOCATE_OBJECT(state, LitClosurePrototype, OBJECT_CLOSURE_PROTOTYPE);
+
+	lit_push_root(state, (LitObject*) closure);
+
+	closure->indexes = LIT_ALLOCATE(state, uint8_t, function->upvalue_count);
+	closure->local = LIT_ALLOCATE(state, bool, function->upvalue_count);
+
+	lit_pop_root(state);
+
+	closure->function = function;
+	closure->upvalue_count = function->upvalue_count;
+
+	return closure;
+}
+
 LitNativeFunction* lit_create_native_function(LitState* state, LitNativeFunctionFn function, LitString* name) {
 	LitNativeFunction* native = ALLOCATE_OBJECT(state, LitNativeFunction, OBJECT_NATIVE_FUNCTION);
 
@@ -369,8 +390,8 @@ LitPrimitiveMethod* lit_create_primitive_method(LitState* state, LitPrimitiveMet
 
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function) {
 	// Allocate in advance, just in case GC is triggered
-	uint stack_capacity = function == NULL ? 1 : (uint) lit_closest_power_of_two(function->max_slots + 1);
-	LitValue* stack = LIT_ALLOCATE(state, LitValue, stack_capacity);
+	uint8_t registers_allocated = function == NULL ? 1 : (uint8_t) lit_closest_power_of_two(function->max_registers);
+	LitValue* registers = LIT_ALLOCATE(state, LitValue, registers_allocated);
 
 	LitCallFrame* frames = LIT_ALLOCATE(state, LitCallFrame, LIT_INITIAL_CALL_FRAMES);
 	LitFiber* fiber = ALLOCATE_OBJECT(state, LitFiber, OBJECT_FIBER);
@@ -379,59 +400,74 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 		module->main_fiber = fiber;
 	}
 
-	fiber->stack = stack;
-	fiber->stack_capacity = stack_capacity;
-	fiber->stack_top = fiber->stack;
+	fiber->registers = registers;
 
+	for (uint8_t i = 0; i < registers_allocated; i++) {
+		fiber->registers[i] = NULL_VALUE;
+	}
+
+	fiber->registers_allocated = registers_allocated;
 	fiber->frames = frames;
 	fiber->frame_capacity = LIT_INITIAL_CALL_FRAMES;
-
 	fiber->parent = NULL;
-	fiber->frame_count = 1;
+	fiber->frame_count = function == NULL ? 0 : 1;
 	fiber->arg_count = 0;
 	fiber->module = module;
 	fiber->catcher = false;
 	fiber->error = NULL_VALUE;
 	fiber->open_upvalues = NULL;
 	fiber->abort = false;
-
-	LitCallFrame* frame = &fiber->frames[0];
-
-	frame->closure = NULL;
-	frame->function = function;
-	frame->slots = fiber->stack;
-	frame->result_ignored = false;
-	frame->return_to_c = false;
+	fiber->return_address = NULL;
 
 	if (function != NULL) {
+		LitCallFrame* frame = &fiber->frames[0];
+
+		frame->closure = NULL;
+		frame->function = function;
+		frame->slots = fiber->registers;
+		frame->result_ignored = false;
+		frame->return_to_c = false;
+		frame->return_address = NULL;
+
+		lit_ensure_fiber_registers(state, fiber, function->max_registers);
 		frame->ip = function->chunk.code;
 	}
 
 	return fiber;
 }
 
-void lit_ensure_fiber_stack(LitState* state, LitFiber* fiber, uint needed) {
-	if (fiber->stack_capacity >= needed) {
+void lit_ensure_fiber_registers(LitState* state, LitFiber* fiber, uint needed) {
+	if (fiber->registers_allocated >= needed) {
 		return;
 	}
 
 	uint capacity = (uint) lit_closest_power_of_two((int) needed);
-	LitValue* old_stack = fiber->stack;
+	LitValue* old_registers = fiber->registers;
 
-	fiber->stack = (LitValue*) lit_reallocate(state, fiber->stack, sizeof(LitValue) * fiber->stack_capacity, sizeof(LitValue) * capacity);
-	fiber->stack_capacity = capacity;
+	fiber->registers = (LitValue*) lit_reallocate(state, fiber->registers, sizeof(LitValue) * fiber->registers_allocated, sizeof(LitValue) * capacity);
 
-	if (fiber->stack != old_stack) {
-		for (uint i = 0; i < fiber->frame_capacity; i++) {
+	for (uint i = fiber->registers_allocated; i < capacity; i++) {
+		fiber->registers[i] = NULL_VALUE;
+	}
+
+	fiber->registers_allocated = capacity;
+
+	if (fiber->registers != old_registers) {
+		for (uint i = 0; i < fiber->frame_count; i++) {
 			LitCallFrame* frame = &fiber->frames[i];
-			frame->slots = fiber->stack + (frame->slots - old_stack);
+			int difference = (frame->slots - old_registers);
+
+			LitValue* old_slots = frame->slots;
+			frame->slots = fiber->registers + difference;
+
+			if (frame->return_address != NULL) {
+				frame->return_address = fiber->registers + (old_slots - old_registers);
+			}
 		}
 
 		for (LitUpvalue* upvalue = fiber->open_upvalues; upvalue != NULL; upvalue = upvalue->next) {
-			upvalue->location = fiber->stack + (upvalue->location - old_stack);
+			upvalue->location = fiber->registers + (upvalue->location - old_registers);
 		}
-
-		fiber->stack_top = fiber->stack + (fiber->stack_top - old_stack);
 	}
 }
 
@@ -484,6 +520,12 @@ LitBoundMethod* lit_create_bound_method(LitState* state, LitValue receiver, LitV
 LitArray* lit_create_array(LitState* state) {
 	LitArray* array = ALLOCATE_OBJECT(state, LitArray, OBJECT_ARRAY);
 	lit_init_values(&array->values);
+	return array;
+}
+
+LitVarargArray* lit_create_vararg_array(LitState* state) {
+	LitVarargArray* array = ALLOCATE_OBJECT(state, LitVarargArray, OBJECT_VARARG_ARRAY);
+	lit_init_values(&array->array.values);
 	return array;
 }
 

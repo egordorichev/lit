@@ -15,7 +15,7 @@ typedef struct sLitScanner {
 
 	LitState* state;
 
-	uint braces[LIT_MAX_INTERPOLATION_NESTING];
+	uint braces[LIT_INTERPOLATION_NESTING_MAX];
 	uint num_braces;
 
 	bool had_error;

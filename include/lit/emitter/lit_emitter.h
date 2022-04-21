@@ -22,6 +22,8 @@ typedef struct {
 
 	bool captured;
 	bool constant;
+
+	uint8_t reg;
 } LitLocal;
 
 DECLARE_ARRAY(LitLocals, LitLocal, locals)
@@ -39,14 +41,12 @@ typedef struct {
 	LitFunctionType type;
 
 	LitCompilerUpvalue upvalues[UINT8_COUNT];
+	uint8_t registers_used;
 
 	struct LitCompiler* enclosing;
 
 	bool skip_return;
 	uint loop_depth;
-
-	int slots;
-	int max_slots;
 } LitCompiler;
 
 typedef struct sLitEmitter {
@@ -63,9 +63,9 @@ typedef struct sLitEmitter {
 
 	LitModule* module;
 	LitString* class_name;
+	uint8_t class_register;
 
 	bool class_has_super;
-	bool previous_was_expression_statement;
 	int emit_reference;
 } sLitEmitter;
 

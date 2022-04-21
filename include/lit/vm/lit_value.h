@@ -47,6 +47,7 @@ void lit_print_value(LitValue value);
 
 DECLARE_ARRAY(LitValues, LitValue, values)
 void lit_values_ensure_size(LitState* state, LitValues* values, uint size);
+void lit_values_ensure_size_empty(LitState* state, LitValues* values, uint size);
 const char* lit_get_value_type(LitValue value);
 
 #endif

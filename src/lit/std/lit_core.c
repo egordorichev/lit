@@ -155,27 +155,24 @@ LIT_METHOD(object_class) {
 }
 
 LIT_METHOD(object_toString) {
-	return OBJECT_VALUE(lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_get_class_for(vm->state, instance)->name)));
+	return lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_get_class_for(vm->state, instance)->name));
 }
 
 LIT_METHOD(object_subscript) {
 	if (!IS_INSTANCE(instance)) {
+		LitObjectType type = OBJECT_TYPE(instance);
 		lit_runtime_error_exiting(vm, "Can't modify built-in types");
 	}
 
 	LitInstance* inst = AS_INSTANCE(instance);
 
-	if (arg_count == 2) {
-		if (!IS_STRING(args[0])) {
-			lit_runtime_error_exiting(vm, "Object index must be a string");
-		}
-
-		lit_table_set(vm->state, &inst->fields, AS_STRING(args[0]), args[1]);
-		return args[1];
-	}
-
 	if (!IS_STRING(args[0])) {
 		lit_runtime_error_exiting(vm, "Object index must be a string");
+	}
+
+	if (arg_count == 2) {
+		lit_table_set(vm->state, &inst->fields, AS_STRING(args[0]), args[1]);
+		return args[1];
 	}
 
 	LitValue value;
@@ -562,44 +559,61 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count
 
 	if (frame->ip == frame->function->chunk.code) {
 		fiber->arg_count = arg_count;
-		lit_ensure_fiber_stack(vm->state, fiber, frame->function->max_slots + 1 + (int) (fiber->stack_top - fiber->stack));
+		LitFunction* function = frame->function;
 
-		frame->slots = fiber->stack_top;
-		lit_push(vm, OBJECT_VALUE(frame->function));
+		LitValue* start = fiber->frame_count > 1 ? fiber->frames[fiber->frame_count - 2].slots + fiber->frames[fiber->frame_count - 2].function->max_registers : fiber->registers;
+		lit_ensure_fiber_registers(vm->state, fiber, start - fiber->registers + function->max_registers);
+
+		frame->slots = fiber->frame_count > 1 ? fiber->frames[fiber->frame_count - 2].slots + fiber->frames[fiber->frame_count - 2].function->max_registers : fiber->registers;
+
+		for (int i = arg_count + 1; i < function->max_registers; i++) {
+			frame->slots[i] = NULL_VALUE;
+		}
+
+		frame->slots[0] = OBJECT_VALUE(function);
+
+		for (uint8_t i = 0; i < arg_count; i++) {
+			frame->slots[i + 1] = args[i];
+		}
 
 		bool vararg = frame->function->vararg;
-		int function_arg_count = frame->function->arg_count;
-		int to = function_arg_count - (vararg ? 1 : 0);
+		uint function_arg_count = function->arg_count;
 
 		fiber->arg_count = function_arg_count;
 
-		for (int i = 0; i < to; i++) {
-			lit_push(vm, i < (int) arg_count ? args[i] : NULL_VALUE);
-		}
-
 		if (vararg) {
-			LitArray* array = lit_create_array(vm->state);
-			lit_push(vm, OBJECT_VALUE(array));
+			if (function_arg_count == arg_count && IS_VARARG_ARRAY(*(frame->slots + function_arg_count))) {
+				// No need to repack the arguments
+			} else {
+				LitArray *array = &lit_create_vararg_array(vm->state)->array;
+				*(frame->slots + function_arg_count) = OBJECT_VALUE(array);
 
-			int vararg_count = arg_count - function_arg_count + 1;
+				int vararg_count = arg_count - function_arg_count + 1;
 
-			if (vararg_count > 0) {
-				lit_values_ensure_size(vm->state, &array->values, vararg_count);
+				if (vararg_count > 0) {
+					lit_values_ensure_size(vm->state, &array->values, vararg_count);
 
-				for (int i = 0; i < vararg_count; i++) {
-					array->values.values[i] = args[i + function_arg_count - 1];
+					for (int i = 0; i < vararg_count; i++) {
+						array->values.values[i] = args[i + function_arg_count - 1];
+					}
 				}
 			}
 		}
 	}
+
+#ifdef LIT_TRACE_EXECUTION
+	printf("fiber start:\n");
+#endif
 }
 
 LIT_PRIMITIVE(fiber_run) {
+	vm->fiber->return_address = args - 1;
 	run_fiber(vm, AS_FIBER(instance), args, arg_count, false);
 	return true;
 }
 
 LIT_PRIMITIVE(fiber_try) {
+	vm->fiber->return_address = args - 1;
 	run_fiber(vm, AS_FIBER(instance), args, arg_count, true);
 	return true;
 }
@@ -610,13 +624,9 @@ LIT_PRIMITIVE(fiber_yield) {
 		return true;
 	}
 
-	LitFiber* fiber = vm->fiber;
-
 	vm->fiber = vm->fiber->parent;
-	vm->fiber->stack_top -= fiber->arg_count;
-	vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
+	*vm->fiber->return_address = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 
-	args[-1] = NULL_VALUE;
 	return true;
 }
 
@@ -626,19 +636,18 @@ LIT_PRIMITIVE(fiber_yeet) {
 		return true;
 	}
 
-	LitFiber* fiber = vm->fiber;
-
 	vm->fiber = vm->fiber->parent;
-	vm->fiber->stack_top -= fiber->arg_count;
-	vm->fiber->stack_top[-1] = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
+	*vm->fiber->return_address = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
 
-	args[-1] = NULL_VALUE;
 	return true;
 }
 
 LIT_PRIMITIVE(fiber_abort) {
-	lit_handle_runtime_error(vm, arg_count == 0 ? CONST_STRING(vm->state, "Fiber was aborted") : lit_to_string(vm->state, args[0]));
-	args[-1] = NULL_VALUE;
+	LitString* value = arg_count == 0 ? CONST_STRING(vm->state, "Fiber was aborted") : lit_to_string(vm->state, args[0]);
+
+	lit_handle_runtime_error(vm, value);
+	*vm->fiber->return_address = OBJECT_VALUE(value);
+
 	return true;
 }
 
@@ -1226,7 +1235,7 @@ LIT_METHOD(map_toString) {
 	uint string_length = 3;
 
 	if (has_more) {
-		string_length += SINGLE_LINE_MAPS_ENABLED ? 5 : 6;
+		string_length += LIT_SINGLE_LINE_MAPS_ENABLED ? 5 : 6;
 	}
 
 	uint i = 0;
@@ -1244,8 +1253,8 @@ LIT_METHOD(map_toString) {
 
 			values_converted[i] = value;
 			keys[i] = entry->key;
-			string_length += entry->key->length + 3 + value->length +
-			#ifdef SINGLE_LINE_MAPS
+			string_length += entry->key->length + 2 + value->length +
+			#ifdef LIT_SINGLE_LINE_MAPS
 				(i == value_amount - 1 ? 1 : 2);
 			#else
 				(i == value_amount - 1 ? 2 : 3);
@@ -1257,7 +1266,7 @@ LIT_METHOD(map_toString) {
 
 	char buffer[string_length + 1];
 
-	#ifdef SINGLE_LINE_MAPS
+	#ifdef LIT_SINGLE_LINE_MAPS
 	memcpy(buffer, "{ ", 2);
 	#else
 	memcpy(buffer, "{\n", 2);
@@ -1269,28 +1278,28 @@ LIT_METHOD(map_toString) {
 		LitString *key = keys[i];
 		LitString *value = values_converted[i];
 
-		#ifndef SINGLE_LINE_MAPS
+		#ifndef LIT_SINGLE_LINE_MAPS
 		buffer[buffer_index++] = '\t';
 		#endif
 
 		memcpy(&buffer[buffer_index], key->chars, key->length);
 		buffer_index += key->length;
 
-		memcpy(&buffer[buffer_index], " = ", 3);
-		buffer_index += 3;
+		memcpy(&buffer[buffer_index], ": ", 2);
+		buffer_index += 2;
 
 		memcpy(&buffer[buffer_index], value->chars, value->length);
 		buffer_index += value->length;
 
 		if (has_more && i == value_amount - 1) {
-			#ifdef SINGLE_LINE_MAPS
+			#ifdef LIT_SINGLE_LINE_MAPS
 			memcpy(&buffer[buffer_index], ", ... }", 7);
 			#else
 			memcpy(&buffer[buffer_index], ",\n\t...\n}", 8);
 			#endif
 			buffer_index += 8;
 		} else {
-			#ifdef SINGLE_LINE_MAPS
+			#ifdef LIT_SINGLE_LINE_MAPS
 			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " }" : ", ", 2);
 			#else
 			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? "\n}" : ",\n", 2);
@@ -1323,7 +1332,7 @@ LIT_METHOD(range_iterator) {
 	if (IS_NUMBER(args[0])) {
 		number = AS_NUMBER(args[0]);
 
-		if (range->to > range->from ? number >= range->to : number >= range->from) {
+		if (range->to > range->from ? number >= range->to : number <= range->to) {
 			return NULL_VALUE;
 		}
 
@@ -1396,13 +1405,6 @@ static bool interpret(LitVm* vm, LitModule* module) {
 
 	fiber->parent = vm->fiber;
 	vm->fiber = fiber;
-
-	LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
-
-	if (frame->ip == frame->function->chunk.code) {
-		frame->slots = fiber->stack_top;
-		lit_push(vm, OBJECT_VALUE(frame->function));
-	}
 
 	return true;
 }
@@ -1479,25 +1481,33 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 
 			bool found = false;
 
-			while ((ep = readdir(dir))) {
-				if (ep->d_type == DT_REG) {
-					const char* name = ep->d_name;
-					int name_length = strlen(name);
+      // TODO: was rewritten to work on windows, needs checks!!!
+      while ((ep = readdir(dir))) {
+        const char* name = ep->d_name;
+        int name_length = (int) strlen(name);
 
-					if (name_length > 4 && (strcmp(name + name_length - 4, ".lit") == 0 || strcmp(name + name_length - 4, ".lbc"))) {
-						char dir_path[length + name_length - 2];
-						dir_path[length + name_length - 3] = '\0';
+        if (name_length <= 4 || !(strcmp(name + name_length - 4, ".lit") == 0 || strcmp(name + name_length - 4, ".lbc") == 0)) {
+            continue;
+        }
 
-						memcpy((void*) dir_path, path, length);
-						memcpy((void*) dir_path + length + 1, name, name_length - 4);
-						dir_path[length] = '.';
+        char dir_path[length + name_length - 2];
+        dir_path[length + name_length - 3] = '\0';
 
-						if (!attempt_to_require(vm, args + arg_count, 0, dir_path, false, false)) {
-							lit_runtime_error_exiting(vm, "Failed to require module '%s'", name);
-						} else {
-							found = true;
-						}
-					}
+        memcpy((void*) dir_path, path, length);
+        memcpy((void*) dir_path + length + 1, name, name_length - 4);
+        dir_path[length] = '/';
+
+        struct stat st;
+        stat(dir_path, &st);
+
+        if (S_ISREG(st.st_mode)) {
+          dir_path[length] = '.';
+
+          if (!attempt_to_require(vm, args + arg_count, 0, dir_path, false, false)) {
+              lit_runtime_error_exiting(vm, "Failed to require module '%s'", name);
+          } else {
+              found = true;
+          }
 				}
 			}
 
@@ -1531,8 +1541,8 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 			LitModule* loaded_module = AS_MODULE(existing_module);
 
 			if (loaded_module->ran) {
-				vm->fiber->stack_top -= arg_count;
 				args[-1] = AS_MODULE(existing_module)->return_value;
+				should_update_locals = true;
 			} else {
 				if (interpret(vm, loaded_module)) {
 					should_update_locals = true;
@@ -1582,12 +1592,14 @@ static bool attempt_to_require_combined(LitVm* vm, LitValue* args, uint arg_coun
 }
 
 LIT_NATIVE_PRIMITIVE(require) {
+	vm->fiber->return_address = args - 1;
+
 	LitString* name = LIT_CHECK_OBJECT_STRING(0);
 	bool ignore_previous = arg_count > 1 && IS_BOOL(args[1]) && AS_BOOL(args[1]);
 
 	// First check, if a file with this name exists in the local path
 	if (attempt_to_require(vm, args, arg_count, name->chars, ignore_previous, false)) {
-		return should_update_locals;
+		return !should_update_locals;
 	}
 
 	// If not, we join the path of the current module to it (the path goes all the way from the root)
@@ -1604,12 +1616,12 @@ LIT_NATIVE_PRIMITIVE(require) {
 		buffer[length] = '\0';
 
 		if (attempt_to_require_combined(vm, args, arg_count, (const char*) &buffer, name->chars, ignore_previous)) {
-			return should_update_locals;
+			return !should_update_locals;
 		}
 	}
 
 	lit_runtime_error_exiting(vm, "Failed to require module '%s'", name->chars);
-	return false;
+	return true;
 }
 
 void lit_open_core_library(LitState* state) {

@@ -1,14 +1,30 @@
-class A {
-	toString() {
-		return 32
+class Awesome {
+	constructor(a) {
+		this.prop = a
+	}
+
+	test() {
+		return this.prop
 	}
 }
 
-var a = new A()
-var start = time()
+class Best : Awesome {
+	constructor() {
+		super("good")
+	}
 
-for (var i in 0 .. 9999) {
-	a.toString()
+	test() {
+		this.prop = "bad"
+		print(this.prop)
+		return super.test()
+	}
+
+	getTest() {
+		return super.test
+	}
 }
 
-print("elapsed: " + (time() - start))
+var b = new Best()
+// b.printTest() // Expected: bad
+var z = b.getTest()
+print(z()) // Expected: bad

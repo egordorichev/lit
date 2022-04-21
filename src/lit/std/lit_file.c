@@ -200,7 +200,11 @@ LIT_METHOD(file_getLastModified) {
 		return NUMBER_VALUE(0);
 	}
 
-	return NUMBER_VALUE( buffer.st_mtim.tv_sec);
+#ifdef WIN32
+    return NUMBER_VALUE(buffer.st_mtime); // Why, Windows, why?
+#else
+    return NUMBER_VALUE(buffer.st_mtim.tv_sec);
+#endif
 }
 
 
@@ -219,7 +223,8 @@ LIT_METHOD(directory_listFiles) {
 	struct dirent* ep;
 
 	LitState* state = vm->state;
-	DIR* dir = opendir(LIT_CHECK_STRING(0));
+  const char* path = LIT_CHECK_STRING(0);
+	DIR* dir = opendir(path);
 	LitArray* array = lit_create_array(state);
 
 	if (dir == NULL) {
@@ -227,8 +232,30 @@ LIT_METHOD(directory_listFiles) {
 	}
 
 	while ((ep = readdir(dir))) {
-		if (ep->d_type == DT_REG) {
-			lit_values_write(state, &array->values, OBJECT_CONST_STRING(state, ep->d_name));
+        const char* dir_name = ep->d_name;
+
+        if (strcmp(dir_name, "..") == 0 || strcmp(dir_name, ".") == 0) {
+            continue;
+        }
+
+        size_t base_dir_name_length = strlen(path);
+
+        size_t dir_name_length = strlen(dir_name);
+        size_t total_length = dir_name_length + base_dir_name_length + 2;
+
+        char subdir_name[total_length];
+
+        memcpy(subdir_name, path, base_dir_name_length);
+        memcpy(subdir_name + base_dir_name_length + 1, dir_name, dir_name_length);
+
+        subdir_name[base_dir_name_length] = '/';
+        subdir_name[total_length - 1] = '\0';
+
+        struct stat st;
+        stat(subdir_name, &st);
+
+        if (S_ISREG(st.st_mode)) {
+			lit_values_write(state, &array->values, OBJECT_CONST_STRING(state, dir_name));
 		}
 	}
 
@@ -241,18 +268,41 @@ LIT_METHOD(directory_listDirectories) {
 	struct dirent* ep;
 
 	LitState* state = vm->state;
-	DIR* dir = opendir(LIT_CHECK_STRING(0));
+    const char* path = LIT_CHECK_STRING(0);
+    DIR* dir = opendir(path);
 	LitArray* array = lit_create_array(state);
 
 	if (dir == NULL) {
 		return OBJECT_VALUE(array);
 	}
 
-	while ((ep = readdir(dir))) {
-		if (ep->d_type == DT_DIR && strcmp(ep->d_name, "..") != 0 && strcmp(ep->d_name, ".") != 0) {
-			lit_values_write(state, &array->values, OBJECT_CONST_STRING(state, ep->d_name));
-		}
-	}
+    while ((ep = readdir(dir))) {
+        const char* dir_name = ep->d_name;
+
+        if (strcmp(dir_name, "..") == 0 || strcmp(dir_name, ".") == 0) {
+            continue;
+        }
+
+        size_t base_dir_name_length = strlen(path);
+
+        size_t dir_name_length = strlen(dir_name);
+        size_t total_length = dir_name_length + base_dir_name_length + 2;
+
+        char subdir_name[total_length];
+
+        memcpy(subdir_name, path, base_dir_name_length);
+        memcpy(subdir_name + base_dir_name_length + 1, dir_name, dir_name_length);
+
+        subdir_name[base_dir_name_length] = '/';
+        subdir_name[total_length - 1] = '\0';
+
+        struct stat st;
+        stat(subdir_name, &st);
+
+        if (S_ISDIR(st.st_mode)) {
+            lit_values_write(state, &array->values, OBJECT_CONST_STRING(state, dir_name));
+        }
+    }
 
 	closedir(dir);
 	return OBJECT_VALUE(array);

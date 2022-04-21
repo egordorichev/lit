@@ -1,4 +1,4 @@
-#include"debug/lit_debug.h"
+#include "debug/lit_debug.h"
 #include "vm/lit_object.h"
 #include <stdio.h>
 
@@ -6,84 +6,125 @@ void lit_disassemble_module(LitModule* module, const char* source) {
 	lit_disassemble_chunk(&module->main_function->chunk, module->main_function->name->chars, source);
 }
 
+static void print_constant(LitValue value) {
+	if (IS_FUNCTION(value)) {
+		LitString *function_name = AS_FUNCTION(value)->name;
+		printf("%sfunction %.*s%s", COLOR_CYAN, function_name->length, function_name->chars, COLOR_RESET);
+	} else if (IS_CLOSURE(value)) {
+		LitString *function_name = AS_CLOSURE(value)->function->name;
+		printf("%sclosure %.*s%s", COLOR_CYAN, function_name->length, function_name->chars, COLOR_RESET);
+	} else if (IS_CLOSURE_PROTOTYPE(value)) {
+		LitString *function_name = AS_CLOSURE_PROTOTYPE(value)->function->name;
+		printf("%sclosure prototype %.*s%s", COLOR_CYAN, function_name->length, function_name->chars, COLOR_RESET);
+	} else if (IS_STRING(value)) {
+		LitString *string = AS_STRING(value);
+		printf("%s\"%.*s\"%s", COLOR_CYAN, string->length, string->chars, COLOR_RESET);
+	} else if (IS_NUMBER(value)) {
+		printf("%s%g%s", COLOR_CYAN, AS_NUMBER(value), COLOR_RESET);
+	} else {
+		printf("unknown");
+	}
+}
+
 void lit_disassemble_chunk(LitChunk* chunk, const char* name, const char* source) {
 	LitValues* values = &chunk->constants;
+	printf("^^ %s ^^\n", name);
 
-	for (uint i = 0; i < values->count; i++) {
-		LitValue value = values->values[i];
+	if (values->count > 0) {
+		printf("%sconstants:%s\n", COLOR_MAGENTA, COLOR_RESET);
 
-		if (IS_FUNCTION(value)) {
-			LitFunction* function = AS_FUNCTION(value);
-			lit_disassemble_chunk(&function->chunk, function->name->chars, source);
+		for (uint i = 0; i < values->count; i++) {
+			LitValue value = values->values[i];
+
+			printf("% 4d ", i);
+			print_constant(value);
+			printf("\n");
 		}
 	}
 
-	printf("== %s ==\n", name);
+	printf("%stext:%s\n", COLOR_MAGENTA, COLOR_RESET);
 
-	for (uint offset = 0; offset < chunk->count;) {
-		offset = lit_disassemble_instruction(chunk, offset, source);
+	for (uint offset = 0; offset < chunk->count; offset++) {
+		lit_disassemble_instruction(chunk, offset, source, false);
 	}
+
+
+	printf("%shex:%s\n", COLOR_MAGENTA, COLOR_RESET);
+
+	for (uint offset = 0; offset < chunk->count; offset++) {
+		printf("%08lX ", chunk->code[offset]);
+	}
+
+	printf("\n");
+
+	printf("vv %s vv\n", name);
 }
 
-static uint print_simple_op(const char* name, uint offset) {
-	printf("%s%s%s\n", COLOR_YELLOW, name, COLOR_RESET);
-	return offset + 1;
+typedef void (*LitDebugInstructionFn)(uint64_t instruction, const char* name);
+
+static void print_abc_instruction(uint64_t instruction, const char* name) {
+	printf("%s%s%s%*s %lu \t%lu \t%lu\n", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction), LIT_INSTRUCTION_C(instruction));
 }
 
-static uint print_constant_op(const char* name, LitChunk* chunk, uint offset, bool big) {
-	uint8_t constant;
+static void print_abx_instruction(uint64_t instruction, const char* name) {
+	printf("%s%s%s%*s %lu \t%lu\n", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_BX(instruction));
+}
 
-	if (big) {
-		constant = (uint16_t) (chunk->code[offset + 1] << 8);
-		constant |= chunk->code[offset + 2];
+static void print_asbx_instruction(uint64_t instruction, const char* name) {
+	printf("%s%s%s%*s %lu \t%li\n", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_SBX(instruction));
+}
+
+static void print_register(uint16_t reg) {
+	printf(" \t%hu", reg);
+}
+
+static void print_constant_arg(LitChunk* chunk, uint16_t arg, bool indent) {
+	arg &= 0xff;
+
+	printf("%sc%hu (", indent ? " \t" : "", arg);
+	print_constant(chunk->constants.values[arg]);
+	printf(")");
+}
+
+static void print_constant_or_register(LitChunk* chunk, uint16_t arg) {
+	if (IS_BIT_SET(arg, 8)) {
+		print_constant_arg(chunk, arg, true);
 	} else {
-		constant = chunk->code[offset + 1];
+		print_register(arg);
 	}
-
-	printf("%s%-16s%s %4d '", COLOR_YELLOW, name, COLOR_RESET, constant);
-	lit_print_value(chunk->constants.values[constant]);
-	printf("'\n");
-
-	return offset + (big ? 3 : 2);
 }
 
-static uint print_byte_op(const char* name, LitChunk* chunk, uint offset) {
-	uint8_t slot = chunk->code[offset + 1];
-	printf("%s%-16s%s %4d\n", COLOR_YELLOW, name, COLOR_RESET, slot);
-
-	return offset + 2;
+static void print_unary_instruction(LitChunk* chunk, uint64_t instruction, const char* name) {
+	printf("%s%s%s%*s %lu", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction));
+	print_constant_or_register(chunk, LIT_INSTRUCTION_B(instruction));
+	printf("\n");
 }
 
-static uint print_short_op(const char* name, LitChunk* chunk, uint offset) {
-	uint16_t slot = (uint16_t) (chunk->code[offset + 1] << 8);
-	slot |= chunk->code[offset + 2];
+static void print_binary_instruction(LitChunk* chunk, uint64_t instruction, const char* name) {
+	printf("%s%s%s%*s %lu", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "", LIT_INSTRUCTION_A(instruction));
 
-	printf("%s%-16s%s %4d\n", COLOR_YELLOW, name, COLOR_RESET, slot);
+	print_constant_or_register(chunk, LIT_INSTRUCTION_B(instruction));
+	print_constant_or_register(chunk, LIT_INSTRUCTION_C(instruction));
 
-	return offset + 2;
+	printf("\n");
 }
 
-static uint print_jump_op(const char* name, int sign, LitChunk* chunk, uint offset) {
-	uint16_t jump = (uint16_t)(chunk->code[offset + 1] << 8);
-	jump |= chunk->code[offset + 2];
-	printf("%s%-16s%s %4d -> %d\n", COLOR_YELLOW, name, COLOR_RESET, offset, offset + 3 + sign * jump);
-	return offset + 3;
+static void print_global_instruction(LitChunk* chunk, uint64_t instruction, const char* name) {
+	printf("%s%s%s%*s", COLOR_YELLOW, name, COLOR_RESET, LIT_LONGEST_OP_NAME - (int) strlen(name), "");
+
+	print_constant_arg(chunk, LIT_INSTRUCTION_BX(instruction), false);
+	print_constant_or_register(chunk, LIT_INSTRUCTION_A(instruction));
+
+	printf("\n");
 }
 
-static uint print_invoke_op(const char* name, LitChunk* chunk, uint offset) {
-	uint8_t arg_count = chunk->code[offset + 1];
+static LitDebugInstructionFn debug_instruction_functions[] = {
+	print_abc_instruction,
+	print_abx_instruction,
+	print_asbx_instruction
+};
 
-	uint8_t constant = chunk->code[offset + 2];
-	constant |= chunk->code[offset + 3];
-
-	printf("%s%-16s%s (%d args) %4d '", COLOR_YELLOW, name, COLOR_RESET, arg_count, constant);
-	lit_print_value(chunk->constants.values[constant]);
-	printf("'\n");
-
-	return offset + 4;
-}
-
-uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* source) {
+void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* source, bool force_line) {
 	uint line = lit_chunk_get_line(chunk, offset);
 	bool same = !chunk->has_line_info || (offset > 0 && line == lit_chunk_get_line(chunk, offset - 1));
 
@@ -114,131 +155,47 @@ uint lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 
 	printf("%04d ", offset);
 
-	if (same) {
+	if (same && !force_line) {
 		printf("   | ");
 	} else {
 		printf("%s%4d%s ", COLOR_BLUE, line, COLOR_RESET);
 	}
 
-	uint8_t instruction = chunk->code[offset];
+	uint64_t instruction = chunk->code[offset];
+	uint8_t opcode = LIT_INSTRUCTION_OPCODE(instruction);
 
-	switch (instruction) {
-		case OP_POP: return print_simple_op("OP_POP", offset);
-		case OP_POP_LOCALS: return print_constant_op("OP_POP_LOCALS", chunk, offset, true);
-		case OP_RETURN: return print_simple_op("OP_RETURN", offset);
-		case OP_CONSTANT: return print_constant_op("OP_CONSTANT", chunk, offset, false);
-		case OP_CONSTANT_LONG: return print_constant_op("OP_CONSTANT_LONG", chunk, offset, true);
-		case OP_TRUE: return print_simple_op("OP_TRUE", offset);
-		case OP_FALSE: return print_simple_op("OP_FALSE", offset);
-		case OP_NULL: return print_simple_op("OP_NULL", offset);
-		case OP_NEGATE: return print_simple_op("OP_NEGATE", offset);
-		case OP_NOT: return print_simple_op("OP_NOT", offset);
-		case OP_ADD: return print_simple_op("OP_ADD", offset);
-		case OP_SUBTRACT: return print_simple_op("OP_SUBTRACT", offset);
-		case OP_MULTIPLY: return print_simple_op("OP_MULTIPLY", offset);
-		case OP_POWER: return print_simple_op("OP_POWER", offset);
-		case OP_DIVIDE: return print_simple_op("OP_DIVIDE", offset);
-		case OP_FLOOR_DIVIDE: return print_simple_op("OP_FLOOR_DIVIDE", offset);
-		case OP_MOD: return print_simple_op("OP_MOD", offset);
-		case OP_BAND: return print_simple_op("OP_BAND", offset);
-		case OP_BOR: return print_simple_op("OP_BOR", offset);
-		case OP_BXOR: return print_simple_op("OP_BXOR", offset);
-		case OP_LSHIFT: return print_simple_op("OP_LSHIFT", offset);
-		case OP_RSHIFT: return print_simple_op("OP_RSHIFT", offset);
-		case OP_BNOT: return print_simple_op("OP_BNOT", offset);
-		case OP_EQUAL: return print_simple_op("OP_EQUAL", offset);
-		case OP_GREATER: return print_simple_op("OP_GREATER", offset);
-		case OP_GREATER_EQUAL: return print_simple_op("OP_GREATER_EQUAL", offset);
-		case OP_LESS: return print_simple_op("OP_LESS", offset);
-		case OP_LESS_EQUAL: return print_simple_op("OP_LESS_EQUAL", offset);
+	switch (opcode) {
+		case OP_MOVE: print_binary_instruction(chunk, instruction, "MOVE"); break;
+		case OP_ADD: print_binary_instruction(chunk, instruction, "ADD"); break;
+		case OP_SUBTRACT: print_binary_instruction(chunk, instruction, "SUBTRACT"); break;
+		case OP_MULTIPLY: print_binary_instruction(chunk, instruction, "MULTIPLY"); break;
+		case OP_DIVIDE: print_binary_instruction(chunk, instruction, "DIVIDE"); break;
+		case OP_NEGATE: print_unary_instruction(chunk, instruction, "NEGATE"); break;
+		case OP_NOT: print_unary_instruction(chunk, instruction, "NOT"); break;
 
-		case OP_SET_GLOBAL: return print_constant_op("OP_SET_GLOBAL", chunk, offset, true);
-		case OP_GET_GLOBAL: return print_constant_op("OP_GET_GLOBAL", chunk, offset, true);
+		case OP_EQUAL: print_binary_instruction(chunk, instruction, "EQUAL"); break;
+		case OP_LESS: print_binary_instruction(chunk, instruction, "LESS"); break;
+		case OP_LESS_EQUAL: print_binary_instruction(chunk, instruction, "LESS_EQUAL"); break;
 
-		case OP_SET_LOCAL: return print_byte_op("OP_SET_LOCAL", chunk, offset);
-		case OP_GET_LOCAL: return print_byte_op("OP_GET_LOCAL", chunk, offset);
-		case OP_SET_LOCAL_LONG: return print_short_op("OP_SET_LOCAL_LONG", chunk, offset);
-		case OP_GET_LOCAL_LONG: return print_short_op("OP_GET_LOCAL_LONG", chunk, offset);
-
-		case OP_SET_PRIVATE: return print_byte_op("OP_SET_PRIVATE", chunk, offset);
-		case OP_GET_PRIVATE: return print_byte_op("OP_GET_PRIVATE", chunk, offset);
-		case OP_SET_PRIVATE_LONG: return print_short_op("OP_SET_PRIVATE_LONG", chunk, offset);
-		case OP_GET_PRIVATE_LONG: return print_short_op("OP_GET_PRIVATE_LONG", chunk, offset);
-
-		case OP_SET_UPVALUE: return print_byte_op("OP_SET_UPVALUE", chunk, offset);
-		case OP_GET_UPVALUE: return print_byte_op("OP_GET_UPVALUE", chunk, offset);
-
-		case OP_JUMP_IF_FALSE: return print_jump_op("OP_JUMP_IF_FALSE", 1, chunk, offset);
-		case OP_JUMP_IF_NULL: return print_jump_op("OP_JUMP_IF_NULL", 1, chunk, offset);
-		case OP_JUMP_IF_NULL_POPPING: return print_jump_op("OP_JUMP_IF_NULL_POPPING", 1, chunk, offset);
-		case OP_JUMP: return print_jump_op("OP_JUMP", 1, chunk, offset);
-		case OP_JUMP_BACK: return print_jump_op("OP_JUMP_BACK", -1, chunk, offset);
-		case OP_AND: return print_jump_op("OP_AND", 1, chunk, offset);
-		case OP_OR: return print_jump_op("OP_OR", 1, chunk, offset);
-		case OP_NULL_OR: return print_jump_op("OP_NULL_OR", 1, chunk, offset);
-
-		case OP_CALL: return print_byte_op("OP_CALL", chunk, offset);
-
-		case OP_CLOSURE: {
-			offset++;
-			int16_t constant = (uint16_t) (chunk->code[offset] << 8);
-			offset++;
-			constant |= chunk->code[offset];
-
-			printf("%-16s %4d ", "OP_CLOSURE", constant);
-			lit_print_value(chunk->constants.values[constant]);
-			printf("\n");
-
-			LitFunction* function = AS_FUNCTION(chunk->constants.values[constant]);
-
-			for (uint j = 0; j < function->upvalue_count; j++) {
-				int is_local = chunk->code[offset++];
-				int index = chunk->code[offset++];
-
-				printf("%04d      |                     %s %d\n", offset - 2, is_local ? "local" : "upvalue", index);
-			}
-
-			return offset;
-		}
-
-		case OP_CLOSE_UPVALUE: return print_simple_op("OP_CLOSE_UPVALUE", offset);
-		case OP_CLASS: return print_constant_op("OP_CLASS", chunk, offset, true);
-
-		case OP_GET_FIELD: return print_simple_op("OP_GET_FIELD", offset);
-		case OP_SET_FIELD: return print_simple_op("OP_SET_FIELD", offset);
-
-		case OP_SUBSCRIPT_GET: return print_simple_op("OP_SUBSCRIPT_GET", offset);
-		case OP_SUBSCRIPT_SET: return print_simple_op("OP_SUBSCRIPT_SET", offset);
-		case OP_ARRAY: return print_simple_op("OP_ARRAY", offset);
-		case OP_PUSH_ARRAY_ELEMENT: return print_simple_op("OP_PUSH_ARRAY_ELEMENT", offset);
-		case OP_OBJECT: return print_simple_op("OP_OBJECT", offset);
-		case OP_PUSH_OBJECT_FIELD: return print_simple_op("OP_PUSH_OBJECT_FIELD", offset);
-		case OP_RANGE: return print_simple_op("OP_RANGE", offset);
-
-		case OP_METHOD: return print_constant_op("OP_METHOD", chunk, offset, true);
-		case OP_STATIC_FIELD: return print_constant_op("OP_STATIC_FIELD", chunk, offset, true);
-		case OP_DEFINE_FIELD: return print_constant_op("OP_DEFINE_FIELD", chunk, offset, true);
-
-		case OP_INVOKE: return print_invoke_op("OP_INVOKE", chunk, offset);
-		case OP_INVOKE_SUPER: return print_invoke_op("OP_INVOKE_SUPER", chunk, offset);
-		case OP_INVOKE_IGNORING: return print_invoke_op("OP_INVOKE_IGNORING", chunk, offset);
-		case OP_INVOKE_SUPER_IGNORING: return print_invoke_op("OP_INVOKE_SUPER_IGNORING", chunk, offset);
-		case OP_INHERIT: return print_simple_op("OP_INHERIT", offset);
-		case OP_IS: return print_simple_op("OP_IS", offset);
-		case OP_GET_SUPER_METHOD: return print_constant_op("OP_GET_SUPER_METHOD", chunk, offset, true);
-
-		case OP_VARARG: return print_byte_op("OP_VARARG", chunk, offset);
-
-		case OP_REFERENCE_FIELD: return print_simple_op("OP_REFERENCE_FIELD", offset);
-		case OP_REFERENCE_UPVALUE: return print_byte_op("OP_REFERENCE_UPVALUE", chunk, offset);
-		case OP_REFERENCE_PRIVATE: return print_short_op("OP_REFERENCE_PRIVATE", chunk, offset);
-		case OP_REFERENCE_LOCAL: return print_short_op("OP_REFERENCE_LOCAL", chunk, offset);
-		case OP_REFERENCE_GLOBAL: return print_constant_op("OP_REFERENCE_GLOBAL", chunk, offset, true);
-		case OP_SET_REFERENCE: return print_simple_op("OP_SET_REFERENCE", offset);
+		case OP_SET_GLOBAL: print_global_instruction(chunk, instruction, "SET_GLOBAL"); break;
+		case OP_GET_GLOBAL: print_global_instruction(chunk, instruction, "GET_GLOBAL"); break;
 
 		default: {
-			printf("Unknown opcode %d\n", instruction);
-			return offset + 1;
+			switch (opcode) {
+				// A simple way to automatically generate case printers for all the opcodes
+				#define OPCODE(name, string_name, type) case OP_##name: { \
+	        debug_instruction_functions[(int) type](instruction, string_name); \
+	        break; \
+	      }
+
+				#include "vm/lit_opcodes.h"
+				#undef OPCODE
+
+				default: {
+					printf("Unknown opcode %d\n", opcode);
+					break;
+				}
+			}
 		}
 	}
 }
@@ -250,6 +207,6 @@ void lit_trace_frame(LitFiber* fiber) {
 	}
 
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
-	printf("== fiber %p f%i %s (expects %i, max %i, added %i, current %i, exits %i) ==\n", fiber, fiber->frame_count - 1, frame->function->name->chars, frame->function->arg_count, frame->function->max_slots, frame->function->max_slots + (int) (fiber->stack_top - fiber->stack), fiber->stack_capacity, frame->return_to_c);
+	printf("== fiber %p f%i %s (expects %i, max %i, added %i, current %i, exits %i) ==\n", fiber, fiber->frame_count - 1, frame->function->name->chars, frame->function->arg_count, frame->function->max_registers, frame->function->max_registers + (int) (fiber->stack_top - fiber->stack), fiber->stack_capacity, frame->return_address == NULL);
 	#endif
 }

@@ -1,0 +1,7 @@
+class A {
+	operator + (b) {
+		return 32 + b
+	}
+}
+
+print(new A() + 1) // Expected: 33

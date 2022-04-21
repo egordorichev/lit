@@ -9,18 +9,18 @@
 
 #include "lit_config.h"
 
+#include <setjmp.h>
+
 #define INTERPRET_RUNTIME_FAIL ((LitInterpretResult) {INTERPRET_INVALID, NULL_VALUE})
 
 typedef struct sLitVm {
 	LitState* state;
-
 	LitObject* objects;
 
 	LitTable strings;
 
 	LitMap* modules;
 	LitMap* globals;
-
 	LitFiber* fiber;
 
 	// For garbage collection
@@ -36,24 +36,17 @@ typedef struct sLitInterpretResult {
 
 void lit_init_vm(LitState* state, LitVm* vm);
 void lit_free_vm(LitVm* vm);
-void lit_trace_vm_stack(LitVm* vm);
-
-static inline void lit_push(LitVm* vm, LitValue value) {
-	*vm->fiber->stack_top++ = value;
-}
-
-static inline LitValue lit_pop(LitVm* vm) {
-	return *(--vm->fiber->stack_top);
-}
 
 LitInterpretResult lit_interpret_module(LitState* state, LitModule* module);
+
 LitInterpretResult lit_interpret_fiber(LitState* state, LitFiber* fiber);
 bool lit_handle_runtime_error(LitVm* vm, LitString* error_string);
 bool lit_vruntime_error(LitVm* vm, const char* format, va_list args);
 bool lit_runtime_error(LitVm* vm, const char* format, ...);
 bool lit_runtime_error_exiting(LitVm* vm, const char* format, ...);
 
+extern jmp_buf jump_buffer;
 void lit_native_exit_jump();
-bool lit_set_native_exit_jump();
+#define lit_set_native_exit_jump() setjmp(jump_buffer)
 
 #endif

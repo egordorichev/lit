@@ -22,8 +22,6 @@ def BENCHMARK(name, pattern):
 	regex = re.compile(pattern + r"elapsed: (\d+\.\d+)", re.MULTILINE)
 	BENCHMARKS.append([name, regex, None])
 
-BENCHMARK("lit_call", "")
-BENCHMARK("c_call", "")
 BENCHMARK("sort_custom", "")
 BENCHMARK("sort", "")
 BENCHMARK("for", r"""499999500000\n""")
@@ -36,17 +34,18 @@ BENCHMARK("binary_trees", """stretch tree of depth 13 check: -1
 32 trees of depth 12 check: -32
 long lived tree of depth 12 check: -1\n""")
 
-
 BENCHMARK("fib", r"""317811
 317811
 317811
 317811
 317811\n""")
+BENCHMARK("lit_call", "")
+BENCHMARK("c_call", "")
 
 LANGUAGES = [
 	("lit",            ["./dist/lit", "-Oall"],          ".lit"),
 	("lit (-Ono-all)", ["./dist/lit", "-Ono-all"],       ".lit"),
-	("python",         ["python"],                       ".py"),
+	("python",         ["python2.7"],                       ".py"),
 	("lua",            ["lua"],                          ".lua"),
 	("luajit (-joff)", ["luajit", "-joff"],              ".lua"),
 	("luajit",         ["luajit"],                       ".lua")

@@ -1,0 +1,7 @@
+var a = 3
+
+while (a > 0) {
+	a -= 2
+}
+
+print(a) // Expected: -1

@@ -1,0 +1,4 @@
+# Bool
+# Instance methods
+
+### toString

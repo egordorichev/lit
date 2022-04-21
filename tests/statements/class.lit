@@ -92,14 +92,14 @@ class Creature {
 }
 
 var c = new Creature {
-	test = 32
+	test: 32
 }
 
 print(c.field) // Expected: null
 print(c.test) // Expected: 32
 
 c = new Creature("dog") {
-	nope = true
+	nope: true
 }
 
 print(c.field) // Expected: dog

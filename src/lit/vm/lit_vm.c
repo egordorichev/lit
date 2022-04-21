@@ -1,6 +1,6 @@
 #include "vm/lit_vm.h"
 #include "vm/lit_object.h"
-#include"debug/lit_debug.h"
+#include "debug/lit_debug.h"
 #include "mem/lit_mem.h"
 
 #include <stdio.h>
@@ -17,13 +17,7 @@
 #define PUSH_GC(state, allow) bool was_allowed = state->allow_gc; state->allow_gc = allow;
 #define POP_GC(state) state->allow_gc = was_allowed;
 
-static jmp_buf jump_buffer;
-
-static void reset_stack(LitVm* vm) {
-	if (vm->fiber != NULL) {
-		vm->fiber->stack_top = vm->fiber->stack;
-	}
-}
+jmp_buf jump_buffer;
 
 static void reset_vm(LitState* state, LitVm* vm) {
 	vm->state = state;
@@ -54,33 +48,6 @@ void lit_free_vm(LitVm* vm) {
 	reset_vm(vm->state, vm);
 }
 
-void lit_trace_vm_stack(LitVm* vm) {
-	LitFiber* fiber = vm->fiber;
-
-	if (fiber->stack_top == fiber->stack || fiber->frame_count == 0) {
-		return;
-	}
-
-	LitValue* top = fiber->frames[fiber->frame_count - 1].slots;
-	printf("        | %s", COLOR_GREEN);
-
-	for (LitValue* slot = fiber->stack; slot < top; slot++) {
-		printf("[ ");
-		lit_print_value(*slot);
-		printf(" ]");
-	}
-
-	printf("%s", COLOR_RESET);
-
-	for (LitValue* slot = top; slot < fiber->stack_top; slot++) {
-		printf("[ ");
-		lit_print_value(*slot);
-		printf(" ]");
-	}
-
-	printf("\n");
-}
-
 bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 	LitValue error = OBJECT_VALUE(error_string);
 	LitFiber* fiber = vm->fiber;
@@ -90,8 +57,10 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 
 		if (fiber->catcher) {
 			vm->fiber = fiber->parent;
-			vm->fiber->stack_top -= fiber->arg_count;
-			vm->fiber->stack_top[-1] = error;
+
+			if (vm->fiber->return_address != NULL) {
+				*vm->fiber->return_address = error;
+			}
 
 			return true;
 		}
@@ -147,7 +116,6 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 
 	start += sprintf(start, "%s", COLOR_RESET);
 	lit_error(vm->state, RUNTIME_ERROR, buffer);
-	reset_stack(vm);
 
 	return false;
 }
@@ -183,12 +151,13 @@ bool lit_runtime_error_exiting(LitVm* vm, const char* format, ...) {
 	return result;
 }
 
-static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure, uint8_t arg_count) {
+static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure, uint8_t arg_count, uint callee_register) {
 	register LitFiber* fiber = vm->fiber;
+	assert(fiber->frame_count > 0);
 
 	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
 		lit_runtime_error(vm, "Stack overflow");
-		return true;
+		return false;
 	}
 
 	if (fiber->frame_count + 1 > fiber->frame_capacity) {
@@ -197,100 +166,88 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 		fiber->frame_capacity = new_capacity;
 	}
 
-	uint function_arg_count = function->arg_count;
-	lit_ensure_fiber_stack(vm->state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
-
 	register LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
+	LitCallFrame* previous_frame = &fiber->frames[fiber->frame_count - 2];
 
 	frame->function = function;
 	frame->closure = closure;
 	frame->ip = function->chunk.code;
-	frame->slots = fiber->stack_top - arg_count - 1;
+	frame->slots = previous_frame->slots + callee_register;
 	frame->result_ignored = false;
 	frame->return_to_c = false;
+	frame->return_address = previous_frame->slots + (int) callee_register;
 
-	if (arg_count != function_arg_count) {
-		bool vararg = function->vararg;
+	lit_ensure_fiber_registers(vm->state, fiber, frame->slots - fiber->registers + function->max_registers);
+	uint target_arg_count = function->arg_count;
+	bool vararg = function->vararg;
 
-		if (arg_count < function_arg_count) {
-			int amount = (int) function_arg_count - arg_count - (vararg ? 1 : 0);
+	if (target_arg_count > arg_count) {
+#ifdef LIT_TRACE_NULL_FILL
+		printf("Filling with nulls\n");
+#endif
 
-			for (int i = 0; i < amount; i++) {
-				lit_push(vm, NULL_VALUE);
-			}
-
-			if (vararg) {
-				lit_push(vm, OBJECT_VALUE(lit_create_array(vm->state)));
-			}
-		} else if (function->vararg) {
-			LitArray* array = lit_create_array(vm->state);
-			uint vararg_count = arg_count - function_arg_count + 1;
-
-			lit_push_root(vm->state, (LitObject*) array);
-			lit_values_ensure_size(vm->state, &array->values, vararg_count);
-			lit_pop_root(vm->state);
-
-			for (uint i = 0; i < vararg_count; i++) {
-				array->values.values[i] = vm->fiber->stack_top[(int) i - (int) vararg_count];
-			}
-
-			vm->fiber->stack_top -= vararg_count;
-			lit_push(vm, OBJECT_VALUE(array));
-		} else {
-			vm->fiber->stack_top -= (arg_count - function_arg_count);
+		for (uint i = arg_count; i < target_arg_count; i++) {
+			*(frame->slots + i + 1) = NULL_VALUE;
 		}
-	} else if (function->vararg) {
-		LitArray* array = lit_create_array(vm->state);
-		uint vararg_count = arg_count - function_arg_count + 1;
 
-		lit_push_root(vm->state, (LitObject*) array);
-		lit_values_write(vm->state, &array->values, *(fiber->stack_top - 1));
-		*(fiber->stack_top - 1) = OBJECT_VALUE(array);
-		lit_pop_root(vm->state);
+		if (vararg) {
+			*(frame->slots + target_arg_count) = OBJECT_VALUE(lit_create_array(vm->state));
+		}
+	} else if (vararg) {
+		if (target_arg_count == arg_count && IS_VARARG_ARRAY(*(frame->slots + target_arg_count))) {
+			// No need to repack the arguments
+		} else {
+			LitArray *array = &lit_create_vararg_array(vm->state)->array;
+			lit_values_ensure_size(vm->state, &array->values, arg_count - target_arg_count + 1);
+
+			uint j = 0;
+
+			for (uint i = target_arg_count - 1; i < arg_count; i++) {
+				array->values.values[j++] = *(frame->slots + i + 1);
+			}
+
+			*(frame->slots + target_arg_count) = OBJECT_VALUE(array);
+		}
 	}
 
 	return true;
 }
 
-static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
+static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitValue alternate_callee) {
+	LitCallFrame* frame = &vm->fiber->frames[vm->fiber->frame_count - 1];
+	LitValue callee = IS_NULL(alternate_callee) ? frame->slots[callee_register] : alternate_callee;
+	
 	if (IS_OBJECT(callee)) {
 		if (lit_set_native_exit_jump()) {
-			return true;
+			return false;
 		}
 
 		switch (OBJECT_TYPE(callee)) {
 			case OBJECT_FUNCTION: {
-				return call(vm, AS_FUNCTION(callee), NULL, arg_count);
+				return call(vm, AS_FUNCTION(callee), NULL, arg_count, callee_register);
 			}
 
 			case OBJECT_CLOSURE: {
 				LitClosure* closure = AS_CLOSURE(callee);
-				return call(vm, closure->function, closure, arg_count);
+				return call(vm, closure->function, closure, arg_count, callee_register);
 			}
 
 			case OBJECT_NATIVE_FUNCTION: {
-				PUSH_GC(vm->state, false)
+				// For some reason, single line expression doesn't work
+				LitValue value = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, frame->slots + callee_register + 1);
+				frame->slots[callee_register] = value;
 
-				LitValue result = AS_NATIVE_FUNCTION(callee)->function(vm, arg_count, vm->fiber->stack_top - arg_count);
-				vm->fiber->stack_top -= arg_count + 1;
-				lit_push(vm, result);
-
-				POP_GC(vm->state)
-				return false;
+				return !vm->fiber->abort;
 			}
 
 			case OBJECT_NATIVE_PRIMITIVE: {
 				PUSH_GC(vm->state, false)
 
 				LitFiber* fiber = vm->fiber;
-				bool result = AS_NATIVE_PRIMITIVE(callee)->function(vm, arg_count, fiber->stack_top - arg_count);
-
-				if (result) {
-					fiber->stack_top -= arg_count;
-				}
+				bool result = AS_NATIVE_PRIMITIVE(callee)->function(vm, arg_count, frame->slots + callee_register + 1);
 
 				POP_GC(vm->state)
-				return result;
+				return !result;
 			}
 
 			case OBJECT_NATIVE_METHOD: {
@@ -298,46 +255,37 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 
 				LitNativeMethod* method = AS_NATIVE_METHOD(callee);
 				LitFiber* fiber = vm->fiber;
-				LitValue result = method->method(vm, *(vm->fiber->stack_top - arg_count - 1), arg_count, vm->fiber->stack_top - arg_count);
 
-				vm->fiber->stack_top -= arg_count + 1;
-				lit_push(vm, result);
+				// For some reason, single line expression doesn't work
+				LitValue value = method->method(vm, *(frame->slots + callee_register), arg_count, frame->slots + callee_register + 1);
+				frame->slots[callee_register] = value;
 
 				POP_GC(vm->state)
-				return false;
+
+				return !fiber->abort;
 			}
 
 			case OBJECT_PRIMITIVE_METHOD: {
 				PUSH_GC(vm->state, false)
 
 				LitFiber* fiber = vm->fiber;
-				bool result = AS_PRIMITIVE_METHOD(callee)->method(vm, *(fiber->stack_top - arg_count - 1), arg_count, fiber->stack_top - arg_count);
-
-				if (result) {
-					fiber->stack_top -= arg_count;
-				}
+				bool result = AS_PRIMITIVE_METHOD(callee)->method(vm, *(frame->slots + callee_register), arg_count, frame->slots + callee_register + 1);
 
 				POP_GC(vm->state)
-				return result;
+				return !result;
 			}
 
 			case OBJECT_CLASS: {
 				LitClass* klass = AS_CLASS(callee);
 				LitInstance* instance = lit_create_instance(vm->state, klass);
 
-				vm->fiber->stack_top[-arg_count - 1] = OBJECT_VALUE(instance);
+				frame->slots[callee_register] = OBJECT_VALUE(instance);
 
 				if (klass->init_method != NULL) {
-					return call_value(vm, OBJECT_VALUE(klass->init_method), arg_count);
+					return call_value(vm, callee_register, arg_count, OBJECT_VALUE(klass->init_method));
 				}
 
-				// Remove the arguments, so that they don't mess up the stack
-				// (default constructor has no arguments)
-				for (uint i = 0; i < arg_count; i++) {
-					lit_pop(vm);
-				}
-
-				return false;
+				return true;
 			}
 
 			case OBJECT_BOUND_METHOD: {
@@ -346,28 +294,29 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 
 				if (IS_NATIVE_METHOD(method)) {
 					PUSH_GC(vm->state, false)
-
-					LitValue result = AS_NATIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, vm->fiber->stack_top - arg_count);
-					vm->fiber->stack_top -= arg_count + 1;
-					lit_push(vm, result);
-
+					// For some reason, single line expression doesn't work
+					LitValue value = AS_NATIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, frame->slots + callee_register + 1);
+					frame->slots[callee_register] = value;
 					POP_GC(vm->state)
-					return false;
+
+					return !vm->fiber->abort;
 				} else if (IS_PRIMITIVE_METHOD(method)) {
 					LitFiber* fiber = vm->fiber;
 					PUSH_GC(vm->state, false)
 
-					if (AS_PRIMITIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, fiber->stack_top - arg_count)) {
-						fiber->stack_top -= arg_count;
-						return true;
+					if (AS_PRIMITIVE_METHOD(method)->method(vm, bound_method->receiver, arg_count, frame->slots + callee_register + 1)) {
+						POP_GC(vm->state)
+						return false;
 					}
 
 					POP_GC(vm->state)
-					return false;
+					return true;
 				} else {
-					vm->fiber->stack_top[-arg_count - 1] = bound_method->receiver;
-					return call(vm, AS_FUNCTION(method), NULL, arg_count);
+					frame->slots[callee_register] = bound_method->receiver;
+					return call(vm, AS_FUNCTION(method), NULL, arg_count, callee_register);
 				}
+
+				return !vm->fiber->abort;
 			}
 
 			default: {
@@ -377,9 +326,9 @@ static bool call_value(LitVm* vm, LitValue callee, uint8_t arg_count) {
 	}
 
 	if (IS_NULL(callee)) {
-		lit_runtime_error(vm, "Attempt to call a null value");
+		return lit_runtime_error(vm, "Attempt to call a null value");
 	} else {
-		lit_runtime_error(vm, "Can only call functions and classes, got %s", lit_get_value_type(callee));
+		return lit_runtime_error(vm, "Can only call functions and classes, got %s", lit_get_value_type(callee));
 	}
 
 	return true;
@@ -429,989 +378,597 @@ LitInterpretResult lit_interpret_module(LitState* state, LitModule* module) {
 	LitFiber* fiber = lit_create_fiber(state, module, module->main_function);
 	vm->fiber = fiber;
 
-	lit_push(vm, OBJECT_VALUE(module->main_function));
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 
 	return result;
 }
 
 LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber) {
-	register LitVm *vm = state->vm;
-	PUSH_GC(state, true);
-
-	vm->fiber = fiber;
-	fiber->abort = false;
-
-	register LitCallFrame* frame = &fiber->frames[fiber->frame_count - 1];
-	register LitChunk* current_chunk = &frame->function->chunk;
-
-	fiber->module = frame->function->module;
-
-	register uint8_t* ip = frame->ip;
-	register LitValue* slots = frame->slots;
-	register LitValue* privates = fiber->module->privates;
-	register LitUpvalue** upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
+	assert(fiber->frame_count > 0);
+	state->vm->fiber = fiber;
 
 	// Has to be inside of the function in order for goto to work
 	static void* dispatch_table[] = {
-#define OPCODE(name, effect) &&OP_##name,
-#include "vm/lit_opcodes.h"
-#undef OPCODE
+		#define OPCODE(name, a, b) &&OP_##name,
+		#include "vm/lit_opcodes.h"
+		#undef OPCODE
 	};
 
-#define PUSH(value) (*fiber->stack_top++ = value)
-#define POP() (*(--fiber->stack_top))
-#define DROP() (fiber->stack_top--)
-#define DROP_MULTIPLE(amount) (fiber->stack_top -= amount)
-#define READ_BYTE() (*ip++)
-#define READ_SHORT() (ip += 2u, (uint16_t) ((ip[-2] << 8u) | ip[-1]))
+	#define DISPATCH_NEXT() goto dispatch;
+	#define CASE_CODE(name) OP_##name:
+	#define READ_FRAME() \
+    fiber = vm->fiber; \
+		frame = &fiber->frames[fiber->frame_count - 1]; \
+		current_chunk = &frame->function->chunk; \
+	  constants = current_chunk->constants.values; \
+		ip = frame->ip; \
+		fiber->module = frame->function->module; \
+		registers = frame->slots; \
+		privates = fiber->module->privates; \
+		upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
 
-#define CASE_CODE(name) OP_##name:
-#define READ_CONSTANT() (current_chunk->constants.values[READ_BYTE()])
-#define READ_CONSTANT_LONG() (current_chunk->constants.values[READ_SHORT()])
-#define READ_STRING() AS_STRING(READ_CONSTANT())
-#define READ_STRING_LONG() AS_STRING(READ_CONSTANT_LONG())
-#define PEEK(distance) fiber->stack_top[-1 - distance]
-#define READ_FRAME() frame = &fiber->frames[fiber->frame_count - 1]; \
-	current_chunk = &frame->function->chunk; \
-	ip = frame->ip; \
-	slots = frame->slots; \
-	fiber->module = frame->function->module; \
-	privates = fiber->module->privates; \
-	upvalues = frame->closure == NULL ? NULL : frame->closure->upvalues;
+	#define WRITE_FRAME() frame->ip = ip;
+	#define RETURN_ERROR() POP_GC(state) return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
 
-#define WRITE_FRAME() frame->ip = ip;
-#define RETURN_ERROR() POP_GC(state) return (LitInterpretResult) { INTERPRET_RUNTIME_ERROR, NULL_VALUE };
+	#define RECOVER_STATE() \
+		WRITE_FRAME() \
+		fiber = vm->fiber; \
+		if (fiber == NULL) { \
+			return (LitInterpretResult) { INTERPRET_OK, NULL_VALUE }; \
+		} \
+		if (fiber->abort) { \
+			RETURN_ERROR() \
+		} \
+		READ_FRAME() \
+		TRACE_FRAME()
 
-#define RECOVER_STATE() \
-	WRITE_FRAME() \
-	fiber = vm->fiber; \
-	if (fiber == NULL) { \
-		return (LitInterpretResult) { INTERPRET_OK, POP() }; \
-	} \
-	if (fiber->abort) { \
-		RETURN_ERROR() \
-	} \
-	READ_FRAME() \
-	TRACE_FRAME()
+	#define CALL_VALUE(callee, reg, arg_count) \
+		if (!call_value(vm, reg, arg_count, callee)) { \
+			RECOVER_STATE() \
+		}
 
-#define CALL_VALUE(callee, arg_count) \
-	if (call_value(vm, callee, arg_count)) { \
-		RECOVER_STATE() \
-	}
-
-#define RUNTIME_ERROR(format) \
-	if (lit_runtime_error(vm, format)) { \
-		RECOVER_STATE() \
-		continue; \
-	} else { \
-		RETURN_ERROR() \
-	}
-
-#define RUNTIME_ERROR_VARG(format, ...) \
-	if (lit_runtime_error(vm, format, __VA_ARGS__)) { \
-		RECOVER_STATE() \
-		continue; \
-	} else { \
-		RETURN_ERROR() \
-	}
-
-#define INVOKE_FROM_CLASS_ADVANCED(zklass, method_name, arg_count, error, stat, ignoring, callee) \
-	LitValue method; \
-	if ((IS_INSTANCE(callee) && (lit_table_get(&AS_INSTANCE(callee)->fields, method_name, &method))) || lit_table_get(&zklass->stat, method_name, &method)) { \
-		if (ignoring) { \
-			if (call_value(vm, method, arg_count)) { \
-				RECOVER_STATE() \
-				frame->result_ignored = true; \
-			} else { \
-				fiber->stack_top[-1] = callee; \
-			} \
+	#define RUNTIME_ERROR(format) \
+		if (lit_runtime_error(vm, format)) { \
+			RECOVER_STATE() \
+			DISPATCH_NEXT() \
 		} else { \
-			CALL_VALUE(method, arg_count) \
-		} \
-	} else { \
-		if (error) { \
-			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, zklass->name->chars) \
-		} \
-	} \
-	if (error) { \
-		continue; \
-	} \
+			RETURN_ERROR() \
+		}
 
-#define INVOKE_FROM_CLASS(klass, method_name, arg_count, error, stat, ignoring) INVOKE_FROM_CLASS_ADVANCED(klass, method_name, arg_count, error, stat, ignoring, PEEK(arg_count))
+	#define RUNTIME_ERROR_VARG(format, ...) \
+		if (lit_runtime_error(vm, format, __VA_ARGS__)) { \
+			RECOVER_STATE() \
+			DISPATCH_NEXT() \
+		} else { \
+			RETURN_ERROR() \
+		}
 
-#define INVOKE_METHOD(instance, method_name, arg_count) \
-	LitClass* klass = lit_get_class_for(state, instance); \
-	if (klass == NULL) { \
-		RUNTIME_ERROR("Only instances and classes have methods") \
-	} \
-	WRITE_FRAME() \
-	INVOKE_FROM_CLASS_ADVANCED(klass, CONST_STRING(state, method_name), arg_count, true, methods, false, instance) \
-	READ_FRAME()
+	#define GET_RC(r) (IS_BIT_SET(r, 8) ? constants[r & 0xff] : registers[r])
 
-#define BINARY_OP(type, op, op_string) \
-	LitValue a = PEEK(1); \
-	LitValue b = PEEK(0); \
-	if (IS_NUMBER(a)) { \
-		if (!IS_NUMBER(b)) { \
-			RUNTIME_ERROR_VARG("Attempt to use op %s with a number and a %s", op_string, lit_get_value_type(b)) \
-		} \
-		DROP(); \
-		*(fiber->stack_top - 1) = (type(AS_NUMBER(a) op AS_NUMBER(b))); \
-		continue; \
-	} \
-	if (IS_NULL(a)) { \
-		RUNTIME_ERROR_VARG("Attempt to use op %s on a null value", op_string) \
-	} \
-	INVOKE_METHOD(a, op_string, 1)
+	#define WRAP_CONSTANT(r, to, tmp) \
+    LitValue tmp = registers[to]; \
+		registers[to] = GET_RC(r); \
 
+	#define UNWRAP_CONSTANT(r, to, tmp) \
+    registers[to] = tmp;
 
-#define BITWISE_OP(op, op_string) \
-	LitValue a = PEEK(1); \
-	LitValue b = PEEK(0); \
-	if (!IS_NUMBER(a) || !IS_NUMBER(b)) { \
-		RUNTIME_ERROR_VARG("Operands of bitwise op %s must be two numbers, got %s and %s", op_string, lit_get_value_type(a), lit_get_value_type(b)) \
-	} \
-	DROP(); \
-	*(fiber->stack_top - 1) = (NUMBER_VALUE((int) AS_NUMBER(a) op (int) AS_NUMBER(b)));
-
-#define INVOKE_OPERATION(ignoring) \
-	uint8_t arg_count = READ_BYTE(); \
-	LitString* method_name = READ_STRING_LONG(); \
-	LitValue receiver = PEEK(arg_count); \
-	if (IS_NULL(receiver)) { \
-		RUNTIME_ERROR("Attempt to index a null value") \
-	} \
-	WRITE_FRAME() \
-	if (IS_CLASS(receiver)) { \
-		INVOKE_FROM_CLASS_ADVANCED(AS_CLASS(receiver), method_name, arg_count, true, static_fields, ignoring, receiver) \
-		continue; \
-	} else if (IS_INSTANCE(receiver)) { \
-		LitInstance* instance = AS_INSTANCE(receiver); \
-		LitValue value; \
-		if (lit_table_get(&instance->fields, method_name, &value)) { \
-			fiber->stack_top[-arg_count - 1] = value; \
-			CALL_VALUE(value, arg_count) \
-			READ_FRAME() \
-			continue; \
-		} \
-		INVOKE_FROM_CLASS_ADVANCED(instance->klass, method_name, arg_count, true, methods, ignoring, receiver) \
-	} else { \
-		LitClass* type = lit_get_class_for(state, receiver); \
-		if (type == NULL) { \
+	#define INVOKE_METHOD(reg, bv, m, arg_count) \
+		WRITE_FRAME() \
+		LitClass* klass = lit_get_class_for(state, bv); \
+		if (klass == NULL) { \
 			RUNTIME_ERROR("Only instances and classes have methods") \
 		} \
-		INVOKE_FROM_CLASS_ADVANCED(type, method_name, arg_count, true, methods, ignoring, receiver) \
+		LitString* method_name = CONST_STRING(vm->state, m); \
+		LitValue method; \
+		if ((IS_INSTANCE(bv) && (lit_table_get(&AS_INSTANCE(bv)->fields, method_name, &method))) || lit_table_get(&klass->methods, method_name, &method)) { \
+			CALL_VALUE(method, reg, arg_count) \
+		} else { \
+			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars) \
+		} \
+		READ_FRAME()
+
+	#define INVOKE_METHOD_AND_CONTINUE(reg, bv, m, arg_count) \
+		WRITE_FRAME() \
+		LitClass* klass = lit_get_class_for(state, bv); \
+		if (klass == NULL) { \
+			RUNTIME_ERROR("Only instances and classes have methods") \
+		} \
+		LitString* method_name = CONST_STRING(vm->state, m); \
+		LitValue method; \
+		if ((IS_INSTANCE(bv) && (lit_table_get(&AS_INSTANCE(bv)->fields, method_name, &method))) || lit_table_get(&klass->methods, method_name, &method)) { \
+			CALL_VALUE(method, reg, arg_count) \
+			READ_FRAME() \
+      DISPATCH_NEXT() \
+		} \
+
+	// Instruction helpers
+	#define BINARY_INSTRUCTION(type, op, op_string) \
+    uint8_t a = LIT_INSTRUCTION_A(instruction); \
+		uint16_t b = LIT_INSTRUCTION_B(instruction); \
+		uint16_t c = LIT_INSTRUCTION_C(instruction); \
+    LitValue bv = GET_RC(b); \
+    LitValue cv = GET_RC(c); \
+		if (IS_NUMBER(bv)) { \
+			if (!IS_NUMBER(cv)) { \
+				RUNTIME_ERROR_VARG("Attempt to use the operator %s with a number and a %s", op_string, lit_get_value_type(cv)) \
+			} \
+			registers[a] = type(AS_NUMBER(bv) op AS_NUMBER(cv)); \
+		} else if (IS_NULL(bv)) { \
+			RUNTIME_ERROR_VARG("Attempt to use the operator %s on a null value", op_string) \
+		} else { \
+			WRAP_CONSTANT(b, a, tmp_a) \
+      WRAP_CONSTANT(c, a + 1, tmp_b) \
+			INVOKE_METHOD(a, registers[a], op_string, 1) \
+      UNWRAP_CONSTANT(c, a + 1, tmp_b) \
+		}
+
+	#define COMPARISON_INSTRUCTION(type, op, op_string) \
+		uint8_t a = LIT_INSTRUCTION_A(instruction); \
+		uint16_t b = LIT_INSTRUCTION_B(instruction); \
+		uint16_t c = LIT_INSTRUCTION_C(instruction); \
+    LitValue bv = GET_RC(b); \
+    LitValue cv = GET_RC(c); \
+		if (IS_NUMBER(bv)) { \
+			if (!IS_NUMBER(cv)) { \
+				RUNTIME_ERROR_VARG("Attempt to use the operator %s with a number and a %s", op_string, lit_get_value_type(cv)) \
+			} \
+			registers[a] = type(AS_NUMBER(bv) op AS_NUMBER(cv)); \
+		} else if (IS_NULL(bv)) { \
+			RUNTIME_ERROR_VARG("Attempt to use the operator %s on a null value", op_string) \
+		} else { \
+			WRAP_CONSTANT(b, a, tmp_a) \
+      WRAP_CONSTANT(c, a + 1, tmp_b) \
+			INVOKE_METHOD(a, registers[a], op_string, 1) \
+      UNWRAP_CONSTANT(c, a + 1, tmp_b) \
+		}
+
+	#define BITWISE_INSTRUCTION(op, op_string) \
+    LitValue bv = GET_RC(LIT_INSTRUCTION_B(instruction)); \
+    LitValue cv = GET_RC(LIT_INSTRUCTION_C(instruction)); \
+		if (!IS_NUMBER(bv) && !IS_NUMBER(cv)) { \
+			RUNTIME_ERROR_VARG("Operands of bitwise op %s must be two numbers, got %s and %s", op_string, lit_get_value_type(bv), lit_get_value_type(cv)) \
+		} \
+		registers[LIT_INSTRUCTION_A(instruction)] = (NUMBER_VALUE((int) AS_NUMBER(bv) op (int) AS_NUMBER(cv)));
+
+	register LitVm *vm = state->vm;
+	register LitTable *globals = &vm->globals->values;
+
+	PUSH_GC(state, true)
+
+	fiber->abort = false;
+
+	register LitCallFrame* frame;
+	register LitChunk* current_chunk;
+	register LitValue* registers;
+	register LitValue* constants;
+	register LitValue* privates;
+	LitUpvalue** upvalues;
+
+	register uint64_t* ip;
+	uint64_t instruction;
+
+	READ_FRAME()
+	vm->fiber = fiber;
+	registers[0] = OBJECT_VALUE(frame->function);
+	TRACE_FRAME()
+
+#ifdef LIT_TRACE_EXECUTION
+	printf("fiber start:\n");
+	LitCallFrame* previous_frame = frame;
+#endif
+
+	dispatch:
+	instruction = *ip++;
+
+	#ifdef LIT_TRACE_EXECUTION
+		if (frame->function->max_registers > 0) {
+			printf("        |\n        | f%i ", fiber->frame_count);
+
+			for (int i = 0; i < frame->function->max_registers; i++) {
+				printf("[ ");
+				lit_print_value(*(registers + i));
+				printf(" ]");
+			}
+
+			printf("\n");
+		}
+
+		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL, frame != previous_frame);
+		previous_frame = frame;
+	#endif
+
+	goto *dispatch_table[LIT_INSTRUCTION_OPCODE(instruction)];
+
+	CASE_CODE(MOVE) {
+		registers[LIT_INSTRUCTION_A(instruction)] = GET_RC(LIT_INSTRUCTION_B(instruction));
+		DISPATCH_NEXT()
 	}
 
-#ifdef LIT_TRACE_EXECUTION
-	TRACE_FRAME()
-	uint8_t instruction;
-#endif
+	CASE_CODE(LOAD_NULL) {
+		registers[LIT_INSTRUCTION_A(instruction)] = NULL_VALUE;
+		DISPATCH_NEXT()
+	}
 
-	while (true) {
-#ifdef LIT_TRACE_STACK
-		lit_trace_vm_stack(vm);
-#endif
+	CASE_CODE(LOAD_BOOL) {
+		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(LIT_INSTRUCTION_B(instruction) != 0);
+		DISPATCH_NEXT()
+	}
 
-#ifdef LIT_CHECK_STACK_SIZE
-		if ((fiber->stack_top - frame->slots) > fiber->stack_capacity) {
-			RUNTIME_ERROR_VARG("Fiber stack is not large enough (%i > %i)", (int) (fiber->stack_top - frame->slots), fiber->stack_capacity)
-		}
-#endif
+	CASE_CODE(CLOSURE) {
+		LitClosurePrototype* closure_prototype = AS_CLOSURE_PROTOTYPE(constants[LIT_INSTRUCTION_BX(instruction)]);
+		LitClosure* closure = lit_create_closure(state, closure_prototype->function);
 
-#ifdef LIT_TRACE_EXECUTION
-		instruction = *ip++;
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(closure);
 
-		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL);
-		goto *dispatch_table[instruction];
-#else
-		goto *dispatch_table[*ip++];
-#endif
+		for (uint i = 0; i < closure->function->upvalue_count; i++) {
+			uint8_t index = closure_prototype->indexes[i];
 
-		CASE_CODE(POP) {
-			DROP();
-			continue;
+			if (closure_prototype->local[i]) {
+				closure->upvalues[i] = capture_upvalue(state, registers + index);
+			} else {
+				closure->upvalues[i] = upvalues[index];
+			}
 		}
 
-		CASE_CODE(RETURN) {
-			LitValue result = POP();
-			close_upvalues(vm, slots);
+		DISPATCH_NEXT()
+	}
 
-			WRITE_FRAME()
-			fiber->frame_count--;
+	CASE_CODE(ARRAY) {
+		LitArray* array = lit_create_array(state);
+		lit_values_ensure_size_empty(state, &array->values, LIT_INSTRUCTION_B(instruction));
 
-			if (frame->return_to_c) {
-				frame->return_to_c = false;
-				fiber->module->return_value = result;
-				fiber->stack_top = frame->slots;
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(array);
+		DISPATCH_NEXT()
+	}
 
-				return (LitInterpretResult) { INTERPRET_OK, result };
+	CASE_CODE(OBJECT) {
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_instance(state, state->object_class));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(RANGE) {
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_range(state, AS_NUMBER(GET_RC(LIT_INSTRUCTION_B(instruction))), AS_NUMBER(GET_RC(LIT_INSTRUCTION_C(instruction)))));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(RETURN) {
+		LitValue value = registers[LIT_INSTRUCTION_A(instruction)];
+		close_upvalues(vm, registers);
+
+		fiber->frame_count--;
+
+		if (frame->return_to_c) {
+			frame->return_to_c = false;
+			fiber->module->return_value = value;
+
+			return (LitInterpretResult) { INTERPRET_OK, value };
+		}
+
+		if (fiber->frame_count == 0 || frame->return_address == NULL) {
+			if (fiber->frame_count == 0) {
+				fiber->module->return_value = value;
 			}
 
-			if (fiber->frame_count == 0) {
-				fiber->module->return_value = result;
+			if (fiber->parent != NULL) {
+				vm->fiber = fiber->parent;
 
-				if (fiber->parent == NULL) {
-					DROP();
-
-					state->allow_gc = was_allowed;
-					return (LitInterpretResult) { INTERPRET_OK, result };
+				if (vm->fiber->return_address != NULL) {
+					*vm->fiber->return_address = value;
 				}
 
-				uint arg_count = fiber->arg_count;
-				LitFiber *parent = fiber->parent;
-				fiber->parent = NULL;
-
-				vm->fiber = fiber = parent;
+				#ifdef LIT_TRACE_EXECUTION
+					printf("fiber continue:\n");
+				#endif
 
 				READ_FRAME()
-				TRACE_FRAME()
-
-				fiber->stack_top -= arg_count;
-				fiber->stack_top[-1] = result;
-
-				continue;
+				DISPATCH_NEXT()
 			}
 
-			fiber->stack_top = frame->slots;
+			return (LitInterpretResult) { INTERPRET_OK, value };
+		}
 
-			if (frame->result_ignored) {
-				fiber->stack_top++;
-				frame->result_ignored = false;
+		*frame->return_address = value;
+
+		READ_FRAME()
+		TRACE_FRAME()
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(ADD) {
+		BINARY_INSTRUCTION(NUMBER_VALUE, +, "+")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(SUBTRACT) {
+		BINARY_INSTRUCTION(NUMBER_VALUE, -, "-")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(MULTIPLY) {
+		BINARY_INSTRUCTION(NUMBER_VALUE, *, "*")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(DIVIDE) {
+		BINARY_INSTRUCTION(NUMBER_VALUE, /, "/")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(FLOOR_DIVIDE) {
+		uint8_t a = LIT_INSTRUCTION_A(instruction);
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+		uint16_t c = LIT_INSTRUCTION_C(instruction);
+
+    LitValue bv = GET_RC(b);
+    LitValue cv = GET_RC(c);
+
+		if (IS_NUMBER(bv) && IS_NUMBER(cv)) {
+			registers[a] = NUMBER_VALUE(floor(AS_NUMBER(bv) / AS_NUMBER(cv)));
+		} else {
+			WRAP_CONSTANT(b, a, tmp_a)
+      WRAP_CONSTANT(c, a + 1, tmp_b)
+			INVOKE_METHOD(a, registers[a], "#", 1)
+			UNWRAP_CONSTANT(c, a + 1, tmp_b)
+		}
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(MOD) {
+		uint8_t a = LIT_INSTRUCTION_A(instruction);
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+		uint16_t c = LIT_INSTRUCTION_C(instruction);
+
+		LitValue bv = GET_RC(b);
+		LitValue cv = GET_RC(c);
+
+		if (IS_NUMBER(bv) && IS_NUMBER(cv)) {
+			registers[a] = NUMBER_VALUE(fmod(AS_NUMBER(bv), AS_NUMBER(cv)));
+		} else {
+			WRAP_CONSTANT(b, a, tmp_a)
+			WRAP_CONSTANT(c, a + 1, tmp_b)
+			INVOKE_METHOD(a, registers[a], "%", 1)
+			UNWRAP_CONSTANT(c, a + 1, tmp_b)
+		}
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(POWER) {
+		uint8_t a = LIT_INSTRUCTION_A(instruction);
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+		uint16_t c = LIT_INSTRUCTION_C(instruction);
+
+		LitValue bv = GET_RC(b);
+		LitValue cv = GET_RC(c);
+
+		if (IS_NUMBER(bv) && IS_NUMBER(cv)) {
+			registers[a] = NUMBER_VALUE(pow(AS_NUMBER(bv), AS_NUMBER(cv)));
+		} else {
+			WRAP_CONSTANT(b, a, tmp_a)
+			WRAP_CONSTANT(c, a + 1, tmp_b)
+			INVOKE_METHOD(a, registers[a], "**", 1)
+			UNWRAP_CONSTANT(c, a + 1, tmp_b)
+		}
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(LSHIFT) {
+		BITWISE_INSTRUCTION(<<, "<<")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(RSHIFT) {
+		BITWISE_INSTRUCTION(>>, ">>")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(BXOR) {
+		BITWISE_INSTRUCTION(^, "^")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(BAND) {
+		BITWISE_INSTRUCTION(&, "&")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(BOR) {
+		BITWISE_INSTRUCTION(|, "|")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(JUMP) {
+		ip += LIT_INSTRUCTION_SBX(instruction);
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(TRUE_JUMP) {
+		if (!lit_is_falsey(registers[LIT_INSTRUCTION_A(instruction)])) {
+			ip += LIT_INSTRUCTION_BX(instruction);
+		}
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(FALSE_JUMP) {
+		if (lit_is_falsey(registers[LIT_INSTRUCTION_A(instruction)])) {
+			ip += LIT_INSTRUCTION_BX(instruction);
+		}
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(NON_NULL_JUMP) {
+		if (registers[LIT_INSTRUCTION_A(instruction)] != NULL_VALUE) {
+			ip += LIT_INSTRUCTION_BX(instruction);
+		}
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(NULL_JUMP) {
+		if (registers[LIT_INSTRUCTION_A(instruction)] == NULL_VALUE) {
+			ip += LIT_INSTRUCTION_BX(instruction);
+		}
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(EQUAL) {
+		uint8_t a = LIT_INSTRUCTION_A(instruction);
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
+		uint16_t c = LIT_INSTRUCTION_C(instruction);
+
+		LitValue bv = GET_RC(LIT_INSTRUCTION_B(instruction));
+
+		if (IS_INSTANCE(bv)) {
+			WRAP_CONSTANT(b, a, tmp_a)
+			WRAP_CONSTANT(c, a + 1, tmp_b)
+			INVOKE_METHOD_AND_CONTINUE(a, registers[a], "==", 1)
+			UNWRAP_CONSTANT(c, a + 1, tmp_b)
+		}
+
+	registers[a] = BOOL_VALUE(bv == GET_RC(c));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(LESS) {
+		COMPARISON_INSTRUCTION(BOOL_VALUE, <, "<")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(LESS_EQUAL) {
+		COMPARISON_INSTRUCTION(BOOL_VALUE, <=, "<=")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(GREATER) {
+		COMPARISON_INSTRUCTION(BOOL_VALUE, >, ">")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(GREATER_EQUAL) {
+		COMPARISON_INSTRUCTION(BOOL_VALUE, >=, ">=")
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(NEGATE) {
+		LitValue value = GET_RC(LIT_INSTRUCTION_B(instruction));
+
+		if (!IS_NUMBER(value)) {
+			// Don't even ask me why
+			// This doesn't kill our performance, since it's a error anyway
+			if (IS_STRING(value) && strcmp(AS_CSTRING(value), "muffin") == 0) {
+				RUNTIME_ERROR("Idk, can you negate a muffin?")
 			} else {
-				PUSH(result);
-			}
-
-			READ_FRAME()
-			TRACE_FRAME()
-
-			continue;
-		}
-
-		CASE_CODE(CONSTANT) {
-			PUSH(READ_CONSTANT());
-			continue;
-		}
-
-		CASE_CODE(CONSTANT_LONG) {
-			PUSH(READ_CONSTANT_LONG());
-			continue;
-		}
-
-		CASE_CODE(TRUE) {
-			PUSH(TRUE_VALUE);
-			continue;
-		}
-
-		CASE_CODE(FALSE) {
-			PUSH(FALSE_VALUE);
-			continue;
-		}
-
-		CASE_CODE(NULL) {
-			PUSH(NULL_VALUE);
-			continue;
-		}
-
-		CASE_CODE(ARRAY) {
-			PUSH(OBJECT_VALUE(lit_create_array(state)));
-			continue;
-		}
-
-		CASE_CODE(OBJECT) {
-			PUSH(OBJECT_VALUE(lit_create_instance(state, state->object_class)));
-			continue;
-		}
-
-		CASE_CODE(RANGE) {
-			LitValue a = POP();
-			LitValue b = POP();
-
-			if (!IS_NUMBER(a) || !IS_NUMBER(b)) {
-				RUNTIME_ERROR("Range operands must be number")
-			}
-
-			PUSH(OBJECT_VALUE(lit_create_range(state, AS_NUMBER(a), AS_NUMBER(b))));
-			continue;
-		}
-
-		CASE_CODE(NEGATE) {
-			if (!IS_NUMBER(PEEK(0))) {
-				LitValue arg = PEEK(0);
-
-				// Don't even ask me why
-				// This doesn't kill our performance, since it's a error anyway
-				if (IS_STRING(arg) && strcmp(AS_CSTRING(arg), "muffin") == 0) {
-					RUNTIME_ERROR("Idk, can you negate a muffin?")
-				} else {
-					RUNTIME_ERROR("Operand must be a number")
-				}
-			}
-
-			PUSH(NUMBER_VALUE(-AS_NUMBER(POP())));
-			continue;
-		}
-
-		CASE_CODE(NOT) {
-			if (IS_INSTANCE(PEEK(0))) {
-				WRITE_FRAME()
-				INVOKE_FROM_CLASS(AS_INSTANCE(PEEK(0))->klass, CONST_STRING(state, "!"), 0, false, methods, false)
-				continue;
-			}
-
-			PUSH(BOOL_VALUE(lit_is_falsey(POP())));
-			continue;
-		}
-
-		CASE_CODE(BNOT) {
-			if (!IS_NUMBER(PEEK(0))) {
 				RUNTIME_ERROR("Operand must be a number")
 			}
-
-			PUSH(NUMBER_VALUE(~((int) AS_NUMBER(POP()))));
-			continue;
 		}
 
-		CASE_CODE(ADD) {
-			BINARY_OP(NUMBER_VALUE, +, "+")
-			continue;
+		registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(-AS_NUMBER(value));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(NOT) {
+		uint8_t b = LIT_INSTRUCTION_B(instruction);
+		LitValue value = GET_RC(b);
+
+		if (IS_INSTANCE(value)) {
+			INVOKE_METHOD_AND_CONTINUE(b, value, "!", 0)
 		}
 
-		CASE_CODE(SUBTRACT) {
-			BINARY_OP(NUMBER_VALUE, -, "-")
-			continue;
+		registers[LIT_INSTRUCTION_A(instruction)] = BOOL_VALUE(lit_is_falsey(value));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(BNOT) {
+		LitValue value = GET_RC(LIT_INSTRUCTION_B(instruction));
+
+		if (!IS_NUMBER(value)) {
+			RUNTIME_ERROR("Operand must be a number")
 		}
 
-		CASE_CODE(MULTIPLY) {
-			BINARY_OP(NUMBER_VALUE, *, "*")
-			continue;
+		registers[LIT_INSTRUCTION_A(instruction)] = NUMBER_VALUE(~((int) AS_NUMBER(value)));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(SET_GLOBAL) {
+		lit_table_set(state, globals, AS_STRING(constants[LIT_INSTRUCTION_A(instruction)]), GET_RC(LIT_INSTRUCTION_BX(instruction)));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(GET_GLOBAL) {
+		LitValue *reg = &registers[LIT_INSTRUCTION_A(instruction)];
+
+		if (!lit_table_get(globals, AS_STRING(constants[LIT_INSTRUCTION_BX(instruction)]), reg)) {
+			*reg = NULL_VALUE;
 		}
 
-		CASE_CODE(POWER) {
-			LitValue a = PEEK(1);
-			LitValue b = PEEK(0);
+		DISPATCH_NEXT()
+	}
 
-			if (IS_NUMBER(a) && IS_NUMBER(b)) {
-				DROP();
-				*(fiber->stack_top - 1) = (NUMBER_VALUE(pow(AS_NUMBER(a), AS_NUMBER(b))));
+	CASE_CODE(SET_UPVALUE) {
+		*frame->closure->upvalues[LIT_INSTRUCTION_A(instruction)]->location = GET_RC(LIT_INSTRUCTION_BX(instruction));
+		DISPATCH_NEXT()
+	}
 
-				continue;
-			}
+	CASE_CODE(GET_UPVALUE) {
+		registers[LIT_INSTRUCTION_A(instruction)] = *frame->closure->upvalues[LIT_INSTRUCTION_BX(instruction)]->location;
+		DISPATCH_NEXT()
+	}
 
-			INVOKE_METHOD(a, "**", 1)
-			continue;
+	CASE_CODE(SET_PRIVATE) {
+		uint8_t a = LIT_INSTRUCTION_A(instruction);
+		uint32_t b = LIT_INSTRUCTION_BX(instruction);
+
+		privates[(uint16_t) b] = IS_BIT_SET(b, 16) ? constants[a] : registers[a];
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(GET_PRIVATE) {
+		registers[LIT_INSTRUCTION_A(instruction)] = privates[LIT_INSTRUCTION_BX(instruction)];
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(CALL) {
+		WRITE_FRAME()
+
+		if (!call_value(vm, LIT_INSTRUCTION_A(instruction), LIT_INSTRUCTION_B(instruction) - 1, NULL_VALUE)) {
+			RETURN_ERROR()
 		}
 
-		CASE_CODE(DIVIDE) {
-			BINARY_OP(NUMBER_VALUE, /, "/")
-			continue;
-		}
+		READ_FRAME()
+		DISPATCH_NEXT()
+	}
 
-		CASE_CODE(FLOOR_DIVIDE) {
-			LitValue a = PEEK(1);
-			LitValue b = PEEK(0);
+	CASE_CODE(CLOSE_UPVALUE) {
+		close_upvalues(vm, &registers[LIT_INSTRUCTION_A(instruction)] - 1);
+		DISPATCH_NEXT()
+	}
 
-			if (IS_NUMBER(a) && IS_NUMBER(b)) {
-				DROP();
-				*(fiber->stack_top - 1) = (NUMBER_VALUE(floor(AS_NUMBER(a) / AS_NUMBER(b))));
+	CASE_CODE(CLASS) {
+		LitString* name = AS_STRING(constants[LIT_INSTRUCTION_A(instruction)]);
+		LitClass* klass = lit_create_class(state, name);
 
-				continue;
-			}
+		registers[LIT_INSTRUCTION_C(instruction)] = OBJECT_VALUE(klass);
+		lit_table_set(state, &vm->globals->values, name, OBJECT_VALUE(klass));
 
-			INVOKE_METHOD(a, "#", 1)
-			continue;
-		}
+		uint16_t b = LIT_INSTRUCTION_B(instruction);
 
-		CASE_CODE(MOD) {
-			LitValue a = PEEK(1);
-			LitValue b = PEEK(0);
-
-			if (IS_NUMBER(a) && IS_NUMBER(b)) {
-				DROP();
-				*(fiber->stack_top - 1) = NUMBER_VALUE(fmod(AS_NUMBER(a), AS_NUMBER(b)));
-				continue;
-			}
-
-			INVOKE_METHOD(a, "%", 1)
-			continue;
-		}
-
-		CASE_CODE(BAND) {
-			BITWISE_OP(&, "&")
-			continue;
-		}
-
-		CASE_CODE(BOR) {
-			BITWISE_OP(|, "|")
-			continue;
-		}
-
-		CASE_CODE(BXOR) {
-			BITWISE_OP(^, "^")
-			continue;
-		}
-
-		CASE_CODE(LSHIFT) {
-			BITWISE_OP(<<, "<<")
-			continue;
-		}
-
-		CASE_CODE(RSHIFT) {
-			BITWISE_OP(>>, ">>")
-			continue;
-		}
-
-		CASE_CODE(EQUAL) {
-			if (IS_INSTANCE(PEEK(1))) {
-				WRITE_FRAME()
-				INVOKE_FROM_CLASS(AS_INSTANCE(PEEK(1))->klass, CONST_STRING(state, "=="), 1, false, methods, false)
-				continue;
-			}
-
-			LitValue a = POP();
-			LitValue b = POP();
-
-			PUSH(BOOL_VALUE(a == b));
-			continue;
-		}
-
-		CASE_CODE(GREATER) {
-			BINARY_OP(BOOL_VALUE, >, ">")
-			continue;
-		}
-
-		CASE_CODE(GREATER_EQUAL) {
-			BINARY_OP(BOOL_VALUE, >=, ">=")
-			continue;
-		}
-
-		CASE_CODE(LESS) {
-			BINARY_OP(BOOL_VALUE, <, "<")
-			continue;
-		}
-
-		CASE_CODE(LESS_EQUAL) {
-			BINARY_OP(BOOL_VALUE, <=, "<=")
-			continue;
-		}
-
-		CASE_CODE(SET_GLOBAL) {
-			LitString* name = READ_STRING_LONG();
-			lit_table_set(state, &vm->globals->values, name, PEEK(0));
-
-			continue;
-		}
-
-		CASE_CODE(GET_GLOBAL) {
-			LitString* name = READ_STRING_LONG();
-			LitValue value;
-
-			if (!lit_table_get(&vm->globals->values, name, &value)) {
-				PUSH(NULL_VALUE);
-			} else {
-				PUSH(value);
-			}
-
-			continue;
-		}
-
-		CASE_CODE(SET_LOCAL) {
-			uint8_t index = READ_BYTE();
-			slots[index] = PEEK(0);
-
-			continue;
-		}
-
-		CASE_CODE(GET_LOCAL) {
-			PUSH(slots[READ_BYTE()]);
-			continue;
-		}
-
-		CASE_CODE(SET_LOCAL_LONG) {
-			uint8_t index = READ_SHORT();
-			slots[index] = PEEK(0);
-
-			continue;
-		}
-
-		CASE_CODE(GET_LOCAL_LONG) {
-			PUSH(slots[READ_SHORT()]);
-			continue;
-		}
-
-		CASE_CODE(SET_PRIVATE) {
-			uint8_t index = READ_BYTE();
-			privates[index] = PEEK(0);
-
-			continue;
-		}
-
-		CASE_CODE(GET_PRIVATE) {
-			PUSH(privates[READ_BYTE()]);
-			continue;
-		}
-
-		CASE_CODE(SET_PRIVATE_LONG) {
-			uint8_t index = READ_SHORT();
-			privates[index] = PEEK(0);
-
-			continue;
-		}
-
-		CASE_CODE(GET_PRIVATE_LONG) {
-			PUSH(privates[READ_SHORT()]);
-			continue;
-		}
-
-		CASE_CODE(SET_UPVALUE) {
-			uint8_t index = READ_BYTE();
-			*upvalues[index]->location = PEEK(0);
-
-			continue;
-		}
-
-		CASE_CODE(GET_UPVALUE) {
-			PUSH(*upvalues[READ_BYTE()]->location);
-			continue;
-		}
-
-		CASE_CODE(JUMP_IF_FALSE) {
-			uint16_t offset = READ_SHORT();
-
-			if (lit_is_falsey(POP())) {
-				ip += offset;
-			}
-
-			continue;
-		}
-
-		CASE_CODE(JUMP_IF_NULL) {
-			uint16_t offset = READ_SHORT();
-
-			if (IS_NULL(PEEK(0))) {
-				ip += offset;
-			}
-
-			continue;
-		}
-
-		CASE_CODE(JUMP_IF_NULL_POPPING) {
-			uint16_t offset = READ_SHORT();
-
-			if (IS_NULL(POP())) {
-				ip += offset;
-			}
-
-			continue;
-		}
-
-		CASE_CODE(JUMP) {
-			uint16_t offset = READ_SHORT();
-			ip += offset;
-
-			continue;
-		}
-
-		CASE_CODE(JUMP_BACK) {
-			uint16_t offset = READ_SHORT();
-			ip -= offset;
-
-			continue;
-		}
-
-		CASE_CODE(AND) {
-			uint16_t offset = READ_SHORT();
-
-			if (lit_is_falsey(PEEK(0))) {
-				ip += offset;
-			} else {
-				DROP();
-			}
-
-			continue;
-		}
-
-		CASE_CODE(OR) {
-			uint16_t offset = READ_SHORT();
-
-			if (lit_is_falsey(PEEK(0))) {
-				DROP();
-			} else {
-				ip += offset;
-			}
-
-			continue;
-		}
-
-		CASE_CODE(NULL_OR) {
-			uint16_t offset = READ_SHORT();
-
-			if (IS_NULL(PEEK(0))) {
-				DROP();
-			} else {
-				ip += offset;
-			}
-
-			continue;
-		}
-
-		CASE_CODE(CALL) {
-			uint8_t arg_count = READ_BYTE();
-
-			WRITE_FRAME()
-			CALL_VALUE(PEEK(arg_count), arg_count)
-
-			continue;
-		}
-
-		CASE_CODE(CLOSURE) {
-			LitFunction* function = AS_FUNCTION(READ_CONSTANT_LONG());
-			LitClosure* closure = lit_create_closure(state, function);
-
-			PUSH(OBJECT_VALUE(closure));
-
-			for (uint i = 0; i < closure->upvalue_count; i++) {
-				uint8_t is_local = READ_BYTE();
-				uint8_t index = READ_BYTE();
-
-				if (is_local) {
-					closure->upvalues[i] = capture_upvalue(state, frame->slots + index);
-				} else {
-					closure->upvalues[i] = upvalues[index];
-				}
-			}
-
-			continue;
-		}
-
-		CASE_CODE(CLOSE_UPVALUE) {
-			close_upvalues(vm, fiber->stack_top - 1);
-			DROP();
-
-			continue;
-		}
-
-		CASE_CODE(CLASS) {
-			LitString* name = READ_STRING_LONG();
-			LitClass* klass = lit_create_class(state, name);
-
-			PUSH(OBJECT_VALUE(klass));
-
+		if (b == 0) {
 			klass->super = state->object_class;
 
 			lit_table_add_all(state, &klass->super->methods, &klass->methods);
 			lit_table_add_all(state, &klass->super->static_fields, &klass->static_fields);
-
-			lit_table_set(state, &vm->globals->values, name, OBJECT_VALUE(klass));
-
-			continue;
-		}
-
-		CASE_CODE(GET_FIELD) {
-			LitValue object = PEEK(1);
-
-			if (IS_NULL(object)) {
-				RUNTIME_ERROR("Attempt to index a null value")
-			}
-
-			LitValue value;
-			LitString* name = AS_STRING(PEEK(0));
-
-			if (IS_INSTANCE(object)) {
-				LitInstance *instance = AS_INSTANCE(object);
-
-				if (!lit_table_get(&instance->fields, name, &value)) {
-					if (lit_table_get(&instance->klass->methods, name, &value)) {
-						if (IS_FIELD(value)) {
-							LitField* field = AS_FIELD(value);
-
-							if (field->getter == NULL) {
-								RUNTIME_ERROR_VARG("Class %s does not have a getter for the field %s", instance->klass->name->chars, name->chars)
-							}
-
-							DROP();
-							WRITE_FRAME()
-							CALL_VALUE(OBJECT_VALUE(AS_FIELD(value)->getter), 0)
-							READ_FRAME()
-							continue;
-						} else {
-							value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(instance), value));
-						}
-					} else {
-						value = NULL_VALUE;
-					}
-				}
-			} else if (IS_CLASS(object)) {
-				LitClass *klass = AS_CLASS(object);
-
-				if (lit_table_get(&klass->static_fields, name, &value)) {
-					if (IS_NATIVE_METHOD(value) || IS_PRIMITIVE_METHOD(value)) {
-						value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klass), value));
-					} else if (IS_FIELD(value)) {
-						LitField* field = AS_FIELD(value);
-
-						if (field->getter == NULL) {
-							RUNTIME_ERROR_VARG("Class %s does not have a getter for the field %s", klass->name->chars, name->chars)
-						}
-
-						DROP();
-						WRITE_FRAME()
-						CALL_VALUE(OBJECT_VALUE(field->getter), 0)
-						READ_FRAME()
-						continue;
-					}
-				} else {
-					value = NULL_VALUE;
-				}
-			} else {
-				LitClass* klass = lit_get_class_for(state, object);
-
-				if (klass == NULL) {
-					RUNTIME_ERROR("Only instances and classes have fields")
-				}
-
-				if (lit_table_get(&klass->methods, name, &value)) {
-					if (IS_FIELD(value)) {
-						LitField *field = AS_FIELD(value);
-
-						if (field->getter == NULL) {
-							RUNTIME_ERROR_VARG("Class %s does not have a getter for the field %s", klass->name->chars, name->chars)
-						}
-
-						DROP();
-						WRITE_FRAME()
-						CALL_VALUE(OBJECT_VALUE(AS_FIELD(value)->getter), 0)
-						READ_FRAME()
-						continue;
-					} else if (IS_NATIVE_METHOD(value) || IS_PRIMITIVE_METHOD(value)) {
-						value = OBJECT_VALUE(lit_create_bound_method(state, object, value));
-					}
-				} else {
-					value = NULL_VALUE;
-				}
-			}
-
-			DROP(); // Pop field name
-			fiber->stack_top[-1] = value;
-
-			continue;
-		}
-
-		CASE_CODE(SET_FIELD) {
-			LitValue instance = PEEK(2);
-
-			if (IS_NULL(instance)) {
-				RUNTIME_ERROR("Attempt to index a null value")
-			}
-
-			LitValue value = PEEK(1);
-			LitString* field_name = AS_STRING(PEEK(0));
-
-			if (IS_CLASS(instance)) {
-				LitClass* klass = AS_CLASS(instance);
-				LitValue setter;
-
-				if (lit_table_get(&klass->static_fields, field_name, &setter) && IS_FIELD(setter)) {
-					LitField* field = AS_FIELD(setter);
-
-					if (field->setter == NULL) {
-						RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", klass->name->chars, field_name->chars)
-					}
-
-					DROP_MULTIPLE(2);
-					PUSH(value);
-					WRITE_FRAME()
-					CALL_VALUE(OBJECT_VALUE(field->setter), 1)
-					READ_FRAME()
-					continue;
-				}
-
-				if (IS_NULL(value)) {
-					lit_table_delete(&klass->static_fields, field_name);
-				} else {
-					lit_table_set(state, &klass->static_fields, field_name, value);
-				}
-
-				DROP_MULTIPLE(2); // Pop field name and the value
-				fiber->stack_top[-1] = value;
-			} else if (IS_INSTANCE(instance)) {
-				LitInstance* inst = AS_INSTANCE(instance);
-				LitValue setter;
-
-				if (lit_table_get(&inst->klass->methods, field_name, &setter) && IS_FIELD(setter)) {
-					LitField* field = AS_FIELD(setter);
-
-					if (field->setter == NULL) {
-						RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", inst->klass->name->chars,
-						                   field_name->chars)
-					}
-
-					DROP_MULTIPLE(2);
-					PUSH(value);
-					WRITE_FRAME()
-					CALL_VALUE(OBJECT_VALUE(field->setter), 1)
-					READ_FRAME()
-					continue;
-				}
-
-				if (IS_NULL(value)) {
-					lit_table_delete(&inst->fields, field_name);
-				} else {
-					lit_table_set(state, &inst->fields, field_name, value);
-				}
-
-				DROP_MULTIPLE(2); // Pop field name and the value
-				fiber->stack_top[-1] = value;
-			} else {
-				LitClass* klass = lit_get_class_for(state, instance);
-
-				if (klass == NULL) {
-					RUNTIME_ERROR("Only instances and classes have fields")
-				}
-
-				LitValue setter;
-
-				if (lit_table_get(&klass->methods, field_name, &setter) && IS_FIELD(setter)) {
-					LitField* field = AS_FIELD(setter);
-
-					if (field->setter == NULL) {
-						RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", klass->name->chars, field_name->chars)
-					}
-
-					DROP_MULTIPLE(2);
-					PUSH(value);
-					WRITE_FRAME()
-					CALL_VALUE(OBJECT_VALUE(field->setter), 1)
-					READ_FRAME()
-					continue;
-				} else {
-					RUNTIME_ERROR_VARG("Class %s does not contain field %s", klass->name->chars, field_name->chars)
-				}
-			}
-
-			continue;
-		}
-
-		CASE_CODE(SUBSCRIPT_GET) {
-			INVOKE_METHOD(PEEK(1), "[]", 1)
-			continue;
-		}
-
-		CASE_CODE(SUBSCRIPT_SET) {
-			INVOKE_METHOD(PEEK(2), "[]", 2)
-			continue;
-		}
-
-		CASE_CODE(PUSH_ARRAY_ELEMENT) {
-			LitValues* values = &AS_ARRAY(PEEK(1))->values;
-			int index = values->count;
-
-			lit_values_ensure_size(state, values, index + 1);
-			values->values[index] = PEEK(0);
-			DROP();
-
-			continue;
-		}
-
-		CASE_CODE(PUSH_OBJECT_FIELD) {
-			LitValue operand = PEEK(2);
-
-			if (IS_MAP(operand)) {
-				lit_table_set(state, &AS_MAP(operand)->values, AS_STRING(PEEK(1)), PEEK(0));
-			} else if (IS_INSTANCE(operand)) {
-				lit_table_set(state, &AS_INSTANCE(operand)->fields, AS_STRING(PEEK(1)), PEEK(0));
-			} else {
-				RUNTIME_ERROR_VARG("Expected an object or a map as the operand, got %s", lit_get_value_type(operand));
-			}
-
-			DROP_MULTIPLE(2);
-			continue;
-		}
-
-		CASE_CODE(STATIC_FIELD) {
-			lit_table_set(state, &AS_CLASS(PEEK(1))->static_fields, READ_STRING_LONG(), PEEK(0));
-			DROP();
-
-			continue;
-		}
-
-		CASE_CODE(METHOD) {
-			LitClass* klass = AS_CLASS(PEEK(1));
-			LitString* name = READ_STRING_LONG();
-
-			if ((klass->init_method == NULL || (klass->super != NULL && klass->init_method == ((LitClass*) klass->super)->init_method)) && name->length == 11 && memcmp(name->chars, "constructor", 11) == 0) {
-				klass->init_method = AS_OBJECT(PEEK(0));
-			}
-
-			lit_table_set(state, &klass->methods, name, PEEK(0));
-			DROP();
-
-			continue;
-		}
-
-		CASE_CODE(DEFINE_FIELD) {
-			lit_table_set(state, &AS_CLASS(PEEK(1))->methods, READ_STRING_LONG(), PEEK(0));
-			DROP();
-
-			continue;
-		}
-
-		CASE_CODE(INVOKE) {
-			INVOKE_OPERATION(false)
-			continue;
-		}
-
-		CASE_CODE(INVOKE_IGNORING) {
-			INVOKE_OPERATION(true)
-			continue;
-		}
-
-		CASE_CODE(INVOKE_SUPER) {
-			uint8_t arg_count = READ_BYTE();
-			LitString* method_name = READ_STRING_LONG();
-			LitClass* klass = AS_CLASS(POP());
-
-			WRITE_FRAME()
-			INVOKE_FROM_CLASS(klass, method_name, arg_count, true, methods, false)
-			continue;
-		}
-
-		CASE_CODE(INVOKE_SUPER_IGNORING) {
-			uint8_t arg_count = READ_BYTE();
-			LitString* method_name = READ_STRING_LONG();
-			LitClass* klass = AS_CLASS(POP());
-
-			WRITE_FRAME()
-			INVOKE_FROM_CLASS(klass, method_name, arg_count, true, methods, true)
-			continue;
-		}
-
-		CASE_CODE(GET_SUPER_METHOD) {
-			LitString* method_name = READ_STRING_LONG();
-			LitClass* klass = AS_CLASS(POP());
-			LitValue instance = POP();
-
-			LitValue value;
-
-			if (lit_table_get(&klass->methods, method_name, &value)) {
-				value = OBJECT_VALUE(lit_create_bound_method(state, instance, value));
-			} else {
-				value = NULL_VALUE;
-			}
-
-			PUSH(value);
-			continue;
-		}
-
-		CASE_CODE(INHERIT) {
-			LitValue super = PEEK(1);
+		} else {
+			LitValue super = registers[--b];
 
 			if (!IS_CLASS(super)) {
 				RUNTIME_ERROR("Superclass must be a class")
 			}
 
-			LitClass* klass = AS_CLASS(PEEK(0));
 			LitClass* super_klass = AS_CLASS(super);
 
 			klass->super = super_klass;
@@ -1419,172 +976,442 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			lit_table_add_all(state, &super_klass->methods, &klass->methods);
 			lit_table_add_all(state, &klass->super->static_fields, &klass->static_fields);
-
-			continue;
 		}
 
-		CASE_CODE(IS) {
-			LitValue instance = PEEK(1);
-
-			if (IS_NULL(instance)) {
-				DROP_MULTIPLE(2);
-				PUSH(FALSE_VALUE);
-
-				continue;
-			}
-
-			LitClass* instance_klass = lit_get_class_for(state, instance);
-			LitValue klass = PEEK(0);
-
-			if (instance_klass == NULL || !IS_CLASS(klass)) {
-				RUNTIME_ERROR("Operands must be an instance and a class")
-			}
-
-			LitClass* type = AS_CLASS(klass);
-			bool found = false;
-
-			while (instance_klass != NULL) {
-				if (instance_klass == type) {
-					found = true;
-					break;
-				}
-
-				instance_klass = (LitClass*) instance_klass->super;
-			}
-
-			DROP_MULTIPLE(2); // Drop the instance and class
-			PUSH(BOOL_VALUE(found));
-
-			continue;
-		}
-
-		CASE_CODE(POP_LOCALS) {
-			DROP_MULTIPLE(READ_SHORT());
-			continue;
-		}
-
-		CASE_CODE(VARARG) {
-			LitValue slot = slots[READ_BYTE()];
-
-			if (!IS_ARRAY(slot)) {
-				continue;
-			}
-
-			LitValues* values = &AS_ARRAY(slot)->values;
-			lit_ensure_fiber_stack(state, fiber, values->count + frame->function->max_slots + (int) (fiber->stack_top - fiber->stack));
-
-			for (uint i = 0; i < values->count; i++) {
-				PUSH(values->values[i]);
-			}
-
-			// Hot-bytecode patching, increment the amount of arguments to OP_CALL
-			ip[1] = ip[1] + values->count - 1;
-			continue;
-		}
-
-		CASE_CODE(REFERENCE_GLOBAL) {
-			LitString* name = READ_STRING_LONG();
-			LitValue* value;
-
-			if (lit_table_get_slot(&vm->globals->values, name, &value)) {
-				PUSH(OBJECT_VALUE(lit_create_reference(state, value)));
-			} else {
-				RUNTIME_ERROR("Attempt to reference a null value");
-			}
-
-			continue;
-		}
-
-		CASE_CODE(REFERENCE_PRIVATE) {
-			PUSH(OBJECT_VALUE(lit_create_reference(state, &privates[READ_SHORT()])));
-			continue;
-		}
-
-		CASE_CODE(REFERENCE_LOCAL) {
-			PUSH(OBJECT_VALUE(lit_create_reference(state, &slots[READ_SHORT()])));
-			continue;
-		}
-
-		CASE_CODE(REFERENCE_UPVALUE) {
-			PUSH(OBJECT_VALUE(lit_create_reference(state, upvalues[READ_BYTE()]->location)));
-			continue;
-		}
-
-		CASE_CODE(REFERENCE_FIELD) {
-			LitValue object = PEEK(1);
-
-			if (IS_NULL(object)) {
-				RUNTIME_ERROR("Attempt to index a null value")
-			}
-
-			LitValue* value;
-			LitString* name = AS_STRING(PEEK(0));
-
-			if (IS_INSTANCE(object)) {
-				if (!lit_table_get_slot(&AS_INSTANCE(object)->fields, name, &value)) {
-					RUNTIME_ERROR("Attempt to reference a null value")
-				}
-			} else {
-				lit_print_value(object);
-				printf("\n");
-				RUNTIME_ERROR("You can only reference fields of real instances")
-			}
-
-			DROP(); // Pop field name
-			fiber->stack_top[-1] = OBJECT_VALUE(lit_create_reference(state, value));
-
-			continue;
-		}
-
-		CASE_CODE(SET_REFERENCE) {
-			LitValue reference = POP();
-
-			if (!IS_REFERENCE(reference)) {
-				RUNTIME_ERROR("Provided value is not a reference")
-			}
-
-			*AS_REFERENCE(reference)->slot = PEEK(0);
-			continue;
-		}
-
-		RUNTIME_ERROR_VARG("Unknown op code '%d'", *ip)
-		break;
+		DISPATCH_NEXT()
 	}
 
-#undef RUNTIME_ERROR_VARG
-#undef RUNTIME_ERROR
-#undef INVOKE_METHOD
-#undef INVOKE_FROM_CLASS
-#undef INVOKE_FROM_CLASS_ADVANCED
-#undef DROP_MULTIPLE
-#undef PUSH
-#undef DROP
-#undef POP
-#undef CALL_VALUE
-#undef RECOVER_STATE
-#undef WRITE_FRAME
-#undef READ_FRAME
-#undef PEEK
-#undef BITWISE_OP
-#undef BINARY_OP
-#undef READ_CONSTANT_LONG
-#undef READ_CONSTANT
-#undef CASE_CODE
-#undef READ_STRING
-#undef READ_SHORT
-#undef READ_BYTE
+	CASE_CODE(STATIC_FIELD) {
+		lit_table_set(state, &AS_CLASS(registers[LIT_INSTRUCTION_A(instruction)])->static_fields, AS_STRING(constants[LIT_INSTRUCTION_B(instruction)]), GET_RC(LIT_INSTRUCTION_C(instruction)));
+		DISPATCH_NEXT()
+	}
 
+	CASE_CODE(METHOD) {
+		LitClass* klass = AS_CLASS(registers[LIT_INSTRUCTION_A(instruction)]);
+		LitString* name = AS_STRING(constants[LIT_INSTRUCTION_B(instruction)]);
+
+		if ((klass->init_method == NULL || (klass->super != NULL && klass->init_method == ((LitClass*) klass->super)->init_method)) && name->length == 11 && memcmp(name->chars, "constructor", 11) == 0) {
+			klass->init_method = AS_OBJECT(GET_RC(LIT_INSTRUCTION_C(instruction)));
+		}
+
+		lit_table_set(state, &klass->methods, name, GET_RC(LIT_INSTRUCTION_C(instruction)));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(GET_FIELD) {
+		LitValue object = registers[LIT_INSTRUCTION_B(instruction)];
+
+		if (IS_NULL(object)) {
+			RUNTIME_ERROR("Attempt to index a null value")
+		}
+
+		LitValue value;
+		LitString *name = AS_STRING(constants[LIT_INSTRUCTION_C(instruction)]);
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+
+		if (IS_INSTANCE(object)) {
+			LitInstance *instance = AS_INSTANCE(object);
+
+			if (!lit_table_get(&instance->fields, name, &value)) {
+				if (lit_table_get(&instance->klass->methods, name, &value)) {
+					if (IS_FIELD(value)) {
+						LitField *field = AS_FIELD(value);
+
+						if (field->getter == NULL) {
+							RUNTIME_ERROR_VARG("Class %s does not have a getter for the field %s", instance->klass->name->chars, name->chars)
+						}
+
+						WRITE_FRAME()
+						CALL_VALUE(OBJECT_VALUE(AS_FIELD(value)->getter), result_reg, 0)
+						READ_FRAME()
+						DISPATCH_NEXT()
+					} else {
+						value = OBJECT_VALUE(lit_create_bound_method(state, object, value));
+					}
+				} else {
+					value = NULL_VALUE;
+				}
+			}
+		} else if (IS_CLASS(object)) {
+			LitClass *klass = AS_CLASS(object);
+
+			if (lit_table_get(&klass->static_fields, name, &value)) {
+				if (IS_NATIVE_METHOD(value) || IS_PRIMITIVE_METHOD(value)) {
+					value = OBJECT_VALUE(lit_create_bound_method(state, object, value));
+				} else if (IS_FIELD(value)) {
+					LitField* field = AS_FIELD(value);
+
+					if (field->getter == NULL) {
+						RUNTIME_ERROR_VARG("Class %s does not have a getter for the field %s", klass->name->chars, name->chars)
+					}
+
+					WRITE_FRAME()
+					CALL_VALUE(OBJECT_VALUE(field->getter), result_reg, 0)
+					READ_FRAME()
+					DISPATCH_NEXT()
+				}
+			} else {
+				value = NULL_VALUE;
+			}
+		} else {
+			LitClass *klass = lit_get_class_for(state, object);
+
+			if (klass == NULL) {
+				RUNTIME_ERROR("Only instances and classes have fields")
+			}
+
+			if (lit_table_get(&klass->methods, name, &value)) {
+				if (IS_FIELD(value)) {
+					LitField *field = AS_FIELD(value);
+
+					if (field->getter == NULL) {
+						RUNTIME_ERROR_VARG("Class %s does not have a getter for the field %s", klass->name->chars, name->chars)
+					}
+
+					WRITE_FRAME()
+					CALL_VALUE(OBJECT_VALUE(AS_FIELD(value)->getter), result_reg, 0)
+					READ_FRAME()
+					DISPATCH_NEXT()
+				} else if (IS_NATIVE_METHOD(value) || IS_PRIMITIVE_METHOD(value)) {
+					value = OBJECT_VALUE(lit_create_bound_method(state, object, value));
+				}
+			} else {
+				value = NULL_VALUE;
+			}
+		}
+
+		registers[result_reg] = value;
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(GET_SUPER_METHOD) {
+		LitValue instance = registers[LIT_INSTRUCTION_B(instruction)];
+		LitClass* klass = AS_CLASS(instance);
+		LitString* method_name = AS_STRING(constants[LIT_INSTRUCTION_C(instruction)]);
+
+		LitValue value;
+
+		if (lit_table_get(&klass->methods, method_name, &value) || lit_table_get(&klass->static_fields, method_name, &value)) {
+			value = OBJECT_VALUE(lit_create_bound_method(state, registers[LIT_INSTRUCTION_A(instruction)], value));
+		} else {
+			value = NULL_VALUE;
+		}
+
+		registers[LIT_INSTRUCTION_A(instruction)] = value;
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(SET_FIELD) {
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+		LitValue instance = registers[result_reg];
+
+		if (IS_NULL(instance)) {
+			RUNTIME_ERROR("Attempt to index a null value")
+		}
+
+		LitValue value = registers[LIT_INSTRUCTION_C(instruction)];
+		int b = LIT_INSTRUCTION_B(instruction);
+		LitString *field_name = AS_STRING(constants[LIT_INSTRUCTION_B(instruction)]);
+
+		if (IS_CLASS(instance)) {
+			LitClass *klass = AS_CLASS(instance);
+			LitValue setter;
+
+			if (lit_table_get(&klass->static_fields, field_name, &setter) && IS_FIELD(setter)) {
+				LitField *field = AS_FIELD(setter);
+
+				if (field->setter == NULL) {
+					RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", klass->name->chars, field_name->chars)
+				}
+
+				WRITE_FRAME()
+				CALL_VALUE(OBJECT_VALUE(field->setter), result_reg, 1)
+				READ_FRAME()
+				DISPATCH_NEXT()
+			}
+
+			if (IS_NULL(value)) {
+				lit_table_delete(&klass->static_fields, field_name);
+			} else {
+				lit_table_set(state, &klass->static_fields, field_name, value);
+			}
+		} else if (IS_INSTANCE(instance)) {
+			LitInstance *inst = AS_INSTANCE(instance);
+			LitValue setter;
+
+			if (lit_table_get(&inst->klass->methods, field_name, &setter) && IS_FIELD(setter)) {
+				LitField *field = AS_FIELD(setter);
+
+				if (field->setter == NULL) {
+					RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", inst->klass->name->chars, field_name->chars)
+				}
+
+				WRITE_FRAME()
+				CALL_VALUE(OBJECT_VALUE(field->setter), result_reg, 1)
+				READ_FRAME()
+				DISPATCH_NEXT()
+			}
+
+			if (IS_NULL(value)) {
+				lit_table_delete(&inst->fields, field_name);
+			} else {
+				lit_table_set(state, &inst->fields, field_name, value);
+			}
+		} else {
+			LitClass *klass = lit_get_class_for(state, instance);
+
+			if (klass == NULL) {
+				RUNTIME_ERROR("Only instances and classes have fields")
+			}
+
+			LitValue setter;
+
+			if (lit_table_get(&klass->methods, field_name, &setter) && IS_FIELD(setter)) {
+				LitField *field = AS_FIELD(setter);
+
+				if (field->setter == NULL) {
+					RUNTIME_ERROR_VARG("Class %s does not have a setter for the field %s", klass->name->chars, field_name->chars)
+				}
+
+				WRITE_FRAME()
+				CALL_VALUE(OBJECT_VALUE(field->setter), result_reg, 1)
+				READ_FRAME()
+				DISPATCH_NEXT()
+			} else {
+				RUNTIME_ERROR_VARG("Class %s does not contain field %s", klass->name->chars, field_name->chars)
+			}
+		}
+
+		registers[result_reg] = value;
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(IS) {
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+		LitValue instance = GET_RC(LIT_INSTRUCTION_B(instruction));
+
+		if (IS_NULL(instance)) {
+			registers[result_reg] = FALSE_VALUE;
+			DISPATCH_NEXT()
+		}
+
+		LitClass* instance_klass = lit_get_class_for(state, instance);
+		LitValue klass;
+
+		if (!lit_table_get(globals, AS_STRING(constants[LIT_INSTRUCTION_C(instruction)]), &klass)) {
+			registers[result_reg] = FALSE_VALUE;
+			DISPATCH_NEXT()
+		}
+
+		if (instance_klass == NULL || !IS_CLASS(klass)) {
+			RUNTIME_ERROR("Operands must be an instance and a class")
+		}
+
+		LitClass* type = AS_CLASS(klass);
+		bool found = false;
+
+		while (instance_klass != NULL) {
+			if (instance_klass == type) {
+				found = true;
+				break;
+			}
+
+			instance_klass = (LitClass*) instance_klass->super;
+		}
+
+		registers[result_reg] = BOOL_VALUE(found);
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(INVOKE) {
+		WRITE_FRAME()
+
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+		LitValue instance = registers[result_reg];
+
+		if (IS_NULL(instance)) {
+			RUNTIME_ERROR("Attempt to index a null value")
+		}
+
+		LitClass* klass = lit_get_class_for(state, instance);
+
+		if (klass == NULL) {
+			RUNTIME_ERROR("Only instances and classes have methods")
+		}
+
+		LitString* method_name = AS_STRING(constants[LIT_INSTRUCTION_C(instruction)]);
+		int arg_count = LIT_INSTRUCTION_B(instruction) - 1;
+		LitValue method;
+
+		if ((IS_INSTANCE(instance) && (lit_table_get(&AS_INSTANCE(instance)->fields, method_name, &method))) || lit_table_get(&klass->methods, method_name, &method)) {
+			CALL_VALUE(method, result_reg, arg_count)
+		} else if (IS_CLASS(instance)&& (lit_table_get(&AS_CLASS(instance)->static_fields, method_name, &method))) {
+			CALL_VALUE(method, result_reg, arg_count)
+		} else {
+			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars)
+		}
+
+		READ_FRAME()
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(INVOKE_SUPER) {
+		WRITE_FRAME()
+
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+		LitValue instance = registers[result_reg + 1];
+
+		if (IS_NULL(instance)) {
+			RUNTIME_ERROR("Attempt to index a null value")
+		}
+
+		LitClass* klass = AS_CLASS(instance);
+
+		if (klass == NULL) {
+			RUNTIME_ERROR("Only instances and classes have methods")
+		}
+
+		LitString* method_name = AS_STRING(constants[LIT_INSTRUCTION_C(instruction)]);
+		int arg_count = LIT_INSTRUCTION_B(instruction) - 1;
+		LitValue method;
+
+		if (lit_table_get(&klass->methods, method_name, &method) || lit_table_get(&klass->static_fields, method_name, &method)) {
+			for (uint i = result_reg + 1; i <= result_reg + arg_count; i++) {
+				registers[i] = registers[i + 1];
+			}
+
+			CALL_VALUE(method, result_reg, arg_count)
+		} else {
+			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars)
+		}
+
+		READ_FRAME()
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(SUBSCRIPT_GET) {
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+		LitValue instance = GET_RC(result_reg);
+
+		INVOKE_METHOD(result_reg, instance, "[]", 1)
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(SUBSCRIPT_SET) {
+		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
+		LitValue instance = GET_RC(result_reg);
+
+		INVOKE_METHOD(result_reg, instance, "[]", 2)
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(PUSH_ARRAY_ELEMENT) {
+		LitValues* array = &AS_ARRAY(registers[LIT_INSTRUCTION_A(instruction)])->values;
+		array->values[array->count++] = GET_RC(LIT_INSTRUCTION_BX(instruction));
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(PUSH_OBJECT_ELEMENT) {
+		LitValue operand = registers[LIT_INSTRUCTION_A(instruction)];
+		LitString* key = AS_STRING(constants[LIT_INSTRUCTION_B(instruction)]);
+		LitValue value = registers[LIT_INSTRUCTION_C(instruction)];
+
+		if (IS_MAP(operand)) {
+			lit_table_set(state, &AS_MAP(operand)->values, key, value);
+		} else if (IS_INSTANCE(operand)) {
+			lit_table_set(state, &AS_INSTANCE(operand)->fields, key, value);
+		} else {
+			RUNTIME_ERROR_VARG("slotted an object or a map as the operand, got %s", lit_get_value_type(operand))
+		}
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(REFERENCE_GLOBAL) {
+		LitString* name = AS_STRING(constants[LIT_INSTRUCTION_BX(instruction)]);
+		LitValue* value;
+
+		if (lit_table_get_slot(&vm->globals->values, name, &value)) {
+			registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_reference(state, value));
+		} else {
+			RUNTIME_ERROR("Attempt to reference a null value")
+		}
+
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(REFERENCE_PRIVATE) {
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_reference(state, &privates[LIT_INSTRUCTION_BX(instruction)]));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(REFERENCE_LOCAL) {
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_reference(state, &registers[LIT_INSTRUCTION_B(instruction)]));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(REFERENCE_UPVALUE) {
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_reference(state, upvalues[LIT_INSTRUCTION_BX(instruction)]->location));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(REFERENCE_FIELD) {
+		LitValue object = registers[LIT_INSTRUCTION_B(instruction)];
+
+		if (IS_NULL(object)) {
+			RUNTIME_ERROR("Attempt to index a null value")
+		}
+
+		LitValue* value;
+		LitString* name = AS_STRING(constants[LIT_INSTRUCTION_C(instruction)]);
+
+		if (IS_INSTANCE(object)) {
+			if (!lit_table_get_slot(&AS_INSTANCE(object)->fields, name, &value)) {
+				RUNTIME_ERROR("Attempt to reference a null value")
+			}
+		} else {
+			RUNTIME_ERROR("You can only reference fields of real instances")
+		}
+
+		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(lit_create_reference(state, value));
+		DISPATCH_NEXT()
+	}
+
+	CASE_CODE(SET_REFERENCE) {
+		LitValue reference = registers[LIT_INSTRUCTION_A(instruction)];
+
+		if (!IS_REFERENCE(reference)) {
+			RUNTIME_ERROR("Provided value is not a reference")
+		}
+
+		*AS_REFERENCE(reference)->slot = registers[LIT_INSTRUCTION_B(instruction)];
+		DISPATCH_NEXT()
+	}
+
+	RUNTIME_ERROR_VARG("Unknown op %i", instruction)
 	RETURN_ERROR()
 
-#undef RETURN_ERROR
+	#undef BITWISE_INSTRUCTION
+	#undef COMPARISON_INSTRUCTION
+	#undef BINARY_INSTRUCTION
+	#undef UNWRAP_CONSTANT
+	#undef WRAP_CONSTANT
+
+	#undef GET_RC
+	#undef RUNTIME_ERROR_VARG
+	#undef RUNTIME_ERROR
+	#undef CALL_VALUE
+	#undef RECOVER_STATE
+	#undef WRITE_FRAME
+	#undef READ_FRAME
+	#undef CASE_CODE
+	#undef DISPATCH_NEXT
+	#undef RETURN_ERROR
 }
 
 void lit_native_exit_jump() {
 	longjmp(jump_buffer, 1);
-}
-
-bool lit_set_native_exit_jump() {
-	return setjmp(jump_buffer);
 }
 
 #undef PUSH_GC

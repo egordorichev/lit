@@ -27,6 +27,15 @@ static void print_object(LitValue value) {
 			break;
 		}
 
+		case OBJECT_CLOSURE_PROTOTYPE: {
+#ifdef LIT_TRACE_STACK
+			printf("closure %s", AS_CLOSURE_PROTOTYPE(value)->function->name->chars);
+#else
+			printf("function %s", AS_CLOSURE_PROTOTYPE(value)->function->name->chars);
+#endif
+			break;
+		}
+
 		case OBJECT_NATIVE_PRIMITIVE: {
 			printf("function %s", AS_NATIVE_PRIMITIVE(value)->name->chars);
 			break;
@@ -84,6 +93,7 @@ static void print_object(LitValue value) {
 			return;
 		}
 
+		case OBJECT_VARARG_ARRAY:
 		case OBJECT_ARRAY: {
 			#ifdef LIT_MINIMIZE_CONTAINERS
 				printf("array");
@@ -91,7 +101,7 @@ static void print_object(LitValue value) {
 				LitArray* array = AS_ARRAY(value);
 				uint size = array->values.count;
 
-				printf("(%u) [", size);
+				printf("[");
 
 				if (size > 32) {
 					printf(" (too big to be displayed) ");
@@ -120,7 +130,7 @@ static void print_object(LitValue value) {
 			#else
 				LitMap* map = AS_MAP(value);
 				uint size = map->values.count;
-				printf("(%u) {", size);
+				printf("{");
 				bool had_before = false;
 
 				if (size > 16) {
@@ -136,7 +146,7 @@ static void print_object(LitValue value) {
 								printf(" ");
 							}
 
-							printf("%s = ", entry->key->chars);
+							printf("%s: ", entry->key->chars);
 							lit_print_value(entry->value);
 							had_before = true;
 						}
@@ -201,6 +211,14 @@ void lit_print_value(LitValue value) {
 }
 
 void lit_values_ensure_size(LitState* state, LitValues* values, uint size) {
+	lit_values_ensure_size_empty(state, values, size);
+
+	if (values->count < size) {
+		values->count = size;
+	}
+}
+
+void lit_values_ensure_size_empty(LitState* state, LitValues* values, uint size) {
 	if (values->capacity < size) {
 		uint old_capacity = values->capacity;
 		values->capacity = size;
@@ -209,10 +227,6 @@ void lit_values_ensure_size(LitState* state, LitValues* values, uint size) {
 		for (uint i = old_capacity; i < size; i++) {
 			values->values[i] = NULL_VALUE;
 		}
-	}
-
-	if (values->count < size) {
-		values->count = size;
 	}
 }
 

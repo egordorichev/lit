@@ -86,7 +86,7 @@ void lit_free_object(LitState* state, LitObject* object) {
 			LitFiber* fiber = (LitFiber*) object;
 
 			LIT_FREE_ARRAY(state, LitCallFrame, fiber->frames, fiber->frame_capacity);
-			LIT_FREE_ARRAY(state, LitValue, fiber->stack, fiber->stack_capacity);
+			LIT_FREE_ARRAY(state, LitValue, fiber->registers, fiber->registers_allocated);
 			LIT_FREE(state, LitFiber, object);
 
 			break;
@@ -106,6 +106,17 @@ void lit_free_object(LitState* state, LitObject* object) {
 
 			LIT_FREE_ARRAY(state, LitUpvalue*, closure->upvalues, closure->upvalue_count);
 			LIT_FREE(state, LitClosure, object);
+
+			break;
+		}
+
+		case OBJECT_CLOSURE_PROTOTYPE: {
+			LitClosurePrototype* closure_prototype = (LitClosurePrototype*) object;
+
+			LIT_FREE_ARRAY(state, uint8_t, closure_prototype->indexes, closure_prototype->upvalue_count);
+			LIT_FREE_ARRAY(state, bool, closure_prototype->local, closure_prototype->upvalue_count);
+
+			LIT_FREE(state, LitClosurePrototype, object);
 
 			break;
 		}
@@ -141,6 +152,13 @@ void lit_free_object(LitState* state, LitObject* object) {
 		case OBJECT_ARRAY: {
 			lit_free_values(state, &((LitArray*) object)->values);
 			LIT_FREE(state, LitArray, object);
+
+			break;
+		}
+
+		case OBJECT_VARARG_ARRAY: {
+			lit_free_values(state, &((LitVarargArray*) object)->array.values);
+			LIT_FREE(state, LitVarargArray, object);
 
 			break;
 		}
@@ -251,7 +269,6 @@ static void mark_roots(LitVm* vm) {
 
 	lit_mark_object(vm, (LitObject*) state->api_name);
 	lit_mark_object(vm, (LitObject*) state->api_function);
-	lit_mark_object(vm, (LitObject*) state->api_fiber);
 
 	lit_mark_table(vm, &state->preprocessor->defined);
 
@@ -304,8 +321,8 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		case OBJECT_FIBER: {
 			LitFiber* fiber = (LitFiber*) object;
 
-			for (LitValue *slot = fiber->stack; slot < fiber->stack_top; slot++) {
-				lit_mark_value(vm, *slot);
+			for (uint i = 0; i < fiber->registers_allocated; i++) {
+				lit_mark_value(vm, fiber->registers[i]);
 			}
 
 			for (uint i = 0; i < fiber->frame_count; i++) {
@@ -360,6 +377,11 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 			break;
 		}
 
+		case OBJECT_CLOSURE_PROTOTYPE: {
+			lit_mark_object(vm, (LitObject*) ((LitClosure*) object)->function);
+			break;
+		}
+
 		case OBJECT_UPVALUE: {
 			lit_mark_value(vm, ((LitUpvalue*) object)->closed);
 			break;
@@ -397,6 +419,11 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 
 		case OBJECT_ARRAY: {
 			mark_array(vm, &((LitArray*) object)->values);
+			break;
+		}
+
+		case OBJECT_VARARG_ARRAY: {
+			mark_array(vm, &((LitVarargArray*) object)->array.values);
 			break;
 		}
 

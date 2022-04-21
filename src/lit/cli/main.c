@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <dirent.h>
+#include <setjmp.h>
 
 // Used for clean up on Ctrl+C / Ctrl+Z
 static LitState* repl_state;
@@ -30,7 +31,7 @@ void interupt_handler(int signal_id) {
 static void run_repl(LitState* state) {
 	repl_state = state;
 	signal(SIGINT, interupt_handler);
-	signal(SIGTSTP, interupt_handler);
+	// signal(SIGTSTP, interupt_handler);
 
 	lit_set_optimization_level(OPTIMIZATION_LEVEL_REPL);
 	printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
@@ -78,26 +79,29 @@ static void run_tests(LitState* state) {
 	struct dirent* node;
 
 	size_t tests_dir_length = strlen(LIT_TESTS_DIRECTORY);
+	struct stat st;
 
 	while ((ep = readdir(dir))) {
-		if (ep->d_type == DT_DIR) {
-			const char* dir_name = ep->d_name;
+		const char* dir_name = ep->d_name;
 
-			if (strcmp(dir_name, "..") == 0 || strcmp(dir_name, ".") == 0) {
+		if (strcmp(dir_name, "..") == 0 || strcmp(dir_name, ".") == 0) {
 				continue;
-			}
+		}
 
-			size_t dir_name_length = strlen(dir_name);
-			size_t total_length = dir_name_length + tests_dir_length + 2;
+		size_t dir_name_length = strlen(dir_name);
+		size_t total_length = dir_name_length + tests_dir_length + 2;
 
-			char subdir_name[total_length];
+		char subdir_name[total_length];
 
-			memcpy(subdir_name, LIT_TESTS_DIRECTORY, tests_dir_length);
-			memcpy(subdir_name + tests_dir_length + 1, dir_name, dir_name_length);
+		memcpy(subdir_name, LIT_TESTS_DIRECTORY, tests_dir_length);
+		memcpy(subdir_name + tests_dir_length + 1, dir_name, dir_name_length);
 
-			subdir_name[tests_dir_length] = '/';
-			subdir_name[total_length - 1] = '\0';
+		subdir_name[tests_dir_length] = '/';
+		subdir_name[total_length - 1] = '\0';
 
+		stat(subdir_name, &st);
+
+		if (S_ISDIR(st.st_mode)) {
 			DIR* subdir = opendir(subdir_name);
 
 			if (subdir == NULL) {
@@ -106,22 +110,24 @@ static void run_tests(LitState* state) {
 			}
 
 			while ((node = readdir(subdir))) {
-				if (node->d_type == DT_REG) {
-					const char *file_name = node->d_name;
-					size_t name_length = strlen(file_name);
+				const char *file_name = node->d_name;
+				size_t name_length = strlen(file_name);
 
-					if (name_length < 4 || memcmp(".lit", file_name + name_length - 4, 4) != 0) {
+				if (name_length < 4 || memcmp(".lit", file_name + name_length - 4, 4) != 0) {
 						continue;
-					}
+				}
 
-					char file_path[total_length + name_length + 1];
+				char file_path[total_length + name_length + 1];
 
-					memcpy(file_path, subdir_name, total_length - 1);
-					memcpy(file_path + total_length, file_name, name_length);
+				memcpy(file_path, subdir_name, total_length - 1);
+				memcpy(file_path + total_length, file_name, name_length);
 
-					file_path[total_length - 1] = '/';
-					file_path[total_length + name_length] = '\0';
+				file_path[total_length - 1] = '/';
+				file_path[total_length + name_length] = '\0';
 
+				stat(file_path, &st);
+
+				if (S_ISREG(st.st_mode)) {
 					printf("Testing %s...\n", file_path);
 					lit_interpret_file(state, file_path);
 				}
@@ -129,6 +135,8 @@ static void run_tests(LitState* state) {
 
 			closedir(subdir);
 		}
+
+		UNREACHABLE
 	}
 
 	closedir(dir);

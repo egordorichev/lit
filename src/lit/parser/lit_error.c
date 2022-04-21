@@ -38,7 +38,12 @@ static const char* error_messages[ERROR_TOTAL] = {
 	"Can't use 'return' in constructors",
 	"Constructors can't be static (at least for now)",
 	"Attempt to modify constant '%.*s'",
-	"Invalid refence target"
+	"Invalid refence target",
+	"Too many registers required",
+	"Invalid register was freed",
+	"Not all registers were freed (%i left)",
+	"Invalid scope ending",
+	"'is' operator is not used with a var expression"
 };
 
 LitString* lit_vformat_error(LitState* state, uint line, LitError error, va_list args) {

@@ -40,53 +40,56 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
 		return NULL;
 	}
 
-	lit_ensure_fiber_stack(state, fiber, callee->max_slots + (int) (fiber->stack_top - fiber->stack));
+	LitValue* start = fiber->frame_count > 0 ? fiber->frames[fiber->frame_count - 1].slots + fiber->frames[fiber->frame_count - 1].function->max_registers : fiber->registers;
+	lit_ensure_fiber_registers(vm->state, fiber, start - fiber->registers + callee->max_registers);
 
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
-	frame->slots = fiber->stack_top;
+	frame->slots = fiber->frame_count > 1 ? fiber->frames[fiber->frame_count - 2].slots + fiber->frames[fiber->frame_count - 2].function->max_registers : fiber->registers;
 
-	PUSH(OBJECT_VALUE(callee));
+#ifdef LIT_TRACE_NULL_FILL
+	printf("Filling with nulls\n");
+#endif
 
-	for (uint8_t i = 0; i < argument_count; i++) {
-		PUSH(arguments[i]);
+	for (int i = argument_count + 1; i < callee->max_registers; i++) {
+		frame->slots[i] = NULL_VALUE;
 	}
 
-	uint function_arg_count = callee->arg_count;
+	frame->slots[0] = OBJECT_VALUE(callee);
 
-	if (argument_count != function_arg_count) {
-		bool vararg = callee->vararg;
+	for (uint8_t i = 0; i < argument_count; i++) {
+		frame->slots[i + 1] = arguments[i];
+	}
 
-		if (argument_count < function_arg_count) {
-			int amount = (int) function_arg_count - argument_count - (vararg ? 1 : 0);
+	uint target_arg_count = callee->arg_count;
+	bool vararg = callee->vararg;
 
-			for (int i = 0; i < amount; i++) {
-				PUSH(NULL_VALUE);
-			}
+	if (target_arg_count > argument_count) {
+#ifdef LIT_TRACE_NULL_FILL
+		printf("Filling with nulls\n");
+#endif
 
-			if (vararg) {
-				PUSH(OBJECT_VALUE(lit_create_array(vm->state)));
-			}
-		} else if (callee->vararg) {
-			LitArray* array = lit_create_array(vm->state);
-			uint vararg_count = argument_count - function_arg_count + 1;
-
-			lit_values_ensure_size(vm->state, &array->values, vararg_count);
-
-			for (uint i = 0; i < vararg_count; i++) {
-				array->values.values[i] = fiber->stack_top[(int) i - (int) vararg_count];
-			}
-
-			fiber->stack_top -= vararg_count;
-			lit_push(vm, OBJECT_VALUE(array));
-		} else {
-			fiber->stack_top -= (argument_count - function_arg_count);
+		for (uint i = argument_count; i < target_arg_count; i++) {
+			*(frame->slots + i + 1) = NULL_VALUE;
 		}
-	} else if (callee->vararg) {
-		LitArray* array = lit_create_array(vm->state);
-		uint vararg_count = argument_count - function_arg_count + 1;
 
-		lit_values_write(vm->state, &array->values, *(fiber->stack_top - 1));
-		*(fiber->stack_top - 1) = OBJECT_VALUE(array);
+		if (vararg) {
+			*(frame->slots + target_arg_count) = OBJECT_VALUE(lit_create_array(vm->state));
+		}
+	} else if (vararg) {
+		if (target_arg_count == argument_count && IS_VARARG_ARRAY(*(frame->slots + target_arg_count))) {
+			// No need to repack the arguments
+		} else {
+			LitArray *array = &lit_create_vararg_array(vm->state)->array;
+			lit_values_ensure_size(vm->state, &array->values, argument_count - target_arg_count + 1);
+
+			uint j = 0;
+
+			for (uint i = target_arg_count - 1; i < argument_count; i++) {
+				array->values.values[j++] = *(frame->slots + i + 1);
+			}
+
+			*(frame->slots + target_arg_count) = OBJECT_VALUE(array);
+		}
 	}
 
 	frame->ip = callee->chunk.code;
@@ -94,6 +97,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
 	frame->function = callee;
 	frame->result_ignored = false;
 	frame->return_to_c = true;
+	frame->return_address = NULL;
 
 	return frame;
 }
@@ -130,7 +134,7 @@ LitInterpretResult lit_call_closure(LitState* state, LitClosure* callee, LitValu
 
 LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue callee, LitValue* arguments, uint8_t argument_count) {
 	LitVm* vm = state->vm;
-	
+
 	if (IS_OBJECT(callee)) {
 		if (lit_set_native_exit_jump()) {
 			RETURN_RUNTIME_ERROR()
@@ -150,79 +154,89 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
 			RETURN_RUNTIME_ERROR()
 		}
 
-		lit_ensure_fiber_stack(state, fiber, 3 + argument_count + (int) (fiber->stack_top - fiber->stack));
-		LitValue* slot = fiber->stack_top;
+		LitValue* start = fiber->frame_count > 0 ? fiber->frames[fiber->frame_count - 1].slots + fiber->frames[fiber->frame_count - 1].function->max_registers : fiber->registers;
+		lit_ensure_fiber_registers(vm->state, fiber, start - fiber->registers + 3 + argument_count);
+		LitValue* slot = fiber->frame_count > 0 ? fiber->frames[fiber->frame_count - 1].slots + fiber->frames[fiber->frame_count - 1].function->max_registers : fiber->registers;
 
-		PUSH(instance);
+#ifdef LIT_TRACE_NULL_FILL
+		printf("Filling with nulls\n");
+#endif
+
+		for (int i = argument_count; i < argument_count + 3; i++) {
+			*(slot + i) = NULL_VALUE;
+		}
+
+		*slot = instance;
 
 		if (type != OBJECT_CLASS) {
 			for (uint8_t i = 0; i < argument_count; i++) {
-				PUSH(arguments[i]);
+				*(slot + i + 1) = arguments[i];
 			}
 		}
 
+#ifdef LIT_TRACE_EXECUTION
+		printf("        |\n        | f%i ", fiber->frame_count);
+
+		for (int i = 0; i <= argument_count; i++) {
+			printf("[ ");
+			lit_print_value(*(slot + i));
+			printf(" ]");
+		}
+
+		printf("\n");
+#endif
+
 		switch (type) {
 			case OBJECT_NATIVE_FUNCTION: {
-				LitValue result = AS_NATIVE_FUNCTION(callee)->function(vm, argument_count, fiber->stack_top - argument_count);
-				fiber->stack_top = slot;
-
-				RETURN_OK(result)
+				// For some reason, single line expression doesn't work
+				LitValue value = AS_NATIVE_FUNCTION(callee)->function(vm, argument_count, slot + 1);
+				RETURN_OK(value)
 			}
 
 			case OBJECT_NATIVE_PRIMITIVE: {
-				AS_NATIVE_PRIMITIVE(callee)->function(vm, argument_count, fiber->stack_top - argument_count);
-				fiber->stack_top = slot;
-
+				AS_NATIVE_PRIMITIVE(callee)->function(vm, argument_count, slot + 1);
 				RETURN_OK(NULL_VALUE)
 			}
 
 			case OBJECT_NATIVE_METHOD: {
 				LitNativeMethod* method = AS_NATIVE_METHOD(callee);
-				LitValue result = method->method(vm, *(fiber->stack_top - argument_count - 1), argument_count, fiber->stack_top - argument_count);
-				fiber->stack_top = slot;
+				// For some reason, single line expression doesn't work
+				LitValue value = method->method(vm, *slot, argument_count, slot + 1);
 
-				RETURN_OK(result)
+				RETURN_OK(value)
+			}
+
+			case OBJECT_PRIMITIVE_METHOD: {
+				AS_PRIMITIVE_METHOD(callee)->method(vm, *slot, argument_count, slot + 1);
+				RETURN_OK(NULL_VALUE)
 			}
 
 			case OBJECT_CLASS: {
 				LitClass* klass = AS_CLASS(callee);
-				*slot = OBJECT_VALUE(lit_create_instance(vm->state, klass));
+				LitInstance* inst = lit_create_instance(vm->state, klass);
 
 				if (klass->init_method != NULL) {
 					lit_call_method(state, *slot, OBJECT_VALUE(klass->init_method), arguments, argument_count);
 				}
 
-				fiber->stack_top = slot;
-				RETURN_OK(*slot);
+				RETURN_OK(OBJECT_VALUE(inst))
 			}
 
 			case OBJECT_BOUND_METHOD: {
 				LitBoundMethod* bound_method = AS_BOUND_METHOD(callee);
 				LitValue method = bound_method->method;
 
-				*slot = bound_method->receiver;
-
 				if (IS_NATIVE_METHOD(method)) {
-					LitValue result = AS_NATIVE_METHOD(method)->method(vm, bound_method->receiver, argument_count, fiber->stack_top - argument_count);
-					fiber->stack_top = slot;
-
-					RETURN_OK(result)
+					// For some reason, single line expression doesn't work
+					LitValue value = AS_NATIVE_METHOD(method)->method(vm, bound_method->receiver, argument_count, slot + 1);
+					RETURN_OK(value)
 				} else if (IS_PRIMITIVE_METHOD(method)) {
-					AS_PRIMITIVE_METHOD(method)->method(vm, bound_method->receiver, argument_count, fiber->stack_top - argument_count);
-
-					fiber->stack_top = slot;
+					AS_PRIMITIVE_METHOD(method)->method(vm, bound_method->receiver, argument_count, slot + 1);
 					RETURN_OK(NULL_VALUE)
 				} else {
-					fiber->stack_top = slot;
+					*slot = bound_method->receiver;
 					return lit_call_function(state, AS_FUNCTION(method), arguments, argument_count);
 				}
-			}
-
-			case OBJECT_PRIMITIVE_METHOD: {
-				AS_PRIMITIVE_METHOD(callee)->method(vm, *(fiber->stack_top - argument_count - 1), argument_count, fiber->stack_top - argument_count);
-				fiber->stack_top = slot;
-
-				RETURN_OK(NULL_VALUE)
 			}
 
 			default: {
@@ -301,31 +315,38 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 		LitChunk* chunk = &function->chunk;
 		chunk->count = 0;
 		chunk->constants.count = 0;
-		function->max_slots = 3;
+		function->max_registers = 2;
 
-		lit_write_chunk(state, chunk, OP_INVOKE, 1);
-		lit_emit_byte(state, chunk, 0);
-		lit_emit_short(state, chunk, lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString")));
-		lit_emit_byte(state, chunk, OP_RETURN);
+		int constant = lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString"));
+
+		lit_write_chunk(state, chunk, LIT_FORM_ABC_INSTRUCTION(OP_INVOKE, 1, 1, constant), 1);
+		lit_write_chunk(state, chunk, LIT_FORM_ABC_INSTRUCTION(OP_RETURN, 1, 0, 0), 1);
 	}
 
-	lit_ensure_fiber_stack(state, fiber, function->max_slots + (int) (fiber->stack_top - fiber->stack));
+	lit_ensure_fiber_registers(vm->state, fiber, (fiber->frame_count > 0 ? (fiber->frames[fiber->frame_count - 1].slots + (int) fiber->frames[fiber->frame_count - 1].function->max_registers) : fiber->registers) - fiber->registers + function->max_registers);
 	LitCallFrame* frame = &fiber->frames[fiber->frame_count++];
 
 	frame->ip = function->chunk.code;
 	frame->closure = NULL;
 	frame->function = function;
-	frame->slots = fiber->stack_top;
+
+	// "Duplicated" code due to lit_ensure_fiber_registers messing with register pointers
+	frame->slots = (fiber->frame_count > 1 ? (fiber->frames[fiber->frame_count - 2].slots + (int) fiber->frames[fiber->frame_count - 2].function->max_registers) : fiber->registers);
 	frame->result_ignored = false;
 	frame->return_to_c = true;
+	frame->return_address = NULL;
 
-	PUSH(OBJECT_VALUE(function));
-	PUSH(object);
+	frame->slots[0] = OBJECT_VALUE(function);
+	frame->slots[1] = object;
 
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 
 	if (result.type != INTERPRET_OK) {
 		return CONST_STRING(state, "null");
+	}
+
+	if (!IS_STRING(result.result)) {
+		return CONST_STRING(state, "invalid toString()");
 	}
 
 	return AS_STRING(result.result);

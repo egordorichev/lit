@@ -127,7 +127,8 @@ LIT_METHOD(random_constructor) {
 		uint number = (uint) LIT_CHECK_NUMBER(0);
 		*data = number;
 	} else {
-		*data = time(NULL);
+		int r = rand();
+		*data = *((uint*) &r);
 	}
 
 	return OBJECT_VALUE(instance);
@@ -146,12 +147,17 @@ LIT_METHOD(random_setSeed) {
 	return NULL_VALUE;
 }
 
+int custom_random(uint* data) {
+	*data = (*data * 125) % 2796203;
+	return *data;
+}
+
 LIT_METHOD(random_int) {
 	uint* data = extract_random_data(vm->state, instance);
 
 	if (arg_count == 1) {
 		int bound = (int) LIT_GET_NUMBER(0, 0);
-		return NUMBER_VALUE(rand_r(data) % bound);
+		return NUMBER_VALUE(custom_random(data) % bound);
 	} else if (arg_count == 2) {
 		int min = (int) LIT_GET_NUMBER(0, 0);
 		int max = (int) LIT_GET_NUMBER(1, 1);
@@ -160,15 +166,15 @@ LIT_METHOD(random_int) {
 			return NUMBER_VALUE(max);
 		}
 
-		return NUMBER_VALUE(min + rand_r(data) % (max - min));
+		return NUMBER_VALUE(min + custom_random(data) % (max - min));
 	}
 
-	return NUMBER_VALUE(rand_r(data));
+	return NUMBER_VALUE(custom_random(data));
 }
 
 LIT_METHOD(random_float) {
 	uint* data = extract_random_data(vm->state, instance);
-	double value = (double) rand_r(data) / RAND_MAX;
+	double value = (double) custom_random(data) / RAND_MAX;
 
 	if (arg_count == 1) {
 		int bound = (int) LIT_GET_NUMBER(0, 0);
@@ -188,16 +194,16 @@ LIT_METHOD(random_float) {
 }
 
 LIT_METHOD(random_bool) {
-	return BOOL_VALUE(rand_r(extract_random_data(vm->state, instance)) % 2);
+	return BOOL_VALUE(custom_random(extract_random_data(vm->state, instance)) % 2);
 }
 
 LIT_METHOD(random_chance) {
 	float c = LIT_GET_NUMBER(0, 50);
-	return BOOL_VALUE((((float) rand_r(extract_random_data(vm->state, instance))) / RAND_MAX * 100) <= c);
+	return BOOL_VALUE((((float) custom_random(extract_random_data(vm->state, instance))) / RAND_MAX * 100) <= c);
 }
 
 LIT_METHOD(random_pick) {
-	int value = rand_r(extract_random_data(vm->state, instance));
+	int value = custom_random(extract_random_data(vm->state, instance));
 
 	if (arg_count == 1) {
 		if (IS_ARRAY(args[0])) {
@@ -266,7 +272,9 @@ void lit_open_math_library(LitState* state) {
 	LIT_END_CLASS()
 
 	srand(time(NULL));
-	static_random_data = time(NULL);
+
+	int r = rand();
+	static_random_data = *((uint*) &r);
 
 	LIT_BEGIN_CLASS("Random")
 		LIT_BIND_CONSTRUCTOR(random_constructor)

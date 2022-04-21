@@ -1,0 +1,9 @@
+function a(a, b, c) {
+	print(c, b, a)
+}
+
+a(1, 2, 3)
+
+// Expected: 3
+// Expected: 2
+// Expected: 1

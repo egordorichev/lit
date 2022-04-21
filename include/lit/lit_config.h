@@ -4,20 +4,22 @@
 #define LIT_REPOSITORY "https://github.com/egordorichev/lit"
 
 #define LIT_VERSION_MAJOR 0
-#define LIT_VERSION_MINOR 1
-#define LIT_VERSION_STRING "0.1"
+#define LIT_VERSION_MINOR 2
+#define LIT_VERSION_STRING "0.3"
 #define LIT_BYTECODE_VERSION 0
 
 #define TESTING
-// #define DEBUG
+
+#ifndef TESTING
+#define DEBUG
+#endif
 
 #ifdef DEBUG
 #define LIT_TRACE_EXECUTION
-#define LIT_TRACE_STACK
-#define LIT_CHECK_STACK_SIZE
-// #define LIT_TRACE_CHUNK
+#define LIT_TRACE_CHUNK
+// #define LIT_TRACE_NULL_FILL
 // #define LIT_MINIMIZE_CONTAINERS
-// #define LIT_LOG_GC
+#define LIT_LOG_GC
 // #define LIT_LOG_ALLOCATION
 // #define LIT_LOG_MARKING
 // #define LIT_LOG_BLACKING
@@ -26,16 +28,17 @@
 
 #ifdef TESTING
 // So that we can actually test the map contents with a single-line expression
-#define SINGLE_LINE_MAPS
-#define SINGLE_LINE_MAPS_ENABLED true
+#define LIT_SINGLE_LINE_MAPS
+#define LIT_SINGLE_LINE_MAPS_ENABLED true
 
 // Make sure that we did not break anything
 // #define LIT_STRESS_TEST_GC
 #else
-#define SINGLE_LINE_MAPS_ENABLED false
+#define LIT_SINGLE_LINE_MAPS_ENABLED false
 #endif
 
-#define LIT_MAX_INTERPOLATION_NESTING 4
+#define LIT_INTERPOLATION_NESTING_MAX 4
+#define LIT_REGISTERS_MAX 250 // Can't be over 255
 
 #define LIT_GC_HEAP_GROW_FACTOR 2
 #define LIT_CALL_FRAMES_MAX 64

@@ -148,6 +148,7 @@ LitClass* lit_get_class_for(LitState* state, LitValue value) {
 			case OBJECT_FIELD:
 			case OBJECT_FUNCTION:
 			case OBJECT_CLOSURE:
+			case OBJECT_CLOSURE_PROTOTYPE:
 			case OBJECT_NATIVE_FUNCTION:
 			case OBJECT_NATIVE_PRIMITIVE:
 			case OBJECT_BOUND_METHOD:
@@ -170,7 +171,7 @@ LitClass* lit_get_class_for(LitState* state, LitValue value) {
 
 			case OBJECT_INSTANCE: return AS_INSTANCE(value)->klass;
 			case OBJECT_CLASS: return state->class_class;
-			case OBJECT_ARRAY: return state->array_class;
+			case OBJECT_ARRAY: case OBJECT_VARARG_ARRAY: return state->array_class;
 			case OBJECT_MAP: return state->map_class;
 			case OBJECT_RANGE: return state->range_class;
 
@@ -284,13 +285,8 @@ LitInterpretResult lit_internal_interpret(LitState* state, LitString* module_nam
 	}
 
 	LitInterpretResult result = lit_interpret_module(state, module);
-	LitFiber* fiber = module->main_fiber;
-
-	if (!state->had_error && !fiber->abort && fiber->stack_top != fiber->stack) {
-		lit_error(state, RUNTIME_ERROR, "Stack offset was not 0");
-	}
-
 	state->last_module = module;
+
 	return result;
 }
 

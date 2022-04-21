@@ -20,10 +20,12 @@
 #define IS_PRIMITIVE_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_PRIMITIVE_METHOD)
 #define IS_MODULE(value) IS_OBJECTS_TYPE(value, OBJECT_MODULE)
 #define IS_CLOSURE(value) IS_OBJECTS_TYPE(value, OBJECT_CLOSURE)
+#define IS_CLOSURE_PROTOTYPE(value) IS_OBJECTS_TYPE(value, OBJECT_CLOSURE_PROTOTYPE)
 #define IS_UPVALUE(value) IS_OBJECTS_TYPE(value, OBJECT_UPVALUE)
 #define IS_CLASS(value) IS_OBJECTS_TYPE(value, OBJECT_CLASS)
 #define IS_INSTANCE(value) IS_OBJECTS_TYPE(value, OBJECT_INSTANCE)
-#define IS_ARRAY(value) IS_OBJECTS_TYPE(value, OBJECT_ARRAY)
+#define IS_ARRAY(value) (IS_OBJECTS_TYPE(value, OBJECT_ARRAY) || IS_OBJECTS_TYPE(value, OBJECT_VARARG_ARRAY))
+#define IS_VARARG_ARRAY(value) IS_OBJECTS_TYPE(value, OBJECT_VARARG_ARRAY)
 #define IS_MAP(value) IS_OBJECTS_TYPE(value, OBJECT_MAP)
 #define IS_BOUND_METHOD(value) IS_OBJECTS_TYPE(value, OBJECT_BOUND_METHOD)
 #define IS_USERDATA(value) IS_OBJECTS_TYPE(value, OBJECT_USERDATA)
@@ -43,6 +45,7 @@ bool lit_is_callable_function(LitValue value);
 #define AS_PRIMITIVE_METHOD(value) ((LitPrimitiveMethod*) AS_OBJECT(value))
 #define AS_MODULE(value) ((LitModule*) AS_OBJECT(value))
 #define AS_CLOSURE(value) ((LitClosure*) AS_OBJECT(value))
+#define AS_CLOSURE_PROTOTYPE(value) ((LitClosurePrototype*) AS_OBJECT(value))
 #define AS_UPVALUE(value) ((LitUpvalue*) AS_OBJECT(value))
 #define AS_CLASS(value) ((LitClass*) AS_OBJECT(value))
 #define AS_INSTANCE(value) ((LitInstance*) AS_OBJECT(value))
@@ -69,11 +72,13 @@ typedef enum {
 	OBJECT_FIBER,
 	OBJECT_MODULE,
 	OBJECT_CLOSURE,
+	OBJECT_CLOSURE_PROTOTYPE,
 	OBJECT_UPVALUE,
 	OBJECT_CLASS,
 	OBJECT_INSTANCE,
 	OBJECT_BOUND_METHOD,
 	OBJECT_ARRAY,
+	OBJECT_VARARG_ARRAY,
 	OBJECT_MAP,
 	OBJECT_USERDATA,
 	OBJECT_RANGE,
@@ -91,10 +96,12 @@ static const char* lit_object_type_names[] = {
 	"fiber",
 	"module",
 	"closure",
+	"closure_prototype",
 	"upvalue",
 	"class",
 	"instance",
 	"bound_method",
+	"array",
 	"array",
 	"map",
 	"userdata",
@@ -144,7 +151,7 @@ typedef struct {
 
 	uint8_t arg_count;
 	uint16_t upvalue_count;
-	uint max_slots;
+	uint8_t max_registers;
 
 	bool vararg;
 
@@ -174,6 +181,18 @@ typedef struct {
 } LitClosure;
 
 LitClosure* lit_create_closure(LitState* state, LitFunction* function);
+
+typedef struct {
+	LitObject object;
+	LitFunction* function;
+
+	bool* local;
+	uint8_t* indexes;
+
+	uint upvalue_count;
+} LitClosurePrototype;
+
+LitClosurePrototype* lit_create_closure_prototype(LitState* state, LitFunction* function);
 
 typedef LitValue (*LitNativeFunctionFn)(LitVm* vm, uint arg_count, LitValue* args);
 
@@ -223,8 +242,9 @@ typedef struct {
 	LitFunction* function;
 	LitClosure* closure;
 
-	uint8_t* ip;
+	uint64_t* ip;
 	LitValue* slots;
+	LitValue* return_address;
 
 	bool result_ignored;
 	bool return_to_c;
@@ -269,15 +289,15 @@ typedef struct sLitFiber {
 
 	struct sLitFiber* parent;
 
-	LitValue* stack;
-	LitValue* stack_top;
-	uint stack_capacity;
+	LitValue* registers;
+	uint registers_allocated;
 
 	LitCallFrame* frames;
 	uint frame_capacity;
 	uint frame_count;
 	uint arg_count;
 
+	LitValue* return_address;
 	LitUpvalue* open_upvalues;
 	LitModule* module;
 	LitValue error;
@@ -287,7 +307,7 @@ typedef struct sLitFiber {
 } LitFiber;
 
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function);
-void lit_ensure_fiber_stack(LitState* state, LitFiber* fiber, uint needed);
+void lit_ensure_fiber_registers(LitState* state, LitFiber* fiber, uint needed);
 
 typedef struct sLitClass {
 	LitObject object;
@@ -327,6 +347,12 @@ typedef struct {
 } LitArray;
 
 LitArray* lit_create_array(LitState* state);
+
+typedef struct {
+	LitArray array;
+} LitVarargArray;
+
+LitVarargArray* lit_create_vararg_array(LitState* state);
 
 typedef void (*LitCleanupFn)(LitState* state, LitUserdata* userdata, bool mark);
 

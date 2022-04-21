@@ -22,8 +22,8 @@ var a = 32 + 2
 var b = "test"
 
 // Note, that d is already in that array, even tho it was not initializated yet!
-print(Module.privates) // Expected: { _module = Module tests.examples.modules, d = null, a = 34, b = test }
-print(Module.loaded) // Expected: { tests.examples.modules = Module tests.examples.modules, tests.examples.libs.example_library = Module tests.examples.libs.example_library }
+print(Module.privates) // Expected: { _module: Module tests.examples.modules, d: null, a: 34, b: test }
+print(Module.loaded) // Expected: { tests.examples.modules: Module tests.examples.modules, tests.examples.libs.example_library: Module tests.examples.libs.example_library }
 
 var d = 48
-print(Module.privates) // Expected: { _module = Module tests.examples.modules, d = 48, a = 34, b = test }
+print(Module.privates) // Expected: { _module: Module tests.examples.modules, d: 48, a: 34, b: test }

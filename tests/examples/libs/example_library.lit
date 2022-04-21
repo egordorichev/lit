@@ -4,7 +4,7 @@ if (!a) {
 
 a++
 
-/* 
+/*
  * Functions, that are defined without the export keyword,
  * will not be visible to other modules.
  */
@@ -17,7 +17,7 @@ export function exampleFunction() {
 	print("Hello, from the library!")
 }
 
-/* 
+/*
  * You can return anything from a module (or nothing).
  * Modules will be executed only once, so 'a' will always be 1
  * in this case.

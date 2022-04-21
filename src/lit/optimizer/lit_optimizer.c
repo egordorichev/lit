@@ -12,7 +12,7 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot);
 
 static const char* optimization_level_descriptions[OPTIMIZATION_LEVEL_TOTAL] = {
 	"No optimizations (same as -Ono-all)",
-	"Super light optimizations, sepcific to interactive shell.",
+	"Super light optimizations, specific to interactive shell.",
 	"(default) Recommended optimization level for the development.",
 	"Medium optimization, recommended for the release.",
 	"(default for bytecode) Extreme optimization, throws out most of the variable/function names, used for bytecode compilation."
@@ -105,7 +105,7 @@ static bool is_empty(LitStatement* statement) {
 
 static LitValue evaluate_unary_op(LitValue value, LitTokenType op) {
 	switch (op) {
-		case TOKEN_MINUS: {
+		case LTOKEN_MINUS: {
 			if (IS_NUMBER(value)) {
 				return NUMBER_VALUE(-AS_NUMBER(value));
 			}
@@ -113,11 +113,11 @@ static LitValue evaluate_unary_op(LitValue value, LitTokenType op) {
 			break;
 		}
 
-		case TOKEN_BANG: {
+		case LTOKEN_BANG: {
 			return BOOL_VALUE(lit_is_falsey(value));
 		}
 
-		case TOKEN_TILDE: {
+		case LTOKEN_TILDE: {
 			if (IS_NUMBER(value)) {
 				return NUMBER_VALUE(~((int) AS_NUMBER(value)));
 			}
@@ -153,24 +153,24 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType op) {
 		return NULL_VALUE;
 
 	switch (op) {
-		case TOKEN_PLUS: BINARY_OP(+)
-		case TOKEN_MINUS: BINARY_OP(-)
-		case TOKEN_STAR: BINARY_OP(*)
-		case TOKEN_SLASH: BINARY_OP(/)
-		case TOKEN_STAR_STAR: FN_OP(pow)
-		case TOKEN_PERCENT: FN_OP(fmod)
+		case LTOKEN_PLUS: BINARY_OP(+)
+		case LTOKEN_MINUS: BINARY_OP(-)
+		case LTOKEN_STAR: BINARY_OP(*)
+		case LTOKEN_SLASH: BINARY_OP(/)
+		case LTOKEN_STAR_STAR: FN_OP(pow)
+		case LTOKEN_PERCENT: FN_OP(fmod)
 
-		case TOKEN_GREATER: BINARY_OP(>)
-		case TOKEN_GREATER_EQUAL: BINARY_OP(>=)
-		case TOKEN_LESS: BINARY_OP(<)
-		case TOKEN_LESS_EQUAL: BINARY_OP(<=)
-		case TOKEN_LESS_LESS: BITWISE_OP(<<)
-		case TOKEN_GREATER_GREATER: BITWISE_OP(>>)
-		case TOKEN_BAR: BITWISE_OP(|)
-		case TOKEN_AMPERSAND: BITWISE_OP(&)
-		case TOKEN_CARET: BITWISE_OP(^)
+		case LTOKEN_GREATER: BINARY_OP(>)
+		case LTOKEN_GREATER_EQUAL: BINARY_OP(>=)
+		case LTOKEN_LESS: BINARY_OP(<)
+		case LTOKEN_LESS_EQUAL: BINARY_OP(<=)
+		case LTOKEN_LESS_LESS: BITWISE_OP(<<)
+		case LTOKEN_GREATER_GREATER: BITWISE_OP(>>)
+		case LTOKEN_BAR: BITWISE_OP(|)
+		case LTOKEN_AMPERSAND: BITWISE_OP(&)
+		case LTOKEN_CARET: BITWISE_OP(^)
 
-		case TOKEN_SHARP: {
+		case LTOKEN_SHARP: {
 			if (IS_NUMBER(a) && IS_NUMBER(b)) {
 				return NUMBER_VALUE(floor(AS_NUMBER(a) / AS_NUMBER(b)));
 		  }
@@ -178,15 +178,15 @@ static LitValue evaluate_binary_op(LitValue a, LitValue b, LitTokenType op) {
 			return NULL_VALUE;
 		}
 
-		case TOKEN_EQUAL_EQUAL: {
+		case LTOKEN_EQUAL_EQUAL: {
 			return BOOL_VALUE(a == b);
 		}
 
-		case TOKEN_BANG_EQUAL: {
+		case LTOKEN_BANG_EQUAL: {
 			return BOOL_VALUE(a != b);
 		}
 
-		case TOKEN_IS:
+		case LTOKEN_IS:
 		default: {
 			break;
 		}
@@ -206,7 +206,7 @@ static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExp
 	if (IS_NUMBER(value)) {
 		double number = AS_NUMBER(value);
 
-		if (op == TOKEN_STAR) {
+		if (op == LTOKEN_STAR) {
 			if (number == 0) {
 				return NUMBER_VALUE(0);
 			} else if (number == 1) {
@@ -215,12 +215,12 @@ static LitValue attempt_to_optimize_binary(LitOptimizer* optimizer, LitBinaryExp
 				expression->left = branch;
 				expression->right = NULL;
 			}
-		} else if ((op == TOKEN_PLUS || op == TOKEN_MINUS) && number == 0) {
+		} else if ((op == LTOKEN_PLUS || op == LTOKEN_MINUS) && number == 0) {
 			lit_free_expression(optimizer->state, left ? expression->right : expression->left);
 
 			expression->left = branch;
 			expression->right = NULL;
-		} else if (((left && op == TOKEN_SLASH) || op == TOKEN_STAR_STAR) && number == 1) {
+		} else if (((left && op == LTOKEN_SLASH) || op == LTOKEN_STAR_STAR) && number == 1) {
 			lit_free_expression(optimizer->state, left ? expression->right : expression->left);
 
 			expression->left = branch;
@@ -641,11 +641,11 @@ static void optimize_statement(LitOptimizer* optimizer, LitStatement** slot) {
 			var->init = range->from;
 
 			// i <= to
-			stmt->condition = (LitExpression*) lit_create_binary_expression(state, line, (LitExpression*) lit_create_var_expression(state, line, var->name, var->length), range->to, TOKEN_LESS_EQUAL);
+			stmt->condition = (LitExpression*) lit_create_binary_expression(state, line, (LitExpression*) lit_create_var_expression(state, line, var->name, var->length), range->to, LTOKEN_LESS_EQUAL);
 
 			// i++ (or i--)
 			LitExpression* var_get = (LitExpression*) lit_create_var_expression(state, line, var->name, var->length);
-			LitBinaryExpression* assign_value = lit_create_binary_expression(state, line, var_get, (LitExpression*) lit_create_literal_expression(state, line, NUMBER_VALUE(1)), reverse ? TOKEN_MINUS_MINUS : TOKEN_PLUS);
+			LitBinaryExpression* assign_value = lit_create_binary_expression(state, line, var_get, (LitExpression*) lit_create_literal_expression(state, line, NUMBER_VALUE(1)), reverse ? LTOKEN_MINUS_MINUS : LTOKEN_PLUS);
 			assign_value->ignore_left = true;
 
 			LitExpression* increment = (LitExpression*) lit_create_assign_expression(state, line, var_get, (LitExpression*) assign_value);

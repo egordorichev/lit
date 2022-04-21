@@ -144,6 +144,7 @@ LitSetExpression *lit_create_set_expression(LitState* state, uint line, LitExpre
 typedef struct {
 	const char* name;
 	uint length;
+	uint8_t reg;
 
 	LitExpression* default_value;
 } LitParameter;
@@ -244,7 +245,6 @@ void lit_free_statement(LitState* state, LitStatement* statement);
 typedef struct {
 	LitStatement statement;
 	LitExpression* expression;
-	bool pop;
 } LitExpressionStatement;
 
 LitExpressionStatement *lit_create_expression_statement(LitState* state, uint line, LitExpression* expression);

@@ -1,12 +1,35 @@
+# docs
+
+* ??
+* ?.
+* refs
+* binary operators (like floor divide)
+* default arg values
+
+# api
+
+* json
+* http
+* event loop
+* File.remove()
+* File.create()
+* Directory.remove()
+* Directory.create()
+* File.writeNumber() -> File.writeInt()
+* File.readNumber() -> File.readInt()
+* File.writeDouble()
+* File.readDouble()
+* String.byteLength
+
 # todo
 
-* fix runtime error lines, they often show up at the prev lines
-* correct error messages on the start of the file instead of ''
-* expected ) got ) will occur if the file has no more chars left
+* Operator () overloading
+* Date class
+* statistics on time spent in each instruction
 
 * easier  object creation: {
- name = name
-} could be just { = name } or smth
+ name: name
+} could be just { name } or smth
 
 * this.fun?() or smth i need this
 * some sort of main function?
@@ -18,5 +41,6 @@
 * add tests for c-side features, like saving/loading bytecode
 
 # feature creep
+
 * make var statements into expressions to allow stuff like if (var a = test()) { print(a) }
 * switch statement?
