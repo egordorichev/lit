@@ -1026,7 +1026,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 						READ_FRAME()
 						DISPATCH_NEXT()
 					} else {
-						value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(instance), value));
+						value = OBJECT_VALUE(lit_create_bound_method(state, object, value));
 					}
 				} else {
 					value = NULL_VALUE;
@@ -1037,7 +1037,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 			if (lit_table_get(&klass->static_fields, name, &value)) {
 				if (IS_NATIVE_METHOD(value) || IS_PRIMITIVE_METHOD(value)) {
-					value = OBJECT_VALUE(lit_create_bound_method(state, OBJECT_VALUE(klass), value));
+					value = OBJECT_VALUE(lit_create_bound_method(state, object, value));
 				} else if (IS_FIELD(value)) {
 					LitField* field = AS_FIELD(value);
 
@@ -1092,7 +1092,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		LitValue value;
 
 		if (lit_table_get(&klass->methods, method_name, &value) || lit_table_get(&klass->static_fields, method_name, &value)) {
-			value = OBJECT_VALUE(lit_create_bound_method(state, instance, value));
+			value = OBJECT_VALUE(lit_create_bound_method(state, registers[LIT_INSTRUCTION_A(instruction)], value));
 		} else {
 			value = NULL_VALUE;
 		}
@@ -1259,14 +1259,11 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		WRITE_FRAME()
 
 		uint8_t result_reg = LIT_INSTRUCTION_A(instruction);
-		LitValue instance = registers[result_reg];
+		LitValue instance = registers[result_reg + 1];
 
 		if (IS_NULL(instance)) {
 			RUNTIME_ERROR("Attempt to index a null value")
 		}
-
-		lit_print_value(instance);
-		printf("\n");
 
 		LitClass* klass = AS_CLASS(instance);
 
@@ -1279,6 +1276,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		LitValue method;
 
 		if (lit_table_get(&klass->methods, method_name, &method) || lit_table_get(&klass->static_fields, method_name, &method)) {
+			for (uint i = result_reg + 1; i <= result_reg + arg_count; i++) {
+				registers[i] = registers[i + 1];
+			}
+
 			CALL_VALUE(method, result_reg, arg_count)
 		} else {
 			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars)

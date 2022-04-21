@@ -1,21 +1,30 @@
-class A {
+class Awesome {
 	constructor(a) {
-		print(a)
+		this.prop = a
+	}
+
+	test() {
+		return this.prop
 	}
 }
 
-class B : A {
-	constructor(a) {
-		super(a)
-		print(super.constructor)
-	}
-}
-
-class C : B {
+class Best : Awesome {
 	constructor() {
-		super("sup")
+		super("good")
+	}
+
+	test() {
+		this.prop = "bad"
+		print(this.prop)
+		return super.test()
+	}
+
+	getTest() {
+		return super.test
 	}
 }
 
-new C() // Expected: sup
-// Expected: function A:constructor
+var b = new Best()
+// b.printTest() // Expected: bad
+var z = b.getTest()
+print(z()) // Expected: bad

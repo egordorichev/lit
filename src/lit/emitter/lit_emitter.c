@@ -764,12 +764,13 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 			}
 
 			emit_expression(emitter, expr->callee, reg);
+			uint8_t tmp_reg = super ? reserve_register(emitter) : 0;
 
 			for (uint i = 0; i < arg_count; i++) {
 				uint16_t arg_reg = reserve_register(emitter);
 				LitExpression* e = expr->args.values[i];
 
-				if (arg_reg != reg + i + 1) {
+				if (arg_reg != reg + i + (super ? 2 : 1)) {
 					UNREACHABLE // Something went terribly wrong
 				}
 
@@ -787,11 +788,16 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				int constant = add_constant(emitter, emitter->last_line, OBJECT_VALUE(lit_copy_string(emitter->state, e->name, e->length)));
 				emit_abc_instruction(emitter, expression->line, OP_INVOKE, reg, arg_count + 1, constant);
 			} else if (super) {
+				assert(tmp_reg == reg + 1);
+
 				LitSuperExpression *e = (LitSuperExpression*) expr->callee;
 				uint8_t index = resolve_upvalue(emitter, emitter->compiler, "super", 5, emitter->last_line);
 
-				emit_abx_instruction(emitter, expression->line, OP_GET_UPVALUE, reg, index);
+				emit_abx_instruction(emitter, expression->line, OP_GET_UPVALUE, tmp_reg, index);
+				emit_abc_instruction(emitter, expression->line, OP_MOVE, reg, 0, 0);
 				emit_abc_instruction(emitter, emitter->last_line, OP_INVOKE_SUPER, reg, arg_count + 1, add_constant(emitter, emitter->last_line, OBJECT_VALUE(e->method)));
+
+				free_register(emitter, tmp_reg);
 			} else {
 				emit_abc_instruction(emitter, expression->line, OP_CALL, reg, arg_count + 1, 1);
 			}
