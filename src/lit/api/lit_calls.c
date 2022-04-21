@@ -277,7 +277,7 @@ LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, Li
 	return (LitInterpretResult) { INTERPRET_INVALID, NULL_VALUE };
 }
 
-LitString* lit_to_string(LitState* state, LitValue object) {
+LitString* lit_to_string(LitState* state, LitValue object, uint indentation) {
 	if (IS_STRING(object)) {
 		return AS_STRING(object);
 	} else if (!IS_OBJECT(object)) {
@@ -295,7 +295,7 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 			return CONST_STRING(state, "null");
 		}
 
-		return lit_to_string(state, *slot);
+		return lit_to_string(state, *slot, 0);
 	}
 
 	LitVm* vm = state->vm;
@@ -315,11 +315,11 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 		LitChunk* chunk = &function->chunk;
 		chunk->count = 0;
 		chunk->constants.count = 0;
-		function->max_registers = 2;
+		function->max_registers = 3;
 
 		int constant = lit_chunk_add_constant(state, chunk, OBJECT_CONST_STRING(state, "toString"));
 
-		lit_write_chunk(state, chunk, LIT_FORM_ABC_INSTRUCTION(OP_INVOKE, 1, 1, constant), 1);
+		lit_write_chunk(state, chunk, LIT_FORM_ABC_INSTRUCTION(OP_INVOKE, 1, 2, constant), 1);
 		lit_write_chunk(state, chunk, LIT_FORM_ABC_INSTRUCTION(OP_RETURN, 1, 0, 0), 1);
 	}
 
@@ -338,6 +338,7 @@ LitString* lit_to_string(LitState* state, LitValue object) {
 
 	frame->slots[0] = OBJECT_VALUE(function);
 	frame->slots[1] = object;
+	frame->slots[2] = NUMBER_VALUE(indentation);
 
 	LitInterpretResult result = lit_interpret_fiber(state, fiber);
 

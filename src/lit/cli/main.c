@@ -62,7 +62,7 @@ static void run_repl(LitState* state) {
 		LitInterpretResult result = lit_interpret(state, "repl", line);
 
 		if (result.type == INTERPRET_OK && result.result != NULL_VALUE) {
-			printf("%s%s%s\n", COLOR_GREEN, lit_to_string(state, result.result)->chars, COLOR_RESET);
+			printf("%s%s%s\n", COLOR_GREEN, lit_to_string(state, result.result, 0)->chars, COLOR_RESET);
 		}
 	}
 }

@@ -1,2 +1,6 @@
 var v = JSON.parse("{ \"hello\": { \"test\": \"test hey\" }, \"test\": [ 32, 8, 10 ] }")
-print(v["hello"])
+
+for (var i in 0 .. 10) {
+	v[i.toString()] = i
+}
+print(v)
