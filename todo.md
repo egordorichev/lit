@@ -23,7 +23,6 @@
 
 # todo
 
-* map & array .toString() wrap strings in ""
 * lit_runtime_error doesn't exit
 * Operator () overloading
 * Date class

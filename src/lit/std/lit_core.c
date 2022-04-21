@@ -1107,7 +1107,14 @@ LIT_METHOD(array_toString) {
 	}
 
 	for (uint i = 0; i < value_amount; i++) {
-		LitString* value = lit_to_string(state, values->values[(has_more && i == value_amount - 1) ? values->count - 1 : i], 0);
+		LitValue field = values->values[(has_more && i == value_amount - 1) ? values->count - 1 : i];
+		LitString* value = lit_to_string(state, field, 0);
+
+		lit_push_root(state, (LitObject*) value);
+
+		if (IS_STRING(field)) {
+			value = AS_STRING(lit_string_format(state, "\"@\"", OBJECT_VALUE(value)));
+		}
 
 		values_converted[i] = value;
 		string_length += value->length + (i == value_amount - 1 ? 1 : 2);
@@ -1131,6 +1138,8 @@ LIT_METHOD(array_toString) {
 			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " ]" : ", ", 2);
 			buffer_index += 2;
 		}
+
+		lit_pop_root(state);
 	}
 
 	buffer[string_length] = '\0';
@@ -1253,7 +1262,12 @@ LIT_METHOD(map_toString) {
 			LitValue field = has_wrapper ? map->index_fn(vm, map, entry->key, NULL) : entry->value;
 			// This check is required to prevent infinite loops when playing with Module.privates and such
 			LitString* value = (IS_MAP(field) && AS_MAP(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field, indentation);
+
 			lit_push_root(state, (LitObject*) value);
+
+			if (IS_STRING(field)) {
+				value = AS_STRING(lit_string_format(state, "\"@\"", OBJECT_VALUE(value)));
+			}
 
 			values_converted[i] = value;
 			keys[i] = entry->key;
