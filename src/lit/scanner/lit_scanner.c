@@ -118,9 +118,6 @@ static bool skip_whitespace(LitScanner* scanner) {
 					advance(scanner);
 					advance(scanner);
 
-					char a = peek(scanner);
-					char b = peek_next(scanner);
-
 					while ((peek(scanner) != '*' || peek_next(scanner) != '/') && !is_at_end(scanner)) {
 						if (peek(scanner) == '\n') {
 							scanner->line++;

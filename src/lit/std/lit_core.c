@@ -2,6 +2,7 @@
 #include "std/lit_math.h"
 #include "std/lit_file.h"
 #include "std/lit_gc.h"
+#include "std/json/lit_json.h"
 #include "api/lit_api.h"
 #include "vm/lit_vm.h"
 #include "vm/lit_object.h"
@@ -21,6 +22,7 @@ void lit_open_libraries(LitState* state) {
 	lit_open_math_library(state);
 	lit_open_file_library(state);
 	lit_open_gc_library(state);
+	lit_open_json_library(state);
 }
 
 LIT_METHOD(invalid_constructor) {

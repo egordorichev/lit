@@ -8,10 +8,10 @@
 #define LIT_VERSION_STRING "0.3"
 #define LIT_BYTECODE_VERSION 0
 
-#define TESTING
+// #define TESTING
 
 #ifndef TESTING
-#define DEBUG
+// #define DEBUG
 #endif
 
 #ifdef DEBUG

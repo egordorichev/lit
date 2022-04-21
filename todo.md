@@ -23,6 +23,8 @@
 
 # todo
 
+* map & array .toString() wrap strings in ""
+* lit_runtime_error doesn't exit
 * Operator () overloading
 * Date class
 * statistics on time spent in each instruction
