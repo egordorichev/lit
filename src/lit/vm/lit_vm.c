@@ -157,7 +157,7 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 
 	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
 		lit_runtime_error(vm, "Stack overflow");
-		return true;
+		return false;
 	}
 
 	if (fiber->frame_count + 1 > fiber->frame_capacity) {
@@ -944,7 +944,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 	}
 
 	CASE_CODE(CLOSE_UPVALUE) {
-		close_upvalues(vm, &registers[LIT_INSTRUCTION_A(instruction)]);
+		close_upvalues(vm, &registers[LIT_INSTRUCTION_A(instruction)] - 1);
 		DISPATCH_NEXT()
 	}
 
@@ -1086,12 +1086,12 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	CASE_CODE(GET_SUPER_METHOD) {
 		LitValue instance = registers[LIT_INSTRUCTION_B(instruction)];
-		LitClass* klass = AS_INSTANCE(instance)->klass->super;
+		LitClass* klass = AS_CLASS(instance);
 		LitString* method_name = AS_STRING(constants[LIT_INSTRUCTION_C(instruction)]);
 
 		LitValue value;
 
-		if (lit_table_get(&klass->methods, method_name, &value)) {
+		if (lit_table_get(&klass->methods, method_name, &value) || lit_table_get(&klass->static_fields, method_name, &value)) {
 			value = OBJECT_VALUE(lit_create_bound_method(state, instance, value));
 		} else {
 			value = NULL_VALUE;
@@ -1265,7 +1265,10 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 			RUNTIME_ERROR("Attempt to index a null value")
 		}
 
-		LitClass* klass = lit_get_class_for(state, instance)->super;
+		lit_print_value(instance);
+		printf("\n");
+
+		LitClass* klass = AS_CLASS(instance);
 
 		if (klass == NULL) {
 			RUNTIME_ERROR("Only instances and classes have methods")
@@ -1275,9 +1278,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		int arg_count = LIT_INSTRUCTION_B(instruction) - 1;
 		LitValue method;
 
-		if ((IS_INSTANCE(instance) && (lit_table_get(&AS_INSTANCE(instance)->fields, method_name, &method))) || lit_table_get(&klass->methods, method_name, &method)) {
-			CALL_VALUE(method, result_reg, arg_count)
-		} else if (IS_CLASS(instance)&& (lit_table_get(&AS_CLASS(instance)->static_fields, method_name, &method))) {
+		if (lit_table_get(&klass->methods, method_name, &method) || lit_table_get(&klass->static_fields, method_name, &method)) {
 			CALL_VALUE(method, result_reg, arg_count)
 		} else {
 			RUNTIME_ERROR_VARG("Attempt to call method '%s', that is not defined in class %s", method_name->chars, klass->name->chars)

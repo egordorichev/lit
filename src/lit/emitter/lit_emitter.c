@@ -774,18 +774,6 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				}
 
 				arg_regs[i] = arg_reg;
-
-				/*if (e->type == VAR_EXPRESSION) {
-					LitVarExpression* ee = (LitVarExpression*) e;
-
-					// Vararg ...
-					if (ee->length == 3 && memcmp(ee->name, "...", 3) == 0) {
-						NOT_IMPLEMENTED
-						// emit_abc_instruction(emitter, e->line, OP_VARARG, resolve_local(emitter, emitter->compiler, "...", 3, expression->line));
-						break;
-					}
-				}*/
-
 				emit_expression(emitter, e, arg_reg);
 			}
 
@@ -800,8 +788,9 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				emit_abc_instruction(emitter, expression->line, OP_INVOKE, reg, arg_count + 1, constant);
 			} else if (super) {
 				LitSuperExpression *e = (LitSuperExpression*) expr->callee;
+				uint8_t index = resolve_upvalue(emitter, emitter->compiler, "super", 5, emitter->last_line);
 
-				emit_abx_instruction(emitter, expression->line, OP_MOVE, reg, 0);
+				emit_abx_instruction(emitter, expression->line, OP_GET_UPVALUE, reg, index);
 				emit_abc_instruction(emitter, emitter->last_line, OP_INVOKE_SUPER, reg, arg_count + 1, add_constant(emitter, emitter->last_line, OBJECT_VALUE(e->method)));
 			} else {
 				emit_abc_instruction(emitter, expression->line, OP_CALL, reg, arg_count + 1, 1);
