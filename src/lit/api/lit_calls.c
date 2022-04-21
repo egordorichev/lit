@@ -60,12 +60,36 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
 		frame->slots[i + 1] = arguments[i];
 	}
 
-	uint function_arg_count = callee->arg_count;
+	uint target_arg_count = callee->arg_count;
+	bool vararg = callee->vararg;
 
-	if (argument_count != function_arg_count) {
-		NOT_IMPLEMENTED
-	} else if (callee->vararg) {
-		NOT_IMPLEMENTED
+	if (target_arg_count > argument_count) {
+#ifdef LIT_TRACE_NULL_FILL
+		printf("Filling with nulls\n");
+#endif
+
+		for (uint i = argument_count; i < target_arg_count; i++) {
+			*(frame->slots + i + 1) = NULL_VALUE;
+		}
+
+		if (vararg) {
+			*(frame->slots + target_arg_count) = OBJECT_VALUE(lit_create_array(vm->state));
+		}
+	} else if (vararg) {
+		if (target_arg_count == argument_count && IS_VARARG_ARRAY(*(frame->slots + target_arg_count))) {
+			// No need to repack the arguments
+		} else {
+			LitArray *array = &lit_create_vararg_array(vm->state)->array;
+			lit_values_ensure_size(vm->state, &array->values, argument_count - target_arg_count + 1);
+
+			uint j = 0;
+
+			for (uint i = target_arg_count - 1; i < argument_count; i++) {
+				array->values.values[j++] = *(frame->slots + i + 1);
+			}
+
+			*(frame->slots + target_arg_count) = OBJECT_VALUE(array);
+		}
 	}
 
 	frame->ip = callee->chunk.code;
