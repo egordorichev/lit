@@ -11,7 +11,6 @@ class Promise {
 
 		this.addToTaskQueue(() => {
 			var fiber = new Fiber(() => {
-				print(this)
 				callback(this.resolve, this.reject)
 			})
 
