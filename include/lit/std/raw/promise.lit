@@ -94,17 +94,3 @@ class Promise {
 		Timer.add(() => task(this.value), 0)
 	}
 }
-
-function makeRequest() {
-	return new Promise((resolve, reject) => {
-		Timer.add(() => resolve("Hello, world!"), 1000)
-	})
-}
-
-makeRequest().then((data) => {
-	print(data)
-}).catch((err) => {
-	print(err)
-}).finally(() => {
-	print("Finally!")
-})

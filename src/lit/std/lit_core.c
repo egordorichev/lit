@@ -520,13 +520,21 @@ LIT_METHOD(function_name) {
  */
 
 LIT_METHOD(fiber_constructor) {
-	if (arg_count < 1 || !IS_FUNCTION(args[0])) {
+	LitValue arg = args[0];
+
+	if (arg_count < 1 || (!IS_FUNCTION(arg) && !IS_CLOSURE(arg))) {
 		lit_runtime_error_exiting(vm, "Fiber constructor expects a function as its argument");
 	}
 
-	LitFunction* function = AS_FUNCTION(args[0]);
 	LitModule* module = vm->fiber->module;
-	LitFiber* fiber = lit_create_fiber(vm->state, module, function);
+
+	LitFiber* fiber;
+
+	if (IS_FUNCTION(arg)) {
+		fiber = lit_create_fiber(vm->state, module, AS_FUNCTION(arg));
+	} else {
+		fiber = lit_create_fiber_with_closure(vm->state, module, AS_CLOSURE(arg));
+	}
 
 	fiber->parent = vm->fiber;
 

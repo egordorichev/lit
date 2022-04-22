@@ -436,6 +436,13 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	return fiber;
 }
 
+LitFiber* lit_create_fiber_with_closure(LitState* state, LitModule* module, LitClosure* closure) {
+	LitFiber* fiber = lit_create_fiber(state, module, closure->function);
+	fiber->frames[0].closure = closure;
+
+	return fiber;
+}
+
 void lit_ensure_fiber_registers(LitState* state, LitFiber* fiber, uint needed) {
 	if (fiber->registers_allocated >= needed) {
 		return;

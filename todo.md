@@ -11,7 +11,7 @@
 # api
 
 * http
-* event loop
+* array & map .forEach()
 * File.remove()
 * File.create()
 * Directory.remove()
@@ -24,6 +24,7 @@
 
 # todo
 
+* then(data => {}) is not a valid syntax
 * lit_runtime_error doesn't exit
 * Operator () overloading
 * Date class
