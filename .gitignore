@@ -18,3 +18,4 @@ wiki/.docusaurus
 wiki/build/*
 wiki/build*
 Testing/
+src/lit/std/compiled/*.c

@@ -1,0 +1,1 @@
+This is the directory for automatically generated c files, that are being converted from the lit source code in include/lit/std/raw/
