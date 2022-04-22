@@ -16,7 +16,7 @@
 
 #ifdef DEBUG
 #define LIT_TRACE_EXECUTION
-#define LIT_TRACE_CHUNK
+// #define LIT_TRACE_CHUNK
 // #define LIT_TRACE_NULL_FILL
 // #define LIT_MINIMIZE_CONTAINERS
 #define LIT_LOG_GC

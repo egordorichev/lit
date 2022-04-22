@@ -307,6 +307,8 @@ typedef struct sLitFiber {
 } LitFiber;
 
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function);
+LitFiber* lit_create_fiber_with_closure(LitState* state, LitModule* module, LitClosure* closure);
+
 void lit_ensure_fiber_registers(LitState* state, LitFiber* fiber, uint needed);
 
 typedef struct sLitClass {

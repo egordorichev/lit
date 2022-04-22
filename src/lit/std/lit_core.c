@@ -520,13 +520,21 @@ LIT_METHOD(function_name) {
  */
 
 LIT_METHOD(fiber_constructor) {
-	if (arg_count < 1 || !IS_FUNCTION(args[0])) {
+	LitValue arg = args[0];
+
+	if (arg_count < 1 || (!IS_FUNCTION(arg) && !IS_CLOSURE(arg))) {
 		lit_runtime_error_exiting(vm, "Fiber constructor expects a function as its argument");
 	}
 
-	LitFunction* function = AS_FUNCTION(args[0]);
 	LitModule* module = vm->fiber->module;
-	LitFiber* fiber = lit_create_fiber(vm->state, module, function);
+
+	LitFiber* fiber;
+
+	if (IS_FUNCTION(arg)) {
+		fiber = lit_create_fiber(vm->state, module, AS_FUNCTION(arg));
+	} else {
+		fiber = lit_create_fiber_with_closure(vm->state, module, AS_CLOSURE(arg));
+	}
 
 	fiber->parent = vm->fiber;
 
@@ -1536,9 +1544,9 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
           dir_path[length] = '.';
 
           if (!attempt_to_require(vm, args + arg_count, 0, dir_path, false, false)) {
-              lit_runtime_error_exiting(vm, "Failed to require module '%s'", name);
+            lit_runtime_error_exiting(vm, "Failed to require module '%s'", name);
           } else {
-              found = true;
+            found = true;
           }
 				}
 			}
@@ -1623,10 +1631,57 @@ static bool attempt_to_require_combined(LitVm* vm, LitValue* args, uint arg_coun
 	return attempt_to_require(vm, args, arg_count, (const char*) &path, ignore_previous, false);
 }
 
+
+typedef struct LitBuiltinModule {
+	const char* name;
+	const char* source;
+} LitBuiltinModule;
+
+extern const char lit_promise[];
+
+LitBuiltinModule modules[] = {
+	{ "promise", (const char*) lit_promise },
+	{ NULL, NULL }
+};
+
 LIT_NATIVE_PRIMITIVE(require) {
 	vm->fiber->return_address = args - 1;
 
 	LitString* name = LIT_CHECK_OBJECT_STRING(0);
+
+	for (uint i = 0;; i++) {
+		LitBuiltinModule* module = &modules[i];
+
+		if (module->name == NULL) {
+			break;
+		}
+
+		if (strcmp(name->chars, module->name) == 0) {
+			LitValue existing_module;
+
+			if (lit_table_get(&vm->modules->values, name, &existing_module)) {
+				LitModule* loaded_module = AS_MODULE(existing_module);
+
+				if (loaded_module->ran) {
+					args[-1] = AS_MODULE(existing_module)->return_value;
+					should_update_locals = true;
+				} else {
+					if (interpret(vm, loaded_module)) {
+						should_update_locals = true;
+					}
+				}
+
+				return false;
+			}
+
+			if (compile_and_interpret(vm, name, (char*) module->source)) {
+				should_update_locals = true;
+			}
+
+			return false;
+		}
+	}
+
 	bool ignore_previous = arg_count > 1 && IS_BOOL(args[1]) && AS_BOOL(args[1]);
 
 	// First check, if a file with this name exists in the local path

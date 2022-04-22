@@ -576,7 +576,6 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 		lit_disassemble_instruction(current_chunk, (uint) (ip - current_chunk->code - 1), NULL, frame != previous_frame);
 		previous_frame = frame;
 	#endif
-
 	goto *dispatch_table[LIT_INSTRUCTION_OPCODE(instruction)];
 
 	CASE_CODE(MOVE) {

@@ -1,0 +1,98 @@
+class Promise {
+	constructor(callback) {
+		if (callback !is Function) {
+			Fiber.abort("Promise callback must be a function")
+		}
+
+		this.state = "pending"
+		this.thenCallbacks = []
+		this.catchCallbacks = []
+		this.finallyCallbacks = []
+
+		this.addToTaskQueue(() => {
+			var fiber = new Fiber(() => {
+				callback(this.resolve, this.reject)
+			})
+
+			fiber.try()
+
+			if (fiber.error) {
+				this.reject(fiber.error)
+			}
+		})
+	}
+
+	resolve(value) {
+		if (this.state == "pending") {
+			this.state = "fulfilled"
+			this.value = value
+
+			var thenCallbacks = this.thenCallbacks
+			var finallyCallbacks = this.finallyCallbacks
+
+			this.thenCallbacks = []
+			this.catchCallbacks = []
+			this.finallyCallbacks = []
+
+			this.queueTasks(thenCallbacks)
+			this.queueTasks(finallyCallbacks)
+		}
+	}
+
+	reject(value) {
+		if (this.state == "pending") {
+			this.state = "rejected"
+			this.value = value
+
+			var catchCallbacks = this.catchCallbacks
+			var finallyCallbacks = this.finallyCallbacks
+
+			this.thenCallbacks = []
+			this.catchCallbacks = []
+			this.finallyCallbacks = []
+
+			this.queueTasks(catchCallbacks)
+			this.queueTasks(finallyCallbacks)
+		}
+	}
+
+	queueTasks(tasks) {
+		for (var task in tasks) {
+			this.addToTaskQueue(task)
+		}
+	}
+
+	then(onFulfilled) {
+		if (this.state == "fulfilled") {
+			this.addToTaskQueue(onFulfilled)
+		} else if (this.state == "pending") {
+			this.thenCallbacks.add(onFulfilled)
+		}
+
+		return this
+	}
+
+	catch(onRejected) {
+		if (this.state == "rejected") {
+			this.addToTaskQueue(onRejected)
+		} else if (this.state == "pending") {
+			this.catchCallbacks.add(onRejected)
+		}
+
+		return this
+	}
+
+	finally(onEnd) {
+		if (this.state == "rejected" || this.state == "resolved") {
+			this.addToTaskQueue(onEnd)
+		} else if (this.state == "pending") {
+			this.finallyCallbacks.add(onEnd)
+		}
+
+		return this
+	}
+
+	addToTaskQueue(task) {
+		Timer.add(() => task(this.value), 0)
+	}
+}
