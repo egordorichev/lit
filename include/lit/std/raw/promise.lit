@@ -9,15 +9,17 @@ class Promise {
 		this.catchCallbacks = []
 		this.finallyCallbacks = []
 
-		var fiber = new Fiber(() => {
-			callback(this.resolve, this.reject)
+		this.addToTaskQueue(() => {
+			var fiber = new Fiber(() => {
+				callback(this.resolve, this.reject)
+			})
+
+			fiber.try()
+
+			if (fiber.error) {
+				this.reject(fiber.error)
+			}
 		})
-
-		fiber.try()
-
-		if (fiber.error) {
-			this.reject(fiber.error)
-		}
 	}
 
 	resolve(value) {
