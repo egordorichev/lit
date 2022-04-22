@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(lit C)
 
 set(CMAKE_C_STANDARD 11)
+
 include_directories(include/lit)
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -46,8 +47,15 @@ add_library(lit STATIC
  src/lit/optimizer/lit_optimizer.c src/lit/util/lit_utf.c src/lit/preprocessor/lit_preprocessor.c
  src/lit/event/lit_event.c
  src/lit/std/lit_json.c src/lit/std/lit_time.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lit/std/compiled/lit_promise.c
 
  src/lit/un/parser/un_parser.c src/lit/un/scanner/un_scanner.c)
+
+add_custom_command(
+  OUTPUT src/lit/std/compiled/lit_promise.c
+  COMMAND embedfile lit_promise include/lit/std/raw/promise.lit
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  DEPENDS include/lit/std/raw/promise.lit)
 
 target_link_libraries(lit LINK_PUBLIC m) # Lib math
 
@@ -56,6 +64,8 @@ if (LIT_BUILD_ANDROID)
 else()
  set_target_properties(lit PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
 endif()
+
+add_subdirectory(util/)
 
 install(TARGETS lit DESTINATION lib)
 install(DIRECTORY include/lit/ DESTINATION include/lit)
