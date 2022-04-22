@@ -2,7 +2,7 @@
 #include "std/lit_math.h"
 #include "std/lit_file.h"
 #include "std/lit_gc.h"
-#include "std/json/lit_json.h"
+#include "std/lit_json.h"
 #include "api/lit_api.h"
 #include "vm/lit_vm.h"
 #include "vm/lit_object.h"

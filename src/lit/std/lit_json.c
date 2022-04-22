@@ -1,5 +1,5 @@
 #include "util/lit_utf.h"
-#include "std/json/lit_json.h"
+#include "std/lit_json.h"
 #include "api/lit_api.h"
 #include "state/lit_state.h"
 
@@ -167,6 +167,67 @@ LIT_METHOD(json_parse) {
 					expecting_identifier = true;
 					parsing_value = false;
 				}
+
+				break;
+			}
+
+			case 't': {
+				if (!parsing_value) {
+					FREE_ALL()
+					lit_runtime_error(vm, "Unexpected identifier");
+				}
+
+				if (*++ch == 'r') {
+					if (*++ch == 'u') {
+						if (*++ch == 'e') {
+							if (IS_ARRAY(current)) {
+								lit_values_write(vm->state, &AS_ARRAY(current)->values, BOOL_VALUE(true));
+							} else if (IS_MAP(current)) {
+								lit_table_set(vm->state, &AS_MAP(current)->values, identifier, BOOL_VALUE(true));
+							}
+
+							expecting_identifier = false;
+							parsing_value = false;
+
+							break;
+						}
+					}
+				}
+
+				FREE_ALL()
+				lit_runtime_error(vm, "Unexpected identifier");
+
+				break;
+			}
+
+
+			case 'f': {
+				if (!parsing_value) {
+					FREE_ALL()
+					lit_runtime_error(vm, "Unexpected identifier");
+				}
+
+				if (*++ch == 'a') {
+					if (*++ch == 'l') {
+						if (*++ch == 's') {
+							if (*++ch == 'e') {
+								if (IS_ARRAY(current)) {
+									lit_values_write(vm->state, &AS_ARRAY(current)->values, BOOL_VALUE(false));
+								} else if (IS_MAP(current)) {
+									lit_table_set(vm->state, &AS_MAP(current)->values, identifier, BOOL_VALUE(false));
+								}
+
+								expecting_identifier = false;
+								parsing_value = false;
+
+								break;
+							}
+						}
+					}
+				}
+
+				FREE_ALL()
+				lit_runtime_error(vm, "Unexpected identifier");
 
 				break;
 			}
@@ -373,7 +434,7 @@ LitString* json_to_string(LitVm* vm, LitValue instance, uint indentation) {
 		return json_array_to_string(vm, instance, indentation);
 	} else if (IS_STRING(instance)) {
 		return AS_STRING(instance);
-	} else if (IS_NUMBER(instance)) {
+	} else if (IS_NUMBER(instance) || IS_BOOL(instance)) {
 		return lit_to_string(vm->state, instance, indentation);
 	}
 

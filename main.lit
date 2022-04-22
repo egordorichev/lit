@@ -1,3 +1,3 @@
-var v = JSON.parse("{ \"hello\": { \"test\": \"test hey\" }, \"test\": [ \"hello\", 8, 10 ] }")
+var v = JSON.parse("{ \"hello\": { \"test\": true }, \"test\": [ \"hello\", 8, 10, false ] }")
 
 print(JSON.toString(v))
