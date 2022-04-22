@@ -73,6 +73,9 @@ LitState* lit_new_state() {
 	state->optimizer = (LitOptimizer*) malloc(sizeof(LitOptimizer));
 	lit_init_optimizer(state, state->optimizer);
 
+	state->event_system = (LitEventSystem*) malloc(sizeof(LitEventSystem));
+	lit_init_event_system(state, state->event_system);
+
 	state->vm = (LitVm*) malloc(sizeof(LitVm));
 
 	lit_init_vm(state, state->vm);
@@ -89,6 +92,9 @@ int64_t lit_free_state(LitState* state) {
 	}
 
 	lit_free_api(state);
+
+	lit_free_event_system(state->event_system);
+	free(state->event_system);
 
 	lit_free_preprocessor(state->preprocessor);
 	free(state->preprocessor);

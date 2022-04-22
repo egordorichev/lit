@@ -24,8 +24,8 @@
 	if (klass->init_method == NULL) { \
     klass->init_method = super_klass->init_method; \
   } \
-  lit_table_add_all(state, &super_klass->methods, &klass->methods); \
-	lit_table_add_all(state, &super_klass->static_fields, &klass->static_fields);
+  lit_table_add_all_ignoring(state, &super_klass->methods, &klass->methods); \
+	lit_table_add_all_ignoring(state, &super_klass->static_fields, &klass->static_fields);
 
 #define LIT_END_CLASS_IGNORING() lit_set_global(state, klass_name, OBJECT_VALUE(klass)); \
 	}

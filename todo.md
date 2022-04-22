@@ -5,10 +5,11 @@
 * refs
 * binary operators (like floor divide)
 * default arg values
+* json
+* event system
 
 # api
 
-* json
 * http
 * event loop
 * File.remove()
@@ -23,6 +24,7 @@
 
 # todo
 
+* lit_runtime_error doesn't exit
 * Operator () overloading
 * Date class
 * statistics on time spent in each instruction

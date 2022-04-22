@@ -4,6 +4,7 @@
 #include "lit_common.h"
 #include "lit_predefines.h"
 #include "vm/lit_object.h"
+#include "event/lit_event.h"
 #include "lit_config.h"
 
 #include <stdarg.h>
@@ -34,6 +35,7 @@ typedef struct sLitState {
 	struct sLitEmitter* emitter;
 	struct sLitOptimizer* optimizer;
 	struct sLitVm* vm;
+	LitEventSystem* event_system;
 
 	bool had_error;
 

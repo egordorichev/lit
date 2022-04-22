@@ -56,7 +56,7 @@ function shout(a, ...) {
 	printAll(...) // Expected: yea
 	// Expected: test
 
-	print(b) // Expected: [ yea, test ]
+	print(b) // Expected: [ "yea", "test" ]
 }
 
 shout("maybe", "yea", "test")

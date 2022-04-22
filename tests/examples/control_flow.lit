@@ -15,10 +15,10 @@ if (food == "muffin") {
 } else if (food == "tomato") {
 	print("Yummy")
 } else if (food == "orange") {
-	print("My favoirite juice flavor!")
+	print("My favorite juice flavor!")
 } else {
 	print("I don't know this food!")
-} // Expected: My favoirite juice flavor!
+} // Expected: My favorite juice flavor!
 
 var array = []
 
@@ -26,7 +26,7 @@ for (var i = 0; i < 3; i++) {
 	array.add("banana")
 }
 
-print(array) // Expected: [ banana, banana, banana ]
+print(array) // Expected: [ "banana", "banana", "banana" ]
 
 var sum = 0
 

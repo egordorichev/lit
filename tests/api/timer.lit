@@ -1,0 +1,11 @@
+Timer.add(() => {
+	print("World!")
+}, 1000)
+
+Timer.add(() => {
+	print("Test!")
+}, 0)
+
+print("Hello!") // Expected: Hello!
+// Expected: Test!
+// Expected: World!

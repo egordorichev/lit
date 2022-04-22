@@ -64,7 +64,7 @@ var array = [ "banana", "orange" ]
 
 // The usual stuff
 print(array.length) // Expected: 2
-print(array) // Expected: [ banana, orange ]
+print(array) // Expected: [ "banana", "orange" ]
 print(array[0]) // Expected: banana
 
 // If the index is negative, you will be accessing the array starting from its end:

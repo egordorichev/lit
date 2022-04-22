@@ -79,7 +79,7 @@ LIT_METHOD(file_exists) {
 LIT_METHOD(file_write) {
 	LIT_ENSURE_ARGS(1)
 
-	LitString* value = lit_to_string(vm->state, args[0]);
+	LitString* value = lit_to_string(vm->state, args[0], 0);
 	fwrite(value->chars, value->length, 1, LIT_EXTRACT_DATA(LitFileData)->file);
 
 	return NULL_VALUE;

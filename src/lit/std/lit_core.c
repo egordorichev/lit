@@ -2,6 +2,8 @@
 #include "std/lit_math.h"
 #include "std/lit_file.h"
 #include "std/lit_gc.h"
+#include "std/lit_json.h"
+#include "std/lit_time.h"
 #include "api/lit_api.h"
 #include "vm/lit_vm.h"
 #include "vm/lit_object.h"
@@ -21,6 +23,8 @@ void lit_open_libraries(LitState* state) {
 	lit_open_math_library(state);
 	lit_open_file_library(state);
 	lit_open_gc_library(state);
+	lit_open_json_library(state);
+	lit_open_event_library(state);
 }
 
 LIT_METHOD(invalid_constructor) {
@@ -239,7 +243,7 @@ LIT_METHOD(string_plus) {
 	if (IS_STRING(value)) {
 		string_value = AS_STRING(value);
 	} else {
-		string_value = lit_to_string(vm->state, value);
+		string_value = lit_to_string(vm->state, value, 0);
 	}
 
 	uint length = string->length + string_value->length;
@@ -620,30 +624,30 @@ LIT_PRIMITIVE(fiber_try) {
 
 LIT_PRIMITIVE(fiber_yield) {
 	if (vm->fiber->parent == NULL) {
-		lit_handle_runtime_error(vm, arg_count == 0 ? CONST_STRING(vm->state, "Fiber was yielded") : lit_to_string(vm->state, args[0]));
+		lit_handle_runtime_error(vm, arg_count == 0 ? CONST_STRING(vm->state, "Fiber was yielded") : lit_to_string(vm->state, args[0], 0));
 		return true;
 	}
 
 	vm->fiber = vm->fiber->parent;
-	*vm->fiber->return_address = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
+	*vm->fiber->return_address = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0], 0));
 
 	return true;
 }
 
 LIT_PRIMITIVE(fiber_yeet) {
 	if (vm->fiber->parent == NULL) {
-		lit_handle_runtime_error(vm, arg_count == 0 ? CONST_STRING(vm->state, "Fiber was yeeted") : lit_to_string(vm->state, args[0]));
+		lit_handle_runtime_error(vm, arg_count == 0 ? CONST_STRING(vm->state, "Fiber was yeeted") : lit_to_string(vm->state, args[0], 0));
 		return true;
 	}
 
 	vm->fiber = vm->fiber->parent;
-	*vm->fiber->return_address = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0]));
+	*vm->fiber->return_address = arg_count == 0 ? NULL_VALUE : OBJECT_VALUE(lit_to_string(vm->state, args[0], 0));
 
 	return true;
 }
 
 LIT_PRIMITIVE(fiber_abort) {
-	LitString* value = arg_count == 0 ? CONST_STRING(vm->state, "Fiber was aborted") : lit_to_string(vm->state, args[0]);
+	LitString* value = arg_count == 0 ? CONST_STRING(vm->state, "Fiber was aborted") : lit_to_string(vm->state, args[0], 0);
 
 	lit_handle_runtime_error(vm, value);
 	*vm->fiber->return_address = OBJECT_VALUE(value);
@@ -954,7 +958,7 @@ LIT_METHOD(array_join) {
 	uint length = 0;
 
 	for (uint i = 0; i < values->count; i++) {
-		LitString* string = lit_to_string(vm->state, values->values[i]);
+		LitString* string = lit_to_string(vm->state, values->values[i], 0);
 
 		strings[i] = string;
 		length += string->length;
@@ -1105,7 +1109,14 @@ LIT_METHOD(array_toString) {
 	}
 
 	for (uint i = 0; i < value_amount; i++) {
-		LitString* value = lit_to_string(state, values->values[(has_more && i == value_amount - 1) ? values->count - 1 : i]);
+		LitValue field = values->values[(has_more && i == value_amount - 1) ? values->count - 1 : i];
+		LitString* value = lit_to_string(state, field, 0);
+
+		lit_push_root(state, (LitObject*) value);
+
+		if (IS_STRING(field)) {
+			value = AS_STRING(lit_string_format(state, "\"@\"", OBJECT_VALUE(value)));
+		}
 
 		values_converted[i] = value;
 		string_length += value->length + (i == value_amount - 1 ? 1 : 2);
@@ -1129,6 +1140,8 @@ LIT_METHOD(array_toString) {
 			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " ]" : ", ", 2);
 			buffer_index += 2;
 		}
+
+		lit_pop_root(state);
 	}
 
 	buffer[string_length] = '\0';
@@ -1232,7 +1245,9 @@ LIT_METHOD(map_toString) {
 
 	LitString* values_converted[value_amount];
 	LitString* keys[value_amount];
-	uint string_length = 3;
+
+	uint indentation = LIT_SINGLE_LINE_MAPS_ENABLED ? 0 : LIT_GET_NUMBER(0, 0) + 1;
+	uint string_length = (LIT_SINGLE_LINE_MAPS_ENABLED ? 3 : 2) + indentation;
 
 	if (has_more) {
 		string_length += LIT_SINGLE_LINE_MAPS_ENABLED ? 5 : 6;
@@ -1248,17 +1263,18 @@ LIT_METHOD(map_toString) {
 			// Special hidden key
 			LitValue field = has_wrapper ? map->index_fn(vm, map, entry->key, NULL) : entry->value;
 			// This check is required to prevent infinite loops when playing with Module.privates and such
-			LitString* value = (IS_MAP(field) && AS_MAP(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field);
+			LitString* value = (IS_MAP(field) && AS_MAP(field)->index_fn != NULL) ? CONST_STRING(state, "map") : lit_to_string(state, field, indentation);
+
 			lit_push_root(state, (LitObject*) value);
+
+			if (IS_STRING(field)) {
+				value = AS_STRING(lit_string_format(state, "\"@\"", OBJECT_VALUE(value)));
+			}
 
 			values_converted[i] = value;
 			keys[i] = entry->key;
 			string_length += entry->key->length + 2 + value->length +
-			#ifdef LIT_SINGLE_LINE_MAPS
-				(i == value_amount - 1 ? 1 : 2);
-			#else
-				(i == value_amount - 1 ? 2 : 3);
-			#endif
+				(i == value_amount - 1 ? 1 : 2) + indentation;
 
 			i++;
 		}
@@ -1278,9 +1294,9 @@ LIT_METHOD(map_toString) {
 		LitString *key = keys[i];
 		LitString *value = values_converted[i];
 
-		#ifndef LIT_SINGLE_LINE_MAPS
-		buffer[buffer_index++] = '\t';
-		#endif
+		for (uint j = 0; j < indentation; j++) {
+			buffer[buffer_index++] = '\t';
+		}
 
 		memcpy(&buffer[buffer_index], key->chars, key->length);
 		buffer_index += key->length;
@@ -1295,14 +1311,30 @@ LIT_METHOD(map_toString) {
 			#ifdef LIT_SINGLE_LINE_MAPS
 			memcpy(&buffer[buffer_index], ", ... }", 7);
 			#else
-			memcpy(&buffer[buffer_index], ",\n\t...\n}", 8);
+			memcpy(&buffer[buffer_index], ",\n\t...\n", 7);
+			buffer_index += 7;
+
+			for (uint j = 0; j < indentation - 1; j++) {
+				buffer[buffer_index++] = '\t';
+			}
+
+			buffer[buffer_index++] = '}';
 			#endif
-			buffer_index += 8;
 		} else {
 			#ifdef LIT_SINGLE_LINE_MAPS
 			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? " }" : ", ", 2);
 			#else
-			memcpy(&buffer[buffer_index], (i == value_amount - 1) ? "\n}" : ",\n", 2);
+			if (i == value_amount - 1) {
+				buffer[buffer_index++] = '\n';
+
+				for (uint j = 0; j < indentation - 1; j++) {
+					buffer[buffer_index++] = '\t';
+				}
+
+				buffer[buffer_index++] = '}';
+			} else {
+				memcpy(&buffer[buffer_index], ",\n", 2);
+			}
 			#endif
 
 			buffer_index += 2;
@@ -1393,7 +1425,7 @@ LIT_NATIVE(print) {
 	}
 
 	for (uint i = 0; i < arg_count; i++) {
-		lit_printf(vm->state, "%s\n", lit_to_string(vm->state, args[i])->chars);
+		lit_printf(vm->state, "%s\n", lit_to_string(vm->state, args[i], 0)->chars);
 	}
 
 	return NULL_VALUE;

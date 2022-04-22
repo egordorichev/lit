@@ -11,7 +11,7 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
 LitInterpretResult lit_call(LitState* state, LitValue callee, LitValue* arguments, uint8_t argument_count);
 LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, LitString* method_name, LitValue* arguments, uint8_t argument_count);
 
-LitString* lit_to_string(LitState* state, LitValue object);
+LitString* lit_to_string(LitState* state, LitValue object, uint indentation);
 LitValue lit_call_new(LitVm* vm, const char* name, LitValue* args, uint arg_count);
 
 #endif

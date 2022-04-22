@@ -104,7 +104,6 @@ bool lit_table_get(LitTable* table, LitString* key, LitValue* value) {
 	return true;
 }
 
-
 bool lit_table_get_slot(LitTable* table, LitString* key, LitValue** value) {
 	if (table->count == 0) {
 		return false;
@@ -167,6 +166,18 @@ void lit_table_add_all(LitState* state, LitTable* from, LitTable* to) {
 		LitTableEntry* entry = &from->entries[i];
 
 		if (entry->key != NULL) {
+			lit_table_set(state, to, entry->key, entry->value);
+		}
+	}
+}
+
+void lit_table_add_all_ignoring(LitState* state, LitTable* from, LitTable* to) {
+	LitValue fake;
+
+	for (int i = 0; i <= from->capacity; i++) {
+		LitTableEntry* entry = &from->entries[i];
+
+		if (entry->key != NULL && !lit_table_get(to, entry->key, &fake)) {
 			lit_table_set(state, to, entry->key, entry->value);
 		}
 	}

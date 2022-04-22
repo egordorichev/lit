@@ -29,4 +29,4 @@ map.clear()
 print(map) // Expected: {}
 print(map.length) // Expected: 0
 
-print(new Map { a: "test" }.clone()) // Expected: { a: test }
+print(new Map { a: "test" }.clone()) // Expected: { a: "test" }
