@@ -1061,8 +1061,8 @@ static void emit_expression_full(LitEmitter* emitter, LitExpression* expression,
 				if (emitter->compiler->enclosing == NULL) {
 					error(emitter, expression->line, ERROR_THIS_MISSUSE, "in functions outside of any class");
 				} else {
-					int local = resolve_local(emitter, (LitCompiler *) emitter->compiler->enclosing, "this", 4, expression->line);
-					emit_abx_instruction(emitter, expression->line, OP_GET_UPVALUE, reg, add_upvalue(emitter, emitter->compiler, local, expression->line, true));
+					uint8_t index = resolve_upvalue(emitter, emitter->compiler, "this", 4, expression->line);
+					emit_abx_instruction(emitter, expression->line, OP_GET_UPVALUE, reg, index);
 				}
 			}
 

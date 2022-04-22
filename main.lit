@@ -1,15 +1,46 @@
-require("promise")
+/*require("http")
 
-function makeRequest() {
-	return new Promise((resolve, reject) => {
-		Timer.add(() => resolve("Hello, world!"), 1000)
-	})
+HTTP.post("https://postman-echo.com/post", {
+	a: 32
+}).then((response) => {
+	print(response.a)
+}).catch((err) => {
+	print("Error: " + err)
+})*/
+
+
+/*class A {
+	a() {
+		function b() {
+			new Fiber(() => {
+				print(this)
+			}).run()
+		}
+
+		b()
+	}
 }
 
-makeRequest().then((data) => {
-	print(data)
-}).catch((err) => {
-	print(err)
-}).finally(() => {
-	print("Finally!")
-})
+new A().a()*/
+
+function test(c) { c() }
+
+class A {
+	a(arg) {
+		new Fiber(() => {
+			function b() {
+				var c = () => {
+		      test(() => {
+		        print(this)
+		      })
+		    }
+
+		    c()
+			}
+
+			b()
+		}).run()
+	}
+}
+
+new A().a("hello")

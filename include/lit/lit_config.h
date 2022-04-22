@@ -8,7 +8,7 @@
 #define LIT_VERSION_STRING "0.4"
 #define LIT_BYTECODE_VERSION 0
 
-#define TESTING
+// #define TESTING
 
 #ifndef TESTING
 // #define DEBUG
@@ -16,7 +16,7 @@
 
 #ifdef DEBUG
 #define LIT_TRACE_EXECUTION
-// #define LIT_TRACE_CHUNK
+#define LIT_TRACE_CHUNK
 // #define LIT_TRACE_NULL_FILL
 // #define LIT_MINIMIZE_CONTAINERS
 #define LIT_LOG_GC

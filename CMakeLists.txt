@@ -46,8 +46,9 @@ add_library(lit STATIC
  src/lit/std/lit_core.c src/lit/std/lit_math.c src/lit/std/lit_file.c src/lit/std/lit_gc.c src/lit/parser/lit_error.c
  src/lit/optimizer/lit_optimizer.c src/lit/util/lit_utf.c src/lit/preprocessor/lit_preprocessor.c
  src/lit/event/lit_event.c
- src/lit/std/lit_json.c src/lit/std/lit_time.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/lit/std/compiled/lit_promise.c
+ src/lit/std/lit_json.c src/lit/std/lit_time.c src/lit/std/lit_network.c
+ ${CMAKE_CURRENT_SOURCE_DIR}/src/lit/std/compiled/lit_promise.c
+ ${CMAKE_CURRENT_SOURCE_DIR}/src/lit/std/compiled/lit_http.c
 
  src/lit/un/parser/un_parser.c src/lit/un/scanner/un_scanner.c)
 
@@ -56,6 +57,12 @@ add_custom_command(
   COMMAND embedfile lit_promise include/lit/std/raw/promise.lit
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   DEPENDS include/lit/std/raw/promise.lit)
+
+add_custom_command(
+  OUTPUT src/lit/std/compiled/lit_http.c
+  COMMAND embedfile lit_http include/lit/std/raw/http.lit
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  DEPENDS include/lit/std/raw/http.lit)
 
 target_link_libraries(lit LINK_PUBLIC m) # Lib math
 

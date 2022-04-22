@@ -4,6 +4,7 @@
 #include "std/lit_gc.h"
 #include "std/lit_json.h"
 #include "std/lit_time.h"
+#include "std/lit_network.h"
 #include "api/lit_api.h"
 #include "vm/lit_vm.h"
 #include "vm/lit_object.h"
@@ -1439,6 +1440,18 @@ LIT_NATIVE(print) {
 	return NULL_VALUE;
 }
 
+LIT_NATIVE(openLibrary) {
+	const char* name = LIT_CHECK_STRING(0);
+
+	if (strcmp(name, "network") == 0) {
+		lit_open_network_library(vm->state);
+	} else {
+		lit_runtime_error(vm, "Unknown built-in library %s", name);
+	}
+
+	return NULL_VALUE;
+}
+
 static bool interpret(LitVm* vm, LitModule* module) {
 	LitFunction* function = module->main_function;
 	LitFiber* fiber = lit_create_fiber(vm->state, module, function);
@@ -1638,9 +1651,11 @@ typedef struct LitBuiltinModule {
 } LitBuiltinModule;
 
 extern const char lit_promise[];
+extern const char lit_http[];
 
 LitBuiltinModule modules[] = {
 	{ "promise", (const char*) lit_promise },
+	{ "http", (const char*) lit_http },
 	{ NULL, NULL }
 };
 
@@ -1884,6 +1899,7 @@ void lit_open_core_library(LitState* state) {
 	lit_define_native(state, "time", time_native);
 	lit_define_native(state, "systemTime", systemTime_native);
 	lit_define_native(state, "print", print_native);
+	lit_define_native(state, "openLibrary", openLibrary_native);
 
 	lit_define_native_primitive(state, "require", require_primitive);
 	lit_define_native_primitive(state, "eval", eval_primitive);

@@ -119,6 +119,15 @@ static bool match(LitParser* parser, LitTokenType type) {
 	return false;
 }
 
+static bool match_identifier(LitParser* parser, const char* type) {
+	if (parser->current.type == LTOKEN_IDENTIFIER && memcmp(parser->previous.start, type, fmax(strlen(type), parser->previous.length))) {
+		advance(parser);
+		return true;
+	}
+
+	return false;
+}
+
 static void consume(LitParser* parser, LitTokenType type, const char* error) {
 	if (parser->current.type == type) {
 		advance(parser);
@@ -930,14 +939,14 @@ static LitStatement* parse_field(LitParser* parser, LitString* name, bool is_sta
 		match(parser, LTOKEN_LEFT_BRACE); // Will be LTOKEN_LEFT_BRACE, otherwise this method won't be called
 		ignore_new_lines(parser);
 
-		if (match(parser, LTOKEN_GET)) {
+		if (match_identifier(parser, "get")) {
 			match(parser, LTOKEN_ARROW); // Ignore it if it's present
 			getter = parse_statement(parser);
 		}
 
 		ignore_new_lines(parser);
 
-		if (match(parser, LTOKEN_SET)) {
+		if (match_identifier(parser, "set")) {
 			match(parser, LTOKEN_ARROW); // Ignore it if it's present
 			setter = parse_statement(parser);
 		}
