@@ -3,26 +3,26 @@ openLibrary("network")
 
 class HTTP {
 	post(url, data) {
-		function read(request, callback) {
+		function write(request, callback) {
 			if (!request.write()) {
-				Timer.add(() => read(request, callback), 0)
+				Timer.add(() => write(request, callback), 0)
 			} else {
 				callback()
 			}
 		}
 
-		function write(request, callback) {
+		function read(request, callback) {
 			var result
 
 			if !(result = request.read()) {
-				Timer.add(() => write(request, callback), 0)
+				Timer.add(() => read(request, callback), 0)
 			} else {
 				callback(result)
 			}
 		}
 
 		return new Promise((resolve, reject) => {
-			var request = new NetworkRequest(url)
+			var request = new NetworkRequest(url, "post")
 
 			write(request, () => {
 				read(request, (result) => {

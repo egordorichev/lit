@@ -1,6 +1,6 @@
 require("http")
 
-HTTP.post("https://postman-echo.com/post", {
+HTTP.post("http://postman-echo.com/post", {
 	a: 32
 }).then((response) => {
 	print(response)

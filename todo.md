@@ -27,7 +27,8 @@
 * then(data => {}) is not a valid syntax
 * lit_runtime_error doesn't exit
 * Operator () overloading
-* Date class
+* Date class (look into https://tc39.es/proposal-temporal/docs/)
+* regex
 * statistics on time spent in each instruction
 
 * easier  object creation: {
