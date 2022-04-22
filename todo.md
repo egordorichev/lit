@@ -6,6 +6,7 @@
 * binary operators (like floor divide)
 * default arg values
 * json
+* event system
 
 # api
 
