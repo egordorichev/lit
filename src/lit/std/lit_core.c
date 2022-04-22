@@ -1247,7 +1247,7 @@ LIT_METHOD(map_toString) {
 	LitString* keys[value_amount];
 
 	uint indentation = LIT_SINGLE_LINE_MAPS_ENABLED ? 0 : LIT_GET_NUMBER(0, 0) + 1;
-	uint string_length = 2 + indentation;
+	uint string_length = (LIT_SINGLE_LINE_MAPS_ENABLED ? 3 : 2) + indentation;
 
 	if (has_more) {
 		string_length += LIT_SINGLE_LINE_MAPS_ENABLED ? 5 : 6;

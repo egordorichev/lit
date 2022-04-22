@@ -1,9 +1,1 @@
-Timer.add(() => {
-	print("World!")
-}, 1000)
-
-Timer.add(() => {
-	print("Test!")
-}, 0)
-
-print("Hello!")
+print(JSON.toString(new Map() { a: 32 }))

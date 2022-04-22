@@ -78,7 +78,7 @@ function shout(a, ...) {
 	print(a) // Expected: tea
 
 	var b = ...
-	print(b) // Expected: [ coffee, sugar ]
+	print(b) // Expected: [ "coffee", "sugar" ]
 	
 	// You can treat ... as a regular variable:
 	for var arg in ... {

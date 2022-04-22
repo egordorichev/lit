@@ -177,7 +177,7 @@ void lit_table_add_all_ignoring(LitState* state, LitTable* from, LitTable* to) {
 	for (int i = 0; i <= from->capacity; i++) {
 		LitTableEntry* entry = &from->entries[i];
 
-		if (entry->key != NULL && lit_table_get(to, entry->key, &fake)) {
+		if (entry->key != NULL && !lit_table_get(to, entry->key, &fake)) {
 			lit_table_set(state, to, entry->key, entry->value);
 		}
 	}
