@@ -1,3 +1,9 @@
-var v = JSON.parse("{ \"hello\": { \"test\": true }, \"test\": [ \"hello\", 8, 10, false ] }")
+Timer.add(() => {
+	print("World!")
+}, 1000)
 
-print(JSON.toString(v))
+Timer.add(() => {
+	print("Test!")
+}, 0)
+
+print("Hello!")

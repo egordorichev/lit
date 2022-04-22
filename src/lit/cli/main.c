@@ -3,6 +3,7 @@
 #include "lit_config.h"
 #include "vm/lit_vm.h"
 #include "std/lit_core.h"
+#include "event/lit_event.h"
 #include "scanner/lit_scanner.h"
 #include "util/lit_fs.h"
 #include "optimizer/lit_optimizer.h"
@@ -14,9 +15,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <errno.h>
 #include <dirent.h>
-#include <setjmp.h>
 
 // Used for clean up on Ctrl+C / Ctrl+Z
 static LitState* repl_state;
@@ -31,7 +30,7 @@ void interupt_handler(int signal_id) {
 static void run_repl(LitState* state) {
 	repl_state = state;
 	signal(SIGINT, interupt_handler);
-	// signal(SIGTSTP, interupt_handler);
+	signal(SIGTSTP, interupt_handler);
 
 	lit_set_optimization_level(OPTIMIZATION_LEVEL_REPL);
 	printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
@@ -64,6 +63,8 @@ static void run_repl(LitState* state) {
 		if (result.type == INTERPRET_OK && result.result != NULL_VALUE) {
 			printf("%s%s%s\n", COLOR_GREEN, lit_to_string(state, result.result, 0)->chars, COLOR_RESET);
 		}
+
+		lit_event_loop(state);
 	}
 }
 
@@ -389,6 +390,7 @@ int main(int argc, const char* argv[]) {
 		}
 	}
 
+	lit_event_loop(state);
 	int64_t amount = lit_free_state(state);
 
 	if (result != INTERPRET_COMPILE_ERROR && amount != 0) {
