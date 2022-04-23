@@ -8,8 +8,7 @@ typedef struct LitJsonValue {
 	struct LitJsonValue* parent;
 } LitJsonValue;
 
-LIT_METHOD(json_parse) {
-	const char* string = LIT_CHECK_STRING(0);
+LitValue lit_json_parse(LitVm* vm, LitString* string) {
 	LitValue current = NULL_VALUE;
 	LitValue last_value = NULL_VALUE;
 
@@ -31,7 +30,7 @@ LIT_METHOD(json_parse) {
 			lit_reallocate(vm->state, value, sizeof(struct LitJsonValue), 0); \
 		}
 
-	for (const char* ch = string; *ch != '\0'; ch++) {
+	for (const char* ch = string->chars; *ch != '\0'; ch++) {
 		char c = *ch;
 
 		switch (c) {
@@ -289,6 +288,16 @@ LIT_METHOD(json_parse) {
 
 	lit_reallocate(vm->state, current_value, sizeof(struct LitJsonValue), 0);
 	return OBJECT_VALUE(last_value);
+}
+
+LIT_METHOD(json_parse) {
+	LIT_ENSURE_ARGS(1)
+
+	if (!IS_STRING(args[0])) {
+		lit_runtime_error(vm, "Argument #1 must be a string");
+	}
+
+	return lit_json_parse(vm, AS_STRING(args[1]));
 }
 
 LitString* json_map_to_string(LitVm* vm, LitValue instance, uint indentation) {

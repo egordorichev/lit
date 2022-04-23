@@ -7,7 +7,7 @@ HTTP.post("http://localhost:7000/api/v1/messages/list", {
 }, {
 	Authentication: "test"
 }).then((response) => {
-	print(response)
+	print(response.body)
 }).catch((err) => {
 	print("Error: " + err)
 })

@@ -177,7 +177,7 @@ LIT_METHOD(networkRequest_contructor) {
 
 		if (IS_MAP(body_arg) || IS_ARRAY(body_arg) || IS_INSTANCE(body_arg)) {
 			body = lit_json_to_string(vm, body_arg, 0);
-			lit_table_set(state, headers, CONST_STRING(state, "Content-Type"), OBJECT_CONST_STRING(state, "application/text-json"));
+			lit_table_set(state, headers, CONST_STRING(state, "Content-Type"), OBJECT_CONST_STRING(state, "application/json"));
 		} else {
 			body = lit_to_string(state, body_arg, 0);
 		}
@@ -317,11 +317,12 @@ LIT_METHOD(networkRequest_write) {
 
 LIT_METHOD(networkRequest_read) {
 	LitNetworkRequest* data = LIT_EXTRACT_DATA(LitNetworkRequest);
+	LitState* state = vm->state;
 
 	if (!data->inited_read) {
 		int length = 2048;
 
-		data->message = lit_reallocate(vm->state, data->message, data->message_length, length);
+		data->message = lit_reallocate(state, data->message, data->message_length, length);
 		data->total_length = length;
 		data->bytes = 0;
 		data->inited_read = true;
@@ -342,7 +343,7 @@ LIT_METHOD(networkRequest_read) {
 			uint length = lit_closest_power_of_two(data->total_length);
 
 			if (length != data->total_length) {
-				data->message = lit_reallocate(vm->state, data->message, data->total_length, length);
+				data->message = lit_reallocate(state, data->message, data->total_length, length);
 				data->total_length = length;
 			}
 
@@ -355,7 +356,66 @@ LIT_METHOD(networkRequest_read) {
 	}
 
 	close(data->socket);
-	return OBJECT_VALUE(lit_copy_string(vm->state, data->message, data->total_length));
+
+	LitInstance* response = lit_create_instance(state, state->object_class);
+	LitTable* response_table = &response->fields;
+
+	LitInstance* headers = lit_create_instance(state, state->object_class);
+	LitTable* headers_table = &headers->fields;
+
+	lit_table_set(state, response_table, CONST_STRING(state, "headers"), OBJECT_VALUE(headers));
+
+	char* token = NULL;
+	char* body_token = NULL;
+
+	bool parsing_body = false;
+	bool parsed_status = false;
+
+	token = strtok(data->message, "\r\n");
+
+	while (token) {
+		if (!parsed_status) {
+			parsed_status = true;
+			char *start = token;
+
+			while (*start++ != ' ') {
+
+			}
+
+			lit_table_set(state, response_table, CONST_STRING(state, "status"), NUMBER_VALUE(strtod(start, NULL)));
+		} else if (parsing_body) {
+			body_token = token;
+		} else {
+			char *start = token;
+
+			while (*start++ != ':') {
+
+			}
+
+			uint key_length = start - token - 1;
+
+			LitString *key = lit_copy_string(state, token, key_length);
+			LitString *value = lit_copy_string(state, start + 1, strlen(token) - key_length - 2);
+
+			lit_table_set(state, headers_table, key, OBJECT_VALUE(value));
+		}
+
+		parsing_body = *(token + strlen(token) + 2) == '\r';
+		token = strtok(NULL, "\r\n");
+	}
+
+	LitString* body_string = lit_copy_string(state, body_token, strlen(body_token));
+	LitValue body_value;
+	LitValue content_type;
+
+	if (lit_table_get(headers_table, CONST_STRING(state, "Content-Type"), &content_type) && IS_STRING(content_type) && memcmp(AS_CSTRING(content_type), "application/json", 16) == 0) {
+		body_value = lit_json_parse(vm, body_string);
+	} else {
+		body_value = OBJECT_VALUE(body_string);
+	}
+
+	lit_table_set(state, response_table, CONST_STRING(state, "body"), body_value);
+	return OBJECT_VALUE(response);
 }
 
 void lit_open_network_library(LitState* state) {
