@@ -30,7 +30,7 @@ void cleanup_request(LitState* state, LitUserdata* data, bool mark) {
 	LitNetworkRequest* request_data = ((LitNetworkRequest*) data->data);
 
 	close(request_data->socket);
-	request_data->message = lit_reallocate(state, request_data->message, request_data->message_length, 0);
+	request_data->message = lit_reallocate(state, request_data->message, request_data->total_length, 0);
 }
 
 typedef struct LitUrl {
@@ -78,12 +78,17 @@ int parse_url(LitState* state, char* url, LitUrl *parsed_url) {
 	strcpy(parsed_url->protocol, token);
 
 	token = strtok_r(NULL, "/", &token_ptr);
+	uint host_port_size;
 
 	if (token) {
-		host_port = (char*) lit_reallocate(state, NULL, 0, strlen(token) + 1);
+		host_port_size = strlen(token) + 1;
+		host_port = (char*) lit_reallocate(state, NULL, 0, host_port_size);
+
 		strcpy(host_port, token);
 	} else {
-		host_port = (char*) lit_reallocate(state, NULL, 0, 1);
+		host_port_size = 1;
+		host_port = (char*) lit_reallocate(state, NULL, 0, host_port_size);
+
 		strcpy(host_port, "");
 	}
 
@@ -134,7 +139,7 @@ int parse_url(LitState* state, char* url, LitUrl *parsed_url) {
 	token = strtok_r(NULL, "?", &token_ptr);
 
 	lit_reallocate(state, local_url, local_url_size, 0);
-	lit_reallocate(state, host_port, strlen(host_port) + 1, 0);
+	lit_reallocate(state, host_port, host_port_size, 0);
 
 	if (token != NULL) {
 		lit_runtime_error(state->vm, "Url parsing fail");
@@ -152,6 +157,7 @@ LIT_METHOD(networkRequest_contructor) {
 
 	LitString* body = NULL;
 	LitTable* headers = NULL;
+	bool allocated_headers = false;
 
 	if (arg_count > 3) {
 		if (!IS_INSTANCE(args[3])) {
@@ -160,7 +166,9 @@ LIT_METHOD(networkRequest_contructor) {
 
 		headers = &AS_INSTANCE(args[3])->fields;
 	} else {
+		allocated_headers = true;
 		headers = lit_reallocate(state, NULL, 0, sizeof(LitTable));
+
 		lit_init_table(headers);
 	}
 
@@ -177,7 +185,9 @@ LIT_METHOD(networkRequest_contructor) {
 
 	#define FREE_HEADERS() \
 		lit_free_table(state, headers); \
-		headers = lit_reallocate(state, headers, sizeof(LitTable), 0);
+		if (allocated_headers) { \
+      headers = lit_reallocate(state, headers, sizeof(LitTable), 0); \
+		}
 
 	bool get = false;
 
@@ -205,7 +215,9 @@ LIT_METHOD(networkRequest_contructor) {
 	const char* protocol_string = strcmp(url_data.protocol, "https") == 0 ? "HTTPS" : "HTTP";
 
 	uint request_line_length = strlen(method_string) + strlen(url_data.path) + strlen(protocol_string) + 9;
+
 	data->message_length = request_line_length + 2 + (body != NULL ? 2 + body->length : 0);
+	data->total_length = data->message_length - 1;
 
 	LitString* header_values[headers->capacity];
 	uint value_index = 0;
@@ -225,7 +237,6 @@ LIT_METHOD(networkRequest_contructor) {
 	uint buffer_offset = request_line_length - 1;
 
 	sprintf(data->message, "%s %s %s/1.0\r\n", method_string, url_data.path, protocol_string);
-
 	value_index = 0;
 
 	for (int i = 0; i <= headers->capacity; i++) {
@@ -245,8 +256,6 @@ LIT_METHOD(networkRequest_contructor) {
 	}
 
 	memcpy(data->message + buffer_offset, "\r\n", 2);
-	printf("%s\n", data->message);
-
 	data->socket = socket(AF_INET, SOCK_STREAM, 0);
 
 	if (data->socket < 0) {
@@ -278,10 +287,9 @@ LIT_METHOD(networkRequest_contructor) {
 	}
 
 	data->total_length = data->message_length;
-
 	free_parsed_url(state, &url_data);
-	FREE_HEADERS()
 
+	FREE_HEADERS()
 	#undef FREE_HEADERS
 
 	return instance;
@@ -311,11 +319,14 @@ LIT_METHOD(networkRequest_read) {
 	LitNetworkRequest* data = LIT_EXTRACT_DATA(LitNetworkRequest);
 
 	if (!data->inited_read) {
-		memset(data->message, 0, data->message_length);
+		int length = 2048;
 
-		data->total_length = data->message_length - 1;
+		data->message = lit_reallocate(vm->state, data->message, data->message_length, length);
+		data->total_length = length;
 		data->bytes = 0;
 		data->inited_read = true;
+
+		memset(data->message, 0, length);
 	}
 
 	int bytes = read(data->socket, data->message + data->bytes, data->total_length - data->bytes);
@@ -328,6 +339,13 @@ LIT_METHOD(networkRequest_read) {
 		data->bytes += bytes;
 
 		if (data->bytes < data->total_length) {
+			uint length = lit_closest_power_of_two(data->total_length);
+
+			if (length != data->total_length) {
+				data->message = lit_reallocate(vm->state, data->message, data->total_length, length);
+				data->total_length = length;
+			}
+
 			return NULL_VALUE;
 		}
 	}

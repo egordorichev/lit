@@ -1,6 +1,8 @@
 require("http")
 
-HTTP.post("http://postman-echo.com/post", {
+// http://postman-echo.com/post
+
+HTTP.post("http://localhost:7000/api/v1/messages/list", {
 	a: 32
 }, {
 	Authentication: "test"
