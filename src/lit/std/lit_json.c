@@ -44,16 +44,16 @@ LIT_METHOD(json_parse) {
 
 			case '{': {
 				object_depth++;
-				LitMap* map = lit_create_map(vm->state);
+				LitInstance* instance = lit_create_instance(vm->state, vm->state->object_class);
 
 				if (IS_ARRAY(current)) {
-					lit_values_write(vm->state, &AS_ARRAY(current)->values, OBJECT_VALUE(map));
-				} else if (IS_MAP(current)) {
-					lit_table_set(vm->state, &AS_MAP(current)->values, identifier, OBJECT_VALUE(map));
+					lit_values_write(vm->state, &AS_ARRAY(current)->values, OBJECT_VALUE(instance));
+				} else if (IS_INSTANCE(current)) {
+					lit_table_set(vm->state, &AS_INSTANCE(current)->fields, identifier, OBJECT_VALUE(instance));
 				}
 
 				current_value->value = current;
-				current = OBJECT_VALUE(map);
+				current = OBJECT_VALUE(instance);
 				parsing_value = false;
 				expecting_identifier = true;
 
@@ -71,8 +71,8 @@ LIT_METHOD(json_parse) {
 
 				if (IS_ARRAY(current)) {
 					lit_values_write(vm->state, &AS_ARRAY(current)->values, OBJECT_VALUE(array));
-				} else if (IS_MAP(current)) {
-					lit_table_set(vm->state, &AS_MAP(current)->values, identifier, OBJECT_VALUE(array));
+				} else if (IS_INSTANCE(current)) {
+					lit_table_set(vm->state, &AS_INSTANCE(current)->fields, identifier, OBJECT_VALUE(array));
 				}
 
 				current_value->value = current;
@@ -136,8 +136,8 @@ LIT_METHOD(json_parse) {
 
 					if (IS_ARRAY(current)) {
 						lit_values_write(vm->state, &AS_ARRAY(current)->values, OBJECT_VALUE(string));
-					} else if (IS_MAP(current)) {
-						lit_table_set(vm->state, &AS_MAP(current)->values, identifier, OBJECT_VALUE(string));
+					} else if (IS_INSTANCE(current)) {
+						lit_table_set(vm->state, &AS_INSTANCE(current)->fields, identifier, OBJECT_VALUE(string));
 					}
 				} else {
 					expecting_colon = true;
@@ -163,7 +163,7 @@ LIT_METHOD(json_parse) {
 			case ',': {
 				if (IS_ARRAY(current)) {
 					parsing_value = true;
-				} else if (IS_MAP(current)) {
+				} else if (IS_INSTANCE(current)) {
 					expecting_identifier = true;
 					parsing_value = false;
 				}
@@ -182,8 +182,8 @@ LIT_METHOD(json_parse) {
 						if (*++ch == 'e') {
 							if (IS_ARRAY(current)) {
 								lit_values_write(vm->state, &AS_ARRAY(current)->values, BOOL_VALUE(true));
-							} else if (IS_MAP(current)) {
-								lit_table_set(vm->state, &AS_MAP(current)->values, identifier, BOOL_VALUE(true));
+							} else if (IS_INSTANCE(current)) {
+								lit_table_set(vm->state, &AS_INSTANCE(current)->fields, identifier, BOOL_VALUE(true));
 							}
 
 							expecting_identifier = false;
@@ -213,8 +213,8 @@ LIT_METHOD(json_parse) {
 							if (*++ch == 'e') {
 								if (IS_ARRAY(current)) {
 									lit_values_write(vm->state, &AS_ARRAY(current)->values, BOOL_VALUE(false));
-								} else if (IS_MAP(current)) {
-									lit_table_set(vm->state, &AS_MAP(current)->values, identifier, BOOL_VALUE(false));
+								} else if (IS_INSTANCE(current)) {
+									lit_table_set(vm->state, &AS_INSTANCE(current)->fields, identifier, BOOL_VALUE(false));
 								}
 
 								expecting_identifier = false;
@@ -259,8 +259,8 @@ LIT_METHOD(json_parse) {
 
 					if (IS_ARRAY(current)) {
 						lit_values_write(vm->state, &AS_ARRAY(current)->values, NUMBER_VALUE(number));
-					} else if (IS_MAP(current)) {
-						lit_table_set(vm->state, &AS_MAP(current)->values, identifier, NUMBER_VALUE(number));
+					} else if (IS_INSTANCE(current)) {
+						lit_table_set(vm->state, &AS_INSTANCE(current)->fields, identifier, NUMBER_VALUE(number));
 					}
 
 					expecting_identifier = false;
@@ -291,13 +291,11 @@ LIT_METHOD(json_parse) {
 	return OBJECT_VALUE(last_value);
 }
 
-LitString* json_to_string(LitVm* vm, LitValue instance, uint indentation);
-
 LitString* json_map_to_string(LitVm* vm, LitValue instance, uint indentation) {
 	indentation++;
 
 	LitState* state = vm->state;
-	LitMap* map = AS_MAP(instance);
+	LitMap* map = AS_INSTANCE(instance);
 	LitTable* values = &map->values;
 
 	if (values->count == 0) {
@@ -321,11 +319,95 @@ LitString* json_map_to_string(LitVm* vm, LitValue instance, uint indentation) {
 		if (entry->key != NULL) {
 			// Special hidden key
 			LitValue field = has_wrapper ? map->index_fn(vm, map, entry->key, NULL) : entry->value;
-			LitString* value = json_to_string(state->vm, field, indentation);
+			LitString* value = lit_json_to_string(state->vm, field, indentation);
 
 			lit_push_root(state, (LitObject*) value);
 
 			if (IS_STRING(field)) {
+				value = AS_STRING(lit_string_format(state, "\"@\"", OBJECT_VALUE(value)));
+			}
+
+			values_converted[i] = value;
+			keys[i] = entry->key;
+			string_length += entry->key->length + 4 + value->length + (i == value_amount - 1 ? 1 : 2) + indentation;
+
+			i++;
+		}
+	} while (i < value_amount);
+
+	char buffer[string_length + 1];
+	uint buffer_index = 2;
+
+	memcpy(buffer, "{\n", 2);
+
+	for (i = 0; i < value_amount; i++) {
+		LitString *key = keys[i];
+		LitString *value = values_converted[i];
+
+		for (uint j = 0; j < indentation; j++) {
+			buffer[buffer_index++] = '\t';
+		}
+
+		buffer[buffer_index++] = '\"';
+		memcpy(&buffer[buffer_index], key->chars, key->length);
+		buffer_index += key->length;
+		buffer[buffer_index++] = '\"';
+
+		memcpy(&buffer[buffer_index], ": ", 2);
+		buffer_index += 2;
+
+		memcpy(&buffer[buffer_index], value->chars, value->length);
+		buffer_index += value->length;
+
+		if (i == value_amount - 1) {
+			buffer[buffer_index++] = '\n';
+
+			for (uint j = 0; j < indentation - 1; j++) {
+				buffer[buffer_index++] = '\t';
+			}
+
+			buffer[buffer_index++] = '}';
+		} else {
+			memcpy(&buffer[buffer_index], ",\n", 2);
+			buffer_index += 2;
+		}
+
+		lit_pop_root(state);
+	}
+
+	return lit_copy_string(vm->state, buffer, buffer_index);
+}
+
+LitString* json_instance_to_string(LitVm* vm, LitValue instance, uint indentation) {
+	indentation++;
+
+	LitState* state = vm->state;
+	LitInstance* object = AS_INSTANCE(instance);
+	LitTable* values = &object->fields;
+
+	if (values->count == 0) {
+		return CONST_STRING(state, "{}");
+	}
+
+	uint value_amount = values->count;
+
+	LitString* values_converted[value_amount];
+	LitString* keys[value_amount];
+
+	uint string_length = 2 + indentation;
+
+	uint i = 0;
+	uint index = 0;
+
+	do {
+		LitTableEntry* entry = &values->entries[index++];
+
+		if (entry->key != NULL) {
+			LitString* value = lit_json_to_string(state->vm, entry->value, indentation);
+
+			lit_push_root(state, (LitObject*) value);
+
+			if (IS_STRING(entry->value)) {
 				value = AS_STRING(lit_string_format(state, "\"@\"", OBJECT_VALUE(value)));
 			}
 
@@ -427,9 +509,11 @@ LitString* json_array_to_string(LitVm* vm, LitValue instance, uint indentation) 
 	return lit_copy_string(vm->state, buffer, buffer_index);
 }
 
-LitString* json_to_string(LitVm* vm, LitValue instance, uint indentation) {
+LitString* lit_json_to_string(LitVm* vm, LitValue instance, uint indentation) {
 	if (IS_MAP(instance)) {
 		return json_map_to_string(vm, instance, indentation);
+	} else if (IS_INSTANCE(instance)) {
+		return json_instance_to_string(vm, instance, indentation);
 	} else if (IS_ARRAY(instance)) {
 		return json_array_to_string(vm, instance, indentation);
 	} else if (IS_STRING(instance)) {
@@ -442,7 +526,7 @@ LitString* json_to_string(LitVm* vm, LitValue instance, uint indentation) {
 }
 
 LIT_METHOD(json_toString) {
-	return OBJECT_VALUE(json_to_string(vm, args[0], 0));
+	return OBJECT_VALUE(lit_json_to_string(vm, args[0], 0));
 }
 
 void lit_open_json_library(LitState* state) {

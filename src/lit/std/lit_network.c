@@ -1,5 +1,6 @@
 #include "std/lit_network.h"
 #include "api/lit_api.h"
+#include "std/lit_json.h"
 #include "state/lit_state.h"
 
 #include <stdio.h>
@@ -144,15 +145,46 @@ int parse_url(LitState* state, char* url, LitUrl *parsed_url) {
 
 LIT_METHOD(networkRequest_contructor) {
 	LitNetworkRequest* data = LIT_INSERT_DATA(LitNetworkRequest, cleanup_request);
+	LitState* state = vm->state;
 
 	const char* url = LIT_CHECK_STRING(0);
 	const char* method = LIT_CHECK_STRING(1);
+
+	LitString* body = NULL;
+	LitTable* headers = NULL;
+
+	if (arg_count > 3) {
+		if (!IS_INSTANCE(args[3])) {
+			lit_runtime_error(vm, "Headers (argument #3) must be an object");
+		}
+
+		headers = &AS_INSTANCE(args[3])->fields;
+	} else {
+		headers = lit_reallocate(state, NULL, 0, sizeof(LitTable));
+		lit_init_table(headers);
+	}
+
+	if (arg_count > 2) {
+		LitValue body_arg = args[2];
+
+		if (IS_MAP(body_arg) || IS_ARRAY(body_arg) || IS_INSTANCE(body_arg)) {
+			body = lit_json_to_string(vm, body_arg, 0);
+			lit_table_set(state, headers, CONST_STRING(state, "Content-Type"), OBJECT_CONST_STRING(state, "application/text-json"));
+		} else {
+			body = lit_to_string(state, body_arg, 0);
+		}
+	}
+
+	#define FREE_HEADERS() \
+		lit_free_table(state, headers); \
+		headers = lit_reallocate(state, headers, sizeof(LitTable), 0);
 
 	bool get = false;
 
 	if (strcmp(method, "get") == 0) {
 		get = true;
 	} else if (strcmp(method, "post") != 0) {
+		FREE_HEADERS()
 		lit_runtime_error(vm, "Method (argument #2) must be either 'post' or 'get'");
 	}
 
@@ -164,26 +196,70 @@ LIT_METHOD(networkRequest_contructor) {
 	url_data.protocol = NULL;
 	url_data.port = 80;
 
-	parse_url(vm->state, (char*) url, &url_data);
+	parse_url(state, (char*) url, &url_data);
 
 	data->bytes = 0;
 	data->inited_read = false;
-	data->message_length = 4096;
-	data->message = lit_reallocate(vm->state, NULL, 0, data->message_length);
 
-	sprintf(data->message, "%s %s HTTP/1.0\r\n\r\n", get ? "GET" : "POST", url_data.path);
+	const char* method_string = get ? "GET" : "POST";
+	const char* protocol_string = strcmp(url_data.protocol, "https") == 0 ? "HTTPS" : "HTTP";
+
+	uint request_line_length = strlen(method_string) + strlen(url_data.path) + strlen(protocol_string) + 9;
+	data->message_length = request_line_length + 2 + (body != NULL ? 2 + body->length : 0);
+
+	LitString* header_values[headers->capacity];
+	uint value_index = 0;
+
+	for (int i = 0; i <= headers->capacity; i++) {
+		LitTableEntry* entry = &headers->entries[i];
+
+		if (entry->key != NULL) {
+			LitString* value_string = lit_to_string(state, entry->value, 0);
+
+			header_values[value_index++] = value_string;
+			data->message_length += entry->key->length + value_string->length + 4;
+		}
+	}
+
+	data->message = lit_reallocate(state, NULL, 0, data->message_length);
+	uint buffer_offset = request_line_length - 1;
+
+	sprintf(data->message, "%s %s %s/1.0\r\n", method_string, url_data.path, protocol_string);
+
+	value_index = 0;
+
+	for (int i = 0; i <= headers->capacity; i++) {
+		LitTableEntry* entry = &headers->entries[i];
+
+		if (entry->key != NULL) {
+			LitString* value_string = header_values[value_index++];
+
+			sprintf(data->message + buffer_offset, "%s: %s\r\n", entry->key->chars, value_string->chars);
+			buffer_offset += entry->key->length + value_string->length + 4;
+		}
+	}
+
+	if (body != NULL) {
+		sprintf(data->message + buffer_offset, "\r\n%s\r\n", body->chars);
+		buffer_offset += body->length + 4;
+	}
+
+	memcpy(data->message + buffer_offset, "\r\n", 2);
+	printf("%s\n", data->message);
 
 	data->socket = socket(AF_INET, SOCK_STREAM, 0);
 
 	if (data->socket < 0) {
-		free_parsed_url(vm->state, &url_data);
+		free_parsed_url(state, &url_data);
+		FREE_HEADERS()
 		lit_runtime_error(vm, "Error opening socket");
 	}
 
 	struct hostent* server = gethostbyname(url_data.host);
 
 	if (server == NULL) {
-		free_parsed_url(vm->state, &url_data);
+		free_parsed_url(state, &url_data);
+		FREE_HEADERS()
 		lit_runtime_error(vm, "Error resolving the host");
 	}
 
@@ -196,12 +272,17 @@ LIT_METHOD(networkRequest_contructor) {
 	memcpy(&server_address.sin_addr.s_addr, server->h_addr, server->h_length);
 
 	if (connect(data->socket, (struct sockaddr*) &server_address, sizeof(server_address)) < 0) {
-		free_parsed_url(vm->state, &url_data);
+		free_parsed_url(state, &url_data);
+		FREE_HEADERS()
 		lit_runtime_error(vm, "Connection error");
 	}
 
 	data->total_length = data->message_length;
-	free_parsed_url(vm->state, &url_data);
+
+	free_parsed_url(state, &url_data);
+	FREE_HEADERS()
+
+	#undef FREE_HEADERS
 
 	return instance;
 }

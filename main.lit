@@ -2,6 +2,8 @@ require("http")
 
 HTTP.post("http://postman-echo.com/post", {
 	a: 32
+}, {
+	Authentication: "test"
 }).then((response) => {
 	print(response)
 }).catch((err) => {
