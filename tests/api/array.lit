@@ -48,3 +48,9 @@ var a = [ "chicken", "pig", "egg" ]
 
 print(a.sort()) // Expected: [ "chicken", "egg", "pig" ]
 print(a.sort((a, b) => a > b)) // Expected: [ "pig", "egg", "chicken" ]
+
+[ 1, 2, 3, 4 ].forEach((v) => print(v))
+// Expected: 1
+// Expected: 2
+// Expected: 3
+// Expected: 4

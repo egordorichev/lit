@@ -145,7 +145,7 @@ int parse_url(LitState* state, char* url, LitUrl *parsed_url) {
 	lit_reallocate(state, host_port, host_port_size, 0);
 
 	if (token != NULL) {
-		lit_runtime_error(state->vm, "Url parsing fail");
+		lit_runtime_error_exiting(state->vm, "Url parsing fail");
 	}
 
 	return 0;
@@ -164,7 +164,7 @@ LIT_METHOD(networkRequest_contructor) {
 
 	if (arg_count > 3) {
 		if (!IS_INSTANCE(args[3])) {
-			lit_runtime_error(vm, "Headers (argument #3) must be an object");
+			lit_runtime_error_exiting(vm, "Headers (argument #3) must be an object");
 		}
 
 		headers = &AS_INSTANCE(args[3])->fields;
@@ -187,7 +187,7 @@ LIT_METHOD(networkRequest_contructor) {
 		get = true;
 	} else if (strcmp(method, "post") != 0) {
 		FREE_HEADERS()
-		lit_runtime_error(vm, "Method (argument #2) must be either 'post' or 'get'");
+		lit_runtime_error_exiting(vm, "Method (argument #2) must be either 'post' or 'get'");
 	}
 
 	if (arg_count > 2) {
@@ -325,7 +325,7 @@ LIT_METHOD(networkRequest_contructor) {
 	if (data->socket < 0) {
 		free_parsed_url(state, &url_data);
 		FREE_HEADERS()
-		lit_runtime_error(vm, "Error opening socket");
+		lit_runtime_error_exiting(vm, "Error opening socket");
 	}
 
 	struct hostent* server = gethostbyname(url_data.host);
@@ -333,7 +333,7 @@ LIT_METHOD(networkRequest_contructor) {
 	if (server == NULL) {
 		free_parsed_url(state, &url_data);
 		FREE_HEADERS()
-		lit_runtime_error(vm, "Error resolving the host");
+		lit_runtime_error_exiting(vm, "Error resolving the host");
 	}
 
 	struct sockaddr_in server_address;
@@ -347,7 +347,7 @@ LIT_METHOD(networkRequest_contructor) {
 	if (connect(data->socket, (struct sockaddr*) &server_address, sizeof(server_address)) < 0) {
 		free_parsed_url(state, &url_data);
 		FREE_HEADERS()
-		lit_runtime_error(vm, "Connection error");
+		lit_runtime_error_exiting(vm, "Connection error");
 	}
 
 	data->total_length = data->message_length;
@@ -364,7 +364,7 @@ LIT_METHOD(networkRequest_write) {
 	int bytes = write(data->socket,data->message + data->bytes, data->total_length - data->bytes);
 
 	if (bytes < 0) {
-		lit_runtime_error(vm, "Error writing message to the socket");
+		lit_runtime_error_exiting(vm, "Error writing message to the socket");
 	}
 
 	if (bytes != 0) {
@@ -396,7 +396,7 @@ LIT_METHOD(networkRequest_read) {
 	int bytes = read(data->socket, data->message + data->bytes, data->total_length - data->bytes);
 
 	if (bytes < 0) {
-		lit_runtime_error(vm, "Error reading response");
+		lit_runtime_error_exiting(vm, "Error reading response");
 	}
 
 	if (bytes != 0) {

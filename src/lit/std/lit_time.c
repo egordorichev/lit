@@ -7,7 +7,7 @@ LIT_METHOD(timer_add) {
 	LitValue callback = args[0];
 
 	if (!IS_CALLABLE_FUNCTION(callback)) {
-		lit_runtime_error(vm, "Expected a function as the callback");
+		lit_runtime_error_exiting(vm, "Expected a function as the callback");
 	}
 
 	uint64_t delay = LIT_CHECK_NUMBER(1);

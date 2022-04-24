@@ -106,19 +106,19 @@ void lit_set_map_field(LitState* state, LitMap* map, const char* name, LitValue 
 
 #define LIT_ENSURE_ARGS(count) \
 	if (arg_count != count) { \
-		lit_runtime_error(vm, "Expected %i argument, got %i", count, arg_count); \
+		lit_runtime_error_exiting(vm, "Expected %i argument, got %i", count, arg_count); \
 		return NULL_VALUE; \
 	}
 
 #define LIT_ENSURE_MIN_ARGS(count) \
 	if (arg_count < count) { \
-		lit_runtime_error(vm, "Expected minimum %i argument, got %i", count, arg_count); \
+		lit_runtime_error_exiting(vm, "Expected minimum %i argument, got %i", count, arg_count); \
 		return NULL_VALUE; \
 	}
 
 #define LIT_ENSURE_MAX_ARGS(count) \
 	if (arg_count > count) { \
-		lit_runtime_error(vm, "Expected maximum %i argument, got %i", count, arg_count); \
+		lit_runtime_error_exiting(vm, "Expected maximum %i argument, got %i", count, arg_count); \
 		return NULL_VALUE; \
 	}
 

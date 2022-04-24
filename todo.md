@@ -8,10 +8,10 @@
 * json
 * event system
 * http
+* array & map .forEach()
 
 # api
 
-* array & map .forEach()
 * File.remove()
 * File.create()
 * Directory.remove()
@@ -26,7 +26,6 @@
 
 * scanner error doens't stop parser
 * then(data => {}) is not a valid syntax
-* lit_runtime_error doesn't exit
 * Operator () overloading
 * Date class (look into https://tc39.es/proposal-temporal/docs/)
 * regex

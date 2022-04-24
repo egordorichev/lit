@@ -114,7 +114,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 			case '"': {
 				if (!expecting_identifier) {
 					FREE_ALL()
-					lit_runtime_error(vm, "Unexpected string");
+					lit_runtime_error_exiting(vm, "Unexpected string");
 				}
 
 				const char* identifier_start = ch + 1;
@@ -125,7 +125,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 
 				if (*ch == '\0') {
 					FREE_ALL()
-					lit_runtime_error(vm, "Unclosed string");
+					lit_runtime_error_exiting(vm, "Unclosed string");
 				}
 
 				LitString* string = lit_copy_string(vm->state, identifier_start, ch - identifier_start);
@@ -150,7 +150,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 			case ':': {
 				if (!expecting_colon) {
 					FREE_ALL()
-					lit_runtime_error(vm, "Unexpected ':'");
+					lit_runtime_error_exiting(vm, "Unexpected ':'");
 				}
 
 				expecting_colon = false;
@@ -175,7 +175,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 			case 't': {
 				if (!parsing_value) {
 					FREE_ALL()
-					lit_runtime_error(vm, "Unexpected identifier");
+					lit_runtime_error_exiting(vm, "Unexpected identifier");
 				}
 
 				if (*++ch == 'r') {
@@ -196,7 +196,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 				}
 
 				FREE_ALL()
-				lit_runtime_error(vm, "Unexpected identifier");
+				lit_runtime_error_exiting(vm, "Unexpected identifier");
 
 				break;
 			}
@@ -204,7 +204,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 			case 'f': {
 				if (!parsing_value) {
 					FREE_ALL()
-					lit_runtime_error(vm, "Unexpected identifier");
+					lit_runtime_error_exiting(vm, "Unexpected identifier");
 				}
 
 				if (*++ch == 'a') {
@@ -227,7 +227,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 				}
 
 				FREE_ALL()
-				lit_runtime_error(vm, "Unexpected identifier");
+				lit_runtime_error_exiting(vm, "Unexpected identifier");
 
 				break;
 			}
@@ -235,7 +235,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 			case 'n': {
 				if (!parsing_value) {
 					FREE_ALL()
-					lit_runtime_error(vm, "Unexpected identifier");
+					lit_runtime_error_exiting(vm, "Unexpected identifier");
 				}
 
 				if (*++ch == 'u') {
@@ -256,7 +256,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 				}
 
 				FREE_ALL()
-				lit_runtime_error(vm, "Unexpected identifier");
+				lit_runtime_error_exiting(vm, "Unexpected identifier");
 
 				break;
 			}
@@ -265,7 +265,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 				if (lit_is_digit(c)) {
 					if (!parsing_value) {
 						FREE_ALL()
-						lit_runtime_error(vm, "Unexpected number");
+						lit_runtime_error_exiting(vm, "Unexpected number");
 					}
 
 					const char* number_start = ch;
@@ -296,7 +296,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 					ch--;
 				} else {
 					FREE_ALL()
-					lit_runtime_error(vm, "Unexpected character '%c'", c);
+					lit_runtime_error_exiting(vm, "Unexpected character '%c'", c);
 				}
 
 				break;
@@ -306,12 +306,12 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 
 	if (array_depth != 0) {
 		FREE_ALL()
-		lit_runtime_error(vm, "Unclosed '['");
+		lit_runtime_error_exiting(vm, "Unclosed '['");
 	}
 
 	if (object_depth != 0) {
 		FREE_ALL()
-		lit_runtime_error(vm, "Unclosed '{'");
+		lit_runtime_error_exiting(vm, "Unclosed '{'");
 	}
 
 	#undef FREE_ALL
@@ -324,7 +324,7 @@ LIT_METHOD(json_parse) {
 	LIT_ENSURE_ARGS(1)
 
 	if (!IS_STRING(args[0])) {
-		lit_runtime_error(vm, "Argument #1 must be a string");
+		lit_runtime_error_exiting(vm, "Argument #1 must be a string");
 	}
 
 	return lit_json_parse(vm, AS_STRING(args[0]));

@@ -30,3 +30,12 @@ print(map) // Expected: {}
 print(map.length) // Expected: 0
 
 print(new Map { a: "test" }.clone()) // Expected: { a: "test" }
+
+new Map() {
+	a: 1,
+	b: 2,
+	c: 3
+}.forEach((k, v) => print($"{k}: {v}"))
+// Expected: c: 3
+// Expected: a: 1
+// Expected: b: 2

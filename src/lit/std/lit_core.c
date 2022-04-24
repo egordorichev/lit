@@ -1044,6 +1044,23 @@ LIT_METHOD(array_iteratorValue) {
 	return values->values[index];
 }
 
+LIT_METHOD(array_forEach) {
+	LIT_ENSURE_ARGS(1)
+	LitValue callback = args[0];
+
+	if (!IS_CALLABLE_FUNCTION(callback)) {
+		lit_runtime_error_exiting(vm, "Expected a function as the callback");
+	}
+
+	LitValues* values = &AS_ARRAY(instance)->values;
+
+	for (uint i = 0; i < values->count; i++) {
+		lit_call(vm->state, callback, &values->values[i], 1);
+	}
+
+	return NULL_VALUE;
+}
+
 LIT_METHOD(array_join) {
 	LitValues* values = &AS_ARRAY(instance)->values;
 	LitString* strings[values->count];
@@ -1314,6 +1331,27 @@ LIT_METHOD(map_iteratorValue) {
 	return table_iterator_key(&AS_MAP(instance)->values, index);
 }
 
+LIT_METHOD(map_forEach) {
+	LIT_ENSURE_ARGS(1)
+	LitValue callback = args[0];
+
+	if (!IS_CALLABLE_FUNCTION(callback)) {
+		lit_runtime_error_exiting(vm, "Expected a function as the callback");
+	}
+
+	LitTable* values = &AS_MAP(instance)->values;
+
+	for (int i = 0; i < values->capacity; i++) {
+		LitTableEntry* entry = &values->entries[i];
+
+		if (entry->key != NULL) {
+			lit_call(vm->state, callback, (LitValue[2]) { OBJECT_VALUE(entry->key), entry->value }, 2);
+		}
+	}
+
+	return NULL_VALUE;
+}
+
 LIT_METHOD(map_clone) {
 	LitState* state = vm->state;
 	LitMap* map = lit_create_map(state);
@@ -1530,7 +1568,7 @@ LIT_NATIVE(openLibrary) {
 	if (strcmp(name, "network") == 0) {
 		lit_open_network_library(vm->state);
 	} else {
-		lit_runtime_error(vm, "Unknown built-in library %s", name);
+		lit_runtime_error_exiting(vm, "Unknown built-in library %s", name);
 	}
 
 	return NULL_VALUE;
@@ -1938,6 +1976,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("clear", array_clear)
 		LIT_BIND_METHOD("iterator", array_iterator)
 		LIT_BIND_METHOD("iteratorValue", array_iteratorValue)
+		LIT_BIND_METHOD("forEach", array_forEach)
 		LIT_BIND_METHOD("join", array_join)
 		LIT_BIND_METHOD("sort", array_sort)
 		LIT_BIND_METHOD("clone", array_clone)
@@ -1957,6 +1996,7 @@ void lit_open_core_library(LitState* state) {
 		LIT_BIND_METHOD("clear", map_clear)
 		LIT_BIND_METHOD("iterator", map_iterator)
 		LIT_BIND_METHOD("iteratorValue", map_iteratorValue)
+		LIT_BIND_METHOD("forEach", map_forEach)
 		LIT_BIND_METHOD("clone", map_clone)
 		LIT_BIND_METHOD("toString", map_toString)
 

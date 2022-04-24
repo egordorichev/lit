@@ -8,12 +8,12 @@
 
 static bool ensure_fiber(LitVm* vm, LitFiber* fiber) {
 	if (fiber == NULL) {
-		lit_runtime_error(vm, "No fiber to run on");
+		lit_runtime_error_exiting(vm, "No fiber to run on");
 		return true;
 	}
 
 	if (fiber->frame_count == LIT_CALL_FRAMES_MAX) {
-		lit_runtime_error(vm, "Stack overflow");
+		lit_runtime_error_exiting(vm, "Stack overflow");
 		return true;
 	}
 
@@ -32,7 +32,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
 	LitFiber* fiber = vm->fiber;
 
 	if (callee == NULL) {
-		lit_runtime_error(vm, "Attempt to call a null value");
+		lit_runtime_error_exiting(vm, "Attempt to call a null value");
 		return NULL;
 	}
 
@@ -246,9 +246,9 @@ LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue 
 	}
 
 	if (IS_NULL(callee)) {
-		lit_runtime_error(vm, "Attempt to call a null value");
+		lit_runtime_error_exiting(vm, "Attempt to call a null value");
 	} else {
-		lit_runtime_error(vm, "Can only call functions and classes");
+		lit_runtime_error_exiting(vm, "Can only call functions and classes");
 	}
 
 	RETURN_RUNTIME_ERROR()
@@ -263,7 +263,7 @@ LitInterpretResult lit_find_and_call_method(LitState* state, LitValue callee, Li
 	LitFiber* fiber = vm->fiber;
 
 	if (fiber == NULL) {
-		lit_runtime_error(vm, "No fiber to run on");
+		lit_runtime_error_exiting(vm, "No fiber to run on");
 		RETURN_RUNTIME_ERROR()
 	}
 
@@ -357,7 +357,7 @@ LitValue lit_call_new(LitVm* vm, const char* name, LitValue* args, uint argument
 	LitValue value;
 
 	if (!lit_table_get(&vm->globals->values, CONST_STRING(vm->state, name), &value)) {
-		lit_runtime_error(vm, "Failed to create instance of class %s: class not found", name);
+		lit_runtime_error_exiting(vm, "Failed to create instance of class %s: class not found", name);
 		return NULL_VALUE;
 	}
 
