@@ -1,13 +1,11 @@
 require("http")
 
-// http://postman-echo.com/post
-
-HTTP.post("http://localhost:7000/api/v1/messages/list", {
+HTTP.post("http://postman-echo.com/post", {
 	a: 32
 }, {
 	Authentication: "test"
 }).then((response) => {
-	print(response.body)
+	print(response)
 }).catch((err) => {
 	print("Error: " + err)
 })

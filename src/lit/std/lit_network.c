@@ -320,7 +320,7 @@ LIT_METHOD(networkRequest_read) {
 	LitState* state = vm->state;
 
 	if (!data->inited_read) {
-		int length = 2048;
+		int length = 256;
 
 		data->message = lit_reallocate(state, data->message, data->message_length, length);
 		data->total_length = length;
@@ -339,8 +339,8 @@ LIT_METHOD(networkRequest_read) {
 	if (bytes != 0) {
 		data->bytes += bytes;
 
-		if (data->bytes < data->total_length) {
-			uint length = lit_closest_power_of_two(data->total_length);
+		if (data->bytes <= data->total_length) {
+			uint length = lit_closest_power_of_two(data->bytes * 2);
 
 			if (length != data->total_length) {
 				data->message = lit_reallocate(state, data->message, data->total_length, length);
@@ -349,10 +349,6 @@ LIT_METHOD(networkRequest_read) {
 
 			return NULL_VALUE;
 		}
-	}
-
-	if (data->bytes == data->total_length) {
-		lit_runtime_error(vm, "Failed to store the response");
 	}
 
 	close(data->socket);
@@ -404,17 +400,20 @@ LIT_METHOD(networkRequest_read) {
 		token = strtok(NULL, "\r\n");
 	}
 
-	LitString* body_string = lit_copy_string(state, body_token, strlen(body_token));
-	LitValue body_value;
-	LitValue content_type;
+	if (body_token != NULL) {
+		LitString *body_string = lit_copy_string(state, body_token, strlen(body_token));
+		LitValue body_value;
+		LitValue content_type;
 
-	if (lit_table_get(headers_table, CONST_STRING(state, "Content-Type"), &content_type) && IS_STRING(content_type) && memcmp(AS_CSTRING(content_type), "application/json", 16) == 0) {
-		body_value = lit_json_parse(vm, body_string);
-	} else {
-		body_value = OBJECT_VALUE(body_string);
+		if (lit_table_get(headers_table, CONST_STRING(state, "Content-Type"), &content_type) && IS_STRING(content_type) && memcmp(AS_CSTRING(content_type), "application/json", 16) == 0) {
+			body_value = lit_json_parse(vm, body_string);
+		} else {
+			body_value = OBJECT_VALUE(body_string);
+		}
+
+		lit_table_set(state, response_table, CONST_STRING(state, "body"), body_value);
 	}
 
-	lit_table_set(state, response_table, CONST_STRING(state, "body"), body_value);
 	return OBJECT_VALUE(response);
 }
 

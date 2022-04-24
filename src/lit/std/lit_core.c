@@ -160,7 +160,91 @@ LIT_METHOD(object_class) {
 }
 
 LIT_METHOD(object_toString) {
-	return lit_string_format(vm->state, "@ instance", OBJECT_VALUE(lit_get_class_for(vm->state, instance)->name));
+	LitState* state = vm->state;
+	LitClass* klass = lit_get_class_for(vm->state, instance);
+
+	if (klass != state->object_class) {
+		return lit_string_format(state, "@ instance", OBJECT_VALUE(klass->name));
+	}
+
+	LitTable* values = &AS_INSTANCE(instance)->fields;
+
+	if (values->count == 0) {
+		return OBJECT_CONST_STRING(state, "{}");
+	}
+
+	uint value_amount = values->count;
+
+	LitString* values_converted[value_amount];
+	LitString* keys[value_amount];
+
+	uint indentation = LIT_GET_NUMBER(0, 0) + 1;
+	uint string_length = indentation + 2;
+
+	uint i = 0;
+	uint index = 0;
+
+	do {
+		LitTableEntry* entry = &values->entries[index++];
+
+		if (entry->key != NULL) {
+			LitString* value = lit_to_string(state, entry->value, indentation);
+
+			lit_push_root(state, (LitObject*) value);
+
+			if (IS_STRING(entry->value)) {
+				value = AS_STRING(lit_string_format(state, "\"@\"", OBJECT_VALUE(value)));
+			}
+
+			values_converted[i] = value;
+			keys[i] = entry->key;
+			string_length += entry->key->length + 2 + value->length + (i == value_amount - 1 ? 1 : 2) + indentation;
+
+			i++;
+		}
+	} while (i < value_amount);
+
+	char buffer[string_length + 1];
+	memcpy(buffer, "{\n", 2);
+
+	uint buffer_index = 2;
+
+	for (i = 0; i < value_amount; i++) {
+		LitString *key = keys[i];
+		LitString *value = values_converted[i];
+
+		for (uint j = 0; j < indentation; j++) {
+			buffer[buffer_index++] = '\t';
+		}
+
+		memcpy(&buffer[buffer_index], key->chars, key->length);
+		buffer_index += key->length;
+
+		memcpy(&buffer[buffer_index], ": ", 2);
+		buffer_index += 2;
+
+		memcpy(&buffer[buffer_index], value->chars, value->length);
+		buffer_index += value->length;
+
+		if (i == value_amount - 1) {
+			buffer[buffer_index++] = '\n';
+
+			for (uint j = 0; j < indentation - 1; j++) {
+				buffer[buffer_index++] = '\t';
+			}
+
+			buffer[buffer_index++] = '}';
+		} else {
+			memcpy(&buffer[buffer_index], ",\n", 2);
+		}
+
+		buffer_index += 2;
+
+		lit_pop_root(state);
+	}
+
+	buffer[string_length] = '\0';
+	return OBJECT_VALUE(lit_copy_string(vm->state, buffer, string_length));
 }
 
 LIT_METHOD(object_subscript) {

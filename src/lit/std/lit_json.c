@@ -199,7 +199,6 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 				break;
 			}
 
-
 			case 'f': {
 				if (!parsing_value) {
 					FREE_ALL()
@@ -221,6 +220,35 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 
 								break;
 							}
+						}
+					}
+				}
+
+				FREE_ALL()
+				lit_runtime_error(vm, "Unexpected identifier");
+
+				break;
+			}
+
+			case 'n': {
+				if (!parsing_value) {
+					FREE_ALL()
+					lit_runtime_error(vm, "Unexpected identifier");
+				}
+
+				if (*++ch == 'u') {
+					if (*++ch == 'l') {
+						if (*++ch == 'l') {
+							if (IS_ARRAY(current)) {
+								lit_values_write(vm->state, &AS_ARRAY(current)->values, NULL_VALUE);
+							} else if (IS_INSTANCE(current)) {
+								lit_table_set(vm->state, &AS_INSTANCE(current)->fields, identifier, NULL_VALUE);
+							}
+
+							expecting_identifier = false;
+							parsing_value = false;
+
+							break;
 						}
 					}
 				}
@@ -529,6 +557,8 @@ LitString* lit_json_to_string(LitVm* vm, LitValue instance, uint indentation) {
 		return AS_STRING(instance);
 	} else if (IS_NUMBER(instance) || IS_BOOL(instance)) {
 		return lit_to_string(vm->state, instance, indentation);
+	} else if (IS_NULL(instance)) {
+		return CONST_STRING(vm->state, "null");
 	}
 
 	return CONST_STRING(vm->state, "invalid json");
