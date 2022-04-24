@@ -56,10 +56,11 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 		fiber->error = error;
 
 		if (fiber->catcher) {
+			fiber->caught = true;
 			vm->fiber = fiber->parent;
 
-			if (vm->fiber->return_address != NULL) {
-				*vm->fiber->return_address = error;
+			if (fiber->return_address != NULL) {
+				*fiber->return_address = error;
 			}
 
 			return true;
@@ -219,7 +220,10 @@ static bool call_value(LitVm* vm, uint callee_register, uint8_t arg_count, LitVa
 	
 	if (IS_OBJECT(callee)) {
 		if (lit_set_native_exit_jump()) {
-			return false;
+			bool caught = vm->fiber->caught;
+			vm->fiber->caught = false;
+
+			return !caught;
 		}
 
 		switch (OBJECT_TYPE(callee)) {

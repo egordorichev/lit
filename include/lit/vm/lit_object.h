@@ -304,6 +304,7 @@ typedef struct sLitFiber {
 
 	bool abort;
 	bool catcher;
+	bool caught;
 } LitFiber;
 
 LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* function);

@@ -24,8 +24,6 @@
 
 # todo
 
-* scanner error doens't stop parser
-* then(data => {}) is not a valid syntax
 * Operator () overloading
 * Date class (look into https://tc39.es/proposal-temporal/docs/)
 * regex

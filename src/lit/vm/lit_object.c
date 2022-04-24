@@ -414,6 +414,7 @@ LitFiber* lit_create_fiber(LitState* state, LitModule* module, LitFunction* func
 	fiber->arg_count = 0;
 	fiber->module = module;
 	fiber->catcher = false;
+	fiber->caught = false;
 	fiber->error = NULL_VALUE;
 	fiber->open_upvalues = NULL;
 	fiber->abort = false;

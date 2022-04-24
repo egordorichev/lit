@@ -155,6 +155,10 @@ LIT_METHOD(networkRequest_contructor) {
 	LitNetworkRequest* data = LIT_INSERT_DATA(LitNetworkRequest, cleanup_request);
 	LitState* state = vm->state;
 
+	// To make sure that errors don't cause memory corruption
+	data->total_length = 0;
+	data->socket = -1;
+
 	const char* url = LIT_CHECK_STRING(0);
 	const char* method = LIT_CHECK_STRING(1);
 
@@ -162,7 +166,9 @@ LIT_METHOD(networkRequest_contructor) {
 	LitTable* headers = NULL;
 	bool allocated_headers = false;
 
-	if (arg_count > 3) {
+	lit_runtime_error_exiting(vm, "Headers (argument #3) must be an object");
+
+	if (arg_count > 3 && !IS_NULL(args[3])) {
 		if (!IS_INSTANCE(args[3])) {
 			lit_runtime_error_exiting(vm, "Headers (argument #3) must be an object");
 		}
@@ -190,7 +196,7 @@ LIT_METHOD(networkRequest_contructor) {
 		lit_runtime_error_exiting(vm, "Method (argument #2) must be either 'post' or 'get'");
 	}
 
-	if (arg_count > 2) {
+	if (arg_count > 2 && !IS_NULL(args[2])) {
 		LitValue body_arg = args[2];
 
 		if (IS_MAP(body_arg) || (!get && IS_ARRAY(body_arg)) || IS_INSTANCE(body_arg)) {

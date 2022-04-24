@@ -1,8 +1,11 @@
-new Map() {
-	a: 1,
-	b: 2,
-	c: 3
-}.forEach((k, v) => print($"{k}: {v}"))
-// Expected: c: 3
-// Expected: a: 1
-// Expected: b: 2
+require("http")
+
+HTTP.get("http://www.reddit.com/r/memes.json?", {
+	sort: "new"
+}).then((response) => {
+	print(response.body)
+	var data = response.body.data.children
+	print(data[Random.int(data.length)].url)
+}).catch((err) => {
+	print("Error: " + err)
+})
