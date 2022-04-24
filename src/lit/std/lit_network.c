@@ -166,8 +166,6 @@ LIT_METHOD(networkRequest_contructor) {
 	LitTable* headers = NULL;
 	bool allocated_headers = false;
 
-	lit_runtime_error_exiting(vm, "Headers (argument #3) must be an object");
-
 	if (arg_count > 3 && !IS_NULL(args[3])) {
 		if (!IS_INSTANCE(args[3])) {
 			lit_runtime_error_exiting(vm, "Headers (argument #3) must be an object");

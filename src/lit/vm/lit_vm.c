@@ -59,8 +59,8 @@ bool lit_handle_runtime_error(LitVm* vm, LitString* error_string) {
 			fiber->caught = true;
 			vm->fiber = fiber->parent;
 
-			if (fiber->return_address != NULL) {
-				*fiber->return_address = error;
+			if (vm->fiber->return_address != NULL) {
+				*vm->fiber->return_address = error;
 			}
 
 			return true;
