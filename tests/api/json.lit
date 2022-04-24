@@ -1,0 +1,17 @@
+var value = {
+	a: 32,
+	b: [ 48, "test" ],
+	c: {
+		d: null,
+		e: false,
+		f: true
+	}
+}
+
+var clone = JSON.parse(JSON.toString(value))
+
+print(clone.a) // Expected: 32
+print(clone.b) // Expected: [ 48, "test" ]
+print(clone.c.d) // Expected: null
+print(clone.c.e) // Expected: false
+print(clone.c.f) // Expected: true

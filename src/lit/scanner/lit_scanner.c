@@ -93,6 +93,9 @@ static bool skip_whitespace(LitScanner* scanner) {
 		char c = peek(scanner);
 
 		switch (c) {
+			case 1:
+			case 2:
+			case 3:
 			case ' ':
 			case '\r':
 			case '\t': {
@@ -391,7 +394,6 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 				switch (scanner->start[1]) {
 					case 'u': return check_keyword(scanner, 2, 3, "per", LTOKEN_SUPER);
 					case 't': return check_keyword(scanner, 2, 4, "atic", LTOKEN_STATIC);
-					case 'e': return check_keyword(scanner, 2, 1, "t", LTOKEN_SET);
 				}
 			}
 
@@ -411,7 +413,6 @@ static LitTokenType parse_identifier_type(LitScanner* scanner) {
 
 		case 'v': return check_keyword(scanner, 1, 2, "ar", LTOKEN_VAR);
 		case 'w': return check_keyword(scanner, 1, 4, "hile", LTOKEN_WHILE);
-		case 'g': return check_keyword(scanner, 1, 2, "et", LTOKEN_GET);
 	}
 
 	return LTOKEN_IDENTIFIER;
@@ -512,5 +513,6 @@ LitToken lit_scan_token(LitScanner* scanner) {
 		case '"': return parse_string(scanner, false);
 	}
 
+	printf("%s\n", scanner->current);
 	return make_error_token(scanner, ERROR_UNEXPECTED_CHAR, c);
 }

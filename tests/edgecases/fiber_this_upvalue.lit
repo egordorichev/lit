@@ -1,0 +1,13 @@
+class A {
+	a() {
+		function b() {
+			new Fiber(() => {
+				print(this) // Expected: A instance
+			}).run()
+		}
+
+		b()
+	}
+}
+
+new A().a()

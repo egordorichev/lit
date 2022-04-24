@@ -49,6 +49,8 @@ int main(int argc, char** argv) {
 		}
 	} while (nread > 0);
 
+	fprintf(out, "0x0,");
+
 	if (linecount > 0) {
 		fprintf(out, "\n");
 	}
