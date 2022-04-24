@@ -183,6 +183,10 @@ LIT_METHOD(networkRequest_contructor) {
 		}
 	}
 
+	if (body != NULL) {
+		lit_table_set(state, headers, CONST_STRING(state, "Content-Length"), lit_string_format(state, "#", (double) body->length));
+	}
+
 	#define FREE_HEADERS() \
 		lit_free_table(state, headers); \
 		if (allocated_headers) { \
@@ -216,7 +220,7 @@ LIT_METHOD(networkRequest_contructor) {
 
 	uint request_line_length = strlen(method_string) + strlen(url_data.path) + strlen(protocol_string) + 9;
 
-	data->message_length = request_line_length + 2 + (body != NULL ? 2 + body->length : 0);
+	data->message_length = request_line_length + 2 + (body != NULL ? 4 + body->length : 0);
 	data->total_length = data->message_length - 1;
 
 	LitString* header_values[headers->capacity];
@@ -297,7 +301,6 @@ LIT_METHOD(networkRequest_contructor) {
 
 LIT_METHOD(networkRequest_write) {
 	LitNetworkRequest* data = LIT_EXTRACT_DATA(LitNetworkRequest);
-
 	int bytes = write(data->socket,data->message + data->bytes, data->total_length - data->bytes);
 
 	if (bytes < 0) {
@@ -374,26 +377,31 @@ LIT_METHOD(networkRequest_read) {
 			parsed_status = true;
 			char *start = token;
 
-			while (*start++ != ' ') {
+			while (*start++ != ' ' && *start != '\0') {
 
 			}
 
 			lit_table_set(state, response_table, CONST_STRING(state, "status"), NUMBER_VALUE(strtod(start, NULL)));
 		} else if (parsing_body) {
 			body_token = token;
+			*(body_token + strlen(token)) = ' ';
+
+			break;
 		} else {
 			char *start = token;
 
-			while (*start++ != ':') {
+			while (*start++ != ':' && *start != '\0') {
 
 			}
 
-			uint key_length = start - token - 1;
+			if (*start != '\0') {
+				uint key_length = start - token - 1;
 
-			LitString *key = lit_copy_string(state, token, key_length);
-			LitString *value = lit_copy_string(state, start + 1, strlen(token) - key_length - 2);
+				LitString *key = lit_copy_string(state, token, key_length);
+				LitString *value = lit_copy_string(state, start + 1, strlen(token) - key_length - 2);
 
-			lit_table_set(state, headers_table, key, OBJECT_VALUE(value));
+				lit_table_set(state, headers_table, key, OBJECT_VALUE(value));
+			}
 		}
 
 		parsing_body = *(token + strlen(token) + 2) == '\r';
