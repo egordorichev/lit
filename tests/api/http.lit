@@ -1,0 +1,27 @@
+require("http")
+
+HTTP.get("http://postman-echo.com/get", {
+	a: 32,
+	b: "test"
+}, {
+	Authentication: "test"
+}).then((response) => {
+	print(response.status) // Expected: 200
+	print(response.body.args.a) // Expected: 32
+	print(response.body.args.b) // Expected: test
+}).catch((err) => {
+	print("Error: " + err)
+})
+
+HTTP.post("http://postman-echo.com/post", {
+	a: 32,
+	b: "test"
+}, {
+	Authentication: "test"
+}).then((response) => {
+	print(response.status) // Expected: 200
+	print(response.body.data.a) // Expected: 32
+	print(response.body.data.b) // Expected: test
+}).catch((err) => {
+	print("Error: " + err)
+})

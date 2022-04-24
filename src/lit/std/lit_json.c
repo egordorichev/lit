@@ -77,6 +77,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 				current_value->value = current;
 				current = OBJECT_VALUE(array);
 				parsing_value = true;
+				expecting_identifier = true;
 
 				LitJsonValue* value = lit_reallocate(vm->state, NULL, 0, sizeof(struct LitJsonValue));
 
@@ -162,6 +163,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 			case ',': {
 				if (IS_ARRAY(current)) {
 					parsing_value = true;
+					expecting_identifier = true;
 				} else if (IS_INSTANCE(current)) {
 					expecting_identifier = true;
 					parsing_value = false;
@@ -325,7 +327,7 @@ LIT_METHOD(json_parse) {
 		lit_runtime_error(vm, "Argument #1 must be a string");
 	}
 
-	return lit_json_parse(vm, AS_STRING(args[1]));
+	return lit_json_parse(vm, AS_STRING(args[0]));
 }
 
 LitString* json_map_to_string(LitVm* vm, LitValue instance, uint indentation) {

@@ -7,10 +7,10 @@
 * default arg values
 * json
 * event system
+* http
 
 # api
 
-* http
 * array & map .forEach()
 * File.remove()
 * File.create()
