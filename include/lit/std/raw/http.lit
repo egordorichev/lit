@@ -2,37 +2,45 @@ require("promise")
 openLibrary("network")
 
 class HTTP {
+	write(request, callback) {
+		if (!request.write()) {
+			Timer.add(() => this.write(request, callback), 0)
+		} else {
+			callback()
+		}
+	}
+
+	read(request, callback) {
+		var result
+
+		if !(result = request.read()) {
+			Timer.add(() => this.read(request, callback), 0)
+		} else {
+			callback(result)
+		}
+	}
+
 	post(url, data, headers) {
-		function write(request, callback) {
-			if (!request.write()) {
-				Timer.add(() => write(request, callback), 0)
-			} else {
-				callback()
-			}
-		}
-
-		function read(request, callback) {
-			var result
-
-			if !(result = request.read()) {
-				Timer.add(() => read(request, callback), 0)
-			} else {
-				callback(result)
-			}
-		}
-
 		return new Promise((resolve, reject) => {
 			var request = new NetworkRequest(url, "post", data, headers)
 
-			write(request, () => {
-				read(request, (result) => {
+			this.write(request, () => {
+				this.read(request, (result) => {
 					resolve(result)
 				})
 			})
 		})
 	}
 
-	get(url, data) {
+	get(url, data, headers) {
+		return new Promise((resolve, reject) => {
+			var request = new NetworkRequest(url, "get", data, headers)
 
+			this.write(request, () => {
+				this.read(request, (result) => {
+					resolve(result)
+				})
+			})
+		})
 	}
 }

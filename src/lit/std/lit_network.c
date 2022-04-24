@@ -114,12 +114,15 @@ int parse_url(LitState* state, char* url, LitUrl *parsed_url) {
 
 	if (token) {
 		uint path_size = strlen(token) + 2;
+
 		path = (char*) lit_reallocate(state, NULL, 0, path_size);
 		strcpy(path, "/");
 		strcat(path, token);
 
-		parsed_url->path = (char*) lit_reallocate(state, NULL, 0, strlen(path) + 1);
-		strncpy(parsed_url->path, path, strlen(path));
+		uint path_length = strlen(path);
+
+		parsed_url->path = (char*) lit_reallocate(state, NULL, 0, path_length + 1);
+		strncpy(parsed_url->path, path, path_length + 1);
 
 		lit_reallocate(state, path, path_size, 0);
 	} else {
@@ -172,21 +175,6 @@ LIT_METHOD(networkRequest_contructor) {
 		lit_init_table(headers);
 	}
 
-	if (arg_count > 2) {
-		LitValue body_arg = args[2];
-
-		if (IS_MAP(body_arg) || IS_ARRAY(body_arg) || IS_INSTANCE(body_arg)) {
-			body = lit_json_to_string(vm, body_arg, 0);
-			lit_table_set(state, headers, CONST_STRING(state, "Content-Type"), OBJECT_CONST_STRING(state, "application/json"));
-		} else {
-			body = lit_to_string(state, body_arg, 0);
-		}
-	}
-
-	if (body != NULL) {
-		lit_table_set(state, headers, CONST_STRING(state, "Content-Length"), lit_string_format(state, "#", (double) body->length));
-	}
-
 	#define FREE_HEADERS() \
 		lit_free_table(state, headers); \
 		if (allocated_headers) { \
@@ -200,6 +188,78 @@ LIT_METHOD(networkRequest_contructor) {
 	} else if (strcmp(method, "post") != 0) {
 		FREE_HEADERS()
 		lit_runtime_error(vm, "Method (argument #2) must be either 'post' or 'get'");
+	}
+
+	if (arg_count > 2) {
+		LitValue body_arg = args[2];
+
+		if (IS_MAP(body_arg) || (!get && IS_ARRAY(body_arg)) || IS_INSTANCE(body_arg)) {
+			if (get) {
+				LitTable* values;
+
+				if (IS_MAP(body_arg)) {
+					values = &AS_MAP(body_arg)->values;
+				} else {
+					values = &AS_INSTANCE(body_arg)->fields;
+				}
+
+				uint value_amount = values->count;
+
+				LitString* values_converted[value_amount];
+				LitString* keys[value_amount];
+
+				uint string_length = 0;
+				uint i = 0;
+				uint index = 0;
+
+				do {
+					LitTableEntry* entry = &values->entries[index++];
+
+					if (entry->key != NULL) {
+						LitString* value = lit_to_string(state, entry->value, 0);
+
+						lit_push_root(state, (LitObject*) value);
+
+						values_converted[i] = value;
+						keys[i] = entry->key;
+						string_length += entry->key->length + value->length + 2;
+
+						i++;
+					}
+				} while (i < value_amount);
+
+				char buffer[string_length + 1];
+				uint buffer_index = 0;
+
+				for (i = 0; i < value_amount; i++) {
+					LitString *key = keys[i];
+					LitString *value = values_converted[i];
+
+					buffer[buffer_index++] = (i == 0 ? '?' : '&');
+					memcpy(&buffer[buffer_index], key->chars, key->length);
+					buffer_index += key->length;
+
+					buffer[buffer_index++] = '=';
+
+					memcpy(&buffer[buffer_index], value->chars, value->length);
+					buffer_index += value->length;
+
+					lit_pop_root(state);
+				}
+
+				buffer[string_length] = '\0';
+				body = lit_copy_string(vm->state, buffer, string_length);
+			} else {
+				body = lit_json_to_string(vm, body_arg, 0);
+				lit_table_set(state, headers, CONST_STRING(state, "Content-Type"), OBJECT_CONST_STRING(state, "application/json"));
+			}
+		} else {
+			body = lit_to_string(state, body_arg, 0);
+		}
+	}
+
+	if (!get && body != NULL) {
+		lit_table_set(state, headers, CONST_STRING(state, "Content-Length"), lit_string_format(state, "#", (double) body->length));
 	}
 
 	LitUrl url_data;
@@ -218,9 +278,9 @@ LIT_METHOD(networkRequest_contructor) {
 	const char* method_string = get ? "GET" : "POST";
 	const char* protocol_string = strcmp(url_data.protocol, "https") == 0 ? "HTTPS" : "HTTP";
 
-	uint request_line_length = strlen(method_string) + strlen(url_data.path) + strlen(protocol_string) + 9;
+	uint request_line_length = strlen(method_string) + strlen(url_data.path) + strlen(protocol_string) + (get ? body->length : 0) + 9;
 
-	data->message_length = request_line_length + 2 + (body != NULL ? 4 + body->length : 0);
+	data->message_length = request_line_length + 2 + (!get && body != NULL ? 4 + body->length : 0);
 	data->total_length = data->message_length - 1;
 
 	LitString* header_values[headers->capacity];
@@ -240,7 +300,7 @@ LIT_METHOD(networkRequest_contructor) {
 	data->message = lit_reallocate(state, NULL, 0, data->message_length);
 	uint buffer_offset = request_line_length - 1;
 
-	sprintf(data->message, "%s %s %s/1.0\r\n", method_string, url_data.path, protocol_string);
+	sprintf(data->message, "%s %s%s %s/1.0\r\n", method_string, url_data.path, get && body != NULL ? body->chars : "", protocol_string);
 	value_index = 0;
 
 	for (int i = 0; i <= headers->capacity; i++) {
@@ -254,7 +314,7 @@ LIT_METHOD(networkRequest_contructor) {
 		}
 	}
 
-	if (body != NULL) {
+	if (!get && body != NULL) {
 		sprintf(data->message + buffer_offset, "\r\n%s\r\n", body->chars);
 		buffer_offset += body->length + 4;
 	}

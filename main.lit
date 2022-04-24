@@ -1,7 +1,8 @@
 require("http")
 
-HTTP.post("http://postman-echo.com/post", {
-	a: 32
+HTTP.get("http://postman-echo.com/get", {
+	a: 32,
+	b: "test"
 }, {
 	Authentication: "test"
 }).then((response) => {

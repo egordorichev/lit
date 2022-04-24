@@ -24,6 +24,7 @@
 
 # todo
 
+* scanner error doens't stop parser
 * then(data => {}) is not a valid syntax
 * lit_runtime_error doesn't exit
 * Operator () overloading

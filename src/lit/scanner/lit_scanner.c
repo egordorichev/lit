@@ -93,6 +93,9 @@ static bool skip_whitespace(LitScanner* scanner) {
 		char c = peek(scanner);
 
 		switch (c) {
+			case 1:
+			case 2:
+			case 3:
 			case ' ':
 			case '\r':
 			case '\t': {
@@ -510,5 +513,6 @@ LitToken lit_scan_token(LitScanner* scanner) {
 		case '"': return parse_string(scanner, false);
 	}
 
+	printf("%s\n", scanner->current);
 	return make_error_token(scanner, ERROR_UNEXPECTED_CHAR, c);
 }
