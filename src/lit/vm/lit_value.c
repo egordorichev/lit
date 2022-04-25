@@ -1,6 +1,6 @@
-#include "vm/lit_value.h"
-#include "mem/lit_mem.h"
-#include "vm/lit_object.h"
+#include "lit/vm/lit_value.h"
+#include "lit/mem/lit_mem.h"
+#include "lit/vm/lit_object.h"
 
 #include <stdio.h>
 

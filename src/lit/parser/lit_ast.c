@@ -1,7 +1,7 @@
-#include "parser/lit_ast.h"
-#include "parser/lit_parser.h"
-#include "mem/lit_mem.h"
-#include "state/lit_state.h"
+#include "lit/parser/lit_ast.h"
+#include "lit/parser/lit_parser.h"
+#include "lit/mem/lit_mem.h"
+#include "lit/state/lit_state.h"
 
 DEFINE_ARRAY(LitExpressions, LitExpression*, expressions)
 DEFINE_ARRAY(LitStatements, LitStatement*, stataments)

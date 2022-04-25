@@ -1,7 +1,7 @@
-#include "std/lit_network.h"
-#include "api/lit_api.h"
-#include "std/lit_json.h"
-#include "state/lit_state.h"
+#include "lit/std/lit_network.h"
+#include "lit/api/lit_api.h"
+#include "lit/std/lit_json.h"
+#include "lit/state/lit_state.h"
 
 #include <stdio.h>
 #include <stdlib.h>

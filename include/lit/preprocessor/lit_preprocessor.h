@@ -1,8 +1,8 @@
 #ifndef LIT_PREPROCESSOR_H
 #define LIT_PREPROCESSOR_H
 
-#include "lit_predefines.h"
-#include "util/lit_table.h"
+#include "lit/lit_predefines.h"
+#include "lit/util/lit_table.h"
 
 typedef struct sLitPreprocessor {
 	LitState* state;

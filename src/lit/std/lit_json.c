@@ -1,7 +1,7 @@
-#include "util/lit_utf.h"
-#include "std/lit_json.h"
-#include "api/lit_api.h"
-#include "state/lit_state.h"
+#include "lit/util/lit_utf.h"
+#include "lit/std/lit_json.h"
+#include "lit/api/lit_api.h"
+#include "lit/state/lit_state.h"
 
 typedef struct LitJsonValue {
 	LitValue value;

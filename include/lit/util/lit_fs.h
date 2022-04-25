@@ -1,9 +1,9 @@
 #ifndef LIT_FS_H
 #define LIT_FS_H
 
-#include "lit_common.h"
-#include "lit_predefines.h"
-#include "vm/lit_object.h"
+#include "lit/lit_common.h"
+#include "lit/lit_predefines.h"
+#include "lit/vm/lit_object.h"
 
 #include <stdio.h>
 

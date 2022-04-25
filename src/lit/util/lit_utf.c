@@ -1,5 +1,5 @@
-#include "util/lit_utf.h"
-#include "vm/lit_object.h"
+#include "lit/util/lit_utf.h"
+#include "lit/vm/lit_object.h"
 
 #include <wchar.h>
 

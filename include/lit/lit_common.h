@@ -7,7 +7,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "util/lit_color.h"
+#include "lit/util/lit_color.h"
 
 #define UNREACHABLE fprintf(stderr, "Unreachable code was reached at %s:%i\n", __FILE__, __LINE__); assert(false);
 #define NOT_IMPLEMENTED fprintf(stderr, "Unimplemented code was reached at %s:%i\n", __FILE__, __LINE__); assert(false);

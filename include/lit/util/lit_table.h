@@ -1,8 +1,8 @@
 #ifndef LIT_TABLE_H
 #define LIT_TABLE_H
 
-#include "lit_common.h"
-#include "vm/lit_value.h"
+#include "lit/lit_common.h"
+#include "lit/vm/lit_value.h"
 
 #define TABLE_MAX_LOAD 0.75
 

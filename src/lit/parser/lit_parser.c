@@ -1,8 +1,8 @@
-#include "parser/lit_parser.h"
-#include "parser/lit_error.h"
-#include "scanner/lit_scanner.h"
-#include "vm/lit_object.h"
-#include "lit_predefines.h"
+#include "lit/parser/lit_parser.h"
+#include "lit/parser/lit_error.h"
+#include "lit/scanner/lit_scanner.h"
+#include "lit/vm/lit_object.h"
+#include "lit/lit_predefines.h"
 
 #include <stdlib.h>
 #include <setjmp.h>

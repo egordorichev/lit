@@ -1,10 +1,10 @@
 #ifndef LIT_CALLS_H
 #define LIT_CALLS_H
 
-#include "lit_predefines.h"
-#include "lit_common.h"
-#include "vm/lit_object.h"
-#include "vm/lit_vm.h"
+#include "lit/lit_predefines.h"
+#include "lit/lit_common.h"
+#include "lit/vm/lit_object.h"
+#include "lit/vm/lit_vm.h"
 
 LitInterpretResult lit_call_function(LitState* state, LitFunction* callee, LitValue* arguments, uint8_t argument_count);
 LitInterpretResult lit_call_method(LitState* state, LitValue instance, LitValue callee, LitValue* arguments, uint8_t argument_count);

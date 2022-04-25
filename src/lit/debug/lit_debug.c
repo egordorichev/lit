@@ -1,5 +1,6 @@
-#include "debug/lit_debug.h"
-#include "vm/lit_object.h"
+#include "lit/debug/lit_debug.h"
+#include "lit/vm/lit_object.h"
+
 #include <stdio.h>
 
 void lit_disassemble_module(LitModule* module, const char* source) {
@@ -188,7 +189,7 @@ void lit_disassemble_instruction(LitChunk* chunk, uint offset, const char* sourc
 	        break; \
 	      }
 
-				#include "vm/lit_opcodes.h"
+				#include "lit/vm/lit_opcodes.h"
 				#undef OPCODE
 
 				default: {

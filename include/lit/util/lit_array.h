@@ -1,8 +1,8 @@
 #ifndef LIT_ARRAY_H
 #define LIT_ARRAY_H
 
-#include "lit_common.h"
-#include "lit_predefines.h"
+#include "lit/lit_common.h"
+#include "lit/lit_predefines.h"
 
 #define DECLARE_ARRAY(name, type, shr) \
 	typedef struct name { \

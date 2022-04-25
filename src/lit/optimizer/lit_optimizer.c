@@ -1,5 +1,5 @@
-#include "optimizer/lit_optimizer.h"
-#include "lit.h"
+#include "lit/optimizer/lit_optimizer.h"
+#include "lit/lit.h"
 
 #include <math.h>
 

@@ -1,7 +1,7 @@
 #ifndef LIT_EVENT_H
 #define LIT_EVENT_H
 
-#include "lit_predefines.h"
+#include "lit/lit_predefines.h"
 
 typedef struct LitEvent {
 	uint64_t expire_time;

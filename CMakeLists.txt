@@ -3,7 +3,7 @@ project(lit C)
 
 set(CMAKE_C_STANDARD 11)
 
-include_directories(include/lit)
+include_directories(include/)
 
 if (NOT CMAKE_BUILD_TYPE)
  set(CMAKE_BUILD_TYPE Release)
@@ -48,9 +48,7 @@ add_library(lit STATIC
  src/lit/event/lit_event.c
  src/lit/std/lit_json.c src/lit/std/lit_time.c src/lit/std/lit_network.c
  ${CMAKE_CURRENT_SOURCE_DIR}/src/lit/std/compiled/lit_promise.c
- ${CMAKE_CURRENT_SOURCE_DIR}/src/lit/std/compiled/lit_http.c
-
- src/lit/un/parser/un_parser.c src/lit/un/scanner/un_scanner.c)
+ ${CMAKE_CURRENT_SOURCE_DIR}/src/lit/std/compiled/lit_http.c)
 
 add_custom_command(
   OUTPUT src/lit/std/compiled/lit_promise.c

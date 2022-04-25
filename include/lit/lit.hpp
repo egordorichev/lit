@@ -2,7 +2,7 @@
 #define LIT_HPP
 
 extern "C" {
-	#include "lit.h"
+	#include "lit/lit.h"
 }
 
 #endif

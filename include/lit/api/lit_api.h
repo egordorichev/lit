@@ -1,10 +1,10 @@
 #ifndef LIT_API_H
 #define LIT_API_H
 
-#include "lit_predefines.h"
-#include "lit_common.h"
-#include "vm/lit_object.h"
-#include "api/lit_calls.h"
+#include "lit/lit_predefines.h"
+#include "lit/lit_common.h"
+#include "lit/vm/lit_object.h"
+#include "lit/api/lit_calls.h"
 
 #include <string.h>
 

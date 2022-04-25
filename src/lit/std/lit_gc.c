@@ -1,6 +1,6 @@
-#include "std/lit_gc.h"
-#include "api/lit_api.h"
-#include "state/lit_state.h"
+#include "lit/std/lit_gc.h"
+#include "lit/api/lit_api.h"
+#include "lit/state/lit_state.h"
 
 LIT_METHOD(gc_memory_used) {
 	return NUMBER_VALUE(vm->state->bytes_allocated);

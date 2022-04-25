@@ -1,6 +1,6 @@
-#include "std/lit_time.h"
-#include "api/lit_api.h"
-#include "state/lit_state.h"
+#include "lit/std/lit_time.h"
+#include "lit/api/lit_api.h"
+#include "lit/state/lit_state.h"
 
 LIT_METHOD(timer_add) {
 	LIT_ENSURE_ARGS(2)

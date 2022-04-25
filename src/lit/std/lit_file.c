@@ -1,7 +1,7 @@
-#include "std/lit_file.h"
-#include "api/lit_api.h"
-#include "vm/lit_vm.h"
-#include "util/lit_fs.h"
+#include "lit/std/lit_file.h"
+#include "lit/api/lit_api.h"
+#include "lit/vm/lit_vm.h"
+#include "lit/util/lit_fs.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>

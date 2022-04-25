@@ -1,11 +1,11 @@
 #ifndef LIT_STATE_H
 #define LIT_STATE_H
 
-#include "lit_common.h"
-#include "lit_predefines.h"
-#include "vm/lit_object.h"
-#include "event/lit_event.h"
-#include "lit_config.h"
+#include "lit/lit_common.h"
+#include "lit/lit_predefines.h"
+#include "lit/vm/lit_object.h"
+#include "lit/event/lit_event.h"
+#include "lit/lit_config.h"
 
 #include <stdarg.h>
 

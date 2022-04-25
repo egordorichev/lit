@@ -1,9 +1,9 @@
-#include "mem/lit_mem.h"
-#include "vm/lit_object.h"
-#include "vm/lit_vm.h"
-#include "emitter/lit_emitter.h"
-#include "parser/lit_parser.h"
-#include "preprocessor/lit_preprocessor.h"
+#include "lit/mem/lit_mem.h"
+#include "lit/vm/lit_object.h"
+#include "lit/vm/lit_vm.h"
+#include "lit/emitter/lit_emitter.h"
+#include "lit/parser/lit_parser.h"
+#include "lit/preprocessor/lit_preprocessor.h"
 
 #include <stdlib.h>
 #include <stdio.h>

@@ -1,9 +1,9 @@
 #ifndef LIT_ERROR_H
 #define LIT_ERROR_H
 
-#include "lit_common.h"
-#include "state/lit_state.h"
-#include "vm/lit_object.h"
+#include "lit/lit_common.h"
+#include "lit/state/lit_state.h"
+#include "lit/vm/lit_object.h"
 
 #include <stdarg.h>
 

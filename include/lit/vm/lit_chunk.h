@@ -1,10 +1,10 @@
 #ifndef LIT_CHUNK_H
 #define LIT_CHUNK_H
 
-#include "lit_common.h"
-#include "lit_predefines.h"
-#include "vm/lit_value.h"
-#include "vm/lit_instruction.h"
+#include "lit/lit_common.h"
+#include "lit/lit_predefines.h"
+#include "lit/vm/lit_value.h"
+#include "lit/vm/lit_instruction.h"
 
 #include <stdio.h>
 

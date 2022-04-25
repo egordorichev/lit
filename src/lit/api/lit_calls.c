@@ -1,6 +1,6 @@
-#include "api/lit_calls.h"
-#include "api/lit_api.h"
-#include "debug/lit_debug.h"
+#include "lit/api/lit_calls.h"
+#include "lit/api/lit_api.h"
+#include "lit/debug/lit_debug.h"
 
 #include <math.h>
 

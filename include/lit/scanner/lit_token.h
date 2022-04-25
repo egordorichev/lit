@@ -1,7 +1,7 @@
 #ifndef LIT_TOKEN_H
 #define LIT_TOKEN_H
 
-#include "lit_common.h"
+#include "lit/lit_common.h"
 
 typedef enum {
 	LTOKEN_NEW_LINE,

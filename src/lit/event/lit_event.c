@@ -1,6 +1,6 @@
-#include "event/lit_event.h"
-#include "mem/lit_mem.h"
-#include "api/lit_calls.h"
+#include "lit/event/lit_event.h"
+#include "lit/mem/lit_mem.h"
+#include "lit/api/lit_calls.h"
 
 #include <sys/time.h>
 

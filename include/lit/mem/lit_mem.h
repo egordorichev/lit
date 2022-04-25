@@ -1,9 +1,9 @@
 #ifndef LIT_MEM_H
 #define LIT_MEM_H
 
-#include "lit_predefines.h"
-#include "vm/lit_value.h"
-#include "lit_common.h"
+#include "lit/lit_predefines.h"
+#include "lit/vm/lit_value.h"
+#include "lit/lit_common.h"
 
 #define LIT_GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
 #define LIT_GROW_ARRAY(state, previous, type, old_count, count) \

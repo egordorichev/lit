@@ -1,12 +1,12 @@
 #ifndef LIT_EMITTER_H
 #define LIT_EMITTER_H
 
-#include "lit_common.h"
-#include "lit_predefines.h"
-#include "vm/lit_chunk.h"
-#include "parser/lit_ast.h"
-#include "util/lit_array.h"
-#include "vm/lit_object.h"
+#include "lit/lit_common.h"
+#include "lit/lit_predefines.h"
+#include "lit/vm/lit_chunk.h"
+#include "lit/parser/lit_ast.h"
+#include "lit/util/lit_array.h"
+#include "lit/vm/lit_object.h"
 
 typedef struct {
 	bool initialized;
