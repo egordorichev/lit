@@ -283,7 +283,7 @@ LIT_METHOD(networkRequest_contructor) {
 	const char* method_string = get ? "GET" : "POST";
 	const char* protocol_string = strcmp(url_data.protocol, "https") == 0 ? "HTTPS" : "HTTP";
 
-	uint request_line_length = strlen(method_string) + strlen(url_data.path) + strlen(protocol_string) + (get ? body->length : 0) + 9;
+	uint request_line_length = strlen(method_string) + strlen(url_data.path) + strlen(protocol_string) + (get && body != NULL ? body->length : 0) + 9;
 
 	data->message_length = request_line_length + 2 + (!get && body != NULL ? 4 + body->length : 0);
 	data->total_length = data->message_length - 1;

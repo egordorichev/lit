@@ -121,7 +121,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 
 				do {
 					ch++;
-				} while (*ch != '"' && *ch != '\0');
+				} while ((*ch != '"' || *(ch - 1) == '\\') && *ch != '\0');
 
 				if (*ch == '\0') {
 					FREE_ALL()
@@ -296,7 +296,7 @@ LitValue lit_json_parse(LitVm* vm, LitString* string) {
 					ch--;
 				} else {
 					FREE_ALL()
-					lit_runtime_error_exiting(vm, "Unexpected character '%c'", c);
+					lit_runtime_error_exiting(vm, "Unexpected character '%c' in JSON", c);
 				}
 
 				break;

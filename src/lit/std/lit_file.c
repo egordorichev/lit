@@ -56,6 +56,7 @@ LIT_METHOD(file_close) {
 	LitFileData* data = LIT_EXTRACT_DATA(LitFileData);
 	fclose(data->file);
 
+	data->file = NULL;
 	return NULL_VALUE;
 }
 
