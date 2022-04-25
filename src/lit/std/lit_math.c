@@ -156,7 +156,7 @@ LIT_METHOD(random_int) {
 	uint* data = extract_random_data(vm->state, instance);
 
 	if (arg_count == 1) {
-		int bound = (int) LIT_GET_NUMBER(0, 0);
+		int bound = (int) LIT_GET_NUMBER(0, 1);
 		return NUMBER_VALUE(custom_random(data) % bound);
 	} else if (arg_count == 2) {
 		int min = (int) LIT_GET_NUMBER(0, 0);

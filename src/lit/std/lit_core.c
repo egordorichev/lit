@@ -194,6 +194,8 @@ LIT_METHOD(object_toString) {
 
 			if (IS_STRING(entry->value)) {
 				value = AS_STRING(lit_string_format(state, "\"@\"", OBJECT_VALUE(value)));
+				lit_pop_root(state);
+				lit_push_root(state, (LitObject*) value);
 			}
 
 			values_converted[i] = value;
@@ -1201,6 +1203,8 @@ LIT_METHOD(array_clone) {
 }
 
 LIT_METHOD(array_toString) {
+	uint indentation = LIT_SINGLE_LINE_MAPS_ENABLED ? 0 : LIT_GET_NUMBER(0, 0) + 1;
+
 	LitValues* values = &AS_ARRAY(instance)->values;
 	LitState* state = vm->state;
 
@@ -1220,7 +1224,7 @@ LIT_METHOD(array_toString) {
 
 	for (uint i = 0; i < value_amount; i++) {
 		LitValue field = values->values[(has_more && i == value_amount - 1) ? values->count - 1 : i];
-		LitString* value = lit_to_string(state, field, 0);
+		LitString* value = lit_to_string(state, field, indentation);
 
 		lit_push_root(state, (LitObject*) value);
 

@@ -22,7 +22,7 @@ typedef struct LitNetworkRequest {
 	bool inited_read;
 } LitNetworkRequest;
 
-void cleanup_request(LitState* state, LitUserdata* data, bool mark) {
+static void cleanup_request(LitState* state, LitUserdata* data, bool mark) {
 	if (mark) {
 		return;
 	}
@@ -41,7 +41,7 @@ typedef struct LitUrl {
 	char* query_string;
 } LitUrl;
 
-void free_parsed_url(LitState* state, LitUrl* url_parsed) {
+static void free_parsed_url(LitState* state, LitUrl* url_parsed) {
 	if (url_parsed->protocol) {
 		lit_reallocate(state, url_parsed->protocol, strlen(url_parsed->protocol) + 1, 0);
 	}
@@ -59,7 +59,7 @@ void free_parsed_url(LitState* state, LitUrl* url_parsed) {
 	}
 }
 
-int parse_url(LitState* state, char* url, LitUrl *parsed_url) {
+static int parse_url(LitState* state, char* url, LitUrl *parsed_url) {
 	uint local_url_size = strlen(url) + 1;
 
 	char* local_url = (char*) lit_reallocate(state, NULL, 0, local_url_size);
@@ -478,7 +478,7 @@ LIT_METHOD(networkRequest_read) {
 		LitValue body_value;
 		LitValue content_type;
 
-		if (lit_table_get(headers_table, CONST_STRING(state, "Content-Type"), &content_type) && IS_STRING(content_type) && memcmp(AS_CSTRING(content_type), "application/json", 16) == 0) {
+		if ((lit_table_get(headers_table, CONST_STRING(state, "Content-Type"), &content_type) || lit_table_get(headers_table, CONST_STRING(state, "content-type"), &content_type)) && IS_STRING(content_type) && memcmp(AS_CSTRING(content_type), "application/json", 16) == 0) {
 			body_value = lit_json_parse(vm, body_string);
 		} else {
 			body_value = OBJECT_VALUE(body_string);
