@@ -275,6 +275,7 @@ LIT_METHOD(networkRequest_contructor) {
 	url_data.port = 80;
 
 	parse_url(state, (char*) url, &url_data);
+	lit_table_set(state, headers, CONST_STRING(state, "Host"), OBJECT_CONST_STRING(state, url_data.host));
 
 	data->bytes = 0;
 	data->inited_read = false;
@@ -407,7 +408,7 @@ LIT_METHOD(networkRequest_read) {
 		data->bytes += bytes;
 
 		if (data->bytes <= data->total_length) {
-			uint length = lit_closest_power_of_two(data->bytes * 2);
+			uint length = data->bytes + 512;
 
 			if (length != data->total_length) {
 				data->message = lit_reallocate(state, data->message, data->total_length, length);

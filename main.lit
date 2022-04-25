@@ -1,9 +1,9 @@
 require("http")
 
-HTTP.get("http://www.reddit.com/r/memes.json?", {
+HTTP.get("https://www.reddit.com/r/memes.json", {
 	sort: "new"
 }).then((response) => {
-	print(response.body)
+	print(response)
 	var data = response.body.data.children
 	print(data[Random.int(data.length)].url)
 }).catch((err) => {
