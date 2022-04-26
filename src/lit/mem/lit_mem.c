@@ -40,7 +40,12 @@ void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new
 void lit_free_object(LitState* state, LitObject* object) {
 #ifdef LIT_LOG_ALLOCATION
 	printf("(");
-	lit_print_value(OBJECT_VALUE(object));
+	// Print simplified objects to avoid crashes due to their references being freed first
+	switch (object->type) {
+		case OBJECT_REFERENCE: printf("reference"); break;
+		case OBJECT_UPVALUE: printf("upvalue"); break;
+		default: 	lit_print_value(OBJECT_VALUE(object));
+	}
 	printf(") %p free %s\n", (void*) object, lit_object_type_names[object->type]);
 #endif
 
