@@ -199,6 +199,7 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 			// No need to repack the arguments
 		} else {
 			LitArray *array = &lit_create_vararg_array(vm->state)->array;
+			lit_push_root(vm->state, (LitObject*) array);
 			lit_values_ensure_size(vm->state, &array->values, arg_count - target_arg_count + 1);
 
 			uint j = 0;
@@ -208,6 +209,7 @@ static bool call(LitVm* vm, register LitFunction* function, LitClosure* closure,
 			}
 
 			*(frame->slots + target_arg_count) = OBJECT_VALUE(array);
+			lit_pop_root(vm->state);
 		}
 	}
 

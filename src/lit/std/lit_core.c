@@ -685,6 +685,7 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count
 				// No need to repack the arguments
 			} else {
 				LitArray *array = &lit_create_vararg_array(vm->state)->array;
+				lit_push_root(vm->state, (LitObject*) array);
 				*(frame->slots + function_arg_count) = OBJECT_VALUE(array);
 
 				int vararg_count = arg_count - function_arg_count + 1;
@@ -696,6 +697,8 @@ static void run_fiber(LitVm* vm, LitFiber* fiber, LitValue* args, uint arg_count
 						array->values.values[i] = args[i + function_arg_count - 1];
 					}
 				}
+
+				lit_pop_root(vm->state);
 			}
 		}
 	}

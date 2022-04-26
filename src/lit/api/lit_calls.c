@@ -80,6 +80,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
 			// No need to repack the arguments
 		} else {
 			LitArray *array = &lit_create_vararg_array(vm->state)->array;
+			lit_push_root(vm->state, (LitObject*) array);
 			lit_values_ensure_size(vm->state, &array->values, argument_count - target_arg_count + 1);
 
 			uint j = 0;
@@ -89,6 +90,7 @@ static inline LitCallFrame* setup_call(LitState* state, LitFunction* callee, Lit
 			}
 
 			*(frame->slots + target_arg_count) = OBJECT_VALUE(array);
+			lit_pop_root(vm->state);
 		}
 	}
 
