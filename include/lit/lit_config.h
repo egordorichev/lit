@@ -8,7 +8,7 @@
 #define LIT_VERSION_STRING "0.4"
 #define LIT_BYTECODE_VERSION 0
 
-#define TESTING
+// #define TESTING
 
 #ifndef TESTING
 // #define DEBUG
@@ -32,7 +32,7 @@
 #define LIT_SINGLE_LINE_MAPS_ENABLED true
 
 // Make sure that we did not break anything
-// #define LIT_STRESS_TEST_GC
+#define LIT_STRESS_TEST_GC
 #else
 #define LIT_SINGLE_LINE_MAPS_ENABLED false
 #endif

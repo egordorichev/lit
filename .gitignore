@@ -19,3 +19,4 @@ wiki/build/*
 wiki/build*
 Testing/
 src/lit/std/compiled/*.c
+test.txt
