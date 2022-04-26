@@ -618,9 +618,9 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	CASE_CODE(ARRAY) {
 		LitArray* array = lit_create_array(state);
-		lit_values_ensure_size_empty(state, &array->values, LIT_INSTRUCTION_B(instruction));
-
 		registers[LIT_INSTRUCTION_A(instruction)] = OBJECT_VALUE(array);
+
+		lit_values_ensure_size_empty(state, &array->values, LIT_INSTRUCTION_B(instruction));
 		DISPATCH_NEXT()
 	}
 

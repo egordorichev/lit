@@ -1,11 +1,18 @@
-require("http")
+var array = []
 
-HTTP.get("https://www.reddit.com/r/memes.json", {
-	sort: "new"
-}).then((response) => {
-	print(response)
-	var data = response.body.data.children
-	print(data[Random.int(data.length)].url)
-}).catch((err) => {
-	print("Error: " + err)
-})
+print(array[0]) // Expected: null
+
+array[0] = 8
+array[2] = 4
+
+print(array[0]) // Expected: 8
+print(array[1]) // Expected: null
+print(array[2]) // Expected: 4
+
+var test = [ 8, 9, 32 ]
+
+print(test[2]) // Expected: 32
+print(test[-1]) // Expected: 32
+print(test[-3]) // Expected: 8
+test[-3] = 0
+print(test[-3]) // Expected: 0

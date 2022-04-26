@@ -193,6 +193,7 @@ static void print_object(LitValue value) {
 		}
 
 		default: {
+			printf("[unknown object %lu %i]", value, OBJECT_TYPE(value));
 			break;
 		}
 	}
@@ -207,6 +208,8 @@ void lit_print_value(LitValue value) {
 		printf("%g", AS_NUMBER(value));
 	} else if (IS_OBJECT(value)) {
 		print_object(value);
+	} else {
+		printf("[unknown value %lu]", value);
 	}
 }
 

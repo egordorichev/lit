@@ -11,19 +11,19 @@
 // #define TESTING
 
 #ifndef TESTING
-// #define DEBUG
+#define DEBUG
 #endif
 
 #ifdef DEBUG
 #define LIT_TRACE_EXECUTION
-#define LIT_TRACE_CHUNK
+// #define LIT_TRACE_CHUNK
 // #define LIT_TRACE_NULL_FILL
 // #define LIT_MINIMIZE_CONTAINERS
 #define LIT_LOG_GC
-// #define LIT_LOG_ALLOCATION
+#define LIT_LOG_ALLOCATION
 // #define LIT_LOG_MARKING
 // #define LIT_LOG_BLACKING
-// #define LIT_STRESS_TEST_GC
+#define LIT_STRESS_TEST_GC
 #endif
 
 #ifdef TESTING

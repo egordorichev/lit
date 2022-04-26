@@ -86,7 +86,7 @@ static void run_tests(LitState* state) {
 		const char* dir_name = ep->d_name;
 
 		if (strcmp(dir_name, "..") == 0 || strcmp(dir_name, ".") == 0) {
-				continue;
+			continue;
 		}
 
 		size_t dir_name_length = strlen(dir_name);
@@ -115,7 +115,7 @@ static void run_tests(LitState* state) {
 				size_t name_length = strlen(file_name);
 
 				if (name_length < 4 || memcmp(".lit", file_name + name_length - 4, 4) != 0) {
-						continue;
+					continue;
 				}
 
 				char file_path[total_length + name_length + 1];
@@ -136,8 +136,6 @@ static void run_tests(LitState* state) {
 
 			closedir(subdir);
 		}
-
-		UNREACHABLE
 	}
 
 	closedir(dir);

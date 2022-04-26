@@ -6,8 +6,8 @@
 #include "lit/preprocessor/lit_preprocessor.h"
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <time.h>
+#include <stdio.h>
 
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size) {
 	state->bytes_allocated += (int64_t) new_size - (int64_t) old_size;
@@ -447,7 +447,8 @@ static void blacken_object(LitVm* vm, LitObject* object) {
 		}
 
 		default: {
-			UNREACHABLE
+			lit_runtime_error_exiting(vm, "Unknown object with type %i", object->type);
+			break;
 		}
 	}
 }
@@ -507,7 +508,7 @@ uint64_t lit_collect_garbage(LitVm* vm) {
 	uint64_t collected = before - vm->state->bytes_allocated;
 
 #ifdef LIT_LOG_GC
-	printf("-- gc end. Collected %imb in %gms\n", ((int) ((collected / 1024.0 + 0.5) / 10)) * 10, (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
+	printf("-- gc end. Collected %imb (%ib) in %gms\n", ((int) ((collected / 1024.0 + 0.5) / 10)) * 10, collected, (double) (clock() - t) / CLOCKS_PER_SEC * 1000);
 #endif
 
 	return collected;

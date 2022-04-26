@@ -321,6 +321,9 @@ LitUpvalue* lit_create_upvalue(LitState* state, LitValue* slot) {
 LitClosure* lit_create_closure(LitState* state, LitFunction* function) {
 	LitClosure* closure = ALLOCATE_OBJECT(state, LitClosure, OBJECT_CLOSURE);
 
+	closure->function = function;
+	closure->upvalue_count = 0; // To prevent GC crashes
+
 	lit_push_root(state, (LitObject*) closure);
 	LitUpvalue** upvalues = LIT_ALLOCATE(state, LitUpvalue*, function->upvalue_count);
 	lit_pop_root(state);
@@ -329,7 +332,6 @@ LitClosure* lit_create_closure(LitState* state, LitFunction* function) {
 		upvalues[i] = NULL;
 	}
 
-	closure->function = function;
 	closure->upvalues = upvalues;
 	closure->upvalue_count = function->upvalue_count;
 
