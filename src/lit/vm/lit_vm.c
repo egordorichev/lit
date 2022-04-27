@@ -451,6 +451,7 @@ LitInterpretResult lit_interpret_fiber(LitState* state, register LitFiber* fiber
 
 	#define GET_RC(r) (IS_BIT_SET(r, 8) ? constants[r & 0xff] : registers[r])
 
+	// TODO: push_root()?
 	#define WRAP_CONSTANT(r, to, tmp) \
     LitValue tmp = registers[to]; \
 		registers[to] = GET_RC(r); \

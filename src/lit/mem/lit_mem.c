@@ -39,14 +39,7 @@ void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new
 
 void lit_free_object(LitState* state, LitObject* object) {
 #ifdef LIT_LOG_ALLOCATION
-	printf("(");
-	// Print simplified objects to avoid crashes due to their references being freed first
-	switch (object->type) {
-		case OBJECT_REFERENCE: printf("reference"); break;
-		case OBJECT_UPVALUE: printf("upvalue"); break;
-		default: 	lit_print_value(OBJECT_VALUE(object));
-	}
-	printf(") %p free %s\n", (void*) object, lit_object_type_names[object->type]);
+	printf("(%s) %p free %s\n", lit_object_type_names[object->type], (void*) object, lit_object_type_names[object->type]);
 #endif
 
 	switch (object->type) {
@@ -279,6 +272,13 @@ static void mark_roots(LitVm* vm) {
 
 	lit_mark_table(vm, &vm->modules->values);
 	lit_mark_table(vm, &vm->globals->values);
+
+	LitEvent* event = state->event_system->events;
+
+	while (event != NULL) {
+		lit_mark_value(vm, event->callback);
+		event = event->next;
+	}
 }
 
 static void mark_array(LitVm* vm, LitValues* array) {

@@ -17,6 +17,8 @@
 #define LIT_NATIVE_PRIMITIVE(name) static bool name##_primitive(LitVm* vm, uint arg_count, LitValue* args)
 
 #define LIT_BEGIN_CLASS(name) { \
+  bool was_allowed = state->allow_gc; \
+  state->allow_gc = false; \
 	LitString* klass_name = lit_copy_string(state, name, strlen(name)); \
 	LitClass* klass = lit_create_class(state, klass_name);
 
@@ -28,12 +30,14 @@
 	lit_table_add_all_ignoring(state, &super_klass->static_fields, &klass->static_fields);
 
 #define LIT_END_CLASS_IGNORING() lit_set_global(state, klass_name, OBJECT_VALUE(klass)); \
+    state->allow_gc = was_allowed; \
 	}
 
 #define LIT_END_CLASS() lit_set_global(state, klass_name, OBJECT_VALUE(klass)); \
     if (klass->super == NULL) { \
 			LIT_INHERIT_CLASS(state->object_class); \
     } \
+    state->allow_gc = was_allowed; \
 	}
 
 #define LIT_BIND_METHOD(name, method) { LitString* nm = lit_copy_string(state, name, strlen(name)); lit_table_set(state, &klass->methods, nm, OBJECT_VALUE(lit_create_native_method(state, method, nm))); }

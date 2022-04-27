@@ -1,11 +1,71 @@
-function test() {
-	var a = 32
-	print(ref a) // Expected: 32
-	a = 90
+require("promise")
+openLibrary("network")
 
-	return () => {
-		print(ref a) // Expected: 90
+class HTTP {
+	write(request, callback) {
+		if (!request.write()) {
+			Timer.add(() => this.write(request, callback), 0)
+		} else {
+			callback()
+		}
+	}
+
+	read(request, callback) {
+		var result
+
+		if !(result = request.read()) {
+			Timer.add(() => this.read(request, callback), 0)
+		} else {
+			callback(result)
+		}
+	}
+
+	post(url, data, headers) {
+		return new Promise((resolve, reject) => {
+			var request = new NetworkRequest(url, "post", data, headers)
+
+			this.write(request, () => {
+				this.read(request, (result) => {
+					resolve(result)
+				})
+			})
+		})
+	}
+
+	get(url, data, headers) {
+		return new Promise((resolve, reject) => {
+			var request = new NetworkRequest(url, "get", data, headers)
+
+			this.write(request, () => {
+				this.read(request, (result) => {
+					resolve(result)
+				})
+			})
+		})
 	}
 }
+HTTP.get("http://postman-echo.com/get", {
+	a: 32,
+	b: "test"
+}, {
+	Authentication: "test"
+}).then((response) => {
+	print(response.status) // Expected: 200
+	print(response.body.args.a) // Expected: 32
+	print(response.body.args.b) // Expected: test
+}).catch((err) => {
+	print("Error: " + err)
+})
 
-test()()
+HTTP.post("http://postman-echo.com/post", {
+	a: 32,
+	b: "test"
+}, {
+	Authentication: "test"
+}).then((response) => {
+	print(response.status) // Expected: 200
+	print(response.body.data.a) // Expected: 32
+	print(response.body.data.b) // Expected: test
+}).catch((err) => {
+	print("Error: " + err)
+})
