@@ -280,8 +280,16 @@ LIT_METHOD(networkRequest_contructor) {
 	data->bytes = 0;
 	data->inited_read = false;
 
+	bool https = strcmp(url_data.protocol, "https") == 0;
+
+	if (https) {
+		free_parsed_url(state, &url_data);
+		FREE_HEADERS()
+		lit_runtime_error_exiting(vm, "HTTP does not support HTTPS, use a library instead");
+	}
+
 	const char* method_string = get ? "GET" : "POST";
-	const char* protocol_string = strcmp(url_data.protocol, "https") == 0 ? "HTTPS" : "HTTP";
+	const char* protocol_string = https ? "HTTPS" : "HTTP";
 
 	uint request_line_length = strlen(method_string) + strlen(url_data.path) + strlen(protocol_string) + (get && body != NULL ? body->length : 0) + 9;
 
