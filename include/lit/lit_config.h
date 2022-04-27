@@ -12,7 +12,7 @@
 
 #ifndef TESTING
 #ifndef RELEASE
-#define DEBUG
+// #define DEBUG
 #endif
 #endif
 

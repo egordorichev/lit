@@ -429,52 +429,64 @@ LIT_METHOD(networkRequest_read) {
 
 	lit_table_set(state, response_table, CONST_STRING(state, "headers"), OBJECT_VALUE(headers));
 
-	char* token = NULL;
-	char* body_token = NULL;
-
 	bool parsing_body = false;
 	bool parsed_status = false;
 
-	token = strtok(data->message, "\r\n");
+	const char* start = data->message;
+	size_t length;
 
-	while (token) {
+	while (true) {
+		length = strcspn(start, "\r\n");
+
 		if (!parsed_status) {
 			parsed_status = true;
-			char *start = token;
+			char *sstart = start;
 
-			while (*start++ != ' ' && *start != '\0') {
+			while (*sstart++ != ' ' && *sstart != '\0') {
 
 			}
 
-			lit_table_set(state, response_table, CONST_STRING(state, "status"), NUMBER_VALUE(strtod(start, NULL)));
+			lit_table_set(state, response_table, CONST_STRING(state, "status"), NUMBER_VALUE(strtod(sstart, NULL)));
 		} else if (parsing_body) {
-			body_token = token;
-			*(body_token + strlen(token)) = ' ';
-
+			start += 2;
 			break;
 		} else {
-			char *start = token;
+			char *sstart = start;
 
-			while (*start++ != ':' && *start != '\0') {
+			while (*sstart++ != ':' && *sstart != '\0') {
 
 			}
 
-			if (*start != '\0') {
-				uint key_length = start - token - 1;
+			if (*sstart != '\0') {
+				uint key_length = sstart - start - 1;
 
-				LitString *key = lit_copy_string(state, token, key_length);
-				LitString *value = lit_copy_string(state, start + 1, strlen(token) - key_length - 2);
+				LitString *key = lit_copy_string(state, start, key_length);
+				LitString *value = lit_copy_string(state, sstart + 1, length - key_length - 2);
 
 				lit_table_set(state, headers_table, key, OBJECT_VALUE(value));
 			}
 		}
 
-		parsing_body = *(token + strlen(token) + 2) == '\r';
-		token = strtok(NULL, "\r\n");
+		parsing_body = *(start + length + 2) == '\r';
+		start += length;
+
+		if (*start == '\0') {
+			break;
+		}
+
+		start += 2;
 	}
 
-	if (body_token != NULL) {
-		LitString *body_string = lit_copy_string(state, body_token, strlen(body_token));
+	if (*start != '\0') {
+		LitValue content_length;
+
+		if (lit_table_get(headers_table, CONST_STRING(state, "Content-Length"), &content_length) || lit_table_get(headers_table, CONST_STRING(state, "content-length"), &content_length)) {
+			content_length = NUMBER_VALUE(atoi(AS_CSTRING(content_length)));
+		} else {
+			content_length = NUMBER_VALUE(length);
+		}
+
+		LitString *body_string = lit_copy_string(state, start, AS_NUMBER(content_length));
 		LitValue body_value;
 		LitValue content_type;
 

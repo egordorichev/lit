@@ -36,7 +36,7 @@ void cleanup_file(LitState* state, LitUserdata* data, bool mark) {
 
 LIT_METHOD(file_constructor) {
 	const char* path = LIT_CHECK_STRING(0);
-	const char* mode = LIT_GET_STRING(1, "r");
+	const char* mode = LIT_GET_STRING(1, "rw");
 
 	FILE* file = fopen(path, mode);
 
@@ -70,6 +70,18 @@ LIT_METHOD(file_exists) {
 	}
 
 	return BOOL_VALUE(lit_file_exists(file_name));
+}
+
+LIT_METHOD(file_create) {
+	const char* path = LIT_CHECK_STRING(0);
+	FILE* file = fopen(path, "w");
+
+	if (file == NULL) {
+		lit_runtime_error_exiting(vm, "Failed to create file %s", path);
+	}
+
+	fclose(file);
+	return NULL_VALUE;
 }
 
 /*
@@ -313,6 +325,7 @@ void lit_open_file_library(LitState* state) {
 	LIT_BEGIN_CLASS("File")
 		LIT_BIND_STATIC_METHOD("exists", file_exists)
 		LIT_BIND_STATIC_METHOD("getLastModified", file_getLastModified)
+		LIT_BIND_STATIC_METHOD("create", file_create)
 
 		LIT_BIND_CONSTRUCTOR(file_constructor)
 		LIT_BIND_METHOD("close", file_close)
