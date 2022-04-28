@@ -1,6 +1,7 @@
-require("http")
+require("https")
 
-HTTP.get("http://postman-echo.com/get", {
+print(SecureNetworkRequest)
+HTTPS.get("https://postman-echo.com/get", {
 	a: 32,
 	b: "test"
 }, {
@@ -13,7 +14,7 @@ HTTP.get("http://postman-echo.com/get", {
 	print("Error: " + err)
 })
 
-HTTP.post("http://postman-echo.com/post", {
+HTTPS.post("https://postman-echo.com/post", {
 	a: 32,
 	b: "test"
 }, {
