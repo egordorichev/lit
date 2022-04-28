@@ -29,6 +29,8 @@ sudo apt-get install libreadline6-dev
 
 ```bash
 git clone https://github.com/egordorichev/lit/ && cd lit 
+git submodule init
+git submodule update
 cmake .
 make
 sudo make install
