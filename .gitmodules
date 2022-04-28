@@ -1,0 +1,3 @@
+[submodule "util/embed-file"]
+	path = util/embed-file
+	url = https://github.com/egordorichev/embed-file
