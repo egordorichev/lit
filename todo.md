@@ -24,6 +24,8 @@
 
 # todo
 
+* print(globals) stackoverflows
+* invalid require() doesn't stop execution
 * Operator () overloading
 * Date class (look into https://tc39.es/proposal-temporal/docs/)
 * regex

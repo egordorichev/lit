@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <dlfcn.h>
 
 void lit_open_libraries(LitState* state) {
 	lit_open_math_library(state);
@@ -1614,6 +1615,7 @@ static bool file_exists(const char* filename) {
 
 static bool should_update_locals;
 static bool attempt_to_require_combined(LitVm* vm, LitValue* args, uint arg_count, const char* a, const char* b, bool ignore_previous);
+typedef void (*library_loader)(LitState*);
 
 static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const char* path, bool ignore_previous, bool folders) {
 	size_t length = strlen(path);
@@ -1668,8 +1670,8 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
         const char* name = ep->d_name;
         int name_length = (int) strlen(name);
 
-        if (name_length <= 4 || !(strcmp(name + name_length - 4, ".lit") == 0 || strcmp(name + name_length - 4, ".lbc") == 0)) {
-            continue;
+        if (name_length <= 4 || !(strcmp(name + name_length - 4, ".lit") == 0 || strcmp(name + name_length - 4, ".lbc") == 0 || strcmp(name + name_length - 3, ".so") == 0 || strcmp(name + name_length - 4, ".dll") == 0)) {
+          continue;
         }
 
         char dir_path[length + name_length - 2];
@@ -1735,13 +1737,54 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 		}
 	}
 
+	bool library = false;
+
 	if (!file_exists(module_name)) {
 		// .lit -> .lbc
 		memcpy((void*) module_name + length + 2, "bc", 2);
 
 		if (!file_exists(module_name)) {
-			return false;
+			// .lbc -> .dll
+			memcpy((void*) module_name + length + 1, "dll", 3);
+			library = true;
+
+			if (!file_exists(module_name)) {
+				// .dll -> .so
+				memcpy((void*) module_name + length + 1, "so", 3);
+
+				if (!file_exists(module_name)) {
+					return false;
+				}
+			}
 		}
+	}
+
+	if (library) {
+		void* handle = NULL;
+		library_loader function = NULL;
+
+		char full_path_buffer[1024];
+		char* full_path;
+
+		full_path = realpath(module_name, full_path_buffer);
+
+		handle = dlopen(full_path, RTLD_NOW | RTLD_GLOBAL);
+
+		if (handle == NULL) {
+			lit_runtime_error_exiting(vm, "Unable to require '%s' library %s", module_name, dlerror());
+		}
+
+		function = dlsym(handle, "open_lit_library");
+
+		if (function == NULL) {
+			lit_runtime_error_exiting(vm, "Unable to require '%s' library: it's missing 'open_lit_library()'", module_name);
+			return -1;
+		}
+
+		function(vm->state);
+
+		should_update_locals = true;
+		return true;
 	}
 
 	char* source = lit_read_file(module_name);

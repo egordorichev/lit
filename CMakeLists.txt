@@ -63,7 +63,7 @@ add_custom_command(
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   DEPENDS include/lit/std/raw/http.lit)
 
-target_link_libraries(lit LINK_PUBLIC m) # Lib math
+target_link_libraries(lit LINK_PUBLIC m dl)
 
 if (LIT_BUILD_ANDROID)
  set_target_properties(lit PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist/${CMAKE_ANDROID_ARCH_ABI}")
@@ -71,7 +71,7 @@ else()
  set_target_properties(lit PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist")
 endif()
 
-add_subdirectory(util/)
+add_subdirectory(util/embed-file/)
 
 install(TARGETS lit DESTINATION lib)
 install(DIRECTORY include/lit/ DESTINATION include/lit)
