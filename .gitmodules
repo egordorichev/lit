@@ -1,0 +1,3 @@
+[submodule "https:/github.com/egordorichev/embed-file"]
+	path = https:/github.com/egordorichev/embed-file
+	url = ./util/embed-file/
