@@ -8,6 +8,10 @@ jobs:
     
     steps:
     - uses: actions/checkout@v2
+    - name: submodule init
+      run: git submodule init
+    - name: submodule update
+      run: git submodule update
     - name: cmake
       run: cmake . -DDEFINE_TEST=ON
     - name: make
