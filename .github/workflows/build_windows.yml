@@ -16,8 +16,8 @@ jobs:
       run: cmake .
     - name: make
       run: |
-        ls -l 
-        ls -l lit
+        dir
+        dir lit
         make
     - uses: actions/upload-artifact@v3
       with:
