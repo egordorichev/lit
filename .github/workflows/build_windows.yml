@@ -13,12 +13,9 @@ jobs:
     - name: submodule update
       run: git submodule update
     - name: cmake
-      run: cmake .
+      run: cmake -G "Unix Makefiles" .
     - name: make
-      run: |
-        dir
-        dir lit
-        make
+      run: make
     - uses: actions/upload-artifact@v3
       with:
         name: lit
