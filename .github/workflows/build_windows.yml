@@ -1,0 +1,22 @@
+name: Build Windows
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    - name: submodule init
+      run: git submodule init
+    - name: submodule update
+      run: git submodule update
+    - name: cmake
+      run: cmake .
+    - name: make
+      run: make
+    - uses: actions/upload-artifact@v3
+      with:
+        name: lit
+        path: dist/lit.exe
