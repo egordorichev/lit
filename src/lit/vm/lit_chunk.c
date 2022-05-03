@@ -4,10 +4,10 @@
 
 void lit_init_chunk(LitChunk* chunk) {
 	chunk->count = 0;
-	chunk->capacity = 0;
-	chunk->code = NULL;
+    chunk->capacity = 0;
+    chunk->code = NULL;
 
-	chunk->has_line_info = true;
+    chunk->has_line_info = true;
 	chunk->line_count = 0;
 	chunk->line_capacity = 0;
 	chunk->lines = NULL;
@@ -38,13 +38,13 @@ void lit_write_chunk(LitState* state, LitChunk* chunk, uint64_t word, uint16_t l
 		return;
 	}
 
-	if (chunk->line_capacity < chunk->line_count + 2) {
+	if (chunk->line_capacity < chunk->line_count + 4) {
 		uint old_capacity = chunk->line_capacity;
 
 		chunk->line_capacity = LIT_GROW_CAPACITY(chunk->line_capacity);
 		chunk->lines = LIT_GROW_ARRAY(state, chunk->lines, uint16_t, old_capacity, chunk->line_capacity);
 
-		if (old_capacity == 0) {
+        if (old_capacity == 0) {
 			chunk->lines[0] = 0;
 			chunk->lines[1] = 0;
 		}
@@ -54,9 +54,8 @@ void lit_write_chunk(LitState* state, LitChunk* chunk, uint64_t word, uint16_t l
 	uint value = chunk->lines[line_index];
 
 	if (value != 0 && value != line) {
-		chunk->line_count += 2;
-		line_index = chunk->line_count;
-
+        chunk->line_count += 2;
+        line_index = chunk->line_count;
 		chunk->lines[line_index + 1] = 0;
 	}
 
@@ -87,7 +86,7 @@ uint lit_chunk_get_line(LitChunk* chunk, uint offset) {
 	uint line = 0;
 	uint index = 0;
 
-	for (uint i = 0; i < offset + 1; i++) {
+	for (uint i = 0; i <= offset; i++) {
 		if (rle > 0) {
 			rle--;
 			continue;

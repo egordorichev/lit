@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
+#include <errno.h>
 
 void* lit_reallocate(LitState* state, void* pointer, size_t old_size, size_t new_size) {
 	state->bytes_allocated += (int64_t) new_size - (int64_t) old_size;
