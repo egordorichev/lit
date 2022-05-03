@@ -19,7 +19,12 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <dirent.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <dlfcn.h>
+#endif
 
 void lit_open_libraries(LitState* state) {
 	lit_open_math_library(state);
@@ -1766,20 +1771,33 @@ static bool attempt_to_require(LitVm* vm, LitValue* args, uint arg_count, const 
 		char full_path_buffer[1024];
 		char* full_path;
 
-		full_path = realpath(module_name, full_path_buffer);
+        #ifdef _WIN32
+            char** lpp_part;
+            GetFullPathName(module_name, 1024, full_path_buffer, lpp_part);
 
-		handle = dlopen(full_path, RTLD_NOW | RTLD_GLOBAL);
+            handle = LoadLibrary(full_path);
 
-		if (handle == NULL) {
-			lit_runtime_error_exiting(vm, "Unable to require '%s' library %s", module_name, dlerror());
-		}
+            if (handle == NULL) {
+                lit_runtime_error_exiting(vm, "Unable to require '%s' library", module_name);
+            }
 
-		function = dlsym(handle, "open_lit_library");
+            function = (library_loader) GetProcAddress(handle, "open_lit_library");
+        #else
+		    full_path = realpath(module_name, full_path_buffer);
 
-		if (function == NULL) {
-			lit_runtime_error_exiting(vm, "Unable to require '%s' library: it's missing 'open_lit_library()'", module_name);
-			return -1;
-		}
+            handle = dlopen(full_path, RTLD_NOW | RTLD_GLOBAL);
+
+            if (handle == NULL) {
+                lit_runtime_error_exiting(vm, "Unable to require '%s' library %s", module_name, dlerror());
+            }
+
+            function = dlsym(handle, "open_lit_library");
+        #endif
+
+        if (function == NULL) {
+            lit_runtime_error_exiting(vm, "Unable to require '%s' library: it's missing 'open_lit_library()'", module_name);
+            return -1;
+        }
 
 		function(vm->state);
 

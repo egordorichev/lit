@@ -334,7 +334,7 @@ LitString* json_map_to_string(LitVm* vm, LitValue instance, uint indentation) {
 	indentation++;
 
 	LitState* state = vm->state;
-	LitMap* map = AS_INSTANCE(instance);
+	LitMap* map = AS_MAP(instance);
 	LitTable* values = &map->values;
 
 	if (values->count == 0) {

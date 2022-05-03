@@ -7,9 +7,15 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#define strtok_r strtok_s
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#endif
 
 typedef struct LitNetworkRequest {
 	int socket;
@@ -440,7 +446,7 @@ LIT_METHOD(networkRequest_read) {
 	bool parsing_body = false;
 	bool parsed_status = false;
 
-	const char* start = data->message;
+	char* start = data->message;
 	size_t length;
 
 	while (true) {

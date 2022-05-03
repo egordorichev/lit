@@ -63,7 +63,11 @@ add_custom_command(
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   DEPENDS include/lit/std/raw/http.lit)
 
-target_link_libraries(lit LINK_PUBLIC m dl)
+if (UNIX)
+ target_link_libraries(lit LINK_PUBLIC dl m)
+elseif (WIN32)
+ target_link_libraries(lit LINK_PUBLIC wsock32 ws2_32 m)
+endif()
 
 if (LIT_BUILD_ANDROID)
  set_target_properties(lit PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dist/${CMAKE_ANDROID_ARCH_ABI}")

@@ -30,7 +30,10 @@ void interupt_handler(int signal_id) {
 static void run_repl(LitState* state) {
 	repl_state = state;
 	signal(SIGINT, interupt_handler);
-	signal(SIGTSTP, interupt_handler);
+
+    #ifndef _WIN32
+    	signal(SIGTSTP, interupt_handler);
+    #endif
 
 	lit_set_optimization_level(OPTIMIZATION_LEVEL_REPL);
 	printf("lit v%s, developed by @egordorichev\n", LIT_VERSION_STRING);
